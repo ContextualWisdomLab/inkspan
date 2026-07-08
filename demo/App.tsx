@@ -1,9 +1,19 @@
 import { useMemo, useState } from 'react';
 import { CwlEditor, type EditorMode } from '../src/index.js';
 
-const SAMPLE_MD = `# cwl-editor
+const SAMPLE_MD = `# Inkspan
 
-A **commercial-grade** Markdown + HTML editor built on TipTap v2.
+A **commercial-grade** Markdown + HTML editor built on TipTap v2, with
+bundled offline fonts for five scripts.
+
+## Multilingual (bundled Noto Sans, no network)
+
+- **Korean** — 한국어: 폐쇄망에서도 완벽하게 렌더링됩니다.
+- **English** — The quick brown fox jumps over the lazy dog.
+- **Japanese** — 日本語：オフラインでも綺麗に表示されます。
+- **Chinese (Simplified)** — 简体中文：完全离线渲染。
+- **Chinese (Traditional)** — 繁體中文：完全離線渲染。
+- **Vietnamese** — Tiếng Việt: hiển thị đầy đủ dấu, không cần mạng.
 
 ## Features
 
@@ -30,7 +40,7 @@ export function App() {
   // Reset content to a sensible sample when switching modes for the demo.
   const onModeChange = (next: EditorMode) => {
     setMode(next);
-    setValue(next === 'markdown' ? SAMPLE_MD : '<h1>cwl-editor</h1><p>HTML mode. Try <strong>bold</strong> and drop an image.</p>');
+    setValue(next === 'markdown' ? SAMPLE_MD : '<h1>Inkspan</h1><p>HTML mode. Try <strong>bold</strong>, 한국어, 日本語, 中文, Tiếng Việt, and drop an image.</p>');
   };
 
   const byteInfo = useMemo(() => {
@@ -41,8 +51,11 @@ export function App() {
   return (
     <div className="demo">
       <header className="demo__header">
-        <h1>cwl-editor</h1>
-        <p>Markdown + HTML WYSIWYG with inline base64 images.</p>
+        <h1>Inkspan</h1>
+        <p>
+          Markdown + HTML WYSIWYG with inline base64 images and bundled offline
+          fonts (한국어 · English · 日本語 · 中文 · Tiếng Việt).
+        </p>
         <div className="demo__modes">
           <button
             className={mode === 'markdown' ? 'active' : ''}
@@ -78,7 +91,8 @@ export function App() {
       </main>
 
       <footer className="demo__footer">
-        MIT · TipTap/ProseMirror · base64-inline images ·{' '}
+        Inkspan · MIT · TipTap/ProseMirror · base64-inline images · Noto Sans
+        (OFL-1.1) ·{' '}
         <a href="https://github.com/ContextualWisdomLab/cwl-editor">source</a>
       </footer>
     </div>

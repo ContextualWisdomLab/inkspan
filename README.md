@@ -1,8 +1,12 @@
-# cwl-editor
+# Inkspan
+
+> **Inkspan** ([inkspan.io](https://inkspan.io)) — the product. Repository slug:
+> `cwl-editor`. npm package: `@contextualwisdomlab/cwl-editor`.
 
 **Commercial-grade Markdown + HTML WYSIWYG editor** built on
 [TipTap v2](https://tiptap.dev/) / [ProseMirror](https://prosemirror.net/)
-(both MIT), with **inline base64 images** and a **standalone base64 converter**.
+(both MIT), with **inline base64 images**, a **standalone base64 converter**, and
+**bundled offline multilingual fonts**.
 
 - 📝 **Two modes** — a Markdown editor and an HTML WYSIWYG editor sharing one
   toolbar, keyboard shortcuts, and paste handling.
@@ -11,6 +15,11 @@
   `<img src="data:…">`). Nothing is uploaded to a server, so the content is fully
   self-contained and a downstream **LLM can read the image bytes straight from
   the text**. Configurable size guard + downscaling.
+- 🌏 **Bundled offline fonts** — self-contained [Noto Sans](https://fonts.google.com/noto)
+  web fonts covering **Korean, English, Japanese, Chinese (Simplified +
+  Traditional) and Vietnamese**. No CDN, no Google Fonts URL — every glyph
+  renders with **zero network fetch**, so it works in **air-gapped / 폐쇄망**
+  environments. All fonts are **SIL OFL 1.1** (no copyright/licensing issues).
 - 🔁 **Round-trip safe** — the embedded data URI survives Markdown ⇄ HTML
   conversion in both directions.
 - 🧩 **Standalone base64 converter** — `File`/`Blob`/`ArrayBuffer` → data URI and
@@ -18,8 +27,8 @@
   reusable on its own (e.g. by the *naruon* / DOM-understanding pipeline).
 - 📦 **Standalone _and_ embeddable** — own Vite build + demo, publishable as an
   npm package, or vendorable as a git submodule.
-- ⚖️ **MIT** — permissive licenses only (TipTap MIT, ProseMirror MIT). No
-  GPL/AGPL.
+- ⚖️ **MIT** code + **OFL-1.1** fonts — permissive licenses only (TipTap MIT,
+  ProseMirror MIT, Noto Sans OFL-1.1). No GPL/AGPL.
 
 All configuration comes from **props / KV**, never from `process.env` or OS
 environment lookups at runtime.
@@ -40,6 +49,7 @@ pnpm add react react-dom
 import { useState } from 'react';
 import { CwlEditor } from '@contextualwisdomlab/cwl-editor';
 import '@contextualwisdomlab/cwl-editor/styles.css';
+import '@contextualwisdomlab/cwl-editor/fonts.css'; // bundled offline fonts (see below)
 
 export function Example() {
   const [md, setMd] = useState('# Hello\n\nDrop an image below 👇');
@@ -73,6 +83,58 @@ Both modes embed images as inline base64.
 
 `ImageConfig`: `{ maxSizeBytes?: number; maxDimension?: number; quality?: number }`
 — defaults `10 MB`, `1600 px`, `0.85`. Set `maxDimension: 0` to disable downscaling.
+
+## Bundled offline fonts (Korean / English / Japanese / Chinese / Vietnamese)
+
+Inkspan ships **self-contained web fonts** so the editor renders all five
+scripts **without any network fetch** — ideal for **air-gapped / 폐쇄망**
+deployments. The fonts are the [Noto Sans](https://fonts.google.com/noto)
+family under the **SIL Open Font License 1.1** (no copyright/licensing issues,
+compatible with the MIT code):
+
+| Family         | Scripts                                   | Weights  |
+| -------------- | ----------------------------------------- | -------- |
+| Noto Sans      | Latin, Latin-ext, **Vietnamese**, Cyrillic | 400, 700 |
+| Noto Sans KR   | **Korean** (Hangul)                       | 400      |
+| Noto Sans JP   | **Japanese** (Kana + Kanji)               | 400      |
+| Noto Sans SC   | **Chinese, Simplified**                   | 400      |
+| Noto Sans TC   | **Chinese, Traditional**                  | 400      |
+
+The `@font-face` rules point at **woff2 files bundled inside the package**
+(`src/fonts/files/`), split by `unicode-range` — never a CDN or Google Fonts
+URL. Because they are `unicode-range`-subset, a browser only downloads the
+subset files whose glyphs actually appear, and everything resolves from local
+bundled bytes.
+
+```tsx
+// Full multilingual stack (all five scripts):
+import '@contextualwisdomlab/cwl-editor/fonts.css';
+
+// …or Latin/Vietnamese only — opt out of the ~9 MB of CJK to keep it tiny:
+import '@contextualwisdomlab/cwl-editor/fonts-latin.css';
+```
+
+The default editor font stack
+(`--cwl-font: 'Noto Sans', 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC',
+'Noto Sans TC', …`) is set in `styles.css`, so once you import a fonts CSS the
+scripts render automatically. Override `--cwl-font` to re-theme.
+
+**Size tradeoff.** Full CJK coverage is inherently large: the complete bundle is
+**≈ 9.7 MB across ~470 woff2 subset files** (Latin 400+700 ≈ 0.8 MB; each CJK
+family at weight 400 ≈ 1.8–2.7 MB). To control this:
+
+- **Tree-shake CJK** — import `fonts-latin.css` instead of `fonts.css` if you
+  only need Latin/Vietnamese (a few hundred KB).
+- **Runtime cost is small** — `unicode-range` subsetting means only the subset
+  files for glyphs on the page are ever fetched from the bundle.
+- **CJK bold is synthesized** — CJK families ship weight 400 only; browsers
+  render bold headings with faux-bold. Regenerate with 700 via
+  `scripts/fetch-fonts.mjs` if you need true CJK bold (roughly doubles CJK size).
+- **Regenerate** the bundle any time with `node scripts/fetch-fonts.mjs` (the
+  only step that touches the network; rendering never does).
+
+License: [`src/fonts/OFL.txt`](src/fonts/OFL.txt) +
+[`src/fonts/NOTICE`](src/fonts/NOTICE).
 
 ## Standalone base64 converter (no React)
 
@@ -163,15 +225,24 @@ src/
   markdown/       marked + turndown serializers (base64-image round-trip safe)
   extensions/     Base64Image TipTap extension + shared extension kit
   components/      CwlEditor React component + Toolbar
+  fonts/          Bundled Noto Sans woff2 (offline) + fonts.css / fonts-latin.css
+                  + OFL.txt + NOTICE
   styles.css      Self-contained, theme-aware styling
-demo/             Standalone Vite demo app
+demo/             Standalone Vite demo app (renders all five scripts offline)
+scripts/          copy-styles + fetch-fonts (font bundle generator)
 docs/papers/      CommonMark spec + citations (see docs/papers/README.md)
 ```
 
 ## Licenses
 
-MIT. Dependency licenses are all permissive: TipTap (MIT), ProseMirror (MIT),
-`marked` (MIT), `turndown` (MIT), `turndown-plugin-gfm` (MIT). No GPL/AGPL.
+**Code: MIT.** Dependency licenses are all permissive: TipTap (MIT), ProseMirror
+(MIT), `marked` (MIT), `turndown` (MIT), `turndown-plugin-gfm` (MIT). No
+GPL/AGPL.
+
+**Fonts: SIL OFL 1.1.** The bundled Noto Sans families are under the SIL Open
+Font License 1.1 — permissive and compatible with MIT (fonts are content, not
+linked code). Full text: [`src/fonts/OFL.txt`](src/fonts/OFL.txt); attribution:
+[`src/fonts/NOTICE`](src/fonts/NOTICE).
 
 See [`docs/papers/README.md`](docs/papers/README.md) for the CommonMark
 specification and citations.
