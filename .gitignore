@@ -1,0 +1,12 @@
+node_modules/
+dist/
+dist-demo/
+coverage/
+*.log
+.DS_Store
+.vite/
+.eslintcache
+*.tsbuildinfo
+
+# CodeGraph local index
+.codegraph/

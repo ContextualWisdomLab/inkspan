@@ -1,0 +1,104 @@
+{
+  "name": "@contextualwisdomlab/cwl-editor",
+  "version": "0.1.0",
+  "description": "Commercial-grade Markdown + HTML WYSIWYG editor module (TipTap/ProseMirror, MIT) with base64-inline images and a standalone base64 converter.",
+  "license": "MIT",
+  "author": "ContextualWisdomLab",
+  "type": "module",
+  "keywords": [
+    "editor",
+    "wysiwyg",
+    "markdown",
+    "tiptap",
+    "prosemirror",
+    "react",
+    "base64",
+    "rich-text",
+    "llm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ContextualWisdomLab/cwl-editor.git"
+  },
+  "homepage": "https://github.com/ContextualWisdomLab/cwl-editor#readme",
+  "bugs": {
+    "url": "https://github.com/ContextualWisdomLab/cwl-editor/issues"
+  },
+  "sideEffects": false,
+  "main": "./dist/cwl-editor.cjs",
+  "module": "./dist/cwl-editor.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/cwl-editor.js",
+      "require": "./dist/cwl-editor.cjs"
+    },
+    "./converter": {
+      "types": "./dist/converter/index.d.ts",
+      "import": "./dist/cwl-converter.js",
+      "require": "./dist/cwl-converter.cjs"
+    },
+    "./styles.css": "./dist/cwl-editor.css"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build && vite build --config vite.converter.config.ts && node ./scripts/copy-styles.mjs",
+    "build:demo": "vite build --config vite.demo.config.ts",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@tiptap/extension-image": "^2.11.5",
+    "@tiptap/extension-link": "^2.11.5",
+    "@tiptap/extension-placeholder": "^2.11.5",
+    "@tiptap/extension-table": "^2.11.5",
+    "@tiptap/extension-table-cell": "^2.11.5",
+    "@tiptap/extension-table-header": "^2.11.5",
+    "@tiptap/extension-table-row": "^2.11.5",
+    "@tiptap/pm": "^2.11.5",
+    "@tiptap/react": "^2.11.5",
+    "@tiptap/starter-kit": "^2.11.5",
+    "marked": "^15.0.6",
+    "turndown": "^7.2.0",
+    "turndown-plugin-gfm": "^1.0.2"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@types/turndown": "^5.0.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "^2.1.8",
+    "jsdom": "^25.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.7.3",
+    "vite": "^5.4.11",
+    "vite-plugin-dts": "^4.5.0",
+    "vitest": "^2.1.8"
+  }
+}

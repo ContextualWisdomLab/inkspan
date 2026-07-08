@@ -1,0 +1,44 @@
+/**
+ * @contextualwisdomlab/cwl-editor
+ *
+ * Commercial-grade Markdown + HTML WYSIWYG editor built on TipTap v2
+ * (ProseMirror, MIT), with inline base64 images and a standalone base64
+ * converter.
+ *
+ * Import the stylesheet once in your app:
+ * ```ts
+ * import '@contextualwisdomlab/cwl-editor/styles.css';
+ * ```
+ */
+
+// React component surface.
+export { CwlEditor, default as Editor } from './components/CwlEditor.js';
+export { Toolbar } from './components/Toolbar.js';
+
+// Types.
+export type {
+  CwlEditorProps,
+  EditorMode,
+  ImageConfig,
+} from './types.js';
+
+// Extensions (reusable headlessly).
+export {
+  Base64Image,
+  base64ImagePluginKey,
+  downscaleDataUri,
+  imageFileToInlineDataUri,
+} from './extensions/Base64Image.js';
+export type { Base64ImageOptions } from './extensions/Base64Image.js';
+export { buildExtensions } from './extensions/kit.js';
+export type { BuildExtensionsOptions } from './extensions/kit.js';
+
+// Markdown <-> HTML serialization (base64 image round-trip safe).
+export {
+  markdownToHtml,
+  htmlToMarkdown,
+  normalizeMarkdown,
+} from './markdown/serializer.js';
+
+// Standalone, framework-agnostic base64 / data-URI converter.
+export * from './converter/index.js';
