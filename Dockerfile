@@ -5,7 +5,7 @@ FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb
 WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile || pnpm install
+RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build:demo
 

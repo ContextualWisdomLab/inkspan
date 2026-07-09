@@ -2,10 +2,14 @@
 
 ## Supported Versions
 
-Security updates are applied to the current `main` branch and the latest published package version.
+Security fixes are applied to the default branch and the latest published package version. Older snapshots are not supported unless the maintainers explicitly mark a release branch as supported.
 
 ## Reporting a Vulnerability
 
-Please report suspected vulnerabilities by opening a private vulnerability report in this repository's Security tab. If private reporting is unavailable, email the maintainers listed in the organization profile with a minimal reproduction, affected version, and impact summary.
+Report suspected vulnerabilities through GitHub private vulnerability reporting or a repository security advisory:
 
-We aim to acknowledge reports within 3 business days, provide a remediation plan after triage, and publish fixes before disclosing detailed exploit information.
+https://github.com/ContextualWisdomLab/inkspan/security/advisories/new
+
+Do not file public issues for exploitable behavior, credential exposure, supply-chain compromise, or denial-of-service findings until a fix is available.
+
+Include the affected version or commit, reproduction steps, impact, and any relevant logs or proof-of-concept material. Maintainers will acknowledge validated reports, coordinate a fix, and publish disclosure notes after the patched version is available.
