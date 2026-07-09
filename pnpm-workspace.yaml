@@ -1,13 +1,10 @@
 packages:
   - .
 
-onlyBuiltDependencies:
-  - esbuild
-allowBuilds:
-  esbuild: true
-# Security: force patched versions across the whole dependency tree.
-# vitest / vite-node otherwise resolve a transitive vite@5 (GHSA-4w7w-66w2-5vf9,
-# GHSA-v6wh-96g9-6wx3, GHSA-fx2h-pf6j-xcff) and esbuild<0.24.3 (GHSA-67mh-4wv8-2f99).
-overrides:
-  vite: ^6.4.3
-  esbuild: ^0.25.0
+# Security overrides (force patched vite/esbuild across the whole dependency
+# tree — vite@5 GHSA-4w7w-66w2-5vf9 / GHSA-v6wh-96g9-6wx3 / GHSA-fx2h-pf6j-xcff,
+# esbuild<0.24.3 GHSA-67mh-4wv8-2f99) and build-approval settings now live in
+# package.json under the "pnpm" key. CI pins pnpm 9 (.github/workflows/ci.yml),
+# which reads overrides / onlyBuiltDependencies from package.json, not from this
+# file; keeping them here left the lockfile's overrides block unreconcilable and
+# broke `pnpm install --frozen-lockfile` (ERR_PNPM_LOCKFILE_CONFIG_MISMATCH).
