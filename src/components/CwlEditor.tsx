@@ -83,12 +83,18 @@ export function CwlEditor({
     if (!editor || !isControlled || emittingRef.current) return;
     const current = fromHtml(editor.getHTML(), mode);
     if (current !== value) {
-      editor.commands.setContent(toHtml(value ?? '', mode), false);
+      // `value` is always a string here (isControlled === value !== undefined),
+      // so the `?? ''` fallback is a type guard that never runs.
+      /* v8 ignore next */
+      const next = toHtml(value ?? '', mode);
+      editor.commands.setContent(next, false);
     }
   }, [editor, isControlled, value, mode]);
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // Defensive: key events can only reach the surface once the editor exists.
+      /* v8 ignore next */
       if (!editor) return;
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key.toLowerCase() === 'k') {

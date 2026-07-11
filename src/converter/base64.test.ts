@@ -89,6 +89,16 @@ describe('MIME sniffing', () => {
       'image/svg+xml',
     );
   });
+  it('detects SVG wrapped in an XML prolog', () => {
+    expect(
+      sniffMimeType(new TextEncoder().encode('<?xml version="1.0"?><svg>')),
+    ).toBe('image/svg+xml');
+  });
+  it('does not treat a non-SVG XML document as an image', () => {
+    expect(
+      sniffMimeType(new TextEncoder().encode('<?xml version="1.0"?><root/>')),
+    ).toBeUndefined();
+  });
   it('returns undefined for unknown bytes', () => {
     expect(sniffMimeType(new Uint8Array([0x00, 0x01, 0x02]))).toBeUndefined();
   });
