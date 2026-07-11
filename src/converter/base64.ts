@@ -64,36 +64,40 @@ const hasBuffer = typeof globalThis.Buffer !== 'undefined';
 
 /** Encode raw bytes to a base64 string. Works in Node and the browser. */
 export function bytesToBase64(bytes: Uint8Array): string {
-  if (hasBuffer) {
-    return globalThis.Buffer.from(
-      bytes.buffer,
-      bytes.byteOffset,
-      bytes.byteLength,
-    ).toString('base64');
+  /* v8 ignore start -- browser-only fallback: Node and jsdom always provide Buffer */
+  if (!hasBuffer) {
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, i + chunkSize);
+      binary += String.fromCharCode(...chunk);
+    }
+    // eslint-disable-next-line no-undef
+    return btoa(binary);
   }
-  let binary = '';
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.subarray(i, i + chunkSize);
-    binary += String.fromCharCode(...chunk);
-  }
-  // eslint-disable-next-line no-undef
-  return btoa(binary);
+  /* v8 ignore stop */
+  return globalThis.Buffer.from(
+    bytes.buffer,
+    bytes.byteOffset,
+    bytes.byteLength,
+  ).toString('base64');
 }
 
 /** Decode a base64 string to raw bytes. Works in Node and the browser. */
 export function base64ToBytes(base64: string): Uint8Array {
   const normalized = base64.replace(/\s+/g, '');
-  if (hasBuffer) {
-    return new Uint8Array(globalThis.Buffer.from(normalized, 'base64'));
+  /* v8 ignore start -- browser-only fallback: Node and jsdom always provide Buffer */
+  if (!hasBuffer) {
+    // eslint-disable-next-line no-undef
+    const binary = atob(normalized);
+    const out = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      out[i] = binary.charCodeAt(i);
+    }
+    return out;
   }
-  // eslint-disable-next-line no-undef
-  const binary = atob(normalized);
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    out[i] = binary.charCodeAt(i);
-  }
-  return out;
+  /* v8 ignore stop */
+  return new Uint8Array(globalThis.Buffer.from(normalized, 'base64'));
 }
 
 /** Coerce any binary-ish input to a `Uint8Array` view without copying twice. */
@@ -267,7 +271,10 @@ export function parseDataUri(dataUri: string): ParsedDataUri {
   const mimeType = match[1] && match[1].length > 0 ? match[1] : 'text/plain';
   const params = match[2] ?? '';
   const isBase64 = /;base64/i.test(params);
-  return { mimeType, isBase64, payload: match[3] ?? '' };
+  // Capture group 3 always matches (possibly empty), so `?? ''` is defensive.
+  /* v8 ignore next */
+  const payload = match[3] ?? '';
+  return { mimeType, isBase64, payload };
 }
 
 /** `true` when the string is a syntactically valid data URI. */
