@@ -5,6 +5,7 @@ import {
   waitFor,
   cleanup,
   fireEvent,
+  act,
 } from '@testing-library/react';
 import { afterEach } from 'vitest';
 import type { Editor } from '@tiptap/react';
@@ -137,7 +138,9 @@ describe('CwlEditor change emission', () => {
       />,
     );
     await waitFor(() => expect(ed).toBeTruthy());
-    ed!.chain().focus().insertContent(' there').run();
+    await act(async () => {
+      ed!.chain().focus().insertContent(' there').run();
+    });
     await waitFor(() => expect(onChange).toHaveBeenCalled());
     expect(onChange.mock.calls.at(-1)![0]).toContain('hi');
   });
@@ -156,7 +159,9 @@ describe('CwlEditor change emission', () => {
       />,
     );
     await waitFor(() => expect(ed).toBeTruthy());
-    ed!.chain().focus().insertContent(' x').run();
+    await act(async () => {
+      ed!.chain().focus().insertContent(' x').run();
+    });
     await waitFor(() => expect(onChange).toHaveBeenCalled());
     expect(onChange.mock.calls.at(-1)![0]).toContain('<p>');
   });
@@ -173,7 +178,9 @@ describe('CwlEditor change emission', () => {
       />,
     );
     await waitFor(() => expect(ed).toBeTruthy());
-    ed!.chain().focus().insertContent(' more').run();
+    await act(async () => {
+      ed!.chain().focus().insertContent(' more').run();
+    });
     expect(ed!.getHTML()).toContain('more');
   });
 });
@@ -230,8 +237,10 @@ describe('CwlEditor Ctrl/Cmd+K link shortcut', () => {
       />,
     );
     await waitFor(() => expect(ed).toBeTruthy());
-    ed!.chain().focus().selectAll().run();
-    fireEvent.keyDown(surface(), { key: 'K', metaKey: true });
+    await act(async () => {
+      ed!.chain().focus().selectAll().run();
+      fireEvent.keyDown(surface(), { key: 'K', metaKey: true });
+    });
     await waitFor(() =>
       expect(ed!.getHTML()).toContain('href="https://ex.com"'),
     );
@@ -252,8 +261,10 @@ describe('CwlEditor Ctrl/Cmd+K link shortcut', () => {
       />,
     );
     await waitFor(() => expect(ed).toBeTruthy());
-    ed!.chain().focus().selectAll().setLink({ href: 'https://first.com' }).run();
-    fireEvent.keyDown(surface(), { key: 'k', ctrlKey: true });
+    await act(async () => {
+      ed!.chain().focus().selectAll().setLink({ href: 'https://first.com' }).run();
+      fireEvent.keyDown(surface(), { key: 'k', ctrlKey: true });
+    });
     await waitFor(() =>
       expect(ed!.getHTML()).toContain('href="https://second.com"'),
     );
@@ -273,8 +284,10 @@ describe('CwlEditor Ctrl/Cmd+K link shortcut', () => {
       />,
     );
     await waitFor(() => expect(ed).toBeTruthy());
-    ed!.chain().focus().selectAll().setLink({ href: 'https://x.com' }).run();
-    fireEvent.keyDown(surface(), { key: 'k', metaKey: true });
+    await act(async () => {
+      ed!.chain().focus().selectAll().setLink({ href: 'https://x.com' }).run();
+      fireEvent.keyDown(surface(), { key: 'k', metaKey: true });
+    });
     await waitFor(() => expect(ed!.getHTML()).not.toContain('href='));
   });
 

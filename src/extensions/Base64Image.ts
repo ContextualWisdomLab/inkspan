@@ -4,13 +4,17 @@
  *
  * Whenever an image is pasted, dropped, or inserted, its bytes are read,
  * optionally downscaled, and embedded as a `data:` URI on the node's `src`.
- * External `http(s)` URLs pasted as image files are left alone unless
- * `fetchRemote` is enabled; local files always become base64 so the content is
- * self-contained and directly consumable by an LLM.
+ * Local files always become base64 so the content is fully self-contained,
+ * works offline / air-gapped, and is directly consumable by an LLM. By design
+ * the extension never fetches remote URLs — nothing leaves the document.
  */
 import Image from '@tiptap/extension-image';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
-import { blobToDataUri } from '../converter/base64.js';
+import {
+  blobToDataUri,
+  dataUriByteLength,
+  Base64SizeError,
+} from '../converter/base64.js';
 
 export interface Base64ImageOptions {
   /** Passed through to the underlying TipTap Image extension. */
@@ -95,7 +99,21 @@ export async function imageFileToInlineDataUri(
     maxBytes: options.maxSizeBytes > 0 ? options.maxSizeBytes : undefined,
   });
   if (options.maxDimension && options.maxDimension > 0) {
-    return downscaleDataUri(dataUri, options.maxDimension, options.quality);
+    const scaled = await downscaleDataUri(
+      dataUri,
+      options.maxDimension,
+      options.quality,
+    );
+    // Re-apply the size guard to the re-encoded output: canvas re-encoding can
+    // change (and occasionally inflate) the byte length, so the guard must hold
+    // for what actually lands in the document, not just the source file.
+    if (options.maxSizeBytes > 0) {
+      const scaledBytes = dataUriByteLength(scaled);
+      if (scaledBytes > options.maxSizeBytes) {
+        throw new Base64SizeError(scaledBytes, options.maxSizeBytes);
+      }
+    }
+    return scaled;
   }
   return dataUri;
 }

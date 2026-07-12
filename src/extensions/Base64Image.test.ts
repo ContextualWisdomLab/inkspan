@@ -8,6 +8,7 @@ import {
   Base64Image,
   base64ImagePluginKey,
 } from './Base64Image.js';
+import { Base64SizeError, bytesToDataUri } from '../converter/base64.js';
 import { buildExtensions } from './kit.js';
 
 const PNG_BYTES = new Uint8Array([
@@ -47,6 +48,10 @@ const openEditors: Editor[] = [];
 function track(editor: Editor): Editor {
   openEditors.push(editor);
   return editor;
+}
+
+function pngFile(): File {
+  return new File([PNG_BYTES], 'p.png', { type: 'image/png' });
 }
 
 afterEach(() => {
@@ -133,9 +138,8 @@ describe('imageFileToInlineDataUri downscale branch', () => {
   it('invokes the downscaler when maxDimension is positive', async () => {
     vi.stubGlobal('Image', MockImage);
     MockImage.width = 50;
-    MockImage.height = 50; // fits, so the URI comes back unchanged
-    const file = new File([PNG_BYTES], 'p.png', { type: 'image/png' });
-    const uri = await imageFileToInlineDataUri(file, {
+    MockImage.height = 50;
+    const uri = await imageFileToInlineDataUri(pngFile(), {
       maxSizeBytes: 1024 * 1024,
       maxDimension: 100,
       quality: 0.85,
@@ -144,13 +148,65 @@ describe('imageFileToInlineDataUri downscale branch', () => {
   });
 
   it('disables the size guard when maxSizeBytes is 0', async () => {
-    const file = new File([PNG_BYTES], 'p.png', { type: 'image/png' });
-    const uri = await imageFileToInlineDataUri(file, {
+    const uri = await imageFileToInlineDataUri(pngFile(), {
       maxSizeBytes: 0,
       maxDimension: 0,
       quality: 0.85,
     });
     expect(uri.startsWith('data:image/png;base64,')).toBe(true);
+  });
+
+  it('enforces the size guard on the source file', async () => {
+    await expect(
+      imageFileToInlineDataUri(pngFile(), {
+        maxSizeBytes: 4,
+        maxDimension: 0,
+        quality: 0.85,
+      }),
+    ).rejects.toBeInstanceOf(Base64SizeError);
+  });
+
+  it('re-applies the size guard to re-encoded output', async () => {
+    vi.stubGlobal('Image', MockImage);
+    MockImage.width = 400;
+    MockImage.height = 400;
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      { drawImage: vi.fn() } as unknown as CanvasRenderingContext2D,
+    );
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue(
+      bytesToDataUri(new Uint8Array(1536).fill(0x41), {
+        mimeType: 'image/jpeg',
+      }),
+    );
+
+    await expect(
+      imageFileToInlineDataUri(pngFile(), {
+        maxSizeBytes: 512,
+        maxDimension: 10,
+        quality: 0.85,
+      }),
+    ).rejects.toBeInstanceOf(Base64SizeError);
+  });
+
+  it('accepts a re-encoded output that fits under the size guard', async () => {
+    vi.stubGlobal('Image', MockImage);
+    MockImage.width = 400;
+    MockImage.height = 400;
+    const small = bytesToDataUri(new Uint8Array(64).fill(0x41), {
+      mimeType: 'image/jpeg',
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      { drawImage: vi.fn() } as unknown as CanvasRenderingContext2D,
+    );
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue(small);
+
+    await expect(
+      imageFileToInlineDataUri(pngFile(), {
+        maxSizeBytes: 4096,
+        maxDimension: 10,
+        quality: 0.85,
+      }),
+    ).resolves.toBe(small);
   });
 });
 
@@ -215,10 +271,9 @@ describe('Base64Image paste handler', () => {
 
   it('embeds a pasted image file as inline base64', async () => {
     const editor = track(makeEditor());
-    const file = new File([PNG_BYTES], 'p.png', { type: 'image/png' });
     const items = [
-      { kind: 'file', getAsFile: () => null }, // exercises the `if (file)` guard
-      { kind: 'file', getAsFile: () => file },
+      { kind: 'file', getAsFile: () => null },
+      { kind: 'file', getAsFile: () => pngFile() },
     ];
     const preventDefault = vi.fn();
     expect(paste(editor, { clipboardData: { items }, preventDefault })).toBe(
@@ -243,11 +298,10 @@ describe('Base64Image drop handler', () => {
       pos: 1,
       inside: -1,
     });
-    const file = new File([PNG_BYTES], 'p.png', { type: 'image/png' });
     const preventDefault = vi.fn();
     expect(
       drop(editor, {
-        dataTransfer: { files: [file] },
+        dataTransfer: { files: [pngFile()] },
         clientX: 5,
         clientY: 5,
         preventDefault,
@@ -262,10 +316,9 @@ describe('Base64Image drop handler', () => {
   it('falls back to the current selection when coords resolve to nothing', async () => {
     const editor = track(makeEditor());
     vi.spyOn(editor.view, 'posAtCoords').mockReturnValue(null);
-    const file = new File([PNG_BYTES], 'p.png', { type: 'image/png' });
     expect(
       drop(editor, {
-        dataTransfer: { files: [file] },
+        dataTransfer: { files: [pngFile()] },
         clientX: 0,
         clientY: 0,
         preventDefault: vi.fn(),
@@ -281,8 +334,7 @@ describe('Base64Image conversion error handling', () => {
   it('routes conversion failures to the configured onError handler', async () => {
     const onError = vi.fn();
     const editor = track(makeEditor({ onError }));
-    const file = new File([PNG_BYTES], 'p.png', { type: 'image/png' }); // > 4 bytes
-    const items = [{ kind: 'file', getAsFile: () => file }];
+    const items = [{ kind: 'file', getAsFile: () => pngFile() }];
     expect(
       paste(editor, { clipboardData: { items }, preventDefault: vi.fn() }),
     ).toBe(true);
@@ -293,8 +345,7 @@ describe('Base64Image conversion error handling', () => {
 
   it('swallows conversion failures when no onError handler is configured', async () => {
     const editor = track(makeEditor({ image: { maxSizeBytes: 4 } }));
-    const file = new File([PNG_BYTES], 'p.png', { type: 'image/png' });
-    const items = [{ kind: 'file', getAsFile: () => file }];
+    const items = [{ kind: 'file', getAsFile: () => pngFile() }];
     expect(
       paste(editor, { clipboardData: { items }, preventDefault: vi.fn() }),
     ).toBe(true);
@@ -304,10 +355,9 @@ describe('Base64Image conversion error handling', () => {
 
   it('skips insertion when the editor is destroyed mid-conversion', async () => {
     const editor = makeEditor();
-    const file = new File([PNG_BYTES], 'p.png', { type: 'image/png' });
-    const items = [{ kind: 'file', getAsFile: () => file }];
+    const items = [{ kind: 'file', getAsFile: () => pngFile() }];
     paste(editor, { clipboardData: { items }, preventDefault: vi.fn() });
-    editor.destroy(); // tear down before the async conversion resolves
+    editor.destroy();
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(editor.isDestroyed).toBe(true);
   });

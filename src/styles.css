@@ -1,6 +1,12 @@
-/* cwl-editor — self-contained, theme-aware styles. Import once:
+/* cwl-editor (Inkspan) — self-contained, theme-aware styles. Import once:
      import '@contextualwisdomlab/cwl-editor/styles.css';
-   All colors are driven by CSS variables so hosts can re-theme via KV/props. */
+   For the BUNDLED offline multilingual fonts (KR / EN+VI / JP / SC / TC) also:
+     import '@contextualwisdomlab/cwl-editor/fonts.css';        // all 5 scripts
+     import '@contextualwisdomlab/cwl-editor/fonts-latin.css';  // Latin/VI only
+   All colors are driven by CSS variables so hosts can re-theme via KV/props.
+   The default font stack lists the bundled Noto Sans families first so, once
+   fonts.css is imported, all five scripts render offline; it falls back to the
+   platform UI fonts when fonts.css is not loaded. */
 
 .cwl-editor {
   --cwl-fg: #1f2328;
@@ -11,14 +17,18 @@
   --cwl-accent: #0969da;
   --cwl-accent-soft: #ddf4ff;
   --cwl-radius: 8px;
+  /* Bundled Noto Sans stack: covers Latin/Vietnamese + Korean + Japanese +
+     Simplified & Traditional Chinese. Override --cwl-font to re-theme. */
+  --cwl-font:
+    'Noto Sans', 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC',
+    'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Helvetica, Arial, sans-serif;
 
   color: var(--cwl-fg);
   background: var(--cwl-bg);
   border: 1px solid var(--cwl-border);
   border-radius: var(--cwl-radius);
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
-    sans-serif;
+  font-family: var(--cwl-font);
   display: flex;
   flex-direction: column;
   overflow: hidden;

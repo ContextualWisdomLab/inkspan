@@ -1,0 +1,38 @@
+Bundled Fonts — Attribution & Licensing
+========================================
+
+This package (Inkspan / @contextualwisdomlab/cwl-editor) bundles the following
+web fonts so the editor renders Korean, English, Japanese, Chinese (Simplified
+and Traditional) and Vietnamese fully offline (air-gapped / 폐쇄망), with no
+network fetch and no proprietary/copyleft licensing.
+
+All bundled fonts are from the Noto Sans family and are licensed under the
+SIL Open Font License, Version 1.1 (OFL-1.1). The full license text is in
+this directory: OFL.txt.
+
+Fonts bundled (woff2, subset by unicode-range, in ./files/):
+
+  Font family      Script coverage                         Weights   Source
+  ---------------  --------------------------------------  --------  -------------------------
+  Noto Sans        Latin, Latin-ext, Vietnamese, Cyrillic  400, 700  https://fonts.google.com/noto/specimen/Noto+Sans
+  Noto Sans KR     Korean (Hangul)                         400       https://fonts.google.com/noto/specimen/Noto+Sans+KR
+  Noto Sans JP     Japanese (Kana + Kanji)                 400       https://fonts.google.com/noto/specimen/Noto+Sans+JP
+  Noto Sans SC     Chinese, Simplified                     400       https://fonts.google.com/noto/specimen/Noto+Sans+SC
+  Noto Sans TC     Chinese, Traditional                    400       https://fonts.google.com/noto/specimen/Noto+Sans+TC
+
+Copyright: The Noto Project Authors (https://github.com/notofonts),
+with Reserved Font Name "Noto".
+
+The woff2 subset files were produced from the Google Fonts distribution of the
+above families (each split by unicode-range) via scripts/fetch-fonts.mjs. Only
+the font bytes and the generated @font-face CSS are redistributed; no font was
+modified. Redistribution of these fonts under OFL-1.1 is permitted, including
+bundling with software.
+
+Note on license compatibility:
+  The Inkspan source code is licensed MIT. The bundled fonts are OFL-1.1.
+  These are compatible: fonts are content/assets, not linked code, and OFL-1.1
+  is a permissive, non-copyleft license that explicitly allows bundling with
+  and redistribution alongside software of any license. There is no GPL/AGPL
+  obligation and no attribution requirement beyond retaining this NOTICE and
+  the OFL.txt license text (which this package does).
