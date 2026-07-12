@@ -78,3 +78,22 @@ describe('base64 image round-trip', () => {
     expect(Array.from(recovered.bytes)).toEqual(Array.from(PNG_BYTES));
   });
 });
+
+describe('inline image turndown rule branches', () => {
+  it('drops an <img> that has no src', () => {
+    const md = htmlToMarkdown('<p>before<img alt="ignored">after</p>');
+    expect(md).not.toContain('![');
+    expect(md).toContain('before');
+    expect(md).toContain('after');
+  });
+
+  it('preserves a title attribute when present', () => {
+    const md = htmlToMarkdown(`<img src="${PNG_DATA_URI}" alt="a" title="A caption">`);
+    expect(md).toBe(`![a](${PNG_DATA_URI} "A caption")`);
+  });
+
+  it('defaults alt to empty when the attribute is missing', () => {
+    const md = htmlToMarkdown(`<img src="${PNG_DATA_URI}">`);
+    expect(md).toBe(`![](${PNG_DATA_URI})`);
+  });
+});

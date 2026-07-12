@@ -153,6 +153,9 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
           })
           .catch((err: unknown) => {
             options.onError?.(
+              // Conversion only ever rejects with an Error; the String() branch
+              // is a defensive normalization that does not run in practice.
+              /* v8 ignore next */
               err instanceof Error ? err : new Error(String(err)),
             );
           });

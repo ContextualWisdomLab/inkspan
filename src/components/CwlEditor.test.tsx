@@ -1,6 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import {
+  render,
+  screen,
+  waitFor,
+  cleanup,
+  fireEvent,
+  act,
+} from '@testing-library/react';
 import { afterEach } from 'vitest';
+import type { Editor } from '@tiptap/react';
 import { CwlEditor } from './CwlEditor.js';
 import { imageFileToInlineDataUri } from '../extensions/Base64Image.js';
 
@@ -82,6 +90,14 @@ describe('CwlEditor smoke', () => {
     );
     expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
   });
+
+  it('renders an empty document when neither value nor defaultValue is given', async () => {
+    render(<CwlEditor mode="markdown" />);
+    await waitFor(() =>
+      expect(document.querySelector('.cwl-editor__content')).toBeTruthy(),
+    );
+    expect(screen.getByRole('toolbar', { name: /formatting/i })).toBeInTheDocument();
+  });
 });
 
 describe('inline image helper (used by paste/drop/upload)', () => {
@@ -104,5 +120,201 @@ describe('inline image helper (used by paste/drop/upload)', () => {
         quality: 0.85,
       }),
     ).rejects.toThrow(/exceeds/);
+  });
+});
+
+describe('CwlEditor change emission', () => {
+  it('emits serialized markdown through onChange when the doc changes', async () => {
+    const onChange = vi.fn();
+    let ed: Editor | undefined;
+    render(
+      <CwlEditor
+        mode="markdown"
+        defaultValue="hi"
+        onChange={onChange}
+        onReady={(e) => {
+          ed = e;
+        }}
+      />,
+    );
+    await waitFor(() => expect(ed).toBeTruthy());
+    await act(async () => {
+      ed!.chain().focus().insertContent(' there').run();
+    });
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    expect(onChange.mock.calls.at(-1)![0]).toContain('hi');
+  });
+
+  it('emits serialized html through onChange in html mode', async () => {
+    const onChange = vi.fn();
+    let ed: Editor | undefined;
+    render(
+      <CwlEditor
+        mode="html"
+        defaultValue="<p>hi</p>"
+        onChange={onChange}
+        onReady={(e) => {
+          ed = e;
+        }}
+      />,
+    );
+    await waitFor(() => expect(ed).toBeTruthy());
+    await act(async () => {
+      ed!.chain().focus().insertContent(' x').run();
+    });
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    expect(onChange.mock.calls.at(-1)![0]).toContain('<p>');
+  });
+
+  it('does not throw on updates when no onChange handler is provided', async () => {
+    let ed: Editor | undefined;
+    render(
+      <CwlEditor
+        mode="markdown"
+        defaultValue="hi"
+        onReady={(e) => {
+          ed = e;
+        }}
+      />,
+    );
+    await waitFor(() => expect(ed).toBeTruthy());
+    await act(async () => {
+      ed!.chain().focus().insertContent(' more').run();
+    });
+    expect(ed!.getHTML()).toContain('more');
+  });
+});
+
+describe('CwlEditor controlled value sync', () => {
+  it('pushes new external values into the document', async () => {
+    const { rerender } = render(<CwlEditor mode="markdown" value="# One" />);
+    await waitFor(() =>
+      expect(
+        document.querySelector('.cwl-editor__content h1'),
+      ).toHaveTextContent('One'),
+    );
+    rerender(<CwlEditor mode="markdown" value="# Two" />);
+    await waitFor(() =>
+      expect(
+        document.querySelector('.cwl-editor__content h1'),
+      ).toHaveTextContent('Two'),
+    );
+  });
+
+  it('leaves the document untouched when the value already matches', async () => {
+    const { rerender } = render(<CwlEditor mode="markdown" value="stable" />);
+    await waitFor(() =>
+      expect(document.querySelector('.cwl-editor__content')).toHaveTextContent(
+        'stable',
+      ),
+    );
+    // Re-render with the same value but a different unrelated prop.
+    rerender(<CwlEditor mode="markdown" value="stable" className="tweak" />);
+    await waitFor(() =>
+      expect(document.querySelector('.cwl-editor')).toHaveClass('tweak'),
+    );
+    expect(document.querySelector('.cwl-editor__content')).toHaveTextContent(
+      'stable',
+    );
+  });
+});
+
+describe('CwlEditor Ctrl/Cmd+K link shortcut', () => {
+  function surface(): HTMLElement {
+    return document.querySelector('.cwl-editor__surface') as HTMLElement;
+  }
+
+  it('creates a link from the prompt URL', async () => {
+    let ed: Editor | undefined;
+    vi.spyOn(window, 'prompt').mockReturnValue('https://ex.com');
+    render(
+      <CwlEditor
+        mode="markdown"
+        defaultValue="hi"
+        onReady={(e) => {
+          ed = e;
+        }}
+      />,
+    );
+    await waitFor(() => expect(ed).toBeTruthy());
+    await act(async () => {
+      ed!.chain().focus().selectAll().run();
+      fireEvent.keyDown(surface(), { key: 'K', metaKey: true });
+    });
+    await waitFor(() =>
+      expect(ed!.getHTML()).toContain('href="https://ex.com"'),
+    );
+  });
+
+  it('reuses the existing link href as the prompt default', async () => {
+    let ed: Editor | undefined;
+    const prompt = vi
+      .spyOn(window, 'prompt')
+      .mockReturnValue('https://second.com');
+    render(
+      <CwlEditor
+        mode="markdown"
+        defaultValue="hi"
+        onReady={(e) => {
+          ed = e;
+        }}
+      />,
+    );
+    await waitFor(() => expect(ed).toBeTruthy());
+    await act(async () => {
+      ed!.chain().focus().selectAll().setLink({ href: 'https://first.com' }).run();
+      fireEvent.keyDown(surface(), { key: 'k', ctrlKey: true });
+    });
+    await waitFor(() =>
+      expect(ed!.getHTML()).toContain('href="https://second.com"'),
+    );
+    expect(prompt).toHaveBeenLastCalledWith('Link URL', 'https://first.com');
+  });
+
+  it('removes the link when the prompt is cleared to empty', async () => {
+    let ed: Editor | undefined;
+    vi.spyOn(window, 'prompt').mockReturnValue('');
+    render(
+      <CwlEditor
+        mode="markdown"
+        defaultValue="hi"
+        onReady={(e) => {
+          ed = e;
+        }}
+      />,
+    );
+    await waitFor(() => expect(ed).toBeTruthy());
+    await act(async () => {
+      ed!.chain().focus().selectAll().setLink({ href: 'https://x.com' }).run();
+      fireEvent.keyDown(surface(), { key: 'k', metaKey: true });
+    });
+    await waitFor(() => expect(ed!.getHTML()).not.toContain('href='));
+  });
+
+  it('does nothing when the link prompt is cancelled', async () => {
+    let ed: Editor | undefined;
+    vi.spyOn(window, 'prompt').mockReturnValue(null);
+    render(
+      <CwlEditor
+        mode="markdown"
+        defaultValue="hi"
+        onReady={(e) => {
+          ed = e;
+        }}
+      />,
+    );
+    await waitFor(() => expect(ed).toBeTruthy());
+    fireEvent.keyDown(surface(), { key: 'k', metaKey: true });
+    expect(ed!.getHTML()).not.toContain('href=');
+  });
+
+  it('ignores k without a modifier and modified non-k keys', async () => {
+    render(<CwlEditor mode="markdown" defaultValue="hi" />);
+    await waitFor(() =>
+      expect(document.querySelector('.cwl-editor__surface')).toBeTruthy(),
+    );
+    fireEvent.keyDown(surface(), { key: 'k' });
+    fireEvent.keyDown(surface(), { key: 'b', metaKey: true });
+    expect(document.querySelector('.cwl-editor__content')).toBeTruthy();
   });
 });

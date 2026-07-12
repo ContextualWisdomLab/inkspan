@@ -195,7 +195,7 @@ pnpm build:demo     # static site -> dist-demo/
 
 ```bash
 docker build -t cwl-editor-demo .
-docker run --rm -p 8080:80 cwl-editor-demo   # http://localhost:8080
+docker run --rm -p 8080:8080 cwl-editor-demo   # http://localhost:8080
 ```
 
 ## Scripts
