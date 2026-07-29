@@ -6,12 +6,17 @@ onlyBuiltDependencies:
 allowBuilds:
   esbuild: true
 
-# Force the patched vite/esbuild across the whole dependency tree. vitest's
-# @vitest/mocker still resolves a transitive vite@5 (which drags in the
-# vulnerable esbuild<0.25), so pin both here — pnpm 10+ reads `overrides`
-# from pnpm-workspace.yaml, not the deprecated package.json `pnpm` field.
+# Force patched transitive dependencies across the whole tree. pnpm 10+ reads
+# `overrides` from pnpm-workspace.yaml, NOT the deprecated package.json `pnpm`
+# field, so every security override must live here to actually take effect.
 #   - vite<6.4.3:   GHSA-fx2h-pf6j-xcff / GHSA-4w7w-66w2-5vf9 / GHSA-v6wh-96g9-6wx3
-#   - esbuild<0.25: GHSA-67mh-4wv8-2f99
+#     (vitest's @vitest/mocker still resolves a transitive vite@5)
+#   - esbuild<0.25: GHSA-67mh-4wv8-2f99 (dragged in by the transitive vite@5)
+#   - fast-uri<3.1.4: GHSA-v2hh-gcrm-f6hx / CVE-2026-16221 (host confusion via a
+#     literal backslash authority delimiter; reached transitively through
+#     ajv@8's internal $ref URI parsing). ajv pins fast-uri to ^3.0.1, so a
+#     range-scoped override lifts it to 3.1.4 without breaking ajv's constraint.
 overrides:
   vite: ^6.4.3
   esbuild: ^0.25.0
+  fast-uri@<3.1.4: ^3.1.4
