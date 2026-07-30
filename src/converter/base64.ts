@@ -301,8 +301,18 @@ export function dataUriToBytes(
   if (isBase64) {
     bytes = base64ToBytes(payload);
   } else {
-    // Non-base64 data URIs carry percent-encoded text.
-    const decoded = decodeURIComponent(payload);
+    // Non-base64 data URIs carry percent-encoded text. `decodeURIComponent`
+    // throws a raw `URIError` on malformed escapes (e.g. `%`, `%ZZ`); surface
+    // the module's documented `DataUriParseError` instead so callers guarding
+    // the parse contract handle adversarial input rather than crash.
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(payload);
+    } catch {
+      throw new DataUriParseError(
+        'Data URI payload has malformed percent-encoding.',
+      );
+    }
     bytes = new TextEncoder().encode(decoded);
   }
   assertSize(bytes.byteLength, options.maxBytes);
