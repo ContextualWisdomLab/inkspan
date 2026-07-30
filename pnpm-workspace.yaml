@@ -12,6 +12,16 @@ allowBuilds:
 # from pnpm-workspace.yaml, not the deprecated package.json `pnpm` field.
 #   - vite<6.4.3:   GHSA-fx2h-pf6j-xcff / GHSA-4w7w-66w2-5vf9 / GHSA-v6wh-96g9-6wx3
 #   - esbuild<0.25: GHSA-67mh-4wv8-2f99
+# Additional dev-only (build/test toolchain) transitive advisories, patched in
+# place. All reach only through build tooling — none ship in `dist/`.
+#   - fast-uri<3.1.4:       GHSA-v2hh-gcrm-f6hx (via vite-plugin-dts>api-extractor>ajv)
+#   - postcss<8.5.18:       GHSA-r28c-9q8g-f849 (via vite)
+#   - brace-expansion OOM:  GHSA-mh99-v99m-4gvg (via vitest coverage>test-exclude>minimatch);
+#     per-major so minimatch@9's ^2 and minimatch@10's ^5 each stay in range.
 overrides:
   vite: ^6.4.3
   esbuild: ^0.25.0
+  fast-uri: ^3.1.4
+  postcss: ^8.5.18
+  brace-expansion@2: ^2.1.4
+  brace-expansion@5: ^5.0.9
