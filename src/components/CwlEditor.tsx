@@ -65,10 +65,22 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     const emittingRef = useRef(false);
     const modeRef = useRef(mode);
     modeRef.current = mode;
+    // Paste/drop handlers are configured once at editor create; keep a live
+    // ref so host `onImageError` updates (and toolbar upload) stay in sync
+    // without recreating the TipTap instance.
+    const onImageErrorRef = useRef(onImageError);
+    onImageErrorRef.current = onImageError;
+    const reportImageError = useCallback((error: Error) => {
+      onImageErrorRef.current?.(error);
+    }, []);
 
     const editor = useEditor({
       editable,
-      extensions: buildExtensions({ placeholder, image }),
+      extensions: buildExtensions({
+        placeholder,
+        image,
+        onImageError: reportImageError,
+      }),
       content: toHtml(value ?? defaultValue ?? '', mode),
       editorProps: {
         attributes: {

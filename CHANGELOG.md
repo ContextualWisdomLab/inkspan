@@ -14,13 +14,16 @@ Commercial host-integration release: a buyer embedding the editor can control it
 - **Live toolbar state** — re-renders on TipTap `transaction` / `selectionUpdate` so active/disabled UI stays correct
 - **`markdownToEmailHtml`** — Markdown → email body HTML (fragment or full document), preserving inline base64 images for compose→send
 
+### Fixed
+- **`onImageError` paste/drop path** — previously only toolbar file-picker failures reached the host; paste/drop size-guard failures were silently dropped because `buildExtensions` never forwarded `onError` to `Base64Image`. Wired via a live ref so hosts can attach the handler after mount (including `hideToolbar`).
+
 ### Changed
 - Package version **0.2.0**
 - README documents the imperative handle, `onImageError`, table ops, and email helper
 - README submodule URL corrected to `ContextualWisdomLab/inkspan`
 
 ### Tests
-- 113 real vitest cases driving shipped modules (handle, image errors, table ops, email HTML)
+- 116 real vitest cases driving shipped modules (handle, image errors including paste path, table ops, email HTML)
 
 ## [0.1.0] — prior
 

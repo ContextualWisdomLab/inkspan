@@ -321,6 +321,96 @@ describe('CwlEditor Ctrl/Cmd+K link shortcut', () => {
   });
 });
 
+describe('CwlEditor onImageError (paste/drop commercial path)', () => {
+  const PNG = new Uint8Array([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+    0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+    0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4, 0x89,
+  ]);
+
+  it('routes oversized paste failures to onImageError (not only toolbar upload)', async () => {
+    const onImageError = vi.fn();
+    let ed: Editor | undefined;
+    render(
+      <CwlEditor
+        mode="markdown"
+        defaultValue="doc"
+        // Tiny guard so the 1×1 PNG still fails after paste conversion.
+        image={{ maxSizeBytes: 4, maxDimension: 0 }}
+        onImageError={onImageError}
+        // hideToolbar: proves the path is Base64Image paste, not Toolbar.
+        hideToolbar
+        onReady={(e) => {
+          ed = e;
+        }}
+      />,
+    );
+    await waitFor(() => expect(ed).toBeTruthy());
+
+    const file = new File([PNG], 'big.png', { type: 'image/png' });
+    const items = [{ kind: 'file', getAsFile: () => file }];
+    const pasteEvent = {
+      clipboardData: { items },
+      preventDefault: vi.fn(),
+    };
+
+    // Drive the same ProseMirror plugin path paste uses in production.
+    const { base64ImagePluginKey } = await import('../extensions/Base64Image.js');
+    const plugin = base64ImagePluginKey.get(ed!.state)!;
+    const handled = (
+      plugin.props.handlePaste as (v: unknown, e: unknown) => boolean
+    )(ed!.view, pasteEvent);
+    expect(handled).toBe(true);
+
+    await waitFor(() => expect(onImageError).toHaveBeenCalled());
+    expect(String(onImageError.mock.calls[0]![0])).toMatch(/exceeds/i);
+    expect(ed!.getHTML()).not.toContain('data:image');
+  });
+
+  it('still works when onImageError is added after mount (live ref)', async () => {
+    const onImageError = vi.fn();
+    let ed: Editor | undefined;
+    const { rerender } = render(
+      <CwlEditor
+        mode="markdown"
+        defaultValue="doc"
+        image={{ maxSizeBytes: 4, maxDimension: 0 }}
+        hideToolbar
+        onReady={(e) => {
+          ed = e;
+        }}
+      />,
+    );
+    await waitFor(() => expect(ed).toBeTruthy());
+
+    // Host wires the handler after first paint — commercial hosts often do.
+    rerender(
+      <CwlEditor
+        mode="markdown"
+        defaultValue="doc"
+        image={{ maxSizeBytes: 4, maxDimension: 0 }}
+        hideToolbar
+        onImageError={onImageError}
+        onReady={(e) => {
+          ed = e;
+        }}
+      />,
+    );
+
+    const file = new File([PNG], 'big.png', { type: 'image/png' });
+    const { base64ImagePluginKey } = await import('../extensions/Base64Image.js');
+    const plugin = base64ImagePluginKey.get(ed!.state)!;
+    (
+      plugin.props.handlePaste as (v: unknown, e: unknown) => boolean
+    )(ed!.view, {
+      clipboardData: { items: [{ kind: 'file', getAsFile: () => file }] },
+      preventDefault: vi.fn(),
+    });
+
+    await waitFor(() => expect(onImageError).toHaveBeenCalled());
+  });
+});
+
 describe('CwlEditor imperative handle (ref)', () => {
   it('exposes getValue/setValue/getHTML/getMarkdown/clear/focus/isEmpty', async () => {
     const ref = createRef<CwlEditorHandle>();

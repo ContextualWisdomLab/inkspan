@@ -17,6 +17,12 @@ import type { ImageConfig } from '../types.js';
 export interface BuildExtensionsOptions {
   placeholder?: string;
   image?: ImageConfig;
+  /**
+   * Forwarded to {@link Base64Image} `onError` so paste/drop size-guard and
+   * decode failures reach the host (same contract as toolbar upload via
+   * `CwlEditorProps.onImageError`).
+   */
+  onImageError?: (error: Error) => void;
 }
 
 /** Build the full extension list for the editor. */
@@ -49,6 +55,7 @@ export function buildExtensions(
       maxSizeBytes: image.maxSizeBytes ?? 10 * 1024 * 1024,
       maxDimension: image.maxDimension ?? 1600,
       quality: image.quality ?? 0.85,
+      onError: options.onImageError,
     }),
   ];
 }

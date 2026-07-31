@@ -36,4 +36,11 @@ describe('buildExtensions', () => {
     const placeholder = exts.find((e) => e.name === 'placeholder');
     expect(placeholder?.options.placeholder).toBe('Type here…');
   });
+
+  it('forwards onImageError to Base64Image onError for paste/drop path', () => {
+    const onImageError = () => {};
+    const exts = buildExtensions({ onImageError });
+    const image = exts.find((e) => e.name === 'image');
+    expect(image?.options.onError).toBe(onImageError);
+  });
 });

@@ -52,9 +52,10 @@ export interface CwlEditorProps {
   /** Fired on every change with the serialized document in `mode`'s format. */
   onChange?: (value: string) => void;
   /**
-   * Fired when an image paste/drop/upload fails (size guard, decode error, etc.).
-   * Host apps should surface this to the user — the editor never silently
-   * swallows failures on the commercial path.
+   * Fired when an image **paste, drop, or toolbar upload** fails (size guard,
+   * decode error, etc.). Wired through both the toolbar file picker and the
+   * Base64Image ProseMirror plugin so host apps can toast without the editor
+   * silently swallowing failures on the commercial path.
    */
   onImageError?: (error: unknown) => void;
   /** Placeholder shown when the document is empty. */
