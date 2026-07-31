@@ -181,6 +181,22 @@ describe('data URI parsing & decoding', () => {
       DataUriParseError,
     );
   });
+  it('throws DataUriParseError (not URIError) on malformed percent-encoding', () => {
+    // A well-formed-shaped, non-base64 data URI whose payload carries broken
+    // percent-escapes must surface the documented DataUriParseError, not leak a
+    // raw URIError past the module's error contract. Covers all three decode
+    // entry points, which share the dataUriToBytes percent-decode choke point.
+    expect(() => dataUriToBytes('data:text/plain,%')).toThrow(DataUriParseError);
+    expect(() => dataUriToBytes('data:text/plain,%ZZ')).toThrow(
+      DataUriParseError,
+    );
+    expect(() => dataUriToBlob('data:text/plain,100%done')).toThrow(
+      DataUriParseError,
+    );
+    expect(() =>
+      dataUriByteLength('data:text/plain;charset=utf-8,%E0%A4%A'),
+    ).toThrow(DataUriParseError);
+  });
   it('isDataUri validates', () => {
     expect(isDataUri('data:image/png;base64,aGVsbG8=')).toBe(true);
     expect(isDataUri('https://example.com')).toBe(false);
