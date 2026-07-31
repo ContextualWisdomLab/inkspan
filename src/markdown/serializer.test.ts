@@ -3,6 +3,7 @@ import {
   markdownToHtml,
   htmlToMarkdown,
   normalizeMarkdown,
+  markdownToEmailHtml,
 } from './serializer.js';
 import { bytesToDataUri, dataUriToBytes } from '../converter/index.js';
 
@@ -76,6 +77,33 @@ describe('base64 image round-trip', () => {
     const recovered = dataUriToBytes(match![1]);
     expect(recovered.mimeType).toBe('image/png');
     expect(Array.from(recovered.bytes)).toEqual(Array.from(PNG_BYTES));
+  });
+});
+
+describe('markdownToEmailHtml (compose → send)', () => {
+  it('returns a body fragment that preserves base64 images', () => {
+    const md = `# Hello\n\n![fig](${PNG_DATA_URI})`;
+    const html = markdownToEmailHtml(md);
+    expect(html).toContain('<h1>Hello</h1>');
+    expect(html).toContain(`src="${PNG_DATA_URI}"`);
+    expect(html).not.toContain('<!DOCTYPE');
+  });
+
+  it('wraps a full document with charset and escaped title when requested', () => {
+    const html = markdownToEmailHtml('**hi**', {
+      fullDocument: true,
+      title: 'A <B> & "C"',
+    });
+    expect(html).toContain('<!DOCTYPE html>');
+    expect(html).toContain('<meta charset="utf-8" />');
+    expect(html).toContain('<title>A &lt;B&gt; &amp; &quot;C&quot;</title>');
+    expect(html).toContain('<strong>hi</strong>');
+    expect(html).toMatch(/<body>.*<\/body>/);
+  });
+
+  it('defaults the document title to Message when fullDocument is set alone', () => {
+    const html = markdownToEmailHtml('x', { fullDocument: true });
+    expect(html).toContain('<title>Message</title>');
   });
 });
 

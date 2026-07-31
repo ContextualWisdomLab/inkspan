@@ -36,10 +36,12 @@ const answer = 42;
 export function App() {
   const [mode, setMode] = useState<EditorMode>('markdown');
   const [value, setValue] = useState(SAMPLE_MD);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   // Reset content to a sensible sample when switching modes for the demo.
   const onModeChange = (next: EditorMode) => {
     setMode(next);
+    setImageError(null);
     setValue(next === 'markdown' ? SAMPLE_MD : '<h1>Inkspan</h1><p>HTML mode. Try <strong>bold</strong>, 한국어, 日本語, 中文, Tiếng Việt, and drop an image.</p>');
   };
 
@@ -75,10 +77,18 @@ export function App() {
       <main className="demo__grid">
         <section>
           <h2>Editor</h2>
+          {imageError ? (
+            <p className="demo__error" role="alert">
+              Image rejected: {imageError}
+            </p>
+          ) : null}
           <CwlEditor
             mode={mode}
             value={value}
             onChange={setValue}
+            onImageError={(err) =>
+              setImageError(err instanceof Error ? err.message : String(err))
+            }
             image={{ maxSizeBytes: 8 * 1024 * 1024, maxDimension: 1400 }}
           />
         </section>
@@ -93,7 +103,7 @@ export function App() {
       <footer className="demo__footer">
         Inkspan · MIT · TipTap/ProseMirror · base64-inline images · Noto Sans
         (OFL-1.1) ·{' '}
-        <a href="https://github.com/ContextualWisdomLab/cwl-editor">source</a>
+        <a href="https://github.com/ContextualWisdomLab/inkspan">source</a>
       </footer>
     </div>
   );

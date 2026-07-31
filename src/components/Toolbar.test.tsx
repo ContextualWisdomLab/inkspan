@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  cleanup,
+  act,
+} from '@testing-library/react';
 import { Editor } from '@tiptap/react';
 import { Toolbar } from './Toolbar.js';
 import { buildExtensions } from '../extensions/kit.js';
@@ -62,8 +69,8 @@ describe('Toolbar', () => {
     expect(bold).toHaveAttribute('aria-pressed', 'true');
 
     const buttons = screen.getAllByRole('button');
-    // All 16 affordances (marks, headings, lists, link, table, image, history).
-    expect(buttons.length).toBe(16);
+    // Marks(4) + headings(3) + lists/quote/code/hr(5) + link/table/image/table-ops(6) + history(2) = 20.
+    expect(buttons.length).toBe(20);
     // Cover onMouseDown preventDefault + every onClick handler.
     for (const button of buttons) {
       fireEvent.mouseDown(button);
@@ -148,13 +155,70 @@ describe('Toolbar', () => {
       expect(editor.getHTML()).not.toContain('data:image');
     });
 
-    it('swallows conversion errors (e.g. oversized files)', async () => {
+    it('reports conversion errors via onImageError (e.g. oversized files)', async () => {
       const editor = makeEditor();
-      render(<Toolbar editor={editor} image={{ maxSizeBytes: 4, maxDimension: 0 }} />);
+      const onImageError = vi.fn();
+      render(
+        <Toolbar
+          editor={editor}
+          image={{ maxSizeBytes: 4, maxDimension: 0 }}
+          onImageError={onImageError}
+        />,
+      );
       const file = new File([PNG_BYTES], 'p.png', { type: 'image/png' });
       fireEvent.change(fileInput(), { target: { files: [file] } });
-      await new Promise((resolve) => setTimeout(resolve, 15));
+      await waitFor(() => expect(onImageError).toHaveBeenCalled());
       expect(editor.getHTML()).not.toContain('data:image');
+      expect(String(onImageError.mock.calls[0]![0])).toMatch(/exceeds/i);
+    });
+
+    it('does not throw when oversized and no onImageError is wired', async () => {
+      const editor = makeEditor();
+      render(
+        <Toolbar editor={editor} image={{ maxSizeBytes: 4, maxDimension: 0 }} />,
+      );
+      const file = new File([PNG_BYTES], 'p.png', { type: 'image/png' });
+      await act(async () => {
+        fireEvent.change(fileInput(), { target: { files: [file] } });
+        await new Promise((resolve) => setTimeout(resolve, 15));
+      });
+      expect(editor.getHTML()).not.toContain('data:image');
+    });
+  });
+
+  describe('table editing', () => {
+    it('enables row/column/delete controls when the cursor is in a table', async () => {
+      const editor = makeEditor();
+      render(<Toolbar editor={editor} />);
+      await act(async () => {
+        editor
+          .chain()
+          .focus()
+          .insertTable({ rows: 2, cols: 2, withHeaderRow: true })
+          .run();
+      });
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: /Add column after/ }),
+        ).not.toBeDisabled(),
+      );
+      expect(
+        screen.getByRole('button', { name: /Add row after/ }),
+      ).not.toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: /Delete table/ }),
+      ).not.toBeDisabled();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Add column after/ }));
+        fireEvent.click(screen.getByRole('button', { name: /Add row after/ }));
+      });
+      expect(editor.getHTML()).toContain('<table');
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Delete table/ }));
+      });
+      expect(editor.getHTML()).not.toContain('<table');
     });
   });
 });

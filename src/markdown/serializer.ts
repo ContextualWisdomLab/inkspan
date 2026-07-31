@@ -62,3 +62,54 @@ export function htmlToMarkdown(html: string): string {
 export function normalizeMarkdown(markdown: string): string {
   return htmlToMarkdown(markdownToHtml(markdown));
 }
+
+/** Options for {@link markdownToEmailHtml}. */
+export interface MarkdownToEmailHtmlOptions {
+  /**
+   * When true, wrap the body fragment in a minimal HTML document with a
+   * UTF-8 charset meta (many MUAs need this). Default false — fragment only.
+   */
+  fullDocument?: boolean;
+  /** Document `<title>` when `fullDocument` is true. Default `"Message"`. */
+  title?: string;
+}
+
+/**
+ * Convert Markdown to HTML suitable for **email compose / send** paths
+ * (inkspan.io, naruon mail, etc.).
+ *
+ * - Same GFM/CommonMark pipeline as {@link markdownToHtml}
+ * - **Base64 data-URI images are preserved** so figures stay inline in the
+ *   message body without a separate attachment pipeline
+ * - Returns a body fragment by default; set `fullDocument: true` for a
+ *   self-contained document shell
+ *
+ * This is the intentional commercial bridge from the editor's Markdown mode
+ * to an HTML email body — not a full MIME multipart builder.
+ */
+export function markdownToEmailHtml(
+  markdown: string,
+  options: MarkdownToEmailHtmlOptions = {},
+): string {
+  const body = markdownToHtml(markdown).trim();
+  if (!options.fullDocument) return body;
+  const title = escapeHtml(options.title ?? 'Message');
+  return [
+    '<!DOCTYPE html>',
+    '<html>',
+    '<head>',
+    '<meta charset="utf-8" />',
+    `<title>${title}</title>`,
+    '</head>',
+    `<body>${body}</body>`,
+    '</html>',
+  ].join('');
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
