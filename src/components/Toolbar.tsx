@@ -1,11 +1,13 @@
 import type { Editor } from '@tiptap/react';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { imageFileToInlineDataUri } from '../extensions/Base64Image.js';
 import type { ImageConfig } from '../types.js';
 
 interface ToolbarProps {
   editor: Editor;
   image?: ImageConfig;
+  /** Forwarded from {@link CwlEditor} — image failures must reach the host. */
+  onImageError?: (error: unknown) => void;
 }
 
 interface ButtonProps {
@@ -35,12 +37,26 @@ function ToolbarButton({ onClick, active, disabled, title, label }: ButtonProps)
 
 /**
  * Commercial-grade toolbar covering the common rich-text affordances:
- * marks, headings, lists, code, quote, link, table, and inline-base64 image
- * upload. Uses `onMouseDown preventDefault` so clicks never steal the editor
- * selection.
+ * marks, headings, lists, code, quote, link, horizontal rule, table insert +
+ * edit (row/column/delete), and inline-base64 image upload.
+ * Uses `onMouseDown preventDefault` so clicks never steal the editor selection.
  */
-export function Toolbar({ editor, image }: ToolbarProps) {
+export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // Re-render on every transaction so active/disabled states (marks, table
+  // cursor, undo/redo) stay in sync without host re-renders.
+  const [, bump] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    const onUpdate = () => bump();
+    editor.on('transaction', onUpdate);
+    editor.on('selectionUpdate', onUpdate);
+    return () => {
+      editor.off('transaction', onUpdate);
+      editor.off('selectionUpdate', onUpdate);
+    };
+  }, [editor]);
+
+  const inTable = editor.isActive('table');
 
   const setLink = useCallback(() => {
     const previous = editor.getAttributes('link').href as string | undefined;
@@ -70,11 +86,11 @@ export function Toolbar({ editor, image }: ToolbarProps) {
           quality: image?.quality ?? 0.85,
         });
         editor.chain().focus().setImage({ src }).run();
-      } catch {
-        /* size guard / decode error — host apps can wire onError on the ext */
+      } catch (err) {
+        onImageError?.(err);
       }
     },
-    [editor, image],
+    [editor, image, onImageError],
   );
 
   return (
@@ -141,7 +157,7 @@ export function Toolbar({ editor, image }: ToolbarProps) {
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
         />
         <ToolbarButton
-          title="Task list is provided via markdown; use quote/code below"
+          title="Blockquote"
           label="❝"
           active={editor.isActive('blockquote')}
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
@@ -151,6 +167,11 @@ export function Toolbar({ editor, image }: ToolbarProps) {
           label="{ }"
           active={editor.isActive('codeBlock')}
           onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+        />
+        <ToolbarButton
+          title="Horizontal rule"
+          label="—"
+          onClick={() => editor.chain().focus().setHorizontalRule().run()}
         />
       </div>
 
@@ -171,6 +192,24 @@ export function Toolbar({ editor, image }: ToolbarProps) {
               .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
               .run()
           }
+        />
+        <ToolbarButton
+          title="Add column after"
+          label="┼→"
+          disabled={!inTable}
+          onClick={() => editor.chain().focus().addColumnAfter().run()}
+        />
+        <ToolbarButton
+          title="Add row after"
+          label="┼↓"
+          disabled={!inTable}
+          onClick={() => editor.chain().focus().addRowAfter().run()}
+        />
+        <ToolbarButton
+          title="Delete table"
+          label="▦✕"
+          disabled={!inTable}
+          onClick={() => editor.chain().focus().deleteTable().run()}
         />
         <ToolbarButton
           title="Insert inline (base64) image"

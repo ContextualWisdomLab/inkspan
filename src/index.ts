@@ -17,6 +17,7 @@ export { Toolbar } from './components/Toolbar.js';
 
 // Types.
 export type {
+  CwlEditorHandle,
   CwlEditorProps,
   EditorMode,
   ImageConfig,
@@ -38,7 +39,9 @@ export {
   markdownToHtml,
   htmlToMarkdown,
   normalizeMarkdown,
+  markdownToEmailHtml,
 } from './markdown/serializer.js';
+export type { MarkdownToEmailHtmlOptions } from './markdown/serializer.js';
 
 // Standalone, framework-agnostic base64 / data-URI converter.
 export * from './converter/index.js';

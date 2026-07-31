@@ -58,6 +58,7 @@ export function Example() {
       mode="markdown"            // or "html"
       value={md}
       onChange={setMd}
+      onImageError={(err) => console.error('image rejected', err)}
       image={{ maxSizeBytes: 8 * 1024 * 1024, maxDimension: 1400, quality: 0.85 }}
     />
   );
@@ -67,6 +68,21 @@ export function Example() {
 Switch `mode` to `"html"` and `value`/`onChange` speak HTML instead of Markdown.
 Both modes embed images as inline base64.
 
+### Imperative handle (`ref`)
+
+Host apps that need form-submit / AI-insert / focus control should use the
+shipped `CwlEditorHandle` — never scrape the DOM:
+
+```tsx
+import { useRef } from 'react';
+import { CwlEditor, type CwlEditorHandle } from '@contextualwisdomlab/cwl-editor';
+
+const ref = useRef<CwlEditorHandle>(null);
+// …
+<CwlEditor ref={ref} mode="markdown" defaultValue="# draft" />
+// ref.current?.getValue() | getHTML() | getMarkdown() | setValue(md) | clear() | focus()
+```
+
 ### Props
 
 | Prop           | Type                        | Default             | Notes |
@@ -75,14 +91,19 @@ Both modes embed images as inline base64.
 | `value`        | `string`                    | —                   | Controlled document. |
 | `defaultValue` | `string`                    | `''`                | Uncontrolled initial document. |
 | `onChange`     | `(value: string) => void`   | —                   | Serialized document in `mode`'s format. |
+| `onImageError` | `(error: unknown) => void`  | —                   | Size-guard / decode failures (never silent). |
 | `placeholder`  | `string`                    | `'Start writing…'`  | |
 | `editable`     | `boolean`                   | `true`              | Read-only when false. |
 | `hideToolbar`  | `boolean`                   | `false`             | |
 | `image`        | `ImageConfig`               | see below           | Inline base64 behaviour. |
 | `onReady`      | `(editor: Editor) => void`  | —                   | Escape hatch to the TipTap instance. |
+| `ref`          | `Ref<CwlEditorHandle>`      | —                   | Imperative API (see above). |
 
 `ImageConfig`: `{ maxSizeBytes?: number; maxDimension?: number; quality?: number }`
 — defaults `10 MB`, `1600 px`, `0.85`. Set `maxDimension: 0` to disable downscaling.
+
+Toolbar also supports **table edit** (add column / add row / delete table),
+**horizontal rule**, and live active/disabled state via editor transactions.
 
 ## Bundled offline fonts (Korean / English / Japanese / Chinese / Vietnamese)
 
@@ -164,10 +185,22 @@ Full surface: `bytesToBase64` / `base64ToBytes`, `bytesToDataUri` /
 ## Markdown ⇄ HTML utilities
 
 ```ts
-import { markdownToHtml, htmlToMarkdown } from '@contextualwisdomlab/cwl-editor';
+import {
+  markdownToHtml,
+  htmlToMarkdown,
+  markdownToEmailHtml,
+} from '@contextualwisdomlab/cwl-editor';
 
 const html = markdownToHtml('# Title\n\n![fig](data:image/png;base64,…)');
 const md = htmlToMarkdown(html); // data URI preserved verbatim
+
+// Email compose → send (inkspan.io / naruon mail path): same pipeline,
+// base64 figures stay inline. Optional full document shell for MUAs:
+const emailBody = markdownToEmailHtml(md);
+const emailDoc = markdownToEmailHtml(md, {
+  fullDocument: true,
+  title: 'Weekly update',
+});
 ```
 
 ---
@@ -175,7 +208,7 @@ const md = htmlToMarkdown(html); // data URI preserved verbatim
 ## Use as a git submodule
 
 ```bash
-git submodule add https://github.com/ContextualWisdomLab/cwl-editor.git vendor/cwl-editor
+git submodule add https://github.com/ContextualWisdomLab/inkspan.git vendor/inkspan
 cd vendor/cwl-editor && pnpm install && pnpm build
 ```
 

@@ -13,6 +13,31 @@ export interface ImageConfig {
   quality?: number;
 }
 
+/**
+ * Imperative handle for host apps that need programmatic control (form submit,
+ * focus management, AI insert, email send). Prefer this over scraping the DOM.
+ */
+export interface CwlEditorHandle {
+  /** Underlying TipTap editor instance, or `null` before mount / after destroy. */
+  getEditor(): Editor | null;
+  /** Focus the editable surface. */
+  focus(): void;
+  /** Blur the editable surface. */
+  blur(): void;
+  /** Serialized document in the active `mode` (`markdown` or `html`). */
+  getValue(): string;
+  /** Always HTML (ProseMirror document dump). */
+  getHTML(): string;
+  /** Always Markdown (HTML → Markdown via the shipped serializer). */
+  getMarkdown(): string;
+  /** Replace the whole document from a string in the active `mode`. */
+  setValue(value: string): void;
+  /** Empty the document. */
+  clear(): void;
+  /** `true` when the document has no meaningful content. */
+  isEmpty(): boolean;
+}
+
 /** Props for the {@link CwlEditor} React component. */
 export interface CwlEditorProps {
   /**
@@ -26,6 +51,12 @@ export interface CwlEditorProps {
   defaultValue?: string;
   /** Fired on every change with the serialized document in `mode`'s format. */
   onChange?: (value: string) => void;
+  /**
+   * Fired when an image paste/drop/upload fails (size guard, decode error, etc.).
+   * Host apps should surface this to the user — the editor never silently
+   * swallows failures on the commercial path.
+   */
+  onImageError?: (error: unknown) => void;
   /** Placeholder shown when the document is empty. */
   placeholder?: string;
   /** Render read-only (no editing, no toolbar actions). */

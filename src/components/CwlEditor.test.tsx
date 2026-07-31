@@ -8,9 +8,11 @@ import {
   act,
 } from '@testing-library/react';
 import { afterEach } from 'vitest';
+import { createRef } from 'react';
 import type { Editor } from '@tiptap/react';
 import { CwlEditor } from './CwlEditor.js';
 import { imageFileToInlineDataUri } from '../extensions/Base64Image.js';
+import type { CwlEditorHandle } from '../types.js';
 
 afterEach(cleanup);
 
@@ -316,5 +318,52 @@ describe('CwlEditor Ctrl/Cmd+K link shortcut', () => {
     fireEvent.keyDown(surface(), { key: 'k' });
     fireEvent.keyDown(surface(), { key: 'b', metaKey: true });
     expect(document.querySelector('.cwl-editor__content')).toBeTruthy();
+  });
+});
+
+describe('CwlEditor imperative handle (ref)', () => {
+  it('exposes getValue/setValue/getHTML/getMarkdown/clear/focus/isEmpty', async () => {
+    const ref = createRef<CwlEditorHandle>();
+    render(
+      <CwlEditor ref={ref} mode="markdown" defaultValue="# Hello\n\nbody" />,
+    );
+    await waitFor(() => expect(ref.current?.getEditor()).toBeTruthy());
+
+    expect(ref.current!.isEmpty()).toBe(false);
+    expect(ref.current!.getValue()).toMatch(/Hello/);
+    expect(ref.current!.getHTML()).toContain('<h1>');
+    expect(ref.current!.getMarkdown()).toMatch(/Hello/);
+
+    await act(async () => {
+      ref.current!.setValue('## Next');
+    });
+    await waitFor(() =>
+      expect(
+        document.querySelector('.cwl-editor__content h2'),
+      ).toHaveTextContent('Next'),
+    );
+    expect(ref.current!.getValue()).toMatch(/Next/);
+
+    await act(async () => {
+      ref.current!.focus();
+      ref.current!.blur();
+      ref.current!.clear();
+    });
+    await waitFor(() => expect(ref.current!.isEmpty()).toBe(true));
+    expect(ref.current!.getValue().trim()).toBe('');
+  });
+
+  it('getValue returns HTML in html mode', async () => {
+    const ref = createRef<CwlEditorHandle>();
+    render(
+      <CwlEditor
+        ref={ref}
+        mode="html"
+        defaultValue="<p><strong>x</strong></p>"
+      />,
+    );
+    await waitFor(() => expect(ref.current?.getEditor()).toBeTruthy());
+    expect(ref.current!.getValue()).toContain('<strong>');
+    expect(ref.current!.getMarkdown()).toContain('**x**');
   });
 });

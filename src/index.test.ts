@@ -8,7 +8,11 @@ import * as api from './index.js';
  */
 describe('package entry point', () => {
   it('re-exports the React component surface', () => {
-    expect(typeof api.CwlEditor).toBe('function');
+    // forwardRef components are objects ($$typeof) in React 18+, not bare functions.
+    expect(api.CwlEditor).toBeTruthy();
+    expect(
+      typeof api.CwlEditor === 'function' || typeof api.CwlEditor === 'object',
+    ).toBe(true);
     // `default as Editor` alias resolves to the CwlEditor component.
     expect(api.Editor).toBe(api.CwlEditor);
     expect(typeof api.Toolbar).toBe('function');
@@ -26,6 +30,7 @@ describe('package entry point', () => {
     expect(typeof api.markdownToHtml).toBe('function');
     expect(typeof api.htmlToMarkdown).toBe('function');
     expect(typeof api.normalizeMarkdown).toBe('function');
+    expect(typeof api.markdownToEmailHtml).toBe('function');
   });
 
   it('re-exports the standalone base64 converter', () => {

@@ -55,6 +55,16 @@ body {
   font-weight: 600;
   cursor: pointer;
 }
+.demo__error {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  background: #fff1f0;
+  border: 1px solid #ffccc7;
+  color: #a8071a;
+  font-size: 0.9rem;
+}
+
 .demo__modes button.active {
   border-color: var(--accent);
   color: var(--accent);
