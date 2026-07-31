@@ -80,7 +80,9 @@ import { CwlEditor, type CwlEditorHandle } from '@contextualwisdomlab/cwl-editor
 const ref = useRef<CwlEditorHandle>(null);
 // …
 <CwlEditor ref={ref} mode="markdown" defaultValue="# draft" />
-// ref.current?.getValue() | getHTML() | getMarkdown() | setValue(md) | clear() | focus()
+// ref.current?.getValue() | getHTML() | getMarkdown()
+// ref.current?.setValue(md) | insertValue(snippet) | clear() | focus()
+// insertValue = AI/snippet insert at cursor (fires onChange; does not wipe doc)
 ```
 
 ### Props
@@ -102,8 +104,9 @@ const ref = useRef<CwlEditorHandle>(null);
 `ImageConfig`: `{ maxSizeBytes?: number; maxDimension?: number; quality?: number }`
 — defaults `10 MB`, `1600 px`, `0.85`. Set `maxDimension: 0` to disable downscaling.
 
-Toolbar also supports **table edit** (add column / add row / delete table),
-**horizontal rule**, and live active/disabled state via editor transactions.
+Toolbar also supports **table edit** (add column / add row / delete column /
+delete row / delete table), **horizontal rule**, and live active/disabled state
+via editor transactions.
 
 ## Bundled offline fonts (Korean / English / Japanese / Chinese / Vietnamese)
 

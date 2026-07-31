@@ -32,6 +32,12 @@ export interface CwlEditorHandle {
   getMarkdown(): string;
   /** Replace the whole document from a string in the active `mode`. */
   setValue(value: string): void;
+  /**
+   * Insert content **at the current selection/cursor** without wiping the doc.
+   * `value` is interpreted in the active `mode` (Markdown is converted to HTML
+   * for insertion). Fires `onChange` — the commercial AI-insert / snippet path.
+   */
+  insertValue(value: string): void;
   /** Empty the document. */
   clear(): void;
   /** `true` when the document has no meaningful content. */

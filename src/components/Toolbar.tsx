@@ -38,7 +38,7 @@ function ToolbarButton({ onClick, active, disabled, title, label }: ButtonProps)
 /**
  * Commercial-grade toolbar covering the common rich-text affordances:
  * marks, headings, lists, code, quote, link, horizontal rule, table insert +
- * edit (row/column/delete), and inline-base64 image upload.
+ * edit (add/delete row/column, delete table), and inline-base64 image upload.
  * Uses `onMouseDown preventDefault` so clicks never steal the editor selection.
  */
 export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
@@ -204,6 +204,18 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
           label="┼↓"
           disabled={!inTable}
           onClick={() => editor.chain().focus().addRowAfter().run()}
+        />
+        <ToolbarButton
+          title="Delete column"
+          label="┼✕"
+          disabled={!inTable}
+          onClick={() => editor.chain().focus().deleteColumn().run()}
+        />
+        <ToolbarButton
+          title="Delete row"
+          label="┼↑✕"
+          disabled={!inTable}
+          onClick={() => editor.chain().focus().deleteRow().run()}
         />
         <ToolbarButton
           title="Delete table"

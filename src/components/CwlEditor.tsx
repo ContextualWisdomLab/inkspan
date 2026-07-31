@@ -124,6 +124,15 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
           if (!editor) return;
           editor.commands.setContent(toHtml(next, modeRef.current), false);
         },
+        insertValue: (next: string) => {
+          if (!editor) return;
+          // insertContent dispatches a transaction → onUpdate → host onChange.
+          editor
+            .chain()
+            .focus()
+            .insertContent(toHtml(next, modeRef.current))
+            .run();
+        },
         clear: () => {
           editor?.commands.clearContent(true);
         },
