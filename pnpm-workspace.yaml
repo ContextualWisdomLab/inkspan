@@ -6,12 +6,22 @@ onlyBuiltDependencies:
 allowBuilds:
   esbuild: true
 
-# Force the patched vite/esbuild across the whole dependency tree. vitest's
-# @vitest/mocker still resolves a transitive vite@5 (which drags in the
-# vulnerable esbuild<0.25), so pin both here — pnpm 10+ reads `overrides`
-# from pnpm-workspace.yaml, not the deprecated package.json `pnpm` field.
+# Force patched transitive dependencies across the whole tree. pnpm 10+ reads
+# `overrides` from pnpm-workspace.yaml, NOT the deprecated package.json `pnpm`
+# field, so every security override must live here to actually take effect.
 #   - vite<6.4.3:   GHSA-fx2h-pf6j-xcff / GHSA-4w7w-66w2-5vf9 / GHSA-v6wh-96g9-6wx3
-#   - esbuild<0.25: GHSA-67mh-4wv8-2f99
+#     (vitest's @vitest/mocker still resolves a transitive vite@5)
+#   - esbuild<0.25: GHSA-67mh-4wv8-2f99 (dragged in by the transitive vite@5)
+#   - fast-uri<3.1.4: GHSA-v2hh-gcrm-f6hx / CVE-2026-16221 (via ajv in vite-plugin-dts)
+#   - postcss<=8.5.17: GHSA-r28c-9q8g-f849 (source-map path traversal via vite)
+#   - brace-expansion<=5.0.7: GHSA-mh99-v99m-4gvg (unbounded-expansion DoS). The
+#     only patched line is >=5.0.8; minimatch@9 consumes brace-expansion@2.x and
+#     cannot take 5.x, so lift minimatch to ^10 (glob@10 / test-exclude@7 resolve
+#     cleanly) and pin brace-expansion to the patched 5.x line.
 overrides:
   vite: ^6.4.3
   esbuild: ^0.25.0
+  fast-uri: ^3.1.4
+  postcss: ^8.5.18
+  brace-expansion: ^5.0.8
+  minimatch: ^10.0.0
