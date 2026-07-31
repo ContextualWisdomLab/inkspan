@@ -2,6 +2,15 @@
 
 All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are documented in this file.
 
+## [0.2.1] — 2026-07-31
+
+### Added
+- **`CwlEditorHandle.insertValue`** — insert Markdown/HTML at the cursor (AI/snippet path); fires `onChange` and does not wipe the document
+- **Table toolbar** — delete column and delete row (enabled only inside a table)
+
+### Tests
+- Drop-path `onImageError`, `insertValue` markdown+html, table delete row/column
+
 ## [0.2.0] — 2026-07-31
 
 Commercial host-integration release: a buyer embedding the editor can control it, surface image failures, edit tables, and emit email-ready HTML without forking.

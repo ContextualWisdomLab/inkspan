@@ -69,8 +69,9 @@ describe('Toolbar', () => {
     expect(bold).toHaveAttribute('aria-pressed', 'true');
 
     const buttons = screen.getAllByRole('button');
-    // Marks(4) + headings(3) + lists/quote/code/hr(5) + link/table/image/table-ops(6) + history(2) = 20.
-    expect(buttons.length).toBe(20);
+    // Marks(4) + headings(3) + lists/quote/code/hr(5) +
+    // link/table/col/row/delCol/delRow/delTable/image(8) + history(2) = 22.
+    expect(buttons.length).toBe(22);
     // Cover onMouseDown preventDefault + every onClick handler.
     for (const button of buttons) {
       fireEvent.mouseDown(button);
@@ -206,12 +207,26 @@ describe('Toolbar', () => {
         screen.getByRole('button', { name: /Add row after/ }),
       ).not.toBeDisabled();
       expect(
+        screen.getByRole('button', { name: /Delete column/ }),
+      ).not.toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: /Delete row/ }),
+      ).not.toBeDisabled();
+      expect(
         screen.getByRole('button', { name: /Delete table/ }),
       ).not.toBeDisabled();
 
       await act(async () => {
         fireEvent.click(screen.getByRole('button', { name: /Add column after/ }));
         fireEvent.click(screen.getByRole('button', { name: /Add row after/ }));
+      });
+      expect(editor.getHTML()).toContain('<table');
+      // 2x2 + 1 col + 1 row → header + 2 body rows, 3 cells per row.
+      expect(editor.getHTML().match(/<tr/g)?.length).toBeGreaterThanOrEqual(3);
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Delete column/ }));
+        fireEvent.click(screen.getByRole('button', { name: /Delete row/ }));
       });
       expect(editor.getHTML()).toContain('<table');
 

@@ -409,6 +409,47 @@ describe('CwlEditor onImageError (paste/drop commercial path)', () => {
 
     await waitFor(() => expect(onImageError).toHaveBeenCalled());
   });
+
+  it('routes oversized drop failures to onImageError', async () => {
+    const onImageError = vi.fn();
+    let ed: Editor | undefined;
+    render(
+      <CwlEditor
+        mode="markdown"
+        defaultValue="doc"
+        image={{ maxSizeBytes: 4, maxDimension: 0 }}
+        onImageError={onImageError}
+        hideToolbar
+        onReady={(e) => {
+          ed = e;
+        }}
+      />,
+    );
+    await waitFor(() => expect(ed).toBeTruthy());
+
+    const file = new File([PNG], 'big.png', { type: 'image/png' });
+    const { base64ImagePluginKey } = await import('../extensions/Base64Image.js');
+    const plugin = base64ImagePluginKey.get(ed!.state)!;
+    // jsdom lacks layout; stub drop coords so handleDrop can resolve a position.
+    vi.spyOn(ed!.view, 'posAtCoords').mockReturnValue({ pos: 1, inside: 1 });
+    const handled = (
+      plugin.props.handleDrop as (
+        v: unknown,
+        e: unknown,
+        _slice: unknown,
+        _moved: unknown,
+      ) => boolean
+    )(ed!.view, {
+      dataTransfer: { files: [file] },
+      clientX: 0,
+      clientY: 0,
+      preventDefault: vi.fn(),
+    }, null, false);
+    expect(handled).toBe(true);
+
+    await waitFor(() => expect(onImageError).toHaveBeenCalled());
+    expect(String(onImageError.mock.calls[0]![0])).toMatch(/exceeds/i);
+  });
 });
 
 describe('CwlEditor imperative handle (ref)', () => {
@@ -455,5 +496,57 @@ describe('CwlEditor imperative handle (ref)', () => {
     await waitFor(() => expect(ref.current?.getEditor()).toBeTruthy());
     expect(ref.current!.getValue()).toContain('<strong>');
     expect(ref.current!.getMarkdown()).toContain('**x**');
+  });
+
+  it('insertValue appends at the cursor and fires onChange (AI-insert path)', async () => {
+    const ref = createRef<CwlEditorHandle>();
+    const onChange = vi.fn();
+    render(
+      <CwlEditor
+        ref={ref}
+        mode="markdown"
+        defaultValue="Hello"
+        onChange={onChange}
+      />,
+    );
+    await waitFor(() => expect(ref.current?.getEditor()).toBeTruthy());
+
+    await act(async () => {
+      // Place cursor at end so insert does not replace existing text.
+      ref.current!.getEditor()!.commands.focus('end');
+      ref.current!.insertValue(' **world**');
+    });
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const last = String(onChange.mock.calls.at(-1)![0]);
+    expect(last).toMatch(/Hello/);
+    expect(last).toMatch(/\*\*world\*\*|world/);
+    expect(ref.current!.getHTML()).toMatch(/Hello/);
+    expect(ref.current!.getHTML()).toMatch(/world/);
+    // Must not wipe the prior document (setValue would).
+    expect(ref.current!.getValue()).not.toBe('**world**');
+  });
+
+  it('insertValue inserts HTML fragments in html mode', async () => {
+    const ref = createRef<CwlEditorHandle>();
+    const onChange = vi.fn();
+    render(
+      <CwlEditor
+        ref={ref}
+        mode="html"
+        defaultValue="<p>base</p>"
+        onChange={onChange}
+      />,
+    );
+    await waitFor(() => expect(ref.current?.getEditor()).toBeTruthy());
+
+    await act(async () => {
+      ref.current!.getEditor()!.commands.focus('end');
+      ref.current!.insertValue('<strong>tail</strong>');
+    });
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    expect(ref.current!.getHTML()).toContain('base');
+    expect(ref.current!.getHTML()).toContain('<strong>tail</strong>');
   });
 });
