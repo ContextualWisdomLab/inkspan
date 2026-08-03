@@ -20,6 +20,7 @@ export type {
   CwlEditorHandle,
   CwlEditorProps,
   EditorMode,
+  EditorSelectionSnapshot,
   ImageConfig,
 } from './types.js';
 
