@@ -40,6 +40,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       image,
       className,
       onReady,
+      onDestroy,
       formFieldName,
       formId,
       formFieldDisabled,
@@ -64,6 +65,8 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     const onBlurRef = useLatestRef(onBlur);
     const onSelectionChangeRef = useLatestRef(onSelectionChange);
     const onImageErrorRef = useLatestRef(onImageError);
+    const onReadyRef = useLatestRef(onReady);
+    const onDestroyRef = useLatestRef(onDestroy);
     const formResetValueRef = useLatestRef(formResetValue);
     const onFormResetRef = useLatestRef(onFormReset);
     const reportImageError = useCallback((error: Error) => {
@@ -108,6 +111,12 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       editorProps: {
         attributes: editorAttributes,
       },
+      onCreate: ({ editor: instance }) => {
+        onReadyRef.current?.(instance);
+      },
+      onDestroy: ({ editor: instance }) => {
+        onDestroyRef.current?.(instance);
+      },
       onUpdate: ({ editor: instance }) => {
         const listener = onChangeRef.current;
         if (!listener) return;
@@ -140,10 +149,6 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     });
 
     useEditorHandle(ref, editor, modeRef);
-
-    useEffect(() => {
-      if (editor && onReady) onReady(editor);
-    }, [editor, onReady]);
 
     useEffect(() => {
       editor?.setEditable(editable);
