@@ -48,7 +48,9 @@ export function EditorFormField({
 
     synchronizeValue();
     editor.on('transaction', handleTransaction);
-    return () => editor.off('transaction', handleTransaction);
+    return () => {
+      editor.off('transaction', handleTransaction);
+    };
   }, [editor, mode]);
 
   if (name === undefined) return null;
