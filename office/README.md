@@ -9,7 +9,10 @@ Office Open XML documents:
 
 The model or host application produces a strict JSON request. Inkspan Office
 validates that request and renders the corresponding binary file; it never
-calls an LLM, fetches remote content, or executes document macros.
+calls an LLM, fetches remote content, or executes document macros. The same
+validated request produces byte-identical output: generated core-property and
+ZIP-entry timestamps are normalized to a fixed OOXML epoch before the artifact
+is returned or published.
 
 ## Install and run
 
@@ -47,11 +50,12 @@ assert artifact.extension == ".docx"
 write_office_document(request, "quarterly-brief.docx")
 ```
 
-`render_office_document` returns bytes plus the format, extension, and MIME
-type. `write_office_document` writes through a securely-created same-directory
-temporary file. A non-overwrite write is atomically published without a
-check-then-replace race; an explicit overwrite uses atomic replacement. A
-consumer therefore never observes a partially-written Office file.
+`render_office_document` returns canonical bytes plus the format, extension, and
+MIME type. `write_office_document` writes through a securely-created
+same-directory temporary file. A non-overwrite write is atomically published
+without a check-then-replace race; an explicit overwrite uses atomic
+replacement. A consumer therefore never observes a partially-written Office
+file.
 
 ## Machine-readable contract
 
@@ -84,8 +88,9 @@ silently alter:
 
 - worksheet grids are limited to 1,048,576 rows and 16,384 columns;
 - cell strings are limited to 32,767 characters rather than being truncated;
-- integers may contain at most 15 significant decimal digits unless supplied as
-  strings, preserving identifiers and other exact values;
+- integers must have at most 15 significant decimal digits and be exactly
+  representable by Excel's binary64 numeric model, otherwise they must be
+  supplied as strings;
 - freeze panes must be a simple A1 coordinate within `A1:XFD1048576`.
 
 Use strings for account numbers, document identifiers, or other digit sequences
@@ -99,9 +104,9 @@ python -m pip check
 python -m pip wheel . --no-deps --wheel-dir dist
 ```
 
-The suite re-opens every rendered format with its native library. CI installs
-runtime and test dependencies from `requirements-ci.txt` with wheel hashes on
-minimum Python 3.11 and current stable Python 3.14, enforces 100% statement/
-branch and shipped-symbol docstring coverage, then builds and inspects the
-distributable wheel. Code and all three direct runtime dependencies are
-MIT-licensed.
+The suite re-opens every rendered format with its native library and verifies
+byte-for-byte deterministic output. CI installs runtime and test dependencies
+from `requirements-ci.txt` with wheel hashes on minimum Python 3.11 and current
+stable Python 3.14, enforces 100% statement/branch and shipped-symbol docstring
+coverage, then builds and inspects the distributable wheel. Code and all three
+direct runtime dependencies are MIT-licensed.
