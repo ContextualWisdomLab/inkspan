@@ -58,6 +58,10 @@
   z-index: 2;
 }
 
+.cwl-toolbar:focus-within {
+  box-shadow: inset 0 -2px 0 var(--cwl-accent);
+}
+
 .cwl-tb-group {
   display: flex;
   gap: 2px;
@@ -88,6 +92,10 @@
 .cwl-tb-btn:hover:not(:disabled) {
   background: var(--cwl-accent-soft);
 }
+.cwl-tb-btn:focus-visible {
+  outline: 2px solid var(--cwl-accent);
+  outline-offset: 2px;
+}
 .cwl-tb-btn.is-active {
   background: var(--cwl-accent-soft);
   border-color: var(--cwl-accent);
@@ -96,6 +104,12 @@
 .cwl-tb-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+@media (forced-colors: active) {
+  .cwl-tb-btn:focus-visible {
+    outline-color: CanvasText;
+  }
 }
 
 .cwl-editor__surface {
