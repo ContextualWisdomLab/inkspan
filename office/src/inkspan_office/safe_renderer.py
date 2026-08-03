@@ -24,6 +24,7 @@ _EXCEL_MAX_ROWS = 1_048_576
 _EXCEL_MAX_COLUMNS = 16_384
 _EXCEL_MAX_TEXT_LENGTH = 32_767
 _EXCEL_MAX_SIGNIFICANT_DIGITS = 15
+_MAX_CONTAINER_DEPTH = 128
 
 
 def load_schema() -> dict[str, Any]:
@@ -82,14 +83,23 @@ def write_office_document(
 def _validate_request(payload: Any) -> None:
     """Apply cross-format text safety and XLSX storage-bound validation."""
 
-    _validate_xml_tree(payload, "payload", set())
     if isinstance(payload, Mapping) and payload.get("format") == "xlsx":
         _validate_xlsx(payload)
+    _validate_xml_tree(payload, "payload", set())
 
 
-def _validate_xml_tree(value: Any, path: str, active: set[int]) -> None:
+def _validate_xml_tree(
+    value: Any,
+    path: str,
+    active: set[int],
+    depth: int = 0,
+) -> None:
     """Reject XML-invalid text while detecting cyclic non-JSON containers."""
 
+    if depth > _MAX_CONTAINER_DEPTH:
+        raise OfficeDocumentError(
+            f"{path} exceeds the maximum JSON nesting depth of {_MAX_CONTAINER_DEPTH}"
+        )
     if isinstance(value, str):
         _validate_xml_text(value, path)
         return
@@ -101,7 +111,7 @@ def _validate_xml_tree(value: Any, path: str, active: set[int]) -> None:
         try:
             for key, child in value.items():
                 child_path = f"{path}.{key}" if isinstance(key, str) else path
-                _validate_xml_tree(child, child_path, active)
+                _validate_xml_tree(child, child_path, active, depth + 1)
         finally:
             active.remove(identity)
         return
@@ -112,7 +122,7 @@ def _validate_xml_tree(value: Any, path: str, active: set[int]) -> None:
         active.add(identity)
         try:
             for index, child in enumerate(value):
-                _validate_xml_tree(child, f"{path}[{index}]", active)
+                _validate_xml_tree(child, f"{path}[{index}]", active, depth + 1)
         finally:
             active.remove(identity)
 
