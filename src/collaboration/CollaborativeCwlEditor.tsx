@@ -36,13 +36,22 @@ export const CollaborativeCwlEditor = forwardRef<
   CwlEditorHandle,
   CollaborativeCwlEditorProps
 >(function CollaborativeCwlEditor(props, ref) {
-  const legacyProps = props as { value?: unknown; defaultValue?: unknown };
+  const legacyProps = props as {
+    value?: unknown;
+    defaultValue?: unknown;
+    formResetValue?: unknown;
+  };
   if (
     legacyProps.value !== undefined ||
     legacyProps.defaultValue !== undefined
   ) {
     throw new Error(
       'collaborative editors use the Yjs document as the sole source of truth; value and defaultValue are not allowed',
+    );
+  }
+  if (legacyProps.formResetValue !== undefined) {
+    throw new Error(
+      'collaborative editors require host-authorized reset handling through onFormReset; formResetValue is not allowed',
     );
   }
 
@@ -66,7 +75,6 @@ export const CollaborativeCwlEditor = forwardRef<
     formFieldName,
     formId,
     formFieldDisabled,
-    formResetValue,
     onFormReset,
     languageTag,
     textDirection,
@@ -111,7 +119,6 @@ export const CollaborativeCwlEditor = forwardRef<
   const onFocusRef = useLatestRef(onFocus);
   const onBlurRef = useLatestRef(onBlur);
   const onImageErrorRef = useLatestRef(onImageError);
-  const formResetValueRef = useLatestRef(formResetValue);
   const onFormResetRef = useLatestRef(onFormReset);
   const reportImageError = useCallback((error: Error) => {
     onImageErrorRef.current?.(error);
@@ -255,15 +262,12 @@ export const CollaborativeCwlEditor = forwardRef<
         /* v8 ignore next -- the handler is passed only while editor exists. */
         editor: editor!,
         mode: modeRef.current,
-        resetValue: formResetValueRef.current,
         event,
         onFormReset: onFormResetRef.current,
       });
     },
-    [editor, formResetValueRef, modeRef, onFormResetRef],
+    [editor, modeRef, onFormResetRef],
   );
-  const observesFormReset =
-    formResetValue !== undefined || onFormReset !== undefined;
 
   return (
     <EditorFrame
@@ -277,7 +281,7 @@ export const CollaborativeCwlEditor = forwardRef<
       formFieldName={formFieldName}
       formId={formId}
       formFieldDisabled={formFieldDisabled}
-      onFormReset={editor && observesFormReset ? handleFormReset : undefined}
+      onFormReset={editor && onFormReset ? handleFormReset : undefined}
       status={status}
     />
   );
