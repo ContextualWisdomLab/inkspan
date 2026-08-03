@@ -15,7 +15,6 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 from typing import Any
 
 from docx import Document
@@ -82,40 +81,6 @@ def render_office_document(payload: Mapping[str, Any]) -> RenderedOfficeDocument
 
     extension, content_type = _FORMATS[format_name]
     return RenderedOfficeDocument(format_name, extension, content_type, data)
-
-
-def write_office_document(
-    payload: Mapping[str, Any],
-    output_path: str | Path,
-    *,
-    overwrite: bool = False,
-) -> Path:
-    """Render *payload* and atomically write it to a matching Office extension."""
-
-    rendered = render_office_document(payload)
-    path = Path(output_path)
-    if path.suffix.lower() != rendered.extension:
-        raise OfficeDocumentError(
-            f"output extension must be {rendered.extension}, got {path.suffix or '<none>'}"
-        )
-    if path.exists() and not overwrite:
-        raise FileExistsError(f"output already exists: {path}")
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with NamedTemporaryFile(
-        mode="wb",
-        prefix=f".{path.name}.",
-        suffix=".tmp",
-        dir=path.parent,
-        delete=False,
-    ) as handle:
-        handle.write(rendered.data)
-        temporary = Path(handle.name)
-    try:
-        temporary.replace(path)
-    finally:
-        temporary.unlink(missing_ok=True)
-    return path
 
 
 def _render_docx(request: Mapping[str, Any]) -> bytes:
