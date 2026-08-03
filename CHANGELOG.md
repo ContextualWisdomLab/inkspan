@@ -4,6 +4,28 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.3] — 2026-08-04
+
+### Added
+- Host-controlled `languageTag` for applying a trimmed BCP 47 `lang` value to the editable document surface
+- Host-controlled `textDirection` with the HTML `ltr`, `rtl`, and `auto` writing-direction states
+- Public `EditorTextDirection` type shared by standalone and provider-neutral collaborative editor surfaces
+
+### Changed
+- Package version **0.5.3**
+- Language and direction metadata update live on the existing ProseMirror DOM without recreating editor state, selection, or Yjs bindings
+
+### Accessibility
+- Document language can now be programmatically identified independently from the surrounding application shell
+- Right-to-left and mixed-source workflows can establish an explicit document-level base direction while preserving host ownership of per-passage language metadata
+- Blank language values are omitted instead of emitting an empty `lang` attribute
+
+### Tests
+- Shared attribute construction and standalone/collaborative integrations cover trimmed and blank language tags, all supported direction semantics, and live prop replacement under the repository-wide 100% coverage gate
+
+### Documentation
+- Expanded the accessibility contract with BCP 47, RTL, host-responsibility, WCAG 2.2 language, and WHATWG HTML `lang`/`dir` guidance
+
 ## [0.5.2] — 2026-08-04
 
 ### Added
@@ -218,15 +240,3 @@ Commercial host-integration release: a buyer embedding the editor can control it
 
 ### Fixed
 - **`onImageError` paste/drop path** — previously only toolbar file-picker failures reached the host; paste/drop size-guard failures were silently dropped because `buildExtensions` never forwarded `onError` to `Base64Image`. Wired via a live ref so hosts can attach the handler after mount (including `hideToolbar`).
-
-### Changed
-- Package version **0.2.0**
-- README documents the imperative handle, `onImageError`, table ops, and email helper
-- README submodule URL corrected to `ContextualWisdomLab/inkspan`
-
-### Tests
-- 116 real vitest cases driving shipped modules (handle, image errors including paste path, table ops, email HTML)
-
-## [0.1.0] — prior
-
-Initial public surface: Markdown/HTML modes, base64 inline images, standalone converter, bundled Noto Sans fonts, ship gates.
