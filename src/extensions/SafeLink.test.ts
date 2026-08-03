@@ -105,7 +105,7 @@ describe('SafeLink extension', () => {
     );
     const html = editor.getHTML();
     expect(html).not.toContain('javascript:');
-    expect(html).toContain('>bad</');
+    expect(html).toContain('<p>bad ');
     expect(html).toContain('href="/safe/path"');
   });
 
