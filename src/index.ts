@@ -21,6 +21,8 @@ export type {
   CwlEditorFormResetEvent,
   CwlEditorHandle,
   CwlEditorProps,
+  CwlEditorSelectionEvent,
+  CwlEditorSelectionSnapshot,
   EditorMode,
   EditorTextDirection,
   ImageConfig,
