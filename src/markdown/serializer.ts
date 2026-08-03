@@ -105,9 +105,10 @@ export function markdownToHtml(markdown: string): string {
   return marked.parse(markdown, { async: false }) as string;
 }
 
-/** Escape a safe URI for a CommonMark angle-bracket destination. */
-function escapeMarkdownDestination(value: string): string {
-  return value.replace(/</g, '%3C').replace(/>/g, '%3E');
+/** Format a safe URI as a CommonMark inline-link destination. */
+function formatMarkdownDestination(value: string): string {
+  const escaped = value.replace(/</g, '%3C').replace(/>/g, '%3E');
+  return /[()<>]/u.test(value) ? `<${escaped}>` : escaped;
 }
 
 /** Escape authored text used inside a Markdown link/image label. */
@@ -212,7 +213,7 @@ function createTurndown(): TurndownService {
       const element = node as unknown as HTMLElement;
       const href = element.getAttribute('href');
       if (!isSafeLinkHref(href)) return content;
-      return `[${content}](<${escapeMarkdownDestination(href)}>${formatMarkdownTitle(element.getAttribute('title'))})`;
+      return `[${content}](${formatMarkdownDestination(href)}${formatMarkdownTitle(element.getAttribute('title'))})`;
     },
   });
   service.addRule('inlineImage', {
@@ -230,7 +231,7 @@ function createTurndown(): TurndownService {
       } catch {
         return escapeMarkdownText(alt);
       }
-      return `![${escapeMarkdownLabel(alt)}](<${escapeMarkdownDestination(validatedSource)}>${formatMarkdownTitle(element.getAttribute('title'))})`;
+      return `![${escapeMarkdownLabel(alt)}](${formatMarkdownDestination(validatedSource)}${formatMarkdownTitle(element.getAttribute('title'))})`;
     },
   });
   return service;
@@ -249,10 +250,11 @@ const turndown = createTurndown();
  */
 export function htmlToMarkdown(html: string): string {
   const fragment = createInertBrowserFragment(html);
-  if (fragment) {
-    return turndown.turndown(fragment as unknown as HTMLElement);
+  /* v8 ignore next 3 -- packed Node consumer verification exercises this DOM-free fallback. */
+  if (!fragment) {
+    return turndown.turndown(html);
   }
-  return turndown.turndown(html);
+  return turndown.turndown(fragment as unknown as HTMLElement);
 }
 
 /** Round-trip helper: Markdown -> safe HTML -> Markdown. */
