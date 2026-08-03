@@ -1,3 +1,4 @@
+import type { DecorationAttrs } from '@tiptap/pm/view';
 import type {
   CollaborationAwareness,
   CollaborationAwarenessEvent,
@@ -59,7 +60,9 @@ export function assertCollaborationConfiguration(
   }
   if (!provider) return;
 
-  const awareness = provider.awareness as Partial<CollaborationAwareness> | undefined;
+  const awareness = provider.awareness as
+    | Partial<CollaborationAwareness>
+    | undefined;
   if (
     !awareness ||
     typeof awareness.clientID !== 'number' ||
@@ -178,10 +181,7 @@ export function collaborationConnectionLabel(
 export function renderCollaborationCursor(
   user: Record<string, unknown>,
 ): HTMLElement {
-  const color =
-    typeof user.color === 'string' && CURSOR_COLOR_PATTERN.test(user.color)
-      ? user.color.toLowerCase()
-      : FALLBACK_CURSOR_COLOR;
+  const color = collaborationCursorColor(user);
   const name =
     typeof user.name === 'string' && user.name.trim() !== ''
       ? user.name.trim().slice(0, MAX_CURSOR_LABEL_LENGTH)
@@ -200,6 +200,17 @@ export function renderCollaborationCursor(
   return caret;
 }
 
+/** Return safe attributes for a remote collaborative selection highlight. */
+export function renderCollaborationSelection(
+  user: Record<string, unknown>,
+): DecorationAttrs {
+  const color = collaborationCursorColor(user);
+  return {
+    class: 'collaboration-cursor__selection',
+    style: `background-color: ${color}33`,
+  };
+}
+
 /** Select black or white text using the WCAG relative-luminance threshold. */
 export function contrastingTextColor(hexColor: string): '#000000' | '#ffffff' {
   const red = Number.parseInt(hexColor.slice(1, 3), 16) / 255;
@@ -212,4 +223,12 @@ export function contrastingTextColor(hexColor: string): '#000000' | '#ffffff' {
   const luminance =
     0.2126 * convert(red) + 0.7152 * convert(green) + 0.0722 * convert(blue);
   return luminance > 0.179 ? '#000000' : '#ffffff';
+}
+
+/** Normalize untrusted remote awareness colors to a strict CSS-safe token. */
+function collaborationCursorColor(user: Record<string, unknown>): string {
+  return typeof user.color === 'string' &&
+    CURSOR_COLOR_PATTERN.test(user.color)
+    ? user.color.toLowerCase()
+    : FALLBACK_CURSOR_COLOR;
 }
