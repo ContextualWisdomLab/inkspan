@@ -65,6 +65,16 @@ describe('buildEditorAccessibilityAttributes', () => {
     });
   });
 
+  it('falls back to the default name when a string label is blank', () => {
+    expect(
+      buildEditorAccessibilityAttributes({
+        defaultLabel: 'Rich text editor',
+        ariaLabel: '   ',
+        editable: true,
+      })['aria-label'],
+    ).toBe('Rich text editor');
+  });
+
   it('preserves the spelling validation state', () => {
     expect(
       buildEditorAccessibilityAttributes({
