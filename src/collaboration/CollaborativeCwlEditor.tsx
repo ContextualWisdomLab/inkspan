@@ -53,6 +53,8 @@ export const CollaborativeCwlEditor = forwardRef<
     connectionStatus,
     mode = 'markdown',
     onChange,
+    onFocus,
+    onBlur,
     onImageError,
     placeholder = 'Start writing…',
     editable = true,
@@ -98,6 +100,8 @@ export const CollaborativeCwlEditor = forwardRef<
 
   const modeRef = useLatestRef(mode);
   const onChangeRef = useLatestRef(onChange);
+  const onFocusRef = useLatestRef(onFocus);
+  const onBlurRef = useLatestRef(onBlur);
   const onImageErrorRef = useLatestRef(onImageError);
   const reportImageError = useCallback((error: Error) => {
     onImageErrorRef.current?.(error);
@@ -157,6 +161,12 @@ export const CollaborativeCwlEditor = forwardRef<
         onChangeRef.current?.(
           editorHtmlToValue(instance.getHTML(), modeRef.current),
         );
+      },
+      onFocus: ({ editor: instance, event }) => {
+        onFocusRef.current?.({ editor: instance, event });
+      },
+      onBlur: ({ editor: instance, event }) => {
+        onBlurRef.current?.({ editor: instance, event });
       },
     },
     [collaborationDocument, scopedProvider, normalizedField, presenceEnabled],
