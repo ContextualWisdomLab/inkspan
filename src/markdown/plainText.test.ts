@@ -53,6 +53,30 @@ const total = 120;
     expect(plainText).not.toContain('| --- |');
   });
 
+  it('preserves inline and fenced code whitespace verbatim', () => {
+    const plainText = markdownToPlainText(
+      [
+        'Before `alpha  beta` after.',
+        '',
+        '```text',
+        '  first  value',
+        '',
+        '    second',
+        '```',
+      ].join('\n'),
+    );
+
+    expect(plainText).toBe(
+      [
+        'Before alpha  beta after.',
+        '',
+        '  first  value',
+        '',
+        '    second',
+      ].join('\n'),
+    );
+  });
+
   it('includes image alternative text by default without leaking payload bytes', () => {
     const plainText = markdownToPlainText(
       `Before ![Quarterly chart](${PNG_DATA_URI}) after.`,
