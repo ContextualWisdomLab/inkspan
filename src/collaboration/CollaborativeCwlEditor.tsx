@@ -152,6 +152,7 @@ export const CollaborativeCwlEditor = forwardRef<
 
   const editor = useEditor(
     {
+      immediatelyRender: false,
       editable,
       extensions: buildExtensions({
         placeholder,
@@ -204,7 +205,7 @@ export const CollaborativeCwlEditor = forwardRef<
   }, [editor, editable]);
 
   useEffect(() => {
-    /* v8 ignore next -- the editor is created synchronously in supported React clients. */
+    /* v8 ignore next -- the editor is created after client hydration. */
     if (!editor) return;
     editor.setOptions({
       editorProps: {
