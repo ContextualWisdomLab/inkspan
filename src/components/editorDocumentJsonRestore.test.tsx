@@ -1,11 +1,13 @@
 import { act, render, waitFor } from '@testing-library/react';
+import type { JSONContent } from '@tiptap/core';
 import { createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { DocumentSchemaError, validateDocumentJson } from '../documentSchema.js';
 import type { CwlEditorHandle } from '../types.js';
 import { CwlEditor } from './CwlEditor.js';
 
 describe('CwlEditor lossless JSON writes', () => {
-  it('restores and inserts TipTap JSON without an HTML or Markdown round-trip', async () => {
+  it('validates and restores TipTap JSON without a serialization round-trip', async () => {
     const editorRef = createRef<CwlEditorHandle>();
     const onChange = vi.fn();
     render(
@@ -39,7 +41,12 @@ describe('CwlEditor lossless JSON writes', () => {
           content: [{ type: 'text', text: 'Body' }],
         },
       ],
-    };
+    } satisfies JSONContent;
+
+    expect(editorRef.current!.validateDocumentJson(restoredDocument)).toBe(true);
+    expect(
+      validateDocumentJson(editorRef.current!.getEditor()!, restoredDocument),
+    ).toBe(true);
 
     await act(async () => {
       editorRef.current!.setDocumentJson(restoredDocument);
@@ -83,5 +90,58 @@ describe('CwlEditor lossless JSON writes', () => {
     expect(editorRef.current!.getSnapshot().documentJson).toEqual(
       editorRef.current!.getEditor()!.getJSON(),
     );
+  });
+
+  it('rejects incompatible JSON before changing the document', async () => {
+    const editorRef = createRef<CwlEditorHandle>();
+    const onChange = vi.fn();
+    render(
+      <CwlEditor
+        ref={editorRef}
+        defaultValue="Keep this document"
+        onChange={onChange}
+      />,
+    );
+    await waitFor(() => expect(editorRef.current?.getEditor()).toBeTruthy());
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    onChange.mockClear();
+
+    const before = editorRef.current!.getSnapshot();
+    const incompatibleDocument: JSONContent = {
+      type: 'doc',
+      content: [{ type: 'unsupportedEnterpriseWidget' }],
+    };
+
+    expect(editorRef.current!.validateDocumentJson(incompatibleDocument)).toBe(
+      false,
+    );
+    expect(() =>
+      editorRef.current!.setDocumentJson(incompatibleDocument),
+    ).toThrow(DocumentSchemaError);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(editorRef.current!.getSnapshot()).toEqual(before);
+  });
+
+  it('does not execute hostile accessors during restore validation', async () => {
+    const editorRef = createRef<CwlEditorHandle>();
+    render(<CwlEditor ref={editorRef} defaultValue="Safe" />);
+    await waitFor(() => expect(editorRef.current?.getEditor()).toBeTruthy());
+
+    let getterWasCalled = false;
+    const hostileDocument: JSONContent = { type: 'doc' };
+    Object.defineProperty(hostileDocument, 'content', {
+      enumerable: true,
+      get: () => {
+        getterWasCalled = true;
+        throw new Error('tenant-secret');
+      },
+    });
+
+    expect(editorRef.current!.validateDocumentJson(hostileDocument)).toBe(false);
+    expect(() => editorRef.current!.setDocumentJson(hostileDocument)).toThrow(
+      'incompatible with the current editor schema',
+    );
+    expect(getterWasCalled).toBe(false);
+    expect(editorRef.current!.getMarkdown()).toBe('Safe');
   });
 });
