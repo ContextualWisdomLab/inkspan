@@ -69,11 +69,12 @@ export function EditorFormField({
     /* v8 ignore next -- the effect runs only after the rendered field mounts. */
     if (!field) return;
     const eventRoot = field.getRootNode();
+    let active = true;
 
     const handleReset = (event: Event) => {
       if (event.target !== field.form) return;
       queueMicrotask(() => {
-        if (event.defaultPrevented) return;
+        if (!active || event.defaultPrevented) return;
         if (name !== undefined) field.value = serializedValueRef.current;
         onFormReset(event);
       });
@@ -81,6 +82,7 @@ export function EditorFormField({
 
     eventRoot.addEventListener('reset', handleReset);
     return () => {
+      active = false;
       eventRoot.removeEventListener('reset', handleReset);
     };
   }, [formId, name, onFormReset]);
