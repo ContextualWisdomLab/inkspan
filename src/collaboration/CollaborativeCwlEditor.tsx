@@ -62,6 +62,9 @@ export const CollaborativeCwlEditor = forwardRef<
     image,
     className,
     onReady,
+    formFieldName,
+    formId,
+    formFieldDisabled,
     languageTag,
     textDirection,
     ariaLabel,
@@ -250,6 +253,9 @@ export const CollaborativeCwlEditor = forwardRef<
       image={image}
       className={className}
       onImageError={onImageError}
+      formFieldName={formFieldName}
+      formId={formId}
+      formFieldDisabled={formFieldDisabled}
       status={status}
     />
   );
