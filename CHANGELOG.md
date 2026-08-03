@@ -4,6 +4,26 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.7] — 2026-08-04
+
+### Changed
+- Package version **0.5.7**
+- Native form serialization now writes the hidden input's current value synchronously during every document-changing TipTap transaction instead of waiting for a React state commit
+- The form bridge is maintained as an uncontrolled native field, avoiding one React rerender per document transaction while preserving mode changes, disabled state, external form association, and reset restoration
+
+### Fixed
+- Immediate `FormData` construction or browser form submission after an imperative or collaborative document transaction can no longer observe the previous serialized document because of React update batching
+
+### Security
+- Synchronous mirroring closes a stale-submission window without changing the existing client-controlled trust boundary; servers must still authorize, validate, and size-limit submitted content
+
+### Tests
+- A direct transaction harness verifies that selection-only transactions leave the field unchanged and document-changing transactions are visible to `FormData` before another React render or task
+- Existing standalone, imperative, reset, external-form, and Yjs collaboration coverage remains under the repository-wide 100% TypeScript coverage gate
+
+### Documentation
+- Clarified the same-task form-entry guarantee and the distinction between native field synchronization and host/server validation responsibilities
+
 ## [0.5.6] — 2026-08-04
 
 ### Added
@@ -307,7 +327,7 @@ Commercial host-integration release: a buyer embedding the editor can control it
 
 ### Added
 - **`CwlEditorHandle`** via `ref` — `getValue` / `getHTML` / `getMarkdown` / `setValue` / `clear` / `focus` / `blur` / `isEmpty` / `getEditor`
-- **`onImageError`** — size-guard and decode failures are reported to the host (no silent swallow on the commercial path)
+- **`onImageError`** — image size-guard failures are never silent
 - **Table editing toolbar** — add column after, add row after, delete table (enabled only when the cursor is in a table)
 - **Horizontal rule** toolbar control
 - **Live toolbar state** — re-renders on TipTap `transaction` / `selectionUpdate` so active/disabled UI stays correct without host re-renders
