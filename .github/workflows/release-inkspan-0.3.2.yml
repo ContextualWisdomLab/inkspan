@@ -1,0 +1,53 @@
+name: Release Inkspan 0.3.2
+
+on:
+  push:
+    branches: [release/inkspan-0.3.2]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPOSITORY: ${{ github.repository }}
+      RELEASE_TAG: v0.3.2
+    steps:
+      - name: Verify release version on main
+        run: |
+          gh api "repos/${REPOSITORY}/contents/package.json?ref=main" --jq .content \
+            | base64 --decode > package.json
+          test "$(jq -r .version package.json)" = "0.3.2"
+      - name: Create idempotent GitHub release
+        run: |
+          if gh release view "${RELEASE_TAG}" --repo "${REPOSITORY}" >/dev/null 2>&1; then
+            echo "${RELEASE_TAG} already exists; leaving it unchanged."
+          else
+            cat > release-notes.md <<'NOTES'
+          ## Inkspan 0.3.2
+
+          Security-focused release enforcing Inkspan's self-contained image guarantee.
+
+          ### Security
+          - Accepts only strict inline base64 raster images: PNG, JPEG/JPG, GIF, WebP, AVIF, APNG, BMP, and ICO.
+          - Rejects external, protocol-relative, blob, file, JavaScript, SVG/active-vector, unsupported-MIME, malformed, empty, and oversized sources before decoder use or editor-state entry.
+          - Applies the configured decoded-byte limit to pre-existing data URIs as well as uploaded, pasted, and dropped files.
+          - Reports typed, redacted `Base64ImageSourceError` and `Base64SizeError` values through `onImageError`.
+          - Uses inert defense-in-depth rendering if malformed image state is supplied outside supported APIs.
+
+          ### Coverage
+          - Initial HTML and Markdown, controlled values, imperative APIs, direct ProseMirror transactions, collaborative Yjs updates, upload MIME policy, and serialization are covered under the enforced 100% statement, branch, function, and line gate.
+          NOTES
+            gh release create "${RELEASE_TAG}" \
+              --repo "${REPOSITORY}" \
+              --target main \
+              --title "Inkspan 0.3.2" \
+              --notes-file release-notes.md
+          fi
+      - name: Remove one-shot release branch
+        run: |
+          gh api --method DELETE \
+            "repos/${REPOSITORY}/git/refs/heads/release/inkspan-0.3.2"
