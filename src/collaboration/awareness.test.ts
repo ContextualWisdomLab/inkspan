@@ -178,14 +178,14 @@ describe('scoped collaboration provider', () => {
       user: { id: 'editor-alice' },
     });
 
-    expect(sourceListeners.change).toHaveLength(1);
-    expect(sourceListeners.update).toHaveLength(1);
+    expect(sourceListeners.change.size).toBe(1);
+    expect(sourceListeners.update.size).toBe(1);
     scoped.dispose();
-    expect(sourceListeners.change).toHaveLength(0);
-    expect(sourceListeners.update).toHaveLength(0);
+    expect(sourceListeners.change.size).toBe(0);
+    expect(sourceListeners.update.size).toBe(0);
 
     scoped.dispose();
-    expect(sourceListeners.change).toHaveLength(0);
+    expect(sourceListeners.change.size).toBe(0);
   });
 });
 
