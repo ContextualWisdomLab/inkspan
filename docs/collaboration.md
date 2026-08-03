@@ -66,7 +66,9 @@ the same live `Y.Doc` preserves the collaborative state.
 
 Pass stable object references. Replacing `document`, `provider`, or `field`
 intentionally recreates the TipTap binding; ordinary React rerenders and user
-presence changes do not.
+presence changes do not. Inkspan wraps the provider's awareness object with a
+component-scoped listener boundary before giving it to TipTap, then detaches
+that boundary at unmount. The host provider itself remains live and untouched.
 
 ## One source of truth
 
@@ -95,24 +97,36 @@ an incompatible local ProseMirror history.
 
 ## Provider contract
 
-Inkspan only requires the provider's Yjs awareness surface:
+Inkspan requires the provider's public Yjs awareness surface used by TipTap's
+cursor integration and the accessible collaborator count:
 
 ```ts
+type CollaborationAwarenessEvent = 'change' | 'update';
+
 interface CollaborationProviderLike {
   awareness: {
     readonly clientID: number;
+    readonly states: Map<number, Record<string, unknown>>;
     getLocalState(): Record<string, unknown> | null;
     getStates(): Map<number, Record<string, unknown>>;
     setLocalStateField(field: string, value: unknown): void;
-    on(event: 'change', listener: (...args: unknown[]) => void): void;
-    off(event: 'change', listener: (...args: unknown[]) => void): void;
+    on(
+      event: CollaborationAwarenessEvent,
+      listener: (...args: unknown[]) => void,
+    ): void;
+    off(
+      event: CollaborationAwarenessEvent,
+      listener: (...args: unknown[]) => void,
+    ): void;
   };
 }
 ```
 
 Hocuspocus, y-websocket, y-webrtc, and custom providers can satisfy this
 structurally. Inkspan does not import a provider SDK or couple the component to
-a vendor-specific connection lifecycle.
+a vendor-specific connection lifecycle. The `change` event drives concise
+collaborator-count announcements; TipTap's cursor integration consumes the
+`update` event and `states` map.
 
 ## Presence and privacy
 
@@ -168,3 +182,11 @@ panel boundary:
 This separation permits provider replacement, regional transport changes,
 offline-first clients, and service-account policy evolution without forking the
 editor or coupling its core package to organization infrastructure.
+
+## Primary references
+
+- [TipTap v2 Collaboration](https://v2.tiptap.dev/docs/editor/extensions/functionality/collaboration)
+- [TipTap v2 Collaboration Cursor](https://v2.tiptap.dev/docs/editor/extensions/functionality/collaboration-cursor)
+- [Yjs Awareness and Presence](https://docs.yjs.dev/getting-started/adding-awareness)
+- [WAI-ARIA `status` role](https://www.w3.org/WAI/ARIA/apg/patterns/alert/)
+- [WCAG relative luminance definition](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)
