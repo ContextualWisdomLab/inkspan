@@ -7,23 +7,25 @@ pnpm add @contextualwisdomlab/cwl-editor yjs
 ```
 
 ```tsx
-import { useMemo } from 'react';
 import * as Y from 'yjs';
 import {
   CollaborativeCwlEditor,
+  type CollaborationConnectionStatus,
   type CollaborationProviderLike,
 } from '@contextualwisdomlab/cwl-editor/collaboration';
 import '@contextualwisdomlab/cwl-editor/styles.css';
 
 interface SharedDocumentProps {
+  document: Y.Doc;
   provider: CollaborationProviderLike;
+  connectionStatus: CollaborationConnectionStatus;
 }
 
-export function SharedDocument({ provider }: SharedDocumentProps) {
-  // In production, obtain this stable instance from the host's document
-  // session. Do not create or destroy it inside Inkspan.
-  const document = useMemo(() => new Y.Doc(), []);
-
+export function SharedDocument({
+  document,
+  provider,
+  connectionStatus,
+}: SharedDocumentProps) {
   return (
     <CollaborativeCwlEditor
       document={document}
@@ -34,7 +36,7 @@ export function SharedDocument({ provider }: SharedDocumentProps) {
         cursorColor: '#2563eb',
       }}
       mode="markdown"
-      connectionStatus="connected"
+      connectionStatus={connectionStatus}
       onChange={(markdown) => {
         // Observational export only. Persist Yjs updates as authoritative data.
         console.log(markdown);
@@ -188,5 +190,5 @@ editor or coupling its core package to organization infrastructure.
 - [TipTap v2 Collaboration](https://v2.tiptap.dev/docs/editor/extensions/functionality/collaboration)
 - [TipTap v2 Collaboration Cursor](https://v2.tiptap.dev/docs/editor/extensions/functionality/collaboration-cursor)
 - [Yjs Awareness and Presence](https://docs.yjs.dev/getting-started/adding-awareness)
-- [WAI-ARIA `status` role](https://www.w3.org/WAI/ARIA/apg/patterns/alert/)
+- [WAI-ARIA `status` role](https://www.w3.org/TR/wai-aria-1.2/#status)
 - [WCAG relative luminance definition](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)
