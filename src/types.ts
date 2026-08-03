@@ -109,11 +109,23 @@ export interface CwlEditorHandle {
   /** Replace the whole document from a string in the active `mode`. */
   setValue(value: string): void;
   /**
+   * Replace the whole document from TipTap/ProseMirror JSON without an
+   * HTML/Markdown conversion round-trip. The JSON must match Inkspan's current
+   * extension schema. This mirrors `setValue` and does not emit `onChange`.
+   */
+  setDocumentJson(documentJson: JSONContent): void;
+  /**
    * Insert content **at the current selection/cursor** without wiping the doc.
    * `value` is interpreted in the active `mode` (Markdown is converted to HTML
    * for insertion). Fires `onChange` — the commercial AI-insert / snippet path.
    */
   insertValue(value: string): void;
+  /**
+   * Insert one or more TipTap/ProseMirror JSON nodes at the current selection.
+   * Fires the normal document-change callbacks and applies the same schema,
+   * safe-link, and inline-image transaction boundaries as other editor writes.
+   */
+  insertDocumentJson(documentJson: JSONContent | JSONContent[]): void;
   /** Empty the document. */
   clear(): void;
   /** `true` when the document has no meaningful content. */
