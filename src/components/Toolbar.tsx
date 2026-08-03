@@ -38,7 +38,7 @@ function getToolbarButtons(toolbar: HTMLDivElement): HTMLButtonElement[] {
 /** Keep exactly one enabled toolbar button in the document tab sequence. */
 function setRovingTabStop(
   toolbar: HTMLDivElement,
-  target: HTMLButtonElement | null,
+  target: HTMLButtonElement,
 ): void {
   for (const button of getToolbarButtons(toolbar)) {
     button.tabIndex = button === target ? 0 : -1;
@@ -100,7 +100,7 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
     const target =
       remembered && !remembered.disabled
         ? remembered
-        : (buttons.find((button) => !button.disabled) ?? null);
+        : buttons.find((button) => !button.disabled)!;
     setRovingTabStop(toolbar, target);
   });
 
