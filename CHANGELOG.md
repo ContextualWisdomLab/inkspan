@@ -4,6 +4,27 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.6] — 2026-08-04
+
+### Added
+- SSR-safe standalone and collaborative React rendering with TipTap editor creation deferred until client hydration
+- A documented Next.js App Router, traditional SSR, CWL, and naruon hydration contract
+
+### Changed
+- Package version **0.5.6**
+- `CwlEditor` and `CollaborativeCwlEditor` now configure TipTap with `immediatelyRender: false`, producing a deterministic server shell without constructing a ProseMirror view
+- Client initialization remains compatible with existing controlled state, imperative handles, native forms, accessibility metadata, and host-owned Yjs collaboration
+
+### Security
+- Server rendering does not initialize browser collaboration transports, expose editor document bodies in the shell, or transfer provider and credential ownership into Inkspan
+- CWL and naruon hosts remain responsible for creating authorized browser providers and descriptive nonnumeric document, user, and session identifiers inside the client integration boundary
+
+### Tests
+- Node-based `react-dom/server` coverage verifies stable standalone and collaborative shells without ProseMirror markup or initial document-body leakage under the repository-wide 100% TypeScript coverage gate
+
+### Documentation
+- Added `docs/server-rendering.md` with hydration timing, Next.js client-boundary guidance, layout responsibility, provider lifecycle, and MSA interoperability requirements
+
 ## [0.5.5] — 2026-08-04
 
 ### Added
