@@ -33,16 +33,20 @@ export function EditorFormField({
   onFormReset,
 }: EditorFormFieldProps) {
   const fieldRef = useRef<HTMLInputElement | null>(null);
+  const serializedValueRef = useRef('');
   const [serializedValue, setSerializedValue] = useState('');
 
   useEffect(() => {
     if (!editor || name === undefined) {
+      serializedValueRef.current = '';
       setSerializedValue('');
       return;
     }
 
     const synchronizeValue = () => {
-      setSerializedValue(editorHtmlToValue(editor.getHTML(), mode));
+      const nextValue = editorHtmlToValue(editor.getHTML(), mode);
+      serializedValueRef.current = nextValue;
+      setSerializedValue(nextValue);
     };
     const handleTransaction = ({
       transaction,
@@ -69,7 +73,9 @@ export function EditorFormField({
     const handleReset = (event: Event) => {
       if (event.target !== field.form) return;
       queueMicrotask(() => {
-        if (!event.defaultPrevented) onFormReset(event);
+        if (event.defaultPrevented) return;
+        if (name !== undefined) field.value = serializedValueRef.current;
+        onFormReset(event);
       });
     };
 
