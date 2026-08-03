@@ -127,8 +127,16 @@ export interface CwlEditorProps {
   image?: ImageConfig;
   /** Extra class name applied to the editor root. */
   className?: string;
-  /** Escape hatch: receive the underlying TipTap editor instance. */
+  /**
+   * Fired once for each TipTap editor instance after creation. Replacing this
+   * callback does not replay readiness for an already-created instance.
+   */
   onReady?: (editor: Editor) => void;
+  /**
+   * Fired once for each TipTap editor instance when it is destroyed. The latest
+   * callback is used so hosts can safely attach or replace teardown logic.
+   */
+  onDestroy?: (editor: Editor) => void;
   /**
    * Native form field name. When supplied, Inkspan renders a hidden input whose
    * live value is the current document serialized in `mode`.
