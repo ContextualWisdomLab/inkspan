@@ -1,4 +1,4 @@
-import { useEditor } from '@tiptap/react';
+import { type Editor, useEditor } from '@tiptap/react';
 import {
   forwardRef,
   useCallback,
@@ -59,6 +59,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
   ) {
     const isControlled = value !== undefined;
     const emittingRef = useRef(false);
+    const editorInstanceRef = useRef<Editor | null>(null);
     const modeRef = useLatestRef(mode);
     const onChangeRef = useLatestRef(onChange);
     const onFocusRef = useLatestRef(onFocus);
@@ -112,10 +113,13 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         attributes: editorAttributes,
       },
       onCreate: ({ editor: instance }) => {
+        editorInstanceRef.current = instance;
         onReadyRef.current?.(instance);
       },
-      onDestroy: ({ editor: instance }) => {
+      onDestroy: () => {
+        const instance = editorInstanceRef.current!;
         onDestroyRef.current?.(instance);
+        editorInstanceRef.current = null;
       },
       onUpdate: ({ editor: instance }) => {
         const listener = onChangeRef.current;
