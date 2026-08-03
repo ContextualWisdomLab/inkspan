@@ -3,11 +3,13 @@ import {
   forwardRef,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
 } from 'react';
 import { buildExtensions } from '../extensions/kit.js';
 import type { CwlEditorHandle, CwlEditorProps } from '../types.js';
 import { EditorFrame } from './EditorFrame.js';
+import { buildEditorAccessibilityAttributes } from './editorAccessibility.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
 import { useEditorHandle } from './useEditorHandle.js';
 import { useLatestRef } from './useLatestRef.js';
@@ -34,7 +36,12 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       image,
       className,
       onReady,
-      ariaLabel = 'Rich text editor',
+      ariaLabel,
+      ariaLabelledBy,
+      ariaDescribedBy,
+      ariaErrorMessage,
+      ariaInvalid,
+      ariaRequired,
     },
     ref,
   ) {
@@ -46,6 +53,28 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     const reportImageError = useCallback((error: Error) => {
       onImageErrorRef.current?.(error);
     }, [onImageErrorRef]);
+    const editorAttributes = useMemo(
+      () =>
+        buildEditorAccessibilityAttributes({
+          defaultLabel: 'Rich text editor',
+          ariaLabel,
+          ariaLabelledBy,
+          ariaDescribedBy,
+          ariaErrorMessage,
+          ariaInvalid,
+          ariaRequired,
+          editable,
+        }),
+      [
+        ariaLabel,
+        ariaLabelledBy,
+        ariaDescribedBy,
+        ariaErrorMessage,
+        ariaInvalid,
+        ariaRequired,
+        editable,
+      ],
+    );
 
     const editor = useEditor({
       editable,
@@ -56,12 +85,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       }),
       content: editorValueToHtml(value ?? defaultValue ?? '', mode),
       editorProps: {
-        attributes: {
-          class: 'cwl-editor__content',
-          role: 'textbox',
-          'aria-multiline': 'true',
-          'aria-label': ariaLabel,
-        },
+        attributes: editorAttributes,
       },
       onUpdate: ({ editor: instance }) => {
         const listener = onChangeRef.current;
@@ -84,6 +108,17 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     useEffect(() => {
       editor?.setEditable(editable);
     }, [editor, editable]);
+
+    useEffect(() => {
+      /* v8 ignore next -- the editor is created synchronously in supported React clients. */
+      if (!editor) return;
+      editor.setOptions({
+        editorProps: {
+          ...editor.options.editorProps,
+          attributes: editorAttributes,
+        },
+      });
+    }, [editor, editorAttributes]);
 
     useEffect(() => {
       if (!editor || !isControlled || emittingRef.current) return;
