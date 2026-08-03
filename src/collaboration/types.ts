@@ -48,10 +48,15 @@ export type CollaborationConnectionStatus =
 
 /**
  * Props for the provider-neutral collaborative editor. The Yjs document is the
- * sole source of truth, so static `value` and `defaultValue` props are excluded.
+ * sole source of truth, so static values and automatic local-form document
+ * replacement are excluded. Hosts may observe reset and perform an authorized
+ * shared-document operation explicitly through `onFormReset`.
  */
 export interface CollaborativeCwlEditorProps
-  extends Omit<CwlEditorProps, 'value' | 'defaultValue'> {
+  extends Omit<
+    CwlEditorProps,
+    'value' | 'defaultValue' | 'formResetValue'
+  > {
   /** Stable, host-owned Yjs document for one authorized collaborative document. */
   document: Doc;
   /**
