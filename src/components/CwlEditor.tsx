@@ -38,6 +38,9 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       image,
       className,
       onReady,
+      formFieldName,
+      formId,
+      formFieldDisabled,
       languageTag,
       textDirection,
       ariaLabel,
@@ -155,6 +158,9 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         image={image}
         className={className}
         onImageError={onImageError}
+        formFieldName={formFieldName}
+        formId={formId}
+        formFieldDisabled={formFieldDisabled}
       />
     );
   },
