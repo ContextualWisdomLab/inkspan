@@ -4,18 +4,32 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-08-03
+
 ### Added
 - Deterministic `markdownToPlainText` and `htmlToPlainText` projections for search indexing, LLM context construction, previews, audit logs, and host-owned analytics
 - Plain-text reading order preserves headings, paragraphs, explicit line breaks, code, list items, table rows/cells, link labels, and optional image alternative text
+- Browser HTML import now parses through a detached, inert `<template>` fragment before Turndown conversion
+
+### Changed
+- Package version **0.5.0**
+- `htmlToMarkdown` now applies the same safe-link and strict inline-raster image policies used by editor ingress and standalone HTML/email serialization
+- Active and resource-oriented HTML elements are removed before conversion, while unrelated attributes are stripped under a narrow structural allowlist
+- Rejected HTML images now preserve only escaped alternative text instead of forwarding an unsafe or external source
 
 ### Security
 - Plain-text projections omit raw Markdown HTML, link-definition records, hyperlink destinations, HTML attributes, image sources, and inline base64 payloads instead of interpreting or forwarding them
+- Untrusted browser HTML strings are no longer passed directly to Turndown's browser parser, closing the pre-rule script/resource-loading boundary identified by Turndown's security policy
+- Executable, active-data, local/blob, protocol-relative, custom-scheme, credential-bearing, and malformed HTML links become ordinary text
+- External, active-vector, malformed, unsupported, and oversized HTML image sources are omitted from Markdown output
 
 ### Tests
 - Markdown and HTML projection behavior, payload non-disclosure, image-alternative policy, structural reading order, and public exports are covered under the repository-wide 100% TypeScript coverage gate
+- HTML import tests cover inert-fragment conversion, active/resource element removal, attribute allowlisting, safe and rejected links, strict images, Markdown escaping, list starts, code languages, and GFM task checkboxes
 
 ### Documentation
 - Added the CWL/naruon plain-text interoperability, runtime, and downstream data-governance contract
+- Added the untrusted HTML import security, runtime, MSA interoperability, host-responsibility, and verification contract
 
 ## [0.4.2] — 2026-08-03
 
