@@ -101,7 +101,10 @@ export function htmlToPlainText(
   html: string,
   options: PlainTextOptions = {},
 ): string {
-  return markdownToPlainText(htmlToMarkdown(html), options);
+  return markdownToPlainText(
+    htmlToMarkdown(html, { includeImageAlt: options.includeImageAlt }),
+    options,
+  );
 }
 
 /** Render an ordered token sequence while preserving block boundaries. */
