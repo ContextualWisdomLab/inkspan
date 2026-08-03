@@ -19,7 +19,7 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ### Security
 - Release tags must exactly match `package.json`, a corresponding changelog section, semantic-version syntax, the canonical repository identity, and a commit already reachable from `main`
-- Immutable releases must be enabled and verifiable before publication; the workflow creates or resumes a draft, uploads the complete artifact set, publishes once, and refuses to overwrite any published release
+- The workflow publishes through a complete draft, requires the resulting release to report `isImmutable: true`, deletes and rejects a mutable result, and never overwrites an existing published release
 - Release-level and per-asset attestations are verified immediately after publication
 - Every third-party action remains pinned to a complete commit SHA
 - npm and PyPI publication are intentionally deferred until their canonical Trusted Publisher and environment-approval configuration is externally established
