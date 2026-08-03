@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/react';
+import type { PlainTextOptions } from './markdown/plainText.js';
 
 /** Which document surface the editor reads from and writes to. */
 export type EditorMode = 'markdown' | 'html';
@@ -30,6 +31,12 @@ export interface CwlEditorHandle {
   getHTML(): string;
   /** Always Markdown (HTML → Markdown via the shipped serializer). */
   getMarkdown(): string;
+  /**
+   * Deterministic safe plain-text projection of the current document.
+   * Hyperlink destinations, image sources, and inline base64 payloads are
+   * omitted. Image alternative text is included unless disabled in `options`.
+   */
+  getPlainText(options?: PlainTextOptions): string;
   /** Replace the whole document from a string in the active `mode`. */
   setValue(value: string): void;
   /**
