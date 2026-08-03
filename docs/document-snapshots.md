@@ -69,6 +69,43 @@ alongside it, for example `editor_schema_version`, and migrate stored documents
 when the extension set changes. Never deserialize arbitrary JSON with a broader
 or different schema and assume unsupported nodes or attributes are safe.
 
+## Lossless restore and structured insertion
+
+Use `setDocumentJson()` to restore a persisted structural document without
+serializing through HTML or Markdown. It mirrors `setValue()` and intentionally
+does not emit `onChange` or `onDocumentChange`, preventing a load operation from
+immediately scheduling another save.
+
+```ts
+const savedDraft = await loadDraft('draft_document');
+if (savedDraft.document_json) {
+  editorRef.current?.setDocumentJson(savedDraft.document_json);
+}
+```
+
+Use `insertDocumentJson()` for host-authorized templates, structured AI output,
+or reusable blocks that must retain supported nodes, marks, and attributes. It
+inserts at the current selection and follows the normal document-change callback
+path.
+
+```ts
+editorRef.current?.insertDocumentJson({
+  type: 'paragraph',
+  content: [
+    { type: 'text', text: 'Reviewed by ', marks: [{ type: 'bold' }] },
+    { type: 'text', text: reviewerName },
+  ],
+});
+```
+
+Both methods use the current Inkspan schema. TipTap accepts JSON only for nodes,
+marks, and attributes that the installed extension set understands. Inkspan's
+safe-link and strict inline-raster image transaction filters remain active for
+these writes, but schema compatibility and business validation remain host
+responsibilities. Migrate and validate persisted or model-produced JSON before
+passing it to the editor; do not use a client-side restore result as proof of
+authorization or server-side validity.
+
 ## Imperative reads
 
 Use `getSnapshot()` when a synchronous workflow must read the current revision,
@@ -135,6 +172,13 @@ export only:
 - ProseMirror JSON and positions must not be treated as durable collaborative
   identifiers or as a replacement for Yjs updates/state vectors.
 
+The shared `CwlEditorHandle` also exposes `setDocumentJson()` and
+`insertDocumentJson()` in collaborative mode. Those calls mutate the Yjs-backed
+document and propagate like other local editor changes. A host must authorize
+room membership and the requested replace/insert operation before invoking
+either method; loading a local snapshot is not an authorization shortcut or a
+replacement for Yjs persistence and synchronization.
+
 For naruon and other CWL hosts, persist snapshots behind the authorized compose
 or `ui.panel` boundary. Use descriptive nonnumeric document/session identifiers
 and two-word-or-longer database object names such as `document_snapshot` and
@@ -158,6 +202,10 @@ not change the document and do not emit `onDocumentChange`.
 
 - TipTap editor instance API (`getHTML`, `getJSON`, and `getText`):
   <https://tiptap.dev/docs/editor/api/editor>
+- TipTap `setContent` JSON restore command:
+  <https://tiptap.dev/docs/editor/api/commands/content/set-content>
+- TipTap `insertContent` JSON insertion command:
+  <https://tiptap.dev/docs/editor/api/commands/content/insert-content>
 - TipTap persistence guidance recommending JSON for flexible persistence:
   <https://tiptap.dev/docs/editor/core-concepts/persistence>
 - ProseMirror document JSON serialization and schema deserialization:
