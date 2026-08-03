@@ -117,7 +117,7 @@ describe('Toolbar', () => {
       const enabledButtons = (
         screen.getAllByRole('button') as HTMLButtonElement[]
       ).filter((button) => !button.disabled);
-      const lastEnabled = enabledButtons.at(-1)!;
+      const lastEnabled = enabledButtons[enabledButtons.length - 1]!;
 
       bold.focus();
       fireEvent.keyDown(bold, { key: 'ArrowRight' });
