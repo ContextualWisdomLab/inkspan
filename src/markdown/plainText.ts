@@ -21,7 +21,6 @@ interface PlainTextToken {
   type: string;
   text?: string;
   tokens?: PlainTextToken[];
-  items?: PlainTextListItem[];
 }
 
 interface PlainTextListItem {
@@ -37,6 +36,12 @@ interface PlainTextTableToken extends PlainTextToken {
   rows: PlainTextTableCell[][];
 }
 
+interface PlainTextListToken extends PlainTextToken {
+  ordered: boolean;
+  start: number | '';
+  items: PlainTextListItem[];
+}
+
 interface PlainTextCodeToken extends PlainTextToken {
   text: string;
 }
@@ -47,10 +52,11 @@ interface PlainTextImageToken extends PlainTextToken {
 
 interface PlainTextRenderState {
   includeImageAlt: boolean;
+  listDepth: number;
 }
 
 interface PlainTextSegment {
-  kind: 'text' | 'code';
+  kind: 'text' | 'code' | 'structure';
   value: string;
 }
 
@@ -68,9 +74,9 @@ export interface PlainTextOptions {
  * hyperlink destinations, or inline base64 image payloads.
  *
  * The projection keeps authored reading order, paragraph boundaries, explicit
- * line breaks, code text, list-item boundaries, table cells, link labels, and
- * image alternative text. Raw HTML blocks and link-definition records are
- * omitted instead of interpreted.
+ * line breaks, code text, list structure, table cells, link labels, and image
+ * alternative text. Raw HTML blocks and link-definition records are omitted
+ * instead of interpreted.
  */
 export function markdownToPlainText(
   markdown: string,
@@ -79,6 +85,7 @@ export function markdownToPlainText(
   const tokens = plainTextMarked.lexer(markdown) as unknown as PlainTextToken[];
   const state: PlainTextRenderState = {
     includeImageAlt: options.includeImageAlt !== false,
+    listDepth: 0,
   };
   return normalizePlainText(renderTokenSequence(tokens, state));
 }
@@ -134,14 +141,53 @@ function renderToken(
   if (token.type === 'table') {
     return renderTable(token as PlainTextTableToken, state);
   }
-  if (token.items) {
-    return token.items.flatMap((item, index) => [
-      ...(index > 0 ? [{ kind: 'text' as const, value: '\n' }] : []),
-      ...trimSegmentEdges(renderTokenSequence(item.tokens, state)),
-    ]);
+  if (token.type === 'list') {
+    return renderList(token as PlainTextListToken, state);
   }
   if (token.tokens) return renderTokenSequence(token.tokens, state);
   return [{ kind: 'text', value: token.text ?? '' }];
+}
+
+/** Render list markers, ordered starts, and nesting indentation. */
+function renderList(
+  list: PlainTextListToken,
+  state: PlainTextRenderState,
+): PlainTextSegment[] {
+  const orderedStart = typeof list.start === 'number' ? list.start : 1;
+  const itemState: PlainTextRenderState = {
+    ...state,
+    listDepth: state.listDepth + 1,
+  };
+  return list.items.flatMap((item, index) => {
+    const marker = list.ordered ? `${orderedStart + index}. ` : '- ';
+    return [
+      {
+        kind: 'structure',
+        value: `${index > 0 ? '\n' : ''}${'  '.repeat(state.listDepth)}${marker}`,
+      },
+      ...trimSegmentEdges(renderListItemTokens(item.tokens, itemState)),
+    ];
+  });
+}
+
+/** Render list-item tokens with a compact boundary before a nested list. */
+function renderListItemTokens(
+  tokens: PlainTextToken[],
+  state: PlainTextRenderState,
+): PlainTextSegment[] {
+  return tokens.flatMap((token, index) => {
+    const segments = renderToken(token, state);
+    const nextIsList = tokens[index + 1]?.type === 'list';
+    const prefix = index > 0 && token.type === 'list'
+      ? [{ kind: 'structure' as const, value: '\n' }]
+      : [];
+    const suffix = BLOCK_TOKEN_TYPES.has(token.type) &&
+      segments.some((segment) => segment.value) &&
+      !nextIsList
+      ? [{ kind: 'text' as const, value: '\n\n' }]
+      : [];
+    return [...prefix, ...segments, ...suffix];
+  });
 }
 
 /** Render a table with tab-separated cells and line-separated rows. */
@@ -158,13 +204,13 @@ function renderTable(
   ]);
 }
 
-/** Normalize ordinary text while preserving code-token whitespace verbatim. */
+/** Normalize ordinary text while preserving code and structural whitespace. */
 function normalizePlainText(segments: PlainTextSegment[]): string {
   const normalized: PlainTextSegment[] = mergeAdjacentTextSegments(segments).map(
     (segment) =>
-      segment.kind === 'code'
-        ? segment
-        : { kind: 'text', value: normalizeTextSegment(segment.value) },
+      segment.kind === 'text'
+        ? { kind: 'text', value: normalizeTextSegment(segment.value) }
+        : segment,
   );
   return trimSegmentEdges(normalized)
     .map((segment) => segment.value)
@@ -181,7 +227,7 @@ function normalizeTextSegment(value: string): string {
     .replace(/\n{3,}/g, '\n\n');
 }
 
-/** Merge neighboring ordinary-text segments without crossing code boundaries. */
+/** Merge neighboring ordinary-text segments without crossing protected segments. */
 function mergeAdjacentTextSegments(
   segments: PlainTextSegment[],
 ): PlainTextSegment[] {
@@ -196,10 +242,10 @@ function mergeAdjacentTextSegments(
   }, []);
 }
 
-/** Trim structural outer whitespace without changing code segment contents. */
+/** Trim structural outer whitespace without changing protected segment contents. */
 function trimSegmentEdges(segments: PlainTextSegment[]): PlainTextSegment[] {
   return segments.map((segment, index) => {
-    if (segment.kind === 'code') return segment;
+    if (segment.kind !== 'text') return segment;
     let value = segment.value;
     if (index === 0) value = value.trimStart();
     if (index === segments.length - 1) value = value.trimEnd();
