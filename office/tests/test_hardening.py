@@ -143,6 +143,15 @@ def test_rejects_cyclic_array_payloads() -> None:
         render_office_document(cycle)  # type: ignore[arg-type]
 
 
+def test_rejects_excessive_container_nesting() -> None:
+    payload: object = "text"
+    for _ in range(130):
+        payload = [payload]
+
+    with pytest.raises(OfficeDocumentError, match="nesting depth"):
+        render_office_document(payload)  # type: ignore[arg-type]
+
+
 @pytest.mark.parametrize(
     "payload",
     [
