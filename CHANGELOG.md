@@ -4,6 +4,19 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+### Added
+- A tag-triggered, fail-closed GitHub release pipeline now rebuilds and revalidates the npm package, demo, and Inkspan Office wheel from the tagged commit before publishing release assets
+- Release artifacts now include the exact npm tarball, Office wheel, and a SHA-256 checksum manifest
+- GitHub/Sigstore artifact attestations provide verifiable SLSA provenance for every published release artifact without a long-lived signing secret
+
+### Security
+- Release tags must exactly match `package.json`, a corresponding changelog section, semantic-version syntax, and the canonical repository identity
+- Release workflow permissions are scoped to contents, OpenID Connect, and attestations; every third-party action remains pinned to a complete commit SHA
+- npm and PyPI publication are intentionally deferred until their canonical Trusted Publisher and environment-approval configuration is externally established
+
+### Documentation
+- Added the release security, provenance, verification, registry-publishing, MSA, and CWL/naruon interoperability contract
+
 ## [0.4.1] — 2026-08-03
 
 ### Changed
