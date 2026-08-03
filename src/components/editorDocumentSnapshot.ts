@@ -7,15 +7,21 @@ import type {
 } from '../types.js';
 import { editorHtmlToValue } from './editorSerialization.js';
 
-/** Deep-freeze a detached TipTap JSON tree without assuming a fixed schema. */
-function freezeDocumentJson(value: unknown): void {
-  if (value === null || typeof value !== 'object') return;
-  for (const nestedValue of Object.values(
-    value as Record<string, unknown>,
-  )) {
-    freezeDocumentJson(nestedValue);
+/** Deep-freeze a detached TipTap JSON tree without recursive stack growth. */
+function freezeDocumentJson(
+  documentJson: JSONContent,
+): Readonly<JSONContent> {
+  const pendingObjects: object[] = [documentJson];
+  for (let objectIndex = 0; objectIndex < pendingObjects.length; objectIndex += 1) {
+    const currentObject = pendingObjects[objectIndex]!;
+    for (const nestedValue of Object.values(currentObject)) {
+      if (nestedValue !== null && typeof nestedValue === 'object') {
+        pendingObjects.push(nestedValue);
+      }
+    }
+    Object.freeze(currentObject);
   }
-  Object.freeze(value);
+  return documentJson;
 }
 
 /**
@@ -23,7 +29,7 @@ function freezeDocumentJson(value: unknown): void {
  *
  * Markdown is normalized once and reused for the active-mode value and
  * destination-free plain-text projection. TipTap JSON is detached by
- * `Editor.getJSON()` and recursively frozen together with the outer snapshot so
+ * `Editor.getJSON()` and iteratively frozen together with the outer snapshot so
  * host persistence, indexing, and AI workflows cannot mutate shared state.
  */
 export function createEditorDocumentSnapshot(
@@ -44,8 +50,7 @@ export function createEditorDocumentSnapshot(
 
   const html = editor.getHTML();
   const markdown = editorHtmlToValue(html, 'markdown');
-  const documentJson = editor.getJSON() as JSONContent;
-  freezeDocumentJson(documentJson);
+  const documentJson = freezeDocumentJson(editor.getJSON());
   return Object.freeze({
     mode,
     value: mode === 'markdown' ? markdown : html,
