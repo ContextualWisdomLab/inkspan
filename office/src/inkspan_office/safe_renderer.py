@@ -260,7 +260,7 @@ def _validate_excel_cell(value: Any, path: str) -> None:
         except OverflowError as exc:
             raise OfficeDocumentError(
                 f"{path} integer must be exactly representable by Excel's "
-                f"{_EXCEL_MAX_SIGNIFICANT_DIGITS}-significant-digit numeric model"
+                f"{_EXCEL_MAX_SIGNIFICANT_DIGITS} significant-digit numeric model"
             ) from exc
         significant_digits = len(str(abs(value)).rstrip("0"))
         if (
@@ -269,5 +269,5 @@ def _validate_excel_cell(value: Any, path: str) -> None:
         ):
             raise OfficeDocumentError(
                 f"{path} integer must be exactly representable by Excel's "
-                f"{_EXCEL_MAX_SIGNIFICANT_DIGITS}-significant-digit numeric model"
+                f"{_EXCEL_MAX_SIGNIFICANT_DIGITS} significant-digit numeric model"
             )
