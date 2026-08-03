@@ -1,4 +1,4 @@
-import { useEditor } from '@tiptap/react';
+import { type Editor, useEditor } from '@tiptap/react';
 import {
   forwardRef,
   useCallback,
@@ -40,6 +40,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       image,
       className,
       onReady,
+      onDestroy,
       formFieldName,
       formId,
       formFieldDisabled,
@@ -58,12 +59,15 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
   ) {
     const isControlled = value !== undefined;
     const emittingRef = useRef(false);
+    const editorInstanceRef = useRef<Editor | null>(null);
     const modeRef = useLatestRef(mode);
     const onChangeRef = useLatestRef(onChange);
     const onFocusRef = useLatestRef(onFocus);
     const onBlurRef = useLatestRef(onBlur);
     const onSelectionChangeRef = useLatestRef(onSelectionChange);
     const onImageErrorRef = useLatestRef(onImageError);
+    const onReadyRef = useLatestRef(onReady);
+    const onDestroyRef = useLatestRef(onDestroy);
     const formResetValueRef = useLatestRef(formResetValue);
     const onFormResetRef = useLatestRef(onFormReset);
     const reportImageError = useCallback((error: Error) => {
@@ -108,6 +112,15 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       editorProps: {
         attributes: editorAttributes,
       },
+      onCreate: ({ editor: instance }) => {
+        editorInstanceRef.current = instance;
+        onReadyRef.current?.(instance);
+      },
+      onDestroy: () => {
+        const instance = editorInstanceRef.current!;
+        onDestroyRef.current?.(instance);
+        editorInstanceRef.current = null;
+      },
       onUpdate: ({ editor: instance }) => {
         const listener = onChangeRef.current;
         if (!listener) return;
@@ -140,10 +153,6 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     });
 
     useEditorHandle(ref, editor, modeRef);
-
-    useEffect(() => {
-      if (editor && onReady) onReady(editor);
-    }, [editor, onReady]);
 
     useEffect(() => {
       editor?.setEditable(editable);

@@ -133,6 +133,7 @@ function verifyConsumerTypes() {
   validateSafeLinkHref,
   type CwlEditorFormResetEvent,
   type CwlEditorHandle,
+  type CwlEditorProps,
   type CwlEditorSelectionEvent,
   type CwlEditorSelectionSnapshot,
 } from '${packageName}';
@@ -150,10 +151,12 @@ const safeHref: string = validateSafeLinkHref('/documents/current');
 const collaborationGuard = assertCollaborationConfiguration;
 const encodeOptions: EncodeOptions = { mimeType: 'application/octet-stream' };
 const dataUri: string = bytesToDataUri(new Uint8Array([1]), encodeOptions);
+type EditorDestroyCallback = NonNullable<CwlEditorProps['onDestroy']>;
 declare const editorHandle: CwlEditorHandle;
 declare const resetEvent: CwlEditorFormResetEvent;
 declare const selectionEvent: CwlEditorSelectionEvent;
 declare const selectionSnapshot: CwlEditorSelectionSnapshot;
+declare const destroyCallback: EditorDestroyCallback;
 declare const collaborationUser: CollaborationUser;
 void [
   renderMarkdown,
@@ -164,6 +167,7 @@ void [
   resetEvent,
   selectionEvent,
   selectionSnapshot,
+  destroyCallback,
   collaborationUser,
 ];
 `,

@@ -4,6 +4,28 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.9] — 2026-08-04
+
+### Added
+- Host-owned `onDestroy` callbacks for standalone and provider-neutral collaborative editor surfaces
+- A paired, instance-scoped lifecycle contract: `onReady` after TipTap creation and `onDestroy` when that same editor instance is destroyed
+
+### Changed
+- Package version **0.5.9**
+- `onReady` is now bound directly to TipTap's creation event instead of a React effect that could replay when the callback identity changed
+- Readiness and teardown callbacks use live refs without recreating TipTap state, selection, or Yjs bindings
+
+### Reliability
+- Inline or newly memoized `onReady` callbacks no longer cause duplicate subscriptions, telemetry registration, autosave workers, or other instance setup
+- Hosts can attach or replace teardown after hydration and receive the latest callback exactly when the editor is destroyed
+- Collaborative instance-defining changes retain a complete destroy/create pair while ordinary prop changes preserve the current binding
+
+### Tests
+- Standalone and collaborative tests cover one readiness event per instance, no replay after callback replacement, late teardown attachment, teardown replacement, stable instance identity, and one matching destruction event under the repository-wide 100% TypeScript coverage gate
+
+### Documentation
+- Added `docs/editor-instance-lifecycle.md` with React Strict Mode behavior, TipTap ownership, cleanup symmetry, collaborative recreation, security boundaries, CWL/naruon interoperability, and primary references
+
 ## [0.5.8] — 2026-08-04
 
 ### Added
@@ -65,7 +87,7 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 - Node-based `react-dom/server` coverage verifies stable standalone and collaborative shells without ProseMirror markup or initial document-body leakage under the repository-wide 100% TypeScript coverage gate
 
 ### Documentation
-- Added `docs/server-rendering.md` with hydration timing, Next.js client-boundary guidance, layout responsibility, provider lifecycle, and MSA interoperability requirements
+- Added `docs/server-rendering.md` with hydration timing, Next.js client-boundary guidance, provider lifecycle, and CWL/naruon integration contract
 
 ## [0.5.5] — 2026-08-04
 
