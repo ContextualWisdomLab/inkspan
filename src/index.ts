@@ -45,3 +45,4 @@ export type { MarkdownToEmailHtmlOptions } from './markdown/serializer.js';
 
 // Standalone, framework-agnostic base64 / data-URI converter.
 export * from './converter/index.js';
+export { Base64ImageSourceError, validateInlineImageSource } from './extensions/Base64Image.js';
