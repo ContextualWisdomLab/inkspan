@@ -70,16 +70,18 @@ current mode. After hydration, it reads the current editor revision directly.
 ## Callback semantics
 
 TipTap v2 documents `onUpdate` as the content-change event for continuously
-storing current editor output. Inkspan builds one snapshot inside that event and
-passes the same revision to `onChange` and `onDocumentChange`:
+storing current editor output. When `onDocumentChange` is present, Inkspan builds
+one snapshot inside that event and passes the same revision to both callbacks:
 
 1. HTML is read once from the current editor.
 2. Markdown is normalized once through Inkspan's hardened HTML-to-Markdown
    boundary.
 3. Plain text is derived from that normalized Markdown.
-4. `onChange(snapshot.value)` runs for backward compatibility.
+4. `onChange(snapshot.value)` runs for backward compatibility when configured.
 5. `onDocumentChange({ editor, snapshot })` receives the detached snapshot.
 
+An `onChange`-only integration retains its existing active-mode serialization
+path and does not pay the additional Markdown/plain-text projection cost.
 Replacing either callback uses a live React ref and does not recreate the TipTap
 editor, selection, history, or Yjs binding.
 
@@ -117,10 +119,11 @@ platform rather than the editor package.
 ## Performance guidance
 
 Snapshot construction performs HTML serialization, Markdown normalization, and
-plain-text projection. Inkspan does this work only when `onChange` or
-`onDocumentChange` is present, or when the host explicitly calls
-`getSnapshot()`. High-volume hosts should debounce network persistence outside
-Inkspan while retaining the latest snapshot in memory.
+plain-text projection. Inkspan does this work only when `onDocumentChange` is
+present or when the host explicitly calls `getSnapshot()`. Existing
+`onChange`-only integrations retain the active-mode-only serialization path.
+High-volume hosts should debounce network persistence outside Inkspan while
+retaining the latest snapshot in memory.
 
 Do not use `onSelectionChange` as an autosave trigger; selection-only updates do
 not change the document and do not emit `onDocumentChange`.
