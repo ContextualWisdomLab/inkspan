@@ -8,14 +8,17 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 - **Inkspan Office 0.1.0** — a deterministic, network-free Python package and CLI that renders strict machine-readable JSON to DOCX, XLSX, or PPTX through `python-docx`, `openpyxl`, and `python-pptx`
 - Bundled JSON Schema for structured LLM output, plus in-memory and atomic file-writing APIs
 - Formula-injection protection for AI-authored spreadsheet strings and strict rejection of unknown or malformed fields
-- Public Office safety facade that rejects XML-incompatible text, cyclic containers, excessive JSON nesting, invalid freeze-pane coordinates, oversized Excel grids/cells, and integers Excel cannot preserve exactly
+- Public Office safety facade that rejects XML-incompatible text, cyclic containers, excessive JSON nesting, invalid freeze-pane coordinates, oversized Excel grids/cells, Excel-incompatible worksheet names, and integers Excel cannot preserve exactly
+- Canonical OOXML packaging that normalizes generated metadata and ZIP-entry timestamps, producing byte-identical output for the same validated request
 
 ### Fixed
 - Non-overwrite Office writes now use atomic link publication, closing the check-then-replace race that could overwrite a file created concurrently
 - Excel strings longer than 32,767 characters are rejected instead of being silently truncated by `openpyxl`
+- Large integers that would be rounded by Excel's binary64 numeric storage are rejected even when their decimal representation contains trailing zeroes
+- Worksheet names beginning or ending with an apostrophe, or using Excel's reserved `History` name, are rejected before rendering
 
 ### Tests
-- 72 Python tests re-open all generated Office formats and exercise validation, storage limits, atomic publication, CLI, and module entrypoints on minimum Python 3.11 and current stable Python 3.14
+- 82 Python tests re-open all generated Office formats and exercise deterministic packaging, validation, storage limits, atomic publication, CLI, and module entrypoints on minimum Python 3.11 and current stable Python 3.14
 - 100% statement/branch and shipped-symbol docstring coverage are required by CI
 - Hash-locked binary dependencies protect the Office CI jobs from unreviewed package changes
 - Wheel packaging gate verifies that the JSON Schema and MIT license ship with the package
@@ -43,15 +46,3 @@ Commercial host-integration release: a buyer embedding the editor can control it
 
 ### Fixed
 - **`onImageError` paste/drop path** — previously only toolbar file-picker failures reached the host; paste/drop size-guard failures were silently dropped because `buildExtensions` never forwarded `onError` to `Base64Image`. Wired via a live ref so hosts can attach the handler after mount (including `hideToolbar`).
-
-### Changed
-- Package version **0.2.0**
-- README documents the imperative handle, `onImageError`, table ops, and email helper
-- README submodule URL corrected to `ContextualWisdomLab/inkspan`
-
-### Tests
-- 116 real vitest cases driving shipped modules (handle, image errors including paste path, table ops, email HTML)
-
-## [0.1.0] — prior
-
-Initial public surface: Markdown/HTML modes, base64 inline images, standalone converter, bundled Noto Sans fonts, ship gates.
