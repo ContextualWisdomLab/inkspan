@@ -82,6 +82,7 @@ export function htmlToPlainText(
   return markdownToPlainText(htmlToMarkdown(html), options);
 }
 
+/** Render an ordered token sequence while preserving block boundaries. */
 function renderTokenSequence(
   tokens: PlainTextToken[],
   includeImageAlt: boolean,
@@ -96,6 +97,7 @@ function renderTokenSequence(
     .join('');
 }
 
+/** Render one Marked token without emitting source destinations or attributes. */
 function renderToken(
   token: PlainTextToken,
   includeImageAlt: boolean,
@@ -117,6 +119,7 @@ function renderToken(
   return token.text ?? '';
 }
 
+/** Render a table with tab-separated cells and line-separated rows. */
 function renderTable(
   table: PlainTextTableToken,
   includeImageAlt: boolean,
@@ -132,6 +135,7 @@ function renderTable(
     .join('\n');
 }
 
+/** Normalize line endings and redundant spacing in the final projection. */
 function normalizePlainText(value: string): string {
   return value
     .replace(/\r\n?/g, '\n')
