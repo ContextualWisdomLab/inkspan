@@ -1,6 +1,6 @@
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { createRef } from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { CollaborativeCwlEditor } from '../collaboration/CollaborativeCwlEditor.js';
 import type { CwlEditorHandle } from '../types.js';
@@ -9,17 +9,21 @@ import { EditorFormField } from './EditorFormField.js';
 
 afterEach(cleanup);
 
-function submittedValue(form: HTMLFormElement, name: string): FormDataEntryValue | null {
+function submittedValue(
+  form: HTMLFormElement,
+  name: string,
+): FormDataEntryValue | null {
   return new FormData(form).get(name);
 }
 
 describe('native form serialization', () => {
-  it('renders an empty native field safely before an editor exists', () => {
+  it('renders an empty native field safely before an editor or form exists', () => {
     const { container } = render(
       <EditorFormField
         editor={null}
         mode="markdown"
         name="message_body"
+        onFormReset={() => undefined}
       />,
     );
 
@@ -132,7 +136,117 @@ describe('native form serialization', () => {
     );
   });
 
-  it('mirrors the provider-neutral collaborative document into native forms', async () => {
+  it('applies a configured reset document after an allowed native reset', async () => {
+    const editorRef = createRef<CwlEditorHandle>();
+    const onChange = vi.fn();
+    const onFormReset = vi.fn();
+    const { container } = render(
+      <form>
+        <CwlEditor
+          ref={editorRef}
+          mode="markdown"
+          defaultValue="# Draft"
+          onChange={onChange}
+          hideToolbar
+          formFieldName="message_body"
+          formResetValue="# Reset baseline"
+          onFormReset={onFormReset}
+        />
+      </form>,
+    );
+    const form = container.querySelector('form')!;
+
+    await waitFor(() => expect(editorRef.current).toBeTruthy());
+    act(() => {
+      editorRef.current!.setValue('# Changed');
+    });
+    await waitFor(() =>
+      expect(String(submittedValue(form, 'message_body'))).toContain('# Changed'),
+    );
+
+    act(() => {
+      form.reset();
+    });
+
+    await waitFor(() => {
+      expect(editorRef.current!.getValue()).toContain('# Reset baseline');
+      expect(String(submittedValue(form, 'message_body'))).toContain(
+        '# Reset baseline',
+      );
+      expect(onChange).toHaveBeenLastCalledWith(
+        expect.stringContaining('# Reset baseline'),
+      );
+      expect(onFormReset).toHaveBeenCalledTimes(1);
+    });
+    expect(onFormReset.mock.calls[0]![0]).toMatchObject({
+      editor: editorRef.current!.getEditor(),
+      event: expect.objectContaining({ type: 'reset' }),
+    });
+  });
+
+  it('does not mutate or notify when another listener cancels the reset', async () => {
+    const editorRef = createRef<CwlEditorHandle>();
+    const onFormReset = vi.fn();
+    const { container } = render(
+      <form onReset={(event) => event.preventDefault()}>
+        <CwlEditor
+          ref={editorRef}
+          defaultValue="Draft"
+          hideToolbar
+          formFieldName="message_body"
+          formResetValue="Reset baseline"
+          onFormReset={onFormReset}
+        />
+      </form>,
+    );
+    const form = container.querySelector('form')!;
+
+    await waitFor(() => expect(editorRef.current).toBeTruthy());
+    act(() => {
+      editorRef.current!.setValue('Changed');
+    });
+    await waitFor(() => expect(editorRef.current!.getValue()).toBe('Changed'));
+
+    await act(async () => {
+      form.reset();
+      await Promise.resolve();
+    });
+
+    expect(editorRef.current!.getValue()).toBe('Changed');
+    expect(onFormReset).not.toHaveBeenCalled();
+  });
+
+  it('notifies an externally associated host without forcing a reset value', async () => {
+    const editorRef = createRef<CwlEditorHandle>();
+    const onFormReset = vi.fn();
+    const { container } = render(
+      <>
+        <form id="external_compose_form" />
+        <CwlEditor
+          ref={editorRef}
+          defaultValue="Draft"
+          hideToolbar
+          formFieldName="message_body"
+          formId="external_compose_form"
+          onFormReset={onFormReset}
+        />
+      </>,
+    );
+    const form = container.querySelector(
+      '#external_compose_form',
+    ) as HTMLFormElement;
+
+    await waitFor(() => expect(editorRef.current).toBeTruthy());
+    act(() => {
+      editorRef.current!.setValue('Changed');
+      form.reset();
+    });
+
+    await waitFor(() => expect(onFormReset).toHaveBeenCalledTimes(1));
+    expect(editorRef.current!.getValue()).toBe('Changed');
+  });
+
+  it('mirrors and explicitly resets the provider-neutral collaborative document', async () => {
     const collaborationDocument = new Y.Doc();
     const editorRef = createRef<CwlEditorHandle>();
     const { container, unmount } = render(
@@ -143,6 +257,7 @@ describe('native form serialization', () => {
           mode="markdown"
           hideToolbar
           formFieldName="shared_body"
+          formResetValue="Shared reset baseline"
         />
       </form>,
     );
@@ -157,6 +272,16 @@ describe('native form serialization', () => {
         'Shared body',
       ),
     );
+
+    act(() => {
+      form.reset();
+    });
+    await waitFor(() => {
+      expect(editorRef.current!.getValue()).toContain('Shared reset baseline');
+      expect(String(submittedValue(form, 'shared_body'))).toContain(
+        'Shared reset baseline',
+      );
+    });
 
     unmount();
     collaborationDocument.destroy();
