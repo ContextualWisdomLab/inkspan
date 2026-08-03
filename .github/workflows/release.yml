@@ -153,16 +153,6 @@ jobs:
           set -euo pipefail
           cd release
           sha256sum --check SHA256SUMS
-      - name: Require immutable releases
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          gh api \
-            -H 'Accept: application/vnd.github+json' \
-            -H 'X-GitHub-Api-Version: 2026-03-10' \
-            "repos/$GITHUB_REPOSITORY/immutable-releases" \
-            --jq 'select(.enabled == true) | .enabled' | grep -qx true
       - name: Attest release artifacts
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
@@ -207,6 +197,21 @@ jobs:
           gh release edit "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" \
             --draft=false
+
+          release_immutable="$(gh release view "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json isImmutable \
+            --jq '.isImmutable')"
+          if [[ "$release_immutable" != 'true' ]]; then
+            if ! gh release delete "$GITHUB_REF_NAME" \
+              --repo "$GITHUB_REPOSITORY" \
+              --yes; then
+              echo "::error::The mutable release could not be rolled back automatically."
+            fi
+            echo "::error::Repository release immutability is not enabled; the mutable release was rejected."
+            exit 1
+          fi
+
           gh release verify "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY"
           for artifact in release/*.tgz release/*.whl release/SHA256SUMS; do
             gh release verify-asset "$GITHUB_REF_NAME" "$artifact" \
