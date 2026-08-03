@@ -189,29 +189,44 @@ def _validate_xlsx(payload: Mapping[str, Any]) -> None:
     for sheet_index, sheet in enumerate(sheets):
         if not isinstance(sheet, Mapping):
             continue
+        path = f"sheets[{sheet_index}]"
+        _validate_sheet_name_compatibility(sheet.get("name"), path)
         freeze_panes = sheet.get("freeze_panes")
         if isinstance(freeze_panes, str):
-            _validate_freeze_panes(freeze_panes, f"sheets[{sheet_index}].freeze_panes")
+            _validate_freeze_panes(freeze_panes, f"{path}.freeze_panes")
         rows = sheet.get("rows")
         if not isinstance(rows, Sequence) or isinstance(rows, (str, bytes, bytearray)):
             continue
         if len(rows) > _EXCEL_MAX_ROWS:
             raise OfficeDocumentError(
-                f"sheets[{sheet_index}].rows must contain at most {_EXCEL_MAX_ROWS} rows"
+                f"{path}.rows must contain at most {_EXCEL_MAX_ROWS} rows"
             )
         for row_index, row in enumerate(rows):
             if not isinstance(row, Sequence) or isinstance(row, (str, bytes, bytearray)):
                 continue
             if len(row) > _EXCEL_MAX_COLUMNS:
                 raise OfficeDocumentError(
-                    f"sheets[{sheet_index}].rows[{row_index}] must contain at most "
+                    f"{path}.rows[{row_index}] must contain at most "
                     f"{_EXCEL_MAX_COLUMNS} columns"
                 )
             for column_index, value in enumerate(row):
                 _validate_excel_cell(
                     value,
-                    f"sheets[{sheet_index}].rows[{row_index}][{column_index}]",
+                    f"{path}.rows[{row_index}][{column_index}]",
                 )
+
+
+def _validate_sheet_name_compatibility(value: Any, path: str) -> None:
+    """Reject worksheet names that Excel itself reserves or cannot enter."""
+
+    if not isinstance(value, str):
+        return
+    if (
+        value.startswith("'")
+        or value.endswith("'")
+        or value.casefold() == "history"
+    ):
+        raise OfficeDocumentError(f"{path}.name is invalid for Excel: {value!r}")
 
 
 def _validate_freeze_panes(value: str, path: str) -> None:
