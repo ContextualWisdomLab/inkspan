@@ -29,7 +29,7 @@ const marked = new Marked({
 
 marked.use({
   renderer: {
-    html({ text }: Tokens.HTML) {
+    html({ text }: Tokens.HTML | Tokens.Tag) {
       return escapeHtml(text);
     },
     link({ href, title, tokens }: Tokens.Link) {
