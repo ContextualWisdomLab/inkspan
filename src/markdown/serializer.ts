@@ -6,8 +6,8 @@
  *
  * The important guarantees for this project: base64 raster data-URI images
  * survive a full round-trip, external/active images never become network-capable
- * standalone HTML, raw Markdown HTML is escaped, and hyperlink targets use the
- * same safe-URI policy as the editor.
+ * standalone HTML or Markdown, raw Markdown HTML is escaped, and hyperlink
+ * targets use the same safe-URI policy as the editor.
  */
 import { Marked, type Tokens } from 'marked';
 import TurndownService from 'turndown';
@@ -16,6 +16,35 @@ import { validateInlineImageSource } from '../extensions/Base64Image.js';
 import { isSafeLinkHref } from '../extensions/SafeLink.js';
 
 const SERIALIZED_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+
+const REMOVED_HTML_ELEMENTS = new Set([
+  'audio',
+  'base',
+  'canvas',
+  'embed',
+  'iframe',
+  'link',
+  'math',
+  'meta',
+  'noscript',
+  'object',
+  'picture',
+  'script',
+  'source',
+  'style',
+  'svg',
+  'template',
+  'track',
+  'video',
+]);
+
+const ALLOWED_HTML_ATTRIBUTES = new Map<string, ReadonlySet<string>>([
+  ['a', new Set(['href', 'title'])],
+  ['code', new Set(['class'])],
+  ['img', new Set(['alt', 'src', 'title'])],
+  ['input', new Set(['checked', 'type'])],
+  ['ol', new Set(['start'])],
+]);
 
 const editorMarked = new Marked({
   gfm: true,
@@ -76,7 +105,96 @@ export function markdownToHtml(markdown: string): string {
   return marked.parse(markdown, { async: false }) as string;
 }
 
-function createTurndown(): TurndownService {
+/** Format a safe URI as a CommonMark inline-link destination. */
+function formatMarkdownDestination(value: string): string {
+  const escaped = value.replace(/</g, '%3C').replace(/>/g, '%3E');
+  return /[()<>]/u.test(value) ? `<${escaped}>` : escaped;
+}
+
+/** Escape authored text used inside a Markdown link/image label. */
+function escapeMarkdownLabel(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/\[/g, '\\[')
+    .replace(/\]/g, '\\]')
+    .replace(/[\r\n]+/g, ' ');
+}
+
+/** Escape rejected image alternative text as ordinary Markdown text. */
+function escapeMarkdownText(value: string): string {
+  return value
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/([\\`*_[\]{}()#+\-.!>|])/g, '\\$1');
+}
+
+/** Format a bounded Markdown title without permitting line-break injection. */
+function formatMarkdownTitle(value: string | null): string {
+  if (!value) return '';
+  const escaped = value
+    .replace(/[\u0000-\u001f\u007f-\u009f]+/gu, ' ')
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"');
+  return ` "${escaped}"`;
+}
+
+/**
+ * Remove non-text elements and unrelated/resource-bearing attributes from an
+ * inert browser template fragment before Turndown sees it.
+ */
+function sanitizeInertHtmlFragment(fragment: DocumentFragment): DocumentFragment {
+  for (const element of Array.from(fragment.querySelectorAll('*'))) {
+    const elementName = element.localName;
+    if (REMOVED_HTML_ELEMENTS.has(elementName)) {
+      element.remove();
+      continue;
+    }
+
+    const allowedAttributes = ALLOWED_HTML_ATTRIBUTES.get(elementName);
+    for (const attribute of Array.from(element.attributes)) {
+      if (!allowedAttributes?.has(attribute.name.toLowerCase())) {
+        element.removeAttribute(attribute.name);
+      }
+    }
+
+    if (elementName === 'a') {
+      const href = element.getAttribute('href');
+      if (!isSafeLinkHref(href)) {
+        element.removeAttribute('href');
+        element.removeAttribute('title');
+      }
+    } else if (elementName === 'img') {
+      const source = element.getAttribute('src');
+      try {
+        element.setAttribute(
+          'src',
+          validateInlineImageSource(source, SERIALIZED_IMAGE_MAX_BYTES),
+        );
+      } catch {
+        element.removeAttribute('src');
+        element.removeAttribute('title');
+      }
+    } else if (elementName === 'input') {
+      if (element.getAttribute('type')?.toLowerCase() === 'checkbox') {
+        element.setAttribute('type', 'checkbox');
+      } else {
+        element.removeAttribute('type');
+        element.removeAttribute('checked');
+      }
+    }
+  }
+  return fragment;
+}
+
+/** Parse browser HTML into an inert, detached template document fragment. */
+function createInertBrowserFragment(html: string): DocumentFragment | null {
+  /* v8 ignore next -- the browserless path is exercised by packed Node consumers. */
+  if (typeof document === 'undefined') return null;
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  return sanitizeInertHtmlFragment(template.content);
+}
+
+function createTurndown(includeImageAlt: boolean): TurndownService {
   const service = new TurndownService({
     headingStyle: 'atx',
     hr: '---',
@@ -88,28 +206,70 @@ function createTurndown(): TurndownService {
     linkStyle: 'inlined',
   });
   service.use(gfm);
-  // Preserve images verbatim — including long base64 data URIs — instead of
-  // dropping or truncating the src.
+  service.remove(
+    Array.from(REMOVED_HTML_ELEMENTS) as Array<keyof HTMLElementTagNameMap>,
+  );
+  service.addRule('safeLink', {
+    filter: 'a',
+    replacement: (content, node) => {
+      const element = node as unknown as HTMLElement;
+      const href = element.getAttribute('href');
+      if (!isSafeLinkHref(href)) return content;
+      return `[${content}](${formatMarkdownDestination(href)}${formatMarkdownTitle(element.getAttribute('title'))})`;
+    },
+  });
   service.addRule('inlineImage', {
     filter: 'img',
     replacement: (_content, node) => {
-      const el = node as unknown as HTMLElement;
-      const alt = el.getAttribute('alt') ?? '';
-      const src = el.getAttribute('src') ?? '';
-      const title = el.getAttribute('title');
-      if (!src) return '';
-      const titlePart = title ? ` "${title}"` : '';
-      return `![${alt}](${src}${titlePart})`;
+      const element = node as unknown as HTMLElement;
+      const alt = includeImageAlt ? (element.getAttribute('alt') ?? '') : '';
+      const source = element.getAttribute('src');
+      let validatedSource: string;
+      try {
+        validatedSource = validateInlineImageSource(
+          source,
+          SERIALIZED_IMAGE_MAX_BYTES,
+        );
+      } catch {
+        return escapeMarkdownText(alt);
+      }
+      return `![${escapeMarkdownLabel(alt)}](${formatMarkdownDestination(validatedSource)}${formatMarkdownTitle(element.getAttribute('title'))})`;
     },
   });
   return service;
 }
 
-const turndown = createTurndown();
+const turndownWithImageAlt = createTurndown(true);
+const turndownWithoutImageAlt = createTurndown(false);
 
-/** Convert an HTML string to Markdown. */
-export function htmlToMarkdown(html: string): string {
-  return turndown.turndown(html);
+/** Options for {@link htmlToMarkdown}. */
+export interface HtmlToMarkdownOptions {
+  /** Include image alternative text in converted Markdown. Defaults to true. */
+  includeImageAlt?: boolean;
+}
+
+/**
+ * Convert an HTML string to Markdown through an inert, fail-closed boundary.
+ *
+ * In browsers, the raw string is parsed only inside a detached `<template>` and
+ * sanitized before the resulting `DocumentFragment` reaches Turndown. In
+ * browserless Node runtimes, Turndown 7 uses its non-fetching Domino parser.
+ * Both paths emit Markdown links only for Inkspan-safe targets and Markdown
+ * images only for strict inline base64 raster sources.
+ */
+export function htmlToMarkdown(
+  html: string,
+  options: HtmlToMarkdownOptions = {},
+): string {
+  const fragment = createInertBrowserFragment(html);
+  const turndown = options.includeImageAlt === false
+    ? turndownWithoutImageAlt
+    : turndownWithImageAlt;
+  /* v8 ignore next 3 -- packed Node consumer verification exercises this DOM-free fallback. */
+  if (!fragment) {
+    return turndown.turndown(html);
+  }
+  return turndown.turndown(fragment as unknown as HTMLElement);
 }
 
 /** Round-trip helper: Markdown -> safe HTML -> Markdown. */

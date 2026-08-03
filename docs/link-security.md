@@ -3,8 +3,8 @@
 Inkspan treats hyperlink targets and image sources as untrusted content. The
 same policy applies whether content enters through initial Markdown or HTML,
 controlled props, imperative APIs, toolbar commands, paste/autolink rules,
-direct ProseMirror transactions, collaborative Yjs updates, or standalone
-Markdown/email serialization.
+direct ProseMirror transactions, collaborative Yjs updates, standalone
+Markdown/email serialization, or public HTML-to-Markdown conversion.
 
 ## Safe hyperlink policy
 
@@ -62,6 +62,15 @@ The standalone Markdown renderer uses the same validator. Unsafe Markdown
 links are rendered as ordinary text rather than clickable anchors. Safe links
 receive `rel="noopener noreferrer nofollow"`.
 
+`htmlToMarkdown` also uses the validator. In browsers, untrusted HTML is parsed
+inside a detached `<template>` fragment, active/resource-oriented elements and
+unrelated attributes are removed, and only safe anchor targets become Markdown
+links. Rejected targets become ordinary label text and their destinations and
+titles are omitted. Browserless Node/SSR consumers retain Turndown 7's
+non-fetching Domino parser path while the same custom link and image rules apply.
+See [`html-import-security.md`](html-import-security.md) for the complete import
+contract.
+
 ## Image serialization boundary
 
 `markdownToHtml` and `markdownToEmailHtml` emit an `<img>` only when its source
@@ -73,6 +82,11 @@ and payloads above the serializer's 10 MB limit become an inert
 create a remote tracking request or an active-vector image even when it is used
 without mounting the React editor.
 
+The same 10 MB policy now applies in the reverse `htmlToMarkdown` direction.
+Only accepted inline raster sources become Markdown images. Rejected images
+produce escaped alternative text only; their source and title are not forwarded
+to another renderer.
+
 The 10 MB serializer limit matches the editor's default. Hosts using a smaller
 editor `image.maxSizeBytes` remain responsible for applying that same smaller
 limit before passing independently sourced Markdown to the standalone
@@ -80,12 +94,14 @@ serializer.
 
 ## Host responsibilities
 
-- Treat the returned HTML as content, not as an authorization decision.
+- Treat returned HTML or Markdown as content, not as an authorization decision.
 - Apply the host application's Content Security Policy and navigation policy.
 - Decide whether HTTP links are acceptable for the product's deployment; the
   shared Inkspan policy permits them for interoperability.
 - Do not register additional TipTap link protocols unless the host also defines
   and tests a stricter equivalent policy.
+- Render imported Markdown through Inkspan's safe serializers or an equivalently
+  strict downstream renderer.
 - Keep document authorization, collaboration transport, persistence, and audit
   controls in the CWL/naruon host boundary.
 - Avoid logging raw rejected content. Use the typed error's redacted preview.
@@ -94,6 +110,10 @@ serializer.
 
 - TipTap Link extension, including `isAllowedUri` and protocol configuration:
   <https://tiptap.dev/docs/editor/extensions/marks/link>
+- Turndown security policy and browser DOM-parser warning:
+  <https://github.com/mixmark-io/turndown/security>
+- HTML Standard, the inert template-content boundary:
+  <https://html.spec.whatwg.org/multipage/scripting.html#the-template-element>
 - OWASP Cross Site Scripting Prevention Cheat Sheet, URL-context validation and
   allowlisting guidance:
   <https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html>
@@ -113,5 +133,7 @@ The TypeScript 100% statement/branch/function/line coverage gate verifies:
 - command insertion;
 - direct ProseMirror transaction acceptance/rejection;
 - safe and unsafe Markdown/email links;
-- inline raster image preservation and external/active image rejection;
+- inert HTML-to-Markdown import and active/resource element removal;
+- inline raster image preservation and external/active image rejection in both
+  serialization directions;
 - public package exports and shared extension-kit configuration.

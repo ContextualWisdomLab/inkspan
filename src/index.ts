@@ -48,7 +48,10 @@ export {
   normalizeMarkdown,
   markdownToEmailHtml,
 } from './markdown/serializer.js';
-export type { MarkdownToEmailHtmlOptions } from './markdown/serializer.js';
+export type {
+  HtmlToMarkdownOptions,
+  MarkdownToEmailHtmlOptions,
+} from './markdown/serializer.js';
 
 // Deterministic Markdown/HTML -> plain-text projection for AI/indexing paths.
 export {

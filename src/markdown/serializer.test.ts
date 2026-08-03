@@ -93,6 +93,86 @@ describe('safe hyperlink serialization', () => {
   });
 });
 
+describe('secure HTML-to-Markdown ingress', () => {
+  it('preserves safe links while stripping unrelated attributes', () => {
+    const markdown = htmlToMarkdown(
+      '<p data-secret="hidden" onclick="run()">Read <a href="/docs" title="Guide" style="color:red">docs</a>.</p>',
+    );
+
+    expect(markdown).toBe('Read [docs](/docs "Guide").');
+    expect(markdown).not.toContain('hidden');
+    expect(markdown).not.toContain('onclick');
+    expect(markdown).not.toContain('color:red');
+  });
+
+  it('uses an angle-bracket destination when safe text contains Markdown delimiters', () => {
+    expect(
+      htmlToMarkdown('<a href="docs&lt;draft&gt;(current)">draft</a>'),
+    ).toBe('[draft](<docs%3Cdraft%3E(current)>)');
+  });
+
+  it.each([
+    'javascript:alert(1)',
+    'data:text/html;base64,PHNjcmlwdD4=',
+    'file:///etc/passwd',
+    'blob:https://example.com/id',
+    '//attacker.example/path',
+    'https://user:secret@example.com/path',
+    'custom:payload',
+  ])('turns an unsafe HTML anchor into ordinary text: %s', (href) => {
+    const markdown = htmlToMarkdown(`<a href="${href}" title="secret">label</a>`);
+    expect(markdown).toBe('label');
+    expect(markdown).not.toContain(href);
+    expect(markdown).not.toContain('secret');
+  });
+
+  it('omits active and resource-only elements before conversion', () => {
+    const markdown = htmlToMarkdown(`
+<p>before</p>
+<script>script-secret</script>
+<style>.secret{display:block}</style>
+<iframe src="https://example.com/frame">frame-secret</iframe>
+<object data="https://example.com/object">object-secret</object>
+<embed src="https://example.com/embed">
+<svg><text>svg-secret</text></svg>
+<math><mi>math-secret</mi></math>
+<audio src="https://example.com/audio"><source src="https://example.com/source"></audio>
+<video src="https://example.com/video"><track src="https://example.com/track"></video>
+<picture><source srcset="https://example.com/picture"><img src="https://example.com/image" alt="picture-secret"></picture>
+<canvas>canvas-secret</canvas>
+<template><p>template-secret</p></template>
+<noscript>noscript-secret</noscript>
+<link rel="stylesheet" href="https://example.com/style.css">
+<meta http-equiv="refresh" content="0;url=https://example.com">
+<base href="https://example.com/">
+<p>after</p>
+`);
+
+    expect(markdown).toBe('before\n\nafter');
+    expect(markdown).not.toContain('secret');
+    expect(markdown).not.toContain('https://');
+  });
+
+  it('preserves ordered-list starts, code languages, and checked task state only', () => {
+    const markdown = htmlToMarkdown(`
+<ol start="3" onclick="run()"><li>Third</li></ol>
+<pre><code class="language-ts" onclick="run()">const value = 3;</code></pre>
+<ul>
+  <li><input type="checkbox" checked onclick="run()">Done</li>
+  <li><input type="text" value="secret">Plain</li>
+</ul>
+`);
+
+    expect(markdown).toContain('3.  Third');
+    expect(markdown).toContain('```ts');
+    expect(markdown).toContain('const value = 3;');
+    expect(markdown).toContain('[x] Done');
+    expect(markdown).toContain('Plain');
+    expect(markdown).not.toContain('secret');
+    expect(markdown).not.toContain('onclick');
+  });
+});
+
 describe('base64 image round-trip', () => {
   it('markdown image with data URI -> html keeps the data URI intact', () => {
     const md = `![diagram](${PNG_DATA_URI})`;
@@ -123,6 +203,25 @@ describe('base64 image round-trip', () => {
     const html = `<p><img src="${PNG_DATA_URI}" alt="diagram"></p>`;
     const md = htmlToMarkdown(html);
     expect(md).toBe(`![diagram](${PNG_DATA_URI})`);
+  });
+
+  it('escapes valid image labels and title controls without changing the source', () => {
+    const html = `<img src="${PNG_DATA_URI}" alt="A [chart] \\ path&#10;next" title="A &quot;caption&quot; \\ path&#10;next">`;
+    const markdown = htmlToMarkdown(html);
+
+    expect(markdown).toBe(
+      `![A \\[chart\\] \\\\ path next](${PNG_DATA_URI} "A \\\"caption\\\" \\\\ path next")`,
+    );
+  });
+
+  it('turns a rejected HTML image into escaped alternative text only', () => {
+    const markdown = htmlToMarkdown(
+      '<p>Before <img src="https://example.com/tracker.png" alt="A *chart* [secret]&#10;next" title="private"> after.</p>',
+    );
+
+    expect(markdown).toBe('Before A \\*chart\\* \\[secret\\] next after.');
+    expect(markdown).not.toContain('https://');
+    expect(markdown).not.toContain('private');
   });
 
   it('survives a FULL md -> html -> md round-trip with the bytes recoverable', () => {
@@ -181,11 +280,10 @@ describe('markdownToEmailHtml (compose → send)', () => {
 });
 
 describe('inline image turndown rule branches', () => {
-  it('drops an <img> that has no src', () => {
+  it('uses alternative text for an <img> that has no valid src', () => {
     const md = htmlToMarkdown('<p>before<img alt="ignored">after</p>');
     expect(md).not.toContain('![');
-    expect(md).toContain('before');
-    expect(md).toContain('after');
+    expect(md).toBe('beforeignoredafter');
   });
 
   it('preserves a title attribute when present', () => {
