@@ -251,7 +251,7 @@ describe('native form serialization', () => {
     });
     expect(editorRef.current!.getValue()).toBe('Changed');
     expect(onFormReset).not.toHaveBeenCalled();
-    expect(new FormData(resetTarget).size).toBe(0);
+    expect(Array.from(new FormData(resetTarget).entries())).toHaveLength(0);
 
     act(() => {
       resetTarget.reset();
