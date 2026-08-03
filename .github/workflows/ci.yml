@@ -58,7 +58,7 @@ jobs:
       - name: Test
         run: pytest
       - name: Build wheel
-        run: python -m pip wheel . --no-deps --wheel-dir dist
+        run: python -m pip wheel . --no-deps --no-build-isolation --wheel-dir dist
       - name: Verify packaged schema and license
         run: |
           python - <<'PY'
