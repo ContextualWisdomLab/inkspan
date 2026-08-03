@@ -1,11 +1,12 @@
 import Collaboration from '@tiptap/extension-collaboration';
 import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
-import { useEditor } from '@tiptap/react';
+import { type Editor, useEditor } from '@tiptap/react';
 import {
   forwardRef,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { EditorFrame } from '../components/EditorFrame.js';
@@ -116,6 +117,7 @@ export const CollaborativeCwlEditor = forwardRef<
     [scopedProvider],
   );
 
+  const editorInstanceRef = useRef<Editor | null>(null);
   const modeRef = useLatestRef(mode);
   const onChangeRef = useLatestRef(onChange);
   const onFocusRef = useLatestRef(onFocus);
@@ -185,10 +187,13 @@ export const CollaborativeCwlEditor = forwardRef<
         attributes: editorAttributes,
       },
       onCreate: ({ editor: instance }) => {
+        editorInstanceRef.current = instance;
         onReadyRef.current?.(instance);
       },
-      onDestroy: ({ editor: instance }) => {
+      onDestroy: () => {
+        const instance = editorInstanceRef.current!;
         onDestroyRef.current?.(instance);
+        editorInstanceRef.current = null;
       },
       onUpdate: ({ editor: instance }) => {
         onChangeRef.current?.(
