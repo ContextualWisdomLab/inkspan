@@ -9,6 +9,7 @@ export {
   contrastingTextColor,
   countRemoteCollaborators,
   renderCollaborationCursor,
+  renderCollaborationSelection,
   serializeCollaborationUser,
 } from './awareness.js';
 export type { CollaborationCursorUser } from './awareness.js';
