@@ -6,7 +6,7 @@ import { CollaborativeCwlEditor } from './CollaborativeCwlEditor.js';
 afterEach(cleanup);
 
 describe('CollaborativeCwlEditor form accessibility metadata', () => {
-  it('shares the standalone naming and validation contract', async () => {
+  it('shares the standalone language, direction, naming, and validation contract', async () => {
     const collaborationDocument = new Y.Doc();
     const { rerender, unmount } = render(
       <>
@@ -15,6 +15,8 @@ describe('CollaborativeCwlEditor form accessibility metadata', () => {
         <CollaborativeCwlEditor
           document={collaborationDocument}
           hideToolbar
+          languageTag="ja-JP"
+          textDirection="ltr"
           ariaLabelledBy="shared-title"
           ariaDescribedBy="shared-help"
           ariaInvalid="spelling"
@@ -26,6 +28,8 @@ describe('CollaborativeCwlEditor form accessibility metadata', () => {
     const editor = await screen.findByRole('textbox', {
       name: 'Shared decision draft',
     });
+    expect(editor).toHaveAttribute('lang', 'ja-JP');
+    expect(editor).toHaveAttribute('dir', 'ltr');
     expect(editor).toHaveAttribute('aria-describedby', 'shared-help');
     expect(editor).toHaveAttribute('aria-invalid', 'spelling');
     expect(editor).toHaveAttribute('aria-required', 'true');
@@ -36,6 +40,8 @@ describe('CollaborativeCwlEditor form accessibility metadata', () => {
         document={collaborationDocument}
         hideToolbar
         editable={false}
+        languageTag="fa-IR"
+        textDirection="rtl"
         ariaLabel="Shared decision archive"
         ariaInvalid={false}
       />,
@@ -45,6 +51,8 @@ describe('CollaborativeCwlEditor form accessibility metadata', () => {
       const readOnlyEditor = screen.getByRole('textbox', {
         name: 'Shared decision archive',
       });
+      expect(readOnlyEditor).toHaveAttribute('lang', 'fa-IR');
+      expect(readOnlyEditor).toHaveAttribute('dir', 'rtl');
       expect(readOnlyEditor).toHaveAttribute('aria-readonly', 'true');
       expect(readOnlyEditor).toHaveAttribute('aria-invalid', 'false');
       expect(readOnlyEditor).not.toHaveAttribute('aria-labelledby');
