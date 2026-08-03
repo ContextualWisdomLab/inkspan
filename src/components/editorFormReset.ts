@@ -18,16 +18,7 @@ export interface ApplyEditorFormResetOptions {
   onFormReset?: (resetEvent: CwlEditorFormResetEvent) => void;
 }
 
-/**
- * Apply an optional serialized reset document, then notify the host.
- *
- * The caller invokes this only after the associated form's cancelable reset
- * event has completed without `preventDefault()`. Standalone callers may supply
- * a reset value; collaborative callers use notification-only behavior so shared
- * Yjs mutation remains an explicit, authorized host operation. Reset content is
- * installed without re-entering TipTap's update callback and emits one explicit
- * canonical value through `onChange` instead.
- */
+/** Apply an optional serialized reset document, then notify the host. */
 export function applyEditorFormReset({
   editor,
   mode,
@@ -36,9 +27,19 @@ export function applyEditorFormReset({
   onChange,
   onFormReset,
 }: ApplyEditorFormResetOptions): void {
+  console.log('[reset-trace] helper entered');
   if (resetValue !== undefined) {
-    editor.commands.setContent(editorValueToHtml(resetValue, mode), false);
-    onChange?.(editorHtmlToValue(editor.getHTML(), mode));
+    console.log('[reset-trace] before serialization');
+    const resetHtml = editorValueToHtml(resetValue, mode);
+    console.log('[reset-trace] before setContent');
+    editor.commands.setContent(resetHtml, false);
+    console.log('[reset-trace] after setContent');
+    const canonicalValue = editorHtmlToValue(editor.getHTML(), mode);
+    console.log('[reset-trace] before onChange');
+    onChange?.(canonicalValue);
+    console.log('[reset-trace] after onChange');
   }
+  console.log('[reset-trace] before onFormReset');
   onFormReset?.({ editor, event });
+  console.log('[reset-trace] helper exited');
 }
