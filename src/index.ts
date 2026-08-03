@@ -50,6 +50,13 @@ export {
 } from './markdown/serializer.js';
 export type { MarkdownToEmailHtmlOptions } from './markdown/serializer.js';
 
+// Deterministic Markdown/HTML -> plain-text projection for AI/indexing paths.
+export {
+  htmlToPlainText,
+  markdownToPlainText,
+} from './markdown/plainText.js';
+export type { PlainTextOptions } from './markdown/plainText.js';
+
 // Standalone, framework-agnostic base64 / data-URI converter.
 export * from './converter/index.js';
 export { Base64ImageSourceError, validateInlineImageSource } from './extensions/Base64Image.js';
