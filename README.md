@@ -6,9 +6,9 @@
 
 Inkspan is a modular, commercial-grade authoring surface for applications and
 AI systems. It combines a React Markdown/HTML WYSIWYG editor, self-contained
-base64 images, offline multilingual fonts, email-ready serialization, a
-framework-independent data-URI converter, and a deterministic Office Open XML
-renderer for DOCX, XLSX, and PPTX.
+base64 images, provider-neutral Yjs collaboration, offline multilingual
+fonts, email-ready serialization, a framework-independent data-URI converter,
+and a deterministic Office Open XML renderer for DOCX, XLSX, and PPTX.
 
 ## Product capabilities
 
@@ -20,6 +20,8 @@ renderer for DOCX, XLSX, and PPTX.
 - **Host-grade control** — controlled/uncontrolled modes, an imperative ref API,
   AI insertion at the current selection, read-only mode, image-error reporting,
   and access to the underlying TipTap instance.
+- **Provider-neutral collaboration** — opt-in Yjs/TipTap real-time editing with
+  host-owned transport, persistence, authorization, and lifecycle boundaries.
 - **Email output** — Markdown-to-email HTML conversion preserves inline base64
   figures and can emit either a fragment or a complete HTML document.
 - **Offline multilingual typography** — bundled Noto Sans subsets cover Korean,
@@ -42,6 +44,7 @@ runtime.
 | Surface | Import or location | Purpose |
 | --- | --- | --- |
 | React editor | `@contextualwisdomlab/cwl-editor` | Markdown/HTML WYSIWYG component and serializers |
+| Collaboration | `@contextualwisdomlab/cwl-editor/collaboration` | Provider-neutral Yjs collaborative editing |
 | Converter | `@contextualwisdomlab/cwl-editor/converter` | Framework-independent base64/data-URI utilities |
 | Styles | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
 | Full fonts | `@contextualwisdomlab/cwl-editor/fonts.css` | KR/EN/JP/SC/TC/VI offline font bundle |
@@ -144,6 +147,18 @@ are 10 MB, 1600 px, and 0.85. Set `maxDimension: 0` to disable downscaling.
 The table toolbar supports add/delete row, add/delete column, and delete table.
 Toolbar active and disabled states follow editor transactions and selection
 updates.
+
+## Real-time collaboration
+
+Import `CollaborativeCwlEditor` from the opt-in collaboration entrypoint and
+provide a stable, host-owned `Y.Doc`. Inkspan does not open a connection, store
+credentials, persist updates, enforce document authorization, or destroy the
+host provider. Collaborative mode uses Yjs as the sole source of truth and
+disables local StarterKit history.
+
+See [`docs/collaboration.md`](docs/collaboration.md) for the provider contract,
+presence/privacy rules, lifecycle ownership, accessibility behavior, persistence
+model, and CWL/naruon service boundary.
 
 ## Markdown, HTML, and email serialization
 
@@ -341,7 +356,8 @@ wheel.
 
 ```text
 src/
-  components/      React editor and toolbar
+  collaboration/   Provider-neutral Yjs editor, awareness, and presence
+  components/      Shared React editor frame, standalone editor, and toolbar
   converter/       Framework-independent base64/data-URI utilities
   extensions/      TipTap extension kit and inline Base64Image extension
   fonts/           Offline Noto Sans subsets, CSS, license, and attribution
