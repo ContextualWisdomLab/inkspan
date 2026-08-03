@@ -6,7 +6,8 @@
  *
  * The important guarantees for this project: base64 raster data-URI images
  * survive a full round-trip, external/active images never become network-capable
- * HTML, and hyperlink targets use the same safe-URI policy as the editor.
+ * standalone HTML, and hyperlink targets use the same safe-URI policy as the
+ * editor.
  */
 import { Marked, type Tokens } from 'marked';
 import TurndownService from 'turndown';
@@ -15,6 +16,11 @@ import { validateInlineImageSource } from '../extensions/Base64Image.js';
 import { isSafeLinkHref } from '../extensions/SafeLink.js';
 
 const SERIALIZED_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+
+const editorMarked = new Marked({
+  gfm: true,
+  breaks: false,
+});
 
 const marked = new Marked({
   gfm: true,
@@ -49,7 +55,20 @@ marked.use({
   },
 });
 
-/** Convert a Markdown string to safe HTML. */
+/**
+ * Convert Markdown to parser HTML for TipTap ingress.
+ *
+ * This internal path intentionally leaves image/link source attributes for the
+ * TipTap extensions to validate. That lets `Base64Image` report rejected image
+ * sources through the host's `onImageError` callback before discarding them.
+ * Standalone callers must use {@link markdownToHtml}, which emits only safe
+ * links and strict inline raster images.
+ */
+export function markdownToEditorHtml(markdown: string): string {
+  return editorMarked.parse(markdown, { async: false }) as string;
+}
+
+/** Convert a Markdown string to safe standalone HTML. */
 export function markdownToHtml(markdown: string): string {
   return marked.parse(markdown, { async: false }) as string;
 }
