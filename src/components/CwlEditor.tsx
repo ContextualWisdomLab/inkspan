@@ -10,6 +10,7 @@ import type { CwlEditorHandle, CwlEditorProps } from '../types.js';
 import { EditorFrame } from './EditorFrame.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
 import { useEditorHandle } from './useEditorHandle.js';
+import { useLatestRef } from './useLatestRef.js';
 
 /**
  * CwlEditor — a commercial-grade rich-text editor with interchangeable
@@ -39,16 +40,12 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
   ) {
     const isControlled = value !== undefined;
     const emittingRef = useRef(false);
-    const modeRef = useRef(mode);
-    modeRef.current = mode;
-
-    const onChangeRef = useRef(onChange);
-    onChangeRef.current = onChange;
-    const onImageErrorRef = useRef(onImageError);
-    onImageErrorRef.current = onImageError;
+    const modeRef = useLatestRef(mode);
+    const onChangeRef = useLatestRef(onChange);
+    const onImageErrorRef = useLatestRef(onImageError);
     const reportImageError = useCallback((error: Error) => {
       onImageErrorRef.current?.(error);
-    }, []);
+    }, [onImageErrorRef]);
 
     const editor = useEditor({
       editable,
