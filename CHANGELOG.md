@@ -4,6 +4,19 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+### Added
+- Deterministic `markdownToPlainText` and `htmlToPlainText` projections for search indexing, LLM context construction, previews, audit logs, and host-owned analytics
+- Plain-text reading order preserves headings, paragraphs, explicit line breaks, code, list items, table rows/cells, link labels, and optional image alternative text
+
+### Security
+- Plain-text projections omit raw Markdown HTML, link-definition records, hyperlink destinations, HTML attributes, image sources, and inline base64 payloads instead of interpreting or forwarding them
+
+### Tests
+- Markdown and HTML projection behavior, payload non-disclosure, image-alternative policy, structural reading order, and public exports are covered under the repository-wide 100% TypeScript coverage gate
+
+### Documentation
+- Added the CWL/naruon plain-text interoperability, runtime, and downstream data-governance contract
+
 ## [0.4.2] — 2026-08-03
 
 ### Added
