@@ -293,9 +293,29 @@ describe('native form serialization', () => {
     expect(submittedValue(form, 'message_body')).toBe('Changed');
   });
 
-  it('mirrors and explicitly resets the provider-neutral collaborative document', async () => {
+  it('rejects automatic reset values for collaborative editors', () => {
+    const collaborationDocument = new Y.Doc();
+    try {
+      expect(() =>
+        render(
+          <CollaborativeCwlEditor
+            document={collaborationDocument}
+            hideToolbar
+            {...({ formResetValue: 'Shared reset' } as Record<string, unknown>)}
+          />,
+        ),
+      ).toThrow(
+        'collaborative editors require host-authorized reset handling through onFormReset; formResetValue is not allowed',
+      );
+    } finally {
+      collaborationDocument.destroy();
+    }
+  });
+
+  it('reports collaborative form resets without mutating shared state', async () => {
     const collaborationDocument = new Y.Doc();
     const editorRef = createRef<CwlEditorHandle>();
+    const onFormReset = vi.fn();
     const { container, unmount } = render(
       <form>
         <CollaborativeCwlEditor
@@ -304,7 +324,7 @@ describe('native form serialization', () => {
           mode="markdown"
           hideToolbar
           formFieldName="shared_body"
-          formResetValue="Shared reset baseline"
+          onFormReset={onFormReset}
         />
       </form>,
     );
@@ -323,12 +343,9 @@ describe('native form serialization', () => {
     act(() => {
       form.reset();
     });
-    await waitFor(() => {
-      expect(editorRef.current!.getValue()).toContain('Shared reset baseline');
-      expect(String(submittedValue(form, 'shared_body'))).toContain(
-        'Shared reset baseline',
-      );
-    });
+    await waitFor(() => expect(onFormReset).toHaveBeenCalledTimes(1));
+    expect(editorRef.current!.getValue()).toContain('Shared body');
+    expect(String(submittedValue(form, 'shared_body'))).toContain('Shared body');
 
     unmount();
     collaborationDocument.destroy();
