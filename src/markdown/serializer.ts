@@ -194,7 +194,7 @@ function createInertBrowserFragment(html: string): DocumentFragment | null {
   return sanitizeInertHtmlFragment(template.content);
 }
 
-function createTurndown(): TurndownService {
+function createTurndown(includeImageAlt: boolean): TurndownService {
   const service = new TurndownService({
     headingStyle: 'atx',
     hr: '---',
@@ -222,7 +222,7 @@ function createTurndown(): TurndownService {
     filter: 'img',
     replacement: (_content, node) => {
       const element = node as unknown as HTMLElement;
-      const alt = element.getAttribute('alt') ?? '';
+      const alt = includeImageAlt ? (element.getAttribute('alt') ?? '') : '';
       const source = element.getAttribute('src');
       let validatedSource: string;
       try {
@@ -239,7 +239,14 @@ function createTurndown(): TurndownService {
   return service;
 }
 
-const turndown = createTurndown();
+const turndownWithImageAlt = createTurndown(true);
+const turndownWithoutImageAlt = createTurndown(false);
+
+/** Options for {@link htmlToMarkdown}. */
+export interface HtmlToMarkdownOptions {
+  /** Include image alternative text in converted Markdown. Defaults to true. */
+  includeImageAlt?: boolean;
+}
 
 /**
  * Convert an HTML string to Markdown through an inert, fail-closed boundary.
@@ -250,8 +257,14 @@ const turndown = createTurndown();
  * Both paths emit Markdown links only for Inkspan-safe targets and Markdown
  * images only for strict inline base64 raster sources.
  */
-export function htmlToMarkdown(html: string): string {
+export function htmlToMarkdown(
+  html: string,
+  options: HtmlToMarkdownOptions = {},
+): string {
   const fragment = createInertBrowserFragment(html);
+  const turndown = options.includeImageAlt === false
+    ? turndownWithoutImageAlt
+    : turndownWithImageAlt;
   /* v8 ignore next 3 -- packed Node consumer verification exercises this DOM-free fallback. */
   if (!fragment) {
     return turndown.turndown(html);
