@@ -54,7 +54,11 @@ export interface CollaborativeCwlEditorProps
   extends Omit<CwlEditorProps, 'value' | 'defaultValue'> {
   /** Stable, host-owned Yjs document for one authorized collaborative document. */
   document: Doc;
-  /** Optional host-owned provider exposing a Yjs awareness instance. */
+  /**
+   * Stable host-owned provider exposing Yjs awareness. Preserve its reference
+   * across ordinary rerenders; do not pass inline objects such as
+   * `provider={{ awareness }}` because replacing it recreates the binding.
+   */
   provider?: CollaborationProviderLike;
   /** Allowlisted public presence identity; requires `provider`. */
   user?: CollaborationUser;
