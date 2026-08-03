@@ -95,6 +95,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     );
 
     const editor = useEditor({
+      immediatelyRender: false,
       editable,
       extensions: buildExtensions({
         placeholder,
@@ -134,7 +135,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     }, [editor, editable]);
 
     useEffect(() => {
-      /* v8 ignore next -- the editor is created synchronously in supported React clients. */
+      /* v8 ignore next -- the editor is created after client hydration. */
       if (!editor) return;
       editor.setOptions({
         editorProps: {
