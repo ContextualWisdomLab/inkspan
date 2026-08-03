@@ -5,6 +5,7 @@ import {
   type MutableRefObject,
 } from 'react';
 import type { CwlEditorHandle, EditorMode } from '../types.js';
+import { createEditorDocumentSnapshot } from './editorDocumentSnapshot.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
 
 /**
@@ -35,6 +36,8 @@ export function useEditorHandle(
         if (!editor) return '';
         return editorHtmlToValue(editor.getHTML(), 'markdown');
       },
+      getSnapshot: () =>
+        createEditorDocumentSnapshot(editor, modeRef.current),
       setValue: (next: string) => {
         if (!editor) return;
         editor.commands.setContent(
