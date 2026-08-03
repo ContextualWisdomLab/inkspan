@@ -290,6 +290,7 @@ describe('native form serialization', () => {
 
     await waitFor(() => expect(onFormReset).toHaveBeenCalledTimes(1));
     expect(editorRef.current!.getValue()).toBe('Changed');
+    expect(submittedValue(form, 'message_body')).toBe('Changed');
   });
 
   it('mirrors and explicitly resets the provider-neutral collaborative document', async () => {
