@@ -65,11 +65,10 @@ outside the JSON data model.
 ## Verification
 
 Tests author and re-open all three formats with their native libraries, exercise
-metadata and every supported content shape, and cover malformed/ambiguous
-requests, formula neutralization, output rules, and CLI behavior. The package
-requires 100% statement and branch coverage. CI runs the suite on the minimum
-supported Python version and a current Python version, performs `pip check`,
-and builds a wheel containing the JSON Schema.
+metadata and every supported content shape, and cover malformed or ambiguous
+requests, formula neutralization, output rules, and CLI behavior. CI runs the
+suite on Python 3.11 and 3.13 after installing hash-locked binary dependencies,
+performs `pip check`, and builds a wheel containing the JSON Schema and license.
 
 ## Integration boundary
 
