@@ -58,3 +58,24 @@ def test_rejects_integers_excel_cannot_represent_exactly(value: int) -> None:
 
     with pytest.raises(OfficeDocumentError, match="exactly representable"):
         render_office_document(payload)
+
+
+@pytest.mark.parametrize("name", ["'Leading", "Trailing'", "History"])
+def test_rejects_excel_incompatible_worksheet_names(name: str) -> None:
+    payload = {
+        "format": "xlsx",
+        "sheets": [{"name": name, "rows": []}],
+    }
+
+    with pytest.raises(OfficeDocumentError, match="invalid for Excel"):
+        render_office_document(payload)
+
+
+def test_defers_non_string_worksheet_names_to_the_strict_renderer() -> None:
+    payload = {
+        "format": "xlsx",
+        "sheets": [{"name": 7, "rows": []}],
+    }
+
+    with pytest.raises(OfficeDocumentError, match="name must be a string"):
+        render_office_document(payload)
