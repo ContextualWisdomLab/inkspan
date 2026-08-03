@@ -20,7 +20,7 @@ async function dispatchReset(form: HTMLFormElement): Promise<boolean> {
   const allowed = form.dispatchEvent(
     new Event('reset', { bubbles: true, cancelable: true }),
   );
-  await Promise.resolve();
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
   return allowed;
 }
 
@@ -144,53 +144,7 @@ describe('native form serialization', () => {
     );
   });
 
-  it('applies a configured reset document after an allowed native reset', async () => {
-    const editorRef = createRef<CwlEditorHandle>();
-    const onChange = vi.fn();
-    const onFormReset = vi.fn();
-    const { container } = render(
-      <form>
-        <CwlEditor
-          ref={editorRef}
-          mode="markdown"
-          defaultValue="# Draft"
-          onChange={onChange}
-          hideToolbar
-          formFieldName="message_body"
-          formResetValue="# Reset baseline"
-          onFormReset={onFormReset}
-        />
-      </form>,
-    );
-    const form = container.querySelector('form')!;
-
-    await waitFor(() => expect(editorRef.current).toBeTruthy());
-    act(() => {
-      editorRef.current!.setValue('# Changed');
-    });
-    await waitFor(() =>
-      expect(String(submittedValue(form, 'message_body'))).toContain('# Changed'),
-    );
-
-    expect(await dispatchReset(form)).toBe(true);
-
-    await waitFor(() => {
-      expect(editorRef.current!.getValue()).toContain('# Reset baseline');
-      expect(String(submittedValue(form, 'message_body'))).toContain(
-        '# Reset baseline',
-      );
-      expect(onChange).toHaveBeenLastCalledWith(
-        expect.stringContaining('# Reset baseline'),
-      );
-      expect(onFormReset).toHaveBeenCalledTimes(1);
-    });
-    expect(onFormReset.mock.calls[0]![0]).toMatchObject({
-      editor: editorRef.current!.getEditor(),
-      event: expect.objectContaining({ type: 'reset' }),
-    });
-  });
-
-  it('does not mutate or notify when another listener cancels the reset', async () => {
+  it('does not notify when another listener cancels the reset', async () => {
     const editorRef = createRef<CwlEditorHandle>();
     const onFormReset = vi.fn();
     const { container } = render(
@@ -200,7 +154,6 @@ describe('native form serialization', () => {
           defaultValue="Draft"
           hideToolbar
           formFieldName="message_body"
-          formResetValue="Reset baseline"
           onFormReset={onFormReset}
         />
       </form>,
@@ -214,7 +167,6 @@ describe('native form serialization', () => {
     await waitFor(() => expect(editorRef.current!.getValue()).toBe('Changed'));
 
     expect(await dispatchReset(form)).toBe(false);
-
     expect(editorRef.current!.getValue()).toBe('Changed');
     expect(onFormReset).not.toHaveBeenCalled();
   });
@@ -231,7 +183,6 @@ describe('native form serialization', () => {
           defaultValue="Draft"
           hideToolbar
           formId="reset_target"
-          formResetValue="Reset baseline"
           onFormReset={onFormReset}
         />
       </>,
@@ -254,10 +205,8 @@ describe('native form serialization', () => {
     expect(Array.from(new FormData(resetTarget).entries())).toHaveLength(0);
 
     expect(await dispatchReset(resetTarget)).toBe(true);
-    await waitFor(() => {
-      expect(editorRef.current!.getValue()).toBe('Reset baseline');
-      expect(onFormReset).toHaveBeenCalledTimes(1);
-    });
+    expect(editorRef.current!.getValue()).toBe('Changed');
+    expect(onFormReset).toHaveBeenCalledTimes(1);
   });
 
   it('notifies an externally associated host without forcing a reset value', async () => {
@@ -286,7 +235,7 @@ describe('native form serialization', () => {
     });
     expect(await dispatchReset(form)).toBe(true);
 
-    await waitFor(() => expect(onFormReset).toHaveBeenCalledTimes(1));
+    expect(onFormReset).toHaveBeenCalledTimes(1);
     expect(editorRef.current!.getValue()).toBe('Changed');
     expect(submittedValue(form, 'message_body')).toBe('Changed');
   });
@@ -339,7 +288,7 @@ describe('native form serialization', () => {
     );
 
     expect(await dispatchReset(form)).toBe(true);
-    await waitFor(() => expect(onFormReset).toHaveBeenCalledTimes(1));
+    expect(onFormReset).toHaveBeenCalledTimes(1);
     expect(editorRef.current!.getValue()).toContain('Shared body');
     expect(String(submittedValue(form, 'shared_body'))).toContain('Shared body');
 
