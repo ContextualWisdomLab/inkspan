@@ -4,6 +4,29 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-08-03
+
+### Added
+- Host-controlled `ariaLabelledBy`, `ariaDescribedBy`, `ariaErrorMessage`, `ariaInvalid`, and `ariaRequired` props for enterprise form and compose integrations
+- One shared accessibility-attribute contract for standalone and provider-neutral collaborative editor surfaces
+
+### Changed
+- Package version **0.5.1**
+- `editable` now exposes an explicit, live `aria-readonly` state without recreating the TipTap editor or collaborative document binding
+- Accessibility metadata updates after mount are applied to the existing ProseMirror DOM while preserving document state and selection
+
+### Accessibility
+- Non-empty visible-label references take precedence over string labels, following WAI-ARIA accessible-name guidance
+- Blank ID references are omitted instead of producing broken `aria-labelledby`, `aria-describedby`, or `aria-errormessage` relationships
+- Validation supports boolean, `grammar`, and `spelling` `aria-invalid` states plus explicit required semantics
+
+### Tests
+- Shared attribute construction and standalone/collaborative integration are covered under the repository-wide 100% statement/branch/function/line coverage gate
+- Tests verify label precedence, relationship normalization, validation metadata, read-only state, and live prop changes
+
+### Documentation
+- Expanded the accessibility contract with a form integration example, host responsibilities, WAI-ARIA 1.2, APG, WCAG 2.2, and ARIA-in-HTML references
+
 ## [0.5.0] — 2026-08-03
 
 ### Added
@@ -171,10 +194,10 @@ Commercial host-integration release: a buyer embedding the editor can control it
 
 ### Added
 - **`CwlEditorHandle`** via `ref` — `getValue` / `getHTML` / `getMarkdown` / `setValue` / `clear` / `focus` / `blur` / `isEmpty` / `getEditor`
-- **`onImageError`** — size-guard and decode failures are reported to the host (no silent swallow on the commercial path)
-- **Table editing toolbar** — add column after, add row after, delete table (enabled only when the cursor is in a table)
+- **`onImageError`** — image size-guard and decode failures are never silent
+- **Table editing toolbar** — add column after, add row after, delete table (enabled only in-table)
 - **Horizontal rule** toolbar control
-- **Live toolbar state** — re-renders on TipTap `transaction` / `selectionUpdate` so active/disabled UI stays correct
+- **Live toolbar state** — re-renders on TipTap transaction / selectionUpdate so active/disabled UI stays correct
 - **`markdownToEmailHtml`** — Markdown → email body HTML (fragment or full document), preserving inline base64 images for compose→send
 
 ### Fixed
