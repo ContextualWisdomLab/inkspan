@@ -21,6 +21,7 @@ export type {
   CwlEditorHandle,
   CwlEditorProps,
   EditorMode,
+  EditorTextDirection,
   ImageConfig,
 } from './types.js';
 

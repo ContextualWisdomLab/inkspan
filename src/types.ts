@@ -3,6 +3,9 @@ import type { Editor } from '@tiptap/react';
 /** Which document surface the editor reads from and writes to. */
 export type EditorMode = 'markdown' | 'html';
 
+/** Base writing direction exposed by the editable document surface. */
+export type EditorTextDirection = 'ltr' | 'rtl' | 'auto';
+
 /** Native focus transition emitted by an Inkspan editable surface. */
 export interface CwlEditorFocusEvent {
   /** Stable TipTap editor instance that received or lost focus. */
@@ -91,6 +94,13 @@ export interface CwlEditorProps {
   className?: string;
   /** Escape hatch: receive the underlying TipTap editor instance. */
   onReady?: (editor: Editor) => void;
+  /**
+   * BCP 47 language tag for the authored document, such as `ko`, `en-US`, or
+   * `ar-EG`. Blank values are omitted from the editable surface.
+   */
+  languageTag?: string;
+  /** Base writing direction for the authored document. */
+  textDirection?: EditorTextDirection;
   /**
    * String accessible name for the editable region. Ignored when
    * `ariaLabelledBy` references a visible label.
