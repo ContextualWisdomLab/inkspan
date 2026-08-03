@@ -162,10 +162,11 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
           mode: modeRef.current,
           resetValue: formResetValueRef.current,
           event,
+          onChange: onChangeRef.current,
           onFormReset: onFormResetRef.current,
         });
       },
-      [editor, formResetValueRef, modeRef, onFormResetRef],
+      [editor, formResetValueRef, modeRef, onChangeRef, onFormResetRef],
     );
     const observesFormReset =
       formResetValue !== undefined || onFormReset !== undefined;
