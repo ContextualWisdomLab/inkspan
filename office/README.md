@@ -61,7 +61,9 @@ required fields, non-finite numbers, mismatched table widths, invalid worksheet
 names, unsupported block/slide shapes, XML-incompatible text, storage-limit
 violations, and output-extension mismatches are rejected before publication.
 Cyclic Python containers are also rejected because the API accepts JSON-like
-mappings and arrays, not object graphs.
+mappings and arrays, not object graphs. JSON-like containers may be nested to a
+maximum depth of 128, preventing pathological object graphs from exhausting the
+Python call stack before contract validation.
 
 Supported shapes are deliberately small and predictable:
 
