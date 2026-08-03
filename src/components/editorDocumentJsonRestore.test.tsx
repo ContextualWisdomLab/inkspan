@@ -17,6 +17,8 @@ describe('CwlEditor lossless JSON writes', () => {
       />,
     );
     await waitFor(() => expect(editorRef.current?.getEditor()).toBeTruthy());
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith('Original'));
+    onChange.mockClear();
 
     const restoredDocument = {
       type: 'doc',
