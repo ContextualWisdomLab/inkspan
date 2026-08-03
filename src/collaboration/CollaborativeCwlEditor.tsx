@@ -73,6 +73,7 @@ export const CollaborativeCwlEditor = forwardRef<
     image,
     className,
     onReady,
+    onDestroy,
     formFieldName,
     formId,
     formFieldDisabled,
@@ -121,6 +122,8 @@ export const CollaborativeCwlEditor = forwardRef<
   const onBlurRef = useLatestRef(onBlur);
   const onSelectionChangeRef = useLatestRef(onSelectionChange);
   const onImageErrorRef = useLatestRef(onImageError);
+  const onReadyRef = useLatestRef(onReady);
+  const onDestroyRef = useLatestRef(onDestroy);
   const onFormResetRef = useLatestRef(onFormReset);
   const reportImageError = useCallback((error: Error) => {
     onImageErrorRef.current?.(error);
@@ -181,6 +184,12 @@ export const CollaborativeCwlEditor = forwardRef<
       editorProps: {
         attributes: editorAttributes,
       },
+      onCreate: ({ editor: instance }) => {
+        onReadyRef.current?.(instance);
+      },
+      onDestroy: ({ editor: instance }) => {
+        onDestroyRef.current?.(instance);
+      },
       onUpdate: ({ editor: instance }) => {
         onChangeRef.current?.(
           editorHtmlToValue(instance.getHTML(), modeRef.current),
@@ -210,10 +219,6 @@ export const CollaborativeCwlEditor = forwardRef<
   );
 
   useEditorHandle(ref, editor, modeRef);
-
-  useEffect(() => {
-    if (editor && onReady) onReady(editor);
-  }, [editor, onReady]);
 
   useEffect(() => {
     editor?.setEditable(editable);
