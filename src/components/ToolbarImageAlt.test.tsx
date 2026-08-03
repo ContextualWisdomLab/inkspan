@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { Editor } from '@tiptap/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildExtensions } from '../extensions/kit.js';
@@ -41,6 +47,23 @@ describe('image alternative-text toolbar', () => {
     fireEvent.click(button);
     expect(prompt).not.toHaveBeenCalled();
     expect(editor.getHTML()).toBe('<p>Text only</p>');
+  });
+
+  it('ignores activation when the image selection disappears before the click', () => {
+    const editor = createEditor(
+      '<img src="data:image/png;base64,AAAA" alt="Description">',
+    );
+    selectFirstImage(editor);
+    const prompt = vi.spyOn(window, 'prompt');
+    render(<Toolbar editor={editor} />);
+    const button = screen.getByRole('button', {
+      name: 'Edit image alternative text',
+    });
+
+    expect(button).toBeEnabled();
+    vi.spyOn(editor, 'isActive').mockReturnValue(false);
+    fireEvent.click(button);
+    expect(prompt).not.toHaveBeenCalled();
   });
 
   it('prefills and replaces meaningful alternative text without changing src', async () => {
@@ -111,7 +134,9 @@ describe('image alternative-text toolbar', () => {
     const { container } = render(
       <Toolbar editor={editor} image={{ maxDimension: 0 }} />,
     );
-    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const input = container.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
     const file = new File([new Uint8Array([1, 2, 3])], 'figure.png', {
       type: 'image/png',
     });
