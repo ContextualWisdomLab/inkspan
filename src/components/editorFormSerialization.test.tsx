@@ -1,3 +1,4 @@
+import type { Editor } from '@tiptap/react';
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -41,6 +42,44 @@ describe('native form serialization', () => {
     ).toBe('');
   });
 
+  it('commits document transactions to FormData synchronously', () => {
+    let editorHtml = '<p>Initial</p>';
+    let transactionListener:
+      | ((event: { transaction: { docChanged: boolean } }) => void)
+      | undefined;
+    const editor = {
+      getHTML: vi.fn(() => editorHtml),
+      on: vi.fn(
+        (
+          event: string,
+          listener: (event: { transaction: { docChanged: boolean } }) => void,
+        ) => {
+          if (event === 'transaction') transactionListener = listener;
+        },
+      ),
+      off: vi.fn(),
+    } as unknown as Editor;
+    const { container } = render(
+      <form>
+        <EditorFormField
+          editor={editor}
+          mode="html"
+          name="message_body"
+        />
+      </form>,
+    );
+    const form = container.querySelector('form')!;
+
+    expect(submittedValue(form, 'message_body')).toBe('<p>Initial</p>');
+
+    editorHtml = '<p>Changed</p>';
+    transactionListener!({ transaction: { docChanged: false } });
+    expect(submittedValue(form, 'message_body')).toBe('<p>Initial</p>');
+
+    transactionListener!({ transaction: { docChanged: true } });
+    expect(submittedValue(form, 'message_body')).toBe('<p>Changed</p>');
+  });
+
   it('omits the hidden field when no form integration is configured', async () => {
     const { container } = render(
       <CwlEditor defaultValue="Draft" hideToolbar />,
@@ -80,9 +119,7 @@ describe('native form serialization', () => {
     act(() => {
       editorRef.current!.setValue('# Final');
     });
-    await waitFor(() =>
-      expect(String(submittedValue(form, 'message_body'))).toContain('# Final'),
-    );
+    expect(String(submittedValue(form, 'message_body'))).toContain('# Final');
   });
 
   it('supports external form association, disabled submission, and live mode changes', async () => {
