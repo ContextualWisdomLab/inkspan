@@ -4,6 +4,29 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.12] — 2026-08-04
+
+### Added
+- `CwlEditorHandle.setDocumentJson()` for restoring a complete TipTap/ProseMirror document without an HTML or Markdown conversion round-trip
+- `CwlEditorHandle.insertDocumentJson()` for inserting one or more schema-aware JSON nodes at the current selection while preserving the normal document-change callback path
+
+### Changed
+- Package version **0.5.12**
+- The shared standalone and collaborative imperative handle now supports a complete lossless snapshot → persistence → restore workflow
+- JSON replacement mirrors `setValue()` and suppresses update callbacks so loading a saved document does not immediately schedule another save
+
+### Security
+- JSON restore and insertion remain subject to the current ProseMirror schema plus Inkspan's safe-link and strict inline-raster image transaction filters
+- Persisted or model-produced JSON remains client-controlled input; CWL and naruon hosts retain schema migration, authorization, validation, tenant isolation, request-size, retention, logging, and model-use policy
+- Collaborative JSON writes mutate the Yjs-backed document and therefore require explicit host authorization before invocation
+
+### Tests
+- Standalone JSON replacement and multi-node insertion verify structural identity, callback semantics, active-mode independence, and the repository-wide 100% TypeScript coverage gate
+- Empty-handle fallbacks cover both new methods before client hydration or after editor destruction
+
+### Documentation
+- Expanded `docs/document-snapshots.md` with lossless restore, structured insertion, callback behavior, collaboration authorization, schema migration, security boundaries, descriptive identifiers, and primary TipTap references
+
 ## [0.5.11] — 2026-08-04
 
 ### Added

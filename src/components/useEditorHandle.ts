@@ -45,6 +45,10 @@ export function useEditorHandle(
           false,
         );
       },
+      setDocumentJson: (documentJson) => {
+        if (!editor) return;
+        editor.commands.setContent(documentJson, false);
+      },
       insertValue: (next: string) => {
         if (!editor) return;
         editor
@@ -52,6 +56,10 @@ export function useEditorHandle(
           .focus()
           .insertContent(editorValueToHtml(next, modeRef.current))
           .run();
+      },
+      insertDocumentJson: (documentJson) => {
+        if (!editor) return;
+        editor.chain().focus().insertContent(documentJson).run();
       },
       clear: () => {
         editor?.commands.clearContent(true);
