@@ -36,6 +36,8 @@ describe('package entry point', () => {
     expect(typeof api.htmlToMarkdown).toBe('function');
     expect(typeof api.normalizeMarkdown).toBe('function');
     expect(typeof api.markdownToEmailHtml).toBe('function');
+    expect(typeof api.markdownToPlainText).toBe('function');
+    expect(typeof api.htmlToPlainText).toBe('function');
   });
 
   it('re-exports the standalone base64 converter', () => {
