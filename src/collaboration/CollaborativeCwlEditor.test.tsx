@@ -339,9 +339,10 @@ describe('CollaborativeCwlEditor convergence and lifecycle', () => {
         mode="html"
       />,
     );
-    await waitFor(() =>
-      expect(remountedRef.current?.getHTML()).toContain('Shared paragraph'),
-    );
+    await waitFor(() => {
+      expect(remountedRef.current?.getHTML()).toContain('Left concurrent edit');
+      expect(remountedRef.current?.getHTML()).toContain('Right concurrent edit');
+    });
     expect(destroySpy).not.toHaveBeenCalled();
     disconnect();
   });
