@@ -76,6 +76,19 @@ export interface CwlEditorProps {
   className?: string;
   /** Escape hatch: receive the underlying TipTap editor instance. */
   onReady?: (editor: Editor) => void;
-  /** ARIA label for the editable region. */
+  /**
+   * String accessible name for the editable region. Ignored when
+   * `ariaLabelledBy` references a visible label.
+   */
   ariaLabel?: string;
+  /** Space-separated element IDs that visibly label the editable region. */
+  ariaLabelledBy?: string;
+  /** Space-separated element IDs that describe instructions or constraints. */
+  ariaDescribedBy?: string;
+  /** ID of the element containing the current validation error message. */
+  ariaErrorMessage?: string;
+  /** Current validation state exposed through `aria-invalid`. */
+  ariaInvalid?: boolean | 'grammar' | 'spelling';
+  /** Whether the host form requires editor input before submission. */
+  ariaRequired?: boolean;
 }
