@@ -20,9 +20,9 @@ export interface EditorFormFieldProps {
  * full Markdown/HTML serialization on cursor movement while still observing
  * programmatic `setContent(..., false)` calls that intentionally suppress the
  * higher-level TipTap update event. Reset-only unnamed fields skip document
- * serialization entirely. When configured, the field also observes the
- * associated form's cancelable reset event and notifies the editor in the next
- * microtask, after native dispatch and the form reset algorithm have completed.
+ * serialization entirely. When configured, the field observes the associated
+ * form's cancelable reset event and schedules editor work in the next task,
+ * after native dispatch and the reset algorithm have completed.
  */
 export function EditorFormField({
   editor,
@@ -69,21 +69,24 @@ export function EditorFormField({
     /* v8 ignore next -- the effect runs only after the rendered field mounts. */
     if (!field) return;
     const eventRoot = field.getRootNode();
-    let observingReset = true;
+    const pendingResetTasks = new Set<ReturnType<typeof setTimeout>>();
 
     const handleReset = (event: Event) => {
       if (event.target !== field.form) return;
-      queueMicrotask(() => {
-        if (!observingReset || event.defaultPrevented) return;
+      const pendingTask = setTimeout(() => {
+        pendingResetTasks.delete(pendingTask);
+        if (event.defaultPrevented) return;
         if (name !== undefined) field.value = serializedValueRef.current;
         onFormReset(event);
-      });
+      }, 0);
+      pendingResetTasks.add(pendingTask);
     };
 
     eventRoot.addEventListener('reset', handleReset);
     return () => {
-      observingReset = false;
       eventRoot.removeEventListener('reset', handleReset);
+      for (const pendingTask of pendingResetTasks) clearTimeout(pendingTask);
+      pendingResetTasks.clear();
     };
   }, [formId, name, onFormReset]);
 
