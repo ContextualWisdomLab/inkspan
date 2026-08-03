@@ -4,18 +4,31 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.4.2] — 2026-08-03
+
 ### Added
 - A tag-triggered, fail-closed GitHub release pipeline now rebuilds and revalidates the npm package, demo, and Inkspan Office wheel from the tagged commit before publishing release assets
 - Release artifacts now include the exact npm tarball, Office wheel, and a SHA-256 checksum manifest
 - GitHub/Sigstore artifact attestations provide verifiable SLSA provenance for every published release artifact without a long-lived signing secret
 
+### Changed
+- Package version **0.4.2**
+- Release builds and dependency execution now occur in a read-only job; only a separate source-free publication job receives contents-write, OpenID Connect, and attestation permissions
+- Validated artifacts cross the privilege boundary through a one-day GitHub workflow artifact and are checksum-verified again before attestation
+- The package-distribution contract now identifies `@tiptap/core` as an externalized runtime dependency of the editor and collaboration entrypoints while confirming that the converter entrypoint does not require it
+
 ### Security
-- Release tags must exactly match `package.json`, a corresponding changelog section, semantic-version syntax, and the canonical repository identity
-- Release workflow permissions are scoped to contents, OpenID Connect, and attestations; every third-party action remains pinned to a complete commit SHA
+- Release tags must exactly match `package.json`, a corresponding changelog section, semantic-version syntax, the canonical repository identity, and a commit already reachable from `main`
+- Immutable releases must be enabled and verifiable before publication; the workflow creates or resumes a draft, uploads the complete artifact set, publishes once, and refuses to overwrite any published release
+- Release-level and per-asset attestations are verified immediately after publication
+- Every third-party action remains pinned to a complete commit SHA
 - npm and PyPI publication are intentionally deferred until their canonical Trusted Publisher and environment-approval configuration is externally established
 
+### Tests
+- The release gate now inspects the Office wheel for its bundled schema and license and rechecks the artifact checksum manifest after the read-only build job hands files to the privileged publication job
+
 ### Documentation
-- Added the release security, provenance, verification, registry-publishing, MSA, and CWL/naruon interoperability contract
+- Expanded the release security, immutable publication, provenance, verification, registry-publishing, MSA, and CWL/naruon interoperability contract
 
 ## [0.4.1] — 2026-08-03
 
