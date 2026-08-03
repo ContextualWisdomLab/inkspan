@@ -12,20 +12,19 @@ concurrency:
   group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
+env:
+  NODE_VERSION: '22'
+  PYTHON_VERSION: '3.14'
+
 jobs:
-  release:
+  build-release-artifacts:
     if: github.repository == 'ContextualWisdomLab/inkspan'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
-    env:
-      NODE_VERSION: '22'
-      PYTHON_VERSION: '3.14'
     steps:
       - name: Check out the tagged source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
       - name: Set up pnpm
         uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
       - name: Set up Node.js
@@ -39,10 +38,11 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
           cache-dependency-path: office/requirements-ci.txt
-      - name: Verify release identity
+      - name: Verify release identity and main ancestry
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
+          set -euo pipefail
           node <<'NODE'
           const { readFileSync } = require('node:fs');
 
@@ -65,6 +65,11 @@ jobs:
             throw new Error('package.json repository URL must identify the canonical public repository');
           }
           NODE
+          git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main; then
+            echo "::error::Release tags must point to a commit already reachable from main."
+            exit 1
+          fi
       - name: Install JavaScript dependencies
         run: pnpm install --frozen-lockfile
       - name: Typecheck JavaScript package
@@ -79,6 +84,7 @@ jobs:
         run: pnpm build:demo
       - name: Pack npm distribution
         run: |
+          set -euo pipefail
           mkdir -p release
           package_file="$({ npm pack --ignore-scripts --json; } | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => process.stdout.write(JSON.parse(input)[0].filename));")"
           mv "$package_file" release/
@@ -98,15 +104,65 @@ jobs:
         run: |
           coverage run -m pytest
           coverage report
-      - name: Build Office wheel
+      - name: Build and inspect Office wheel
         working-directory: office
         run: |
+          set -euo pipefail
           python -m pip wheel . --no-deps --no-build-isolation --wheel-dir dist
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          wheel = next(Path('dist').glob('*.whl'))
+          with ZipFile(wheel) as archive:
+              names = set(archive.namelist())
+          assert 'inkspan_office/schema.json' in names
+          assert any(name.endswith('.dist-info/licenses/LICENSE') for name in names)
+          PY
           mv dist/*.whl ../release/
       - name: Generate release checksums
         run: |
+          set -euo pipefail
           cd release
           sha256sum -- *.tgz *.whl > SHA256SUMS
+      - name: Transfer exact release artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: inkspan-release-${{ github.ref_name }}
+          path: release/
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  publish-release:
+    if: github.repository == 'ContextualWisdomLab/inkspan'
+    needs: build-release-artifacts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download validated release artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: inkspan-release-${{ github.ref_name }}
+          path: release
+      - name: Verify transferred checksums
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum --check SHA256SUMS
+      - name: Require immutable releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2026-03-10' \
+            "repos/$GITHUB_REPOSITORY/immutable-releases" \
+            --jq 'select(.enabled == true) | .enabled' | grep -qx true
       - name: Attest release artifacts
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
@@ -118,18 +174,41 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           for artifact in release/*.tgz release/*.whl release/SHA256SUMS; do
             gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY"
           done
-      - name: Publish or refresh GitHub release
+      - name: Publish immutable GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" release/* --clobber
-          else
-            gh release create "$GITHUB_REF_NAME" release/* \
+          set -euo pipefail
+          release_state="$(gh release view "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json isDraft \
+            --jq '.isDraft' 2>/dev/null || true)"
+
+          if [[ "$release_state" == 'false' ]]; then
+            echo "::error::A published release already exists; refusing to replace its assets."
+            exit 1
+          fi
+          if [[ -z "$release_state" ]]; then
+            gh release create "$GITHUB_REF_NAME" \
+              --repo "$GITHUB_REPOSITORY" \
+              --draft \
               --verify-tag \
               --generate-notes \
               --title "Inkspan ${GITHUB_REF_NAME#v}"
           fi
+
+          gh release upload "$GITHUB_REF_NAME" release/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
+          gh release edit "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false
+          gh release verify "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY"
+          for artifact in release/*.tgz release/*.whl release/SHA256SUMS; do
+            gh release verify-asset "$GITHUB_REF_NAME" "$artifact" \
+              --repo "$GITHUB_REPOSITORY"
+          done
