@@ -1,3 +1,5 @@
+import type { EditorTextDirection } from '../types.js';
+
 /** Values accepted by the WAI-ARIA `aria-invalid` state on a textbox. */
 export type EditorAriaInvalid = boolean | 'grammar' | 'spelling';
 
@@ -5,6 +7,10 @@ export type EditorAriaInvalid = boolean | 'grammar' | 'spelling';
 export interface EditorAccessibilityOptions {
   /** Fallback accessible name when no host label reference is supplied. */
   defaultLabel: string;
+  /** BCP 47 language tag for the authored document. */
+  languageTag?: string;
+  /** Base writing direction for the authored document. */
+  textDirection?: EditorTextDirection;
   /** Explicit string accessible name for the editable surface. */
   ariaLabel?: string;
   /** Space-separated IDs of visible elements that label the surface. */
@@ -21,7 +27,7 @@ export interface EditorAccessibilityOptions {
   editable: boolean;
 }
 
-/** Normalize a host-supplied accessible-name or ID-reference string. */
+/** Normalize a host-supplied language, accessible-name, or ID-reference string. */
 function normalizedAccessibilityValue(
   value: string | undefined,
 ): string | undefined {
@@ -30,16 +36,18 @@ function normalizedAccessibilityValue(
 }
 
 /**
- * Build the complete ARIA attribute contract shared by standalone and
+ * Build the complete semantic attribute contract shared by standalone and
  * collaborative editor surfaces.
  *
  * A visible label referenced with `aria-labelledby` takes precedence over the
- * fallback string label. Optional ID references are omitted when blank so
- * assistive technologies never receive broken empty relationships.
+ * fallback string label. Optional language and ID-reference values are omitted
+ * when blank so browsers and assistive technologies never receive empty
+ * metadata relationships.
  */
 export function buildEditorAccessibilityAttributes(
   options: EditorAccessibilityOptions,
 ): Record<string, string> {
+  const languageTag = normalizedAccessibilityValue(options.languageTag);
   const labelledBy = normalizedAccessibilityValue(options.ariaLabelledBy);
   const describedBy = normalizedAccessibilityValue(options.ariaDescribedBy);
   const errorMessage = normalizedAccessibilityValue(options.ariaErrorMessage);
@@ -51,6 +59,8 @@ export function buildEditorAccessibilityAttributes(
     'aria-readonly': String(!options.editable),
   };
 
+  if (languageTag) attributes.lang = languageTag;
+  if (options.textDirection) attributes.dir = options.textDirection;
   if (labelledBy) {
     attributes['aria-labelledby'] = labelledBy;
   } else {
