@@ -29,13 +29,25 @@ function run(command, argumentsList, options = {}) {
   });
 }
 
-/** Convert a package export target into a regular expression. */
-function exportTargetPattern(target) {
-  const escaped = target
-    .replace(/^\.\//u, '')
-    .replace(/[.+?^${}()|[\]\\]/gu, '\\$&')
-    .replaceAll('*', '.*');
-  return new RegExp(`^${escaped}$`, 'u');
+/** Match a package export target without constructing executable regex input. */
+function matchesExportTarget(target, filePath) {
+  const normalizedTarget = target.startsWith('./') ? target.slice(2) : target;
+  const targetSegments = normalizedTarget.split('*');
+  if (targetSegments.length === 1) return filePath === normalizedTarget;
+  if (!filePath.startsWith(targetSegments[0])) return false;
+
+  let searchOffset = targetSegments[0].length;
+  for (const segment of targetSegments.slice(1, -1)) {
+    const segmentOffset = filePath.indexOf(segment, searchOffset);
+    if (segmentOffset < 0) return false;
+    searchOffset = segmentOffset + segment.length;
+  }
+
+  const finalSegment = targetSegments.at(-1) ?? '';
+  return (
+    filePath.length >= searchOffset + finalSegment.length &&
+    filePath.endsWith(finalSegment)
+  );
 }
 
 /** Recursively collect file targets from package export conditions. */
@@ -85,9 +97,8 @@ function verifyPackedFiles(filePaths) {
     ...collectExportTargets(packageJson.exports),
   ].filter(Boolean);
   for (const target of publicTargets) {
-    const pattern = exportTargetPattern(target);
     assert.ok(
-      [...filePaths].some((filePath) => pattern.test(filePath)),
+      [...filePaths].some((filePath) => matchesExportTarget(target, filePath)),
       `npm package export target is absent: ${target}`,
     );
   }
