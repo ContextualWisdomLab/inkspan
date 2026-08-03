@@ -5,7 +5,7 @@ import { CwlEditor } from './CwlEditor.js';
 afterEach(cleanup);
 
 describe('CwlEditor form accessibility metadata', () => {
-  it('binds visible labels, instructions, validation, and live prop updates', async () => {
+  it('binds language, direction, labels, validation, and live prop updates', async () => {
     const { rerender } = render(
       <>
         <h2 id="compose-title">Compose body</h2>
@@ -14,6 +14,8 @@ describe('CwlEditor form accessibility metadata', () => {
         <CwlEditor
           defaultValue="Draft"
           hideToolbar
+          languageTag="ko-KR"
+          textDirection="ltr"
           ariaLabel="Fallback body label"
           ariaLabelledBy="compose-title"
           ariaDescribedBy="compose-help"
@@ -25,6 +27,8 @@ describe('CwlEditor form accessibility metadata', () => {
     );
 
     const editor = await screen.findByRole('textbox', { name: 'Compose body' });
+    expect(editor).toHaveAttribute('lang', 'ko-KR');
+    expect(editor).toHaveAttribute('dir', 'ltr');
     expect(editor).not.toHaveAttribute('aria-label');
     expect(editor).toHaveAttribute('aria-describedby', 'compose-help');
     expect(editor).toHaveAttribute('aria-errormessage', 'compose-error');
@@ -40,6 +44,8 @@ describe('CwlEditor form accessibility metadata', () => {
           defaultValue="Draft"
           hideToolbar
           editable={false}
+          languageTag="ar-EG"
+          textDirection="rtl"
           ariaLabel="Archived body"
           ariaInvalid={false}
           ariaRequired={false}
@@ -51,6 +57,8 @@ describe('CwlEditor form accessibility metadata', () => {
       const readOnlyEditor = screen.getByRole('textbox', {
         name: 'Archived body',
       });
+      expect(readOnlyEditor).toHaveAttribute('lang', 'ar-EG');
+      expect(readOnlyEditor).toHaveAttribute('dir', 'rtl');
       expect(readOnlyEditor).toHaveAttribute('aria-readonly', 'true');
       expect(readOnlyEditor).toHaveAttribute('aria-invalid', 'false');
       expect(readOnlyEditor).toHaveAttribute('aria-required', 'false');
