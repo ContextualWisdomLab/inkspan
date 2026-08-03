@@ -1,6 +1,7 @@
 import { EditorContent, type Editor } from '@tiptap/react';
 import { useCallback, type KeyboardEvent, type ReactNode } from 'react';
 import type { EditorMode, ImageConfig } from '../types.js';
+import { EditorFormField } from './EditorFormField.js';
 import { Toolbar } from './Toolbar.js';
 
 /** Props for the visual editor shell shared by every Inkspan editing mode. */
@@ -12,12 +13,15 @@ export interface EditorFrameProps {
   image?: ImageConfig;
   className?: string;
   onImageError?: (error: unknown) => void;
+  formFieldName?: string;
+  formId?: string;
+  formFieldDisabled?: boolean;
   status?: ReactNode;
 }
 
 /**
- * Render the common Inkspan root, toolbar, keyboard surface, and editor content
- * without owning document state or transport lifecycle.
+ * Render the common Inkspan root, toolbar, keyboard surface, native form field,
+ * and editor content without owning document state or transport lifecycle.
  */
 export function EditorFrame({
   editor,
@@ -27,6 +31,9 @@ export function EditorFrame({
   image,
   className,
   onImageError,
+  formFieldName,
+  formId,
+  formFieldDisabled,
   status,
 }: EditorFrameProps) {
   const onKeyDown = useCallback(
@@ -61,6 +68,13 @@ export function EditorFrame({
       className={`cwl-editor${className ? ` ${className}` : ''}`}
       data-mode={mode}
     >
+      <EditorFormField
+        editor={editor}
+        mode={mode}
+        name={formFieldName}
+        formId={formId}
+        disabled={formFieldDisabled}
+      />
       {status}
       {!hideToolbar && editor && editable ? (
         <Toolbar
