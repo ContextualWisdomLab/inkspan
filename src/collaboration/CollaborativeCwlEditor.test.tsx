@@ -348,13 +348,13 @@ describe('CollaborativeCwlEditor convergence and lifecycle', () => {
   });
 
   it('keeps image errors live without recreating the collaborative document binding', async () => {
-    const document = new Y.Doc();
+    const collaborationDocument = new Y.Doc();
     const editorRef = createRef<CwlEditorHandle>();
     const onImageError = vi.fn();
     const { rerender } = render(
       <CollaborativeCwlEditor
         ref={editorRef}
-        document={document}
+        document={collaborationDocument}
         image={{ maxSizeBytes: 1, maxDimension: 0 }}
         hideToolbar
       />,
@@ -383,7 +383,7 @@ describe('CollaborativeCwlEditor convergence and lifecycle', () => {
     rerender(
       <CollaborativeCwlEditor
         ref={editorRef}
-        document={document}
+        document={collaborationDocument}
         image={{ maxSizeBytes: 1, maxDimension: 0 }}
         hideToolbar
         onImageError={onImageError}
