@@ -73,6 +73,20 @@ become escaped alternative text only. Their source and title are omitted. This
 preserves author-supplied non-visual meaning without retaining a tracking URL or
 active payload.
 
+Image alternative text is included by default. Hosts that require a
+metadata-free projection can suppress it without changing the URI policy:
+
+```ts
+import { htmlToMarkdown } from '@contextualwisdomlab/cwl-editor';
+
+const markdown = htmlToMarkdown(untrustedHtml, {
+  includeImageAlt: false,
+});
+```
+
+The same option is forwarded by `htmlToPlainText`, so both accepted and rejected
+images remain silent when `includeImageAlt` is false.
+
 ## CWL and naruon integration responsibilities
 
 - Keep document authorization, tenant isolation, retention, audit, and privacy
@@ -110,6 +124,7 @@ coverage gate verifies:
 
 - safe and rejected hyperlink classes;
 - strict inline-image preservation and rejected-source non-disclosure;
+- image-alternative inclusion and suppression for accepted and rejected images;
 - removal of active/resource-oriented elements;
 - attribute allowlisting, task-list behavior, ordered-list starts, and code
   language preservation;
