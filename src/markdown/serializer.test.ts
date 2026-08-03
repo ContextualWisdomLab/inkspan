@@ -36,6 +36,14 @@ describe('markdown <-> html basics', () => {
     expect(html).toContain('const x = 1;');
   });
 
+  it('escapes raw Markdown HTML instead of interpreting it', () => {
+    const html = markdownToHtml('<script>alert("x")</script>');
+    expect(html).toContain(
+      '&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;',
+    );
+    expect(html).not.toContain('<script>');
+  });
+
   it('converts HTML back to markdown', () => {
     const md = htmlToMarkdown('<h2>Hi</h2><p>a <strong>b</strong></p>');
     expect(md).toContain('## Hi');
