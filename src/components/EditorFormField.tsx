@@ -13,17 +13,7 @@ export interface EditorFormFieldProps {
   onFormReset?: (event: Event) => void;
 }
 
-/**
- * Mirror the current serialized document into a native hidden form field.
- *
- * Named fields subscribe only to document-changing transactions, avoiding a
- * full Markdown/HTML serialization on cursor movement while still observing
- * programmatic `setContent(..., false)` calls that intentionally suppress the
- * higher-level TipTap update event. Reset-only unnamed fields skip document
- * serialization entirely. When configured, the field also observes the
- * associated form's cancelable reset event and notifies the editor in the next
- * microtask, after native dispatch and the form reset algorithm have completed.
- */
+/** Mirror the current serialized document into a native hidden form field. */
 export function EditorFormField({
   editor,
   mode,
@@ -72,11 +62,16 @@ export function EditorFormField({
     let observingReset = true;
 
     const handleReset = (event: Event) => {
+      console.log('[reset-trace] reset event received');
       if (event.target !== field.form) return;
+      console.log('[reset-trace] reset target accepted');
       queueMicrotask(() => {
+        console.log('[reset-trace] reset microtask entered');
         if (!observingReset || event.defaultPrevented) return;
         if (name !== undefined) field.value = serializedValueRef.current;
+        console.log('[reset-trace] before editor callback');
         onFormReset(event);
+        console.log('[reset-trace] after editor callback');
       });
     };
 
