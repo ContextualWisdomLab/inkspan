@@ -27,9 +27,12 @@ describe('buildExtensions', () => {
     expect(isAllowedUri?.('/relative/path', {})).toBe(true);
     expect(isAllowedUri?.('javascript:alert(1)', {})).toBe(false);
     expect(isAllowedUri?.('//attacker.example/path', {})).toBe(false);
-    expect(link?.options.HTMLAttributes).toEqual({
-      rel: 'noopener noreferrer nofollow',
-    });
+    expect(link?.options.HTMLAttributes).toEqual(
+      expect.objectContaining({
+        target: '_blank',
+        rel: 'noopener noreferrer nofollow',
+      }),
+    );
   });
 
   it('applies image defaults when the image config is an empty object', () => {
