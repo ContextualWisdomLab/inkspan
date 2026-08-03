@@ -241,3 +241,7 @@
   white-space: nowrap;
   user-select: none;
 }
+
+.cwl-editor__surface:has(.collaboration-cursor__caret) .cwl-editor__content {
+  padding-top: calc(16px + 1.6em);
+}
