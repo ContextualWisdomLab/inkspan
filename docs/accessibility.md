@@ -16,27 +16,39 @@ Inkspan treats keyboard and assistive-technology behavior as part of its public 
 ### Form integration example
 
 ```tsx
-<h2 id="message-body-label">Message body</h2>
-<p id="message-body-help">Include the decision and supporting evidence.</p>
-<p id="message-body-error">A message body is required.</p>
+<form method="post" action="/messages">
+  <h2 id="message-body-label">Message body</h2>
+  <p id="message-body-help">Include the decision and supporting evidence.</p>
+  <p id="message-body-error">A message body is required.</p>
 
-<CwlEditor
-  languageTag="ko-KR"
-  textDirection="ltr"
-  ariaLabelledBy="message-body-label"
-  ariaDescribedBy="message-body-help"
-  ariaErrorMessage="message-body-error"
-  ariaInvalid={hasBodyError}
-  ariaRequired
-  editable={!isArchived}
-/>
+  <CwlEditor
+    mode="markdown"
+    formFieldName="message_body"
+    languageTag="ko-KR"
+    textDirection="ltr"
+    ariaLabelledBy="message-body-label"
+    ariaDescribedBy="message-body-help"
+    ariaErrorMessage="message-body-error"
+    ariaInvalid={hasBodyError}
+    ariaRequired
+    editable={!isArchived}
+  />
+
+  <button type="submit">Send</button>
+</form>
 ```
+
+When `formFieldName` is supplied, Inkspan renders a native hidden input whose live value is the current document serialized in `mode`. The field participates in `FormData`, ordinary browser submission, and form-library workflows that read native controls. `formId` associates the field with a form elsewhere in the document, and `formFieldDisabled` excludes it from submission using the native disabled-control rule. The same props are inherited by `CollaborativeCwlEditor`; its field follows Yjs-backed document changes rather than a static `value` prop.
+
+The hidden field is a submission bridge, not a second editable control. It is absent from the accessibility tree and does not duplicate the textbox name, description, or validation state. Hidden inputs are barred from native constraint validation, so `ariaRequired`, `ariaInvalid`, visible error copy, business validation, and focus recovery remain host responsibilities. Native form reset does not replace Inkspan document state; controlled hosts should reset `value`, and uncontrolled or collaborative hosts should call the imperative API or mutate the authorized Yjs document.
 
 For Arabic, Persian, Hebrew, or another right-to-left document, use the corresponding BCP 47 language tag and `textDirection="rtl"`. Use `textDirection="auto"` only when the host intentionally delegates base-direction detection to the browser; the HTML algorithm uses the first strongly directional character and is not a substitute for document-level language knowledge.
 
-`ariaLabelledBy` and `ariaDescribedBy` accept space-separated ID references. Blank references are omitted rather than emitted as broken relationships. `ariaInvalid` accepts the WAI-ARIA textbox values `true`, `false`, `grammar`, and `spelling`. The same language, direction, and ARIA props are inherited by `CollaborativeCwlEditor`; presence and connection announcements remain a separate polite status region.
+`ariaLabelledBy` and `ariaDescribedBy` accept space-separated ID references. Blank references are omitted rather than emitted as broken relationships. `ariaInvalid` accepts the WAI-ARIA textbox values `true`, `false`, `grammar`, and `spelling`. The same language, direction, form-serialization, and ARIA props are inherited by `CollaborativeCwlEditor`; presence and connection announcements remain a separate polite status region.
 
 Inkspan does not infer a document language, translate validation copy, or choose writing direction from user identity because those decisions belong to the host's document metadata and locale policy. Inkspan also does not render validation copy because business rules, localization, submit timing, and error recovery belong to the host. Hosts should set `aria-invalid="true"` only after detecting an actual input error and should keep the referenced error text visible and actionable.
+
+Form values are ordinary client-controlled input. Hidden inputs are visible and mutable through developer tools, so servers must authorize the target document, validate the submitted serialization, reapply size limits, and never treat the field as a trust or secrecy boundary. Inline base64 images can make request bodies large; CWL and naruon gateways should align reverse-proxy, application, and persistence limits with the configured image policy before enabling native submission.
 
 ## Formatting toolbar
 
@@ -66,6 +78,7 @@ Inkspan cannot determine the complete accessibility of an embedding application.
 - marking passages in a different language inside serialized HTML when WCAG language-of-parts conformance is required, because a single editor-level language cannot describe mixed-language spans;
 - providing a visible, context-specific label through `ariaLabelledBy` when practical, or a concise `ariaLabel` when no visible label exists;
 - keeping every `ariaLabelledBy`, `ariaDescribedBy`, and `ariaErrorMessage` target present with a descriptive nonnumeric DOM identifier;
+- choosing a descriptive `formFieldName`, validating submitted content server-side, and aligning request-size limits when native form serialization is enabled;
 - identifying errors in text, supplying known correction guidance, and synchronizing `ariaInvalid` with the visible validation state;
 - preserving sufficient contrast when overriding Inkspan CSS variables;
 - announcing persistence and network failures in an appropriate live region;
@@ -76,6 +89,8 @@ Inkspan cannot determine the complete accessibility of an embedding application.
 
 - [WCAG 2.2, Success Criteria 3.1.1 and 3.1.2](https://www.w3.org/TR/WCAG22/#readable) — programmatic language identification for the page and language changes within content.
 - [HTML Living Standard: global `lang` and `dir` attributes](https://html.spec.whatwg.org/multipage/dom.html#global-attributes) — language metadata and the enumerated `ltr`, `rtl`, and `auto` direction states.
+- [HTML Living Standard: hidden input state](https://html.spec.whatwg.org/multipage/input.html#hidden-state-(type=hidden)) — hidden values, form submission participation, and exclusion from constraint validation.
+- [HTML Living Standard: form control infrastructure](https://html.spec.whatwg.org/multipage/form-control-infrastructure.html) — control naming, external form association, disabled controls, and form entry construction.
 - [WAI-ARIA 1.2 textbox role](https://www.w3.org/TR/wai-aria/#textbox) — accessible name, multiline, readonly, required, invalid, description, and error-message states.
 - [WAI-ARIA APG: Accessible names and descriptions](https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions/) — visible-label preference and `aria-labelledby`/`aria-describedby` relationships.
 - [WCAG 2.2, Guideline 3.3 Input Assistance](https://www.w3.org/TR/WCAG22/#input-assistance) — labels or instructions, textual error identification, and correction suggestions.
@@ -83,4 +98,4 @@ Inkspan cannot determine the complete accessibility of an embedding application.
 
 ## Verification
 
-The TypeScript test suite verifies the single-tab-stop invariant, remembered focus, disabled-control fallback, wrapping arrow navigation, Home/End behavior, toggle semantics, toolbar orientation, accessible-name precedence, blank language and ID-reference omission, `lang`/`dir` propagation, validation states, read-only semantics, and live prop updates for standalone and collaborative surfaces under the repository-wide 100% statement/branch/function/line coverage gate.
+The TypeScript test suite verifies the single-tab-stop invariant, remembered focus, disabled-control fallback, wrapping arrow navigation, Home/End behavior, toggle semantics, toolbar orientation, accessible-name precedence, blank language and ID-reference omission, `lang`/`dir` propagation, validation states, read-only semantics, native form submission, disabled/external form behavior, live serialization-mode changes, imperative replacement, collaborative updates, and live prop updates for standalone and collaborative surfaces under the repository-wide 100% statement/branch/function/line coverage gate.
