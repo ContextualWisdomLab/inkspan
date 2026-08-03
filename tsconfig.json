@@ -20,6 +20,15 @@
     "declaration": true,
     "types": ["vitest/globals", "node"]
   },
-  "include": ["src", "test", "demo", "vite.config.ts", "vite.converter.config.ts", "vite.demo.config.ts", "vitest.config.ts"],
+  "include": [
+    "src",
+    "test",
+    "demo",
+    "vite.config.ts",
+    "vite.collaboration.config.ts",
+    "vite.converter.config.ts",
+    "vite.demo.config.ts",
+    "vitest.config.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }
