@@ -10,6 +10,7 @@ import { buildExtensions } from '../extensions/kit.js';
 import type { CwlEditorHandle, CwlEditorProps } from '../types.js';
 import { EditorFrame } from './EditorFrame.js';
 import { buildEditorAccessibilityAttributes } from './editorAccessibility.js';
+import { createEditorDocumentSnapshot } from './editorDocumentSnapshot.js';
 import { applyEditorFormReset } from './editorFormReset.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
 import { useEditorHandle } from './useEditorHandle.js';
@@ -30,6 +31,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       value,
       defaultValue,
       onChange,
+      onDocumentChange,
       onFocus,
       onBlur,
       onSelectionChange,
@@ -62,6 +64,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     const editorInstanceRef = useRef<Editor | null>(null);
     const modeRef = useLatestRef(mode);
     const onChangeRef = useLatestRef(onChange);
+    const onDocumentChangeRef = useLatestRef(onDocumentChange);
     const onFocusRef = useLatestRef(onFocus);
     const onBlurRef = useLatestRef(onBlur);
     const onSelectionChangeRef = useLatestRef(onSelectionChange);
@@ -122,11 +125,23 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         editorInstanceRef.current = null;
       },
       onUpdate: ({ editor: instance }) => {
-        const listener = onChangeRef.current;
-        if (!listener) return;
+        const valueListener = onChangeRef.current;
+        const snapshotListener = onDocumentChangeRef.current;
+        if (!valueListener && !snapshotListener) return;
         emittingRef.current = true;
         try {
-          listener(editorHtmlToValue(instance.getHTML(), modeRef.current));
+          if (snapshotListener) {
+            const snapshot = createEditorDocumentSnapshot(
+              instance,
+              modeRef.current,
+            );
+            valueListener?.(snapshot.value);
+            snapshotListener({ editor: instance, snapshot });
+          } else {
+            valueListener?.(
+              editorHtmlToValue(instance.getHTML(), modeRef.current),
+            );
+          }
         } finally {
           emittingRef.current = false;
         }

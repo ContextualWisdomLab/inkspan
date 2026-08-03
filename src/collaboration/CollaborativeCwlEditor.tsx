@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { EditorFrame } from '../components/EditorFrame.js';
 import { buildEditorAccessibilityAttributes } from '../components/editorAccessibility.js';
+import { createEditorDocumentSnapshot } from '../components/editorDocumentSnapshot.js';
 import { applyEditorFormReset } from '../components/editorFormReset.js';
 import { editorHtmlToValue } from '../components/editorSerialization.js';
 import { useEditorHandle } from '../components/useEditorHandle.js';
@@ -64,6 +65,7 @@ export const CollaborativeCwlEditor = forwardRef<
     connectionStatus,
     mode = 'markdown',
     onChange,
+    onDocumentChange,
     onFocus,
     onBlur,
     onSelectionChange,
@@ -120,6 +122,7 @@ export const CollaborativeCwlEditor = forwardRef<
   const editorInstanceRef = useRef<Editor | null>(null);
   const modeRef = useLatestRef(mode);
   const onChangeRef = useLatestRef(onChange);
+  const onDocumentChangeRef = useLatestRef(onDocumentChange);
   const onFocusRef = useLatestRef(onFocus);
   const onBlurRef = useLatestRef(onBlur);
   const onSelectionChangeRef = useLatestRef(onSelectionChange);
@@ -196,9 +199,21 @@ export const CollaborativeCwlEditor = forwardRef<
         editorInstanceRef.current = null;
       },
       onUpdate: ({ editor: instance }) => {
-        onChangeRef.current?.(
-          editorHtmlToValue(instance.getHTML(), modeRef.current),
-        );
+        const valueListener = onChangeRef.current;
+        const snapshotListener = onDocumentChangeRef.current;
+        if (!valueListener && !snapshotListener) return;
+        if (snapshotListener) {
+          const snapshot = createEditorDocumentSnapshot(
+            instance,
+            modeRef.current,
+          );
+          valueListener?.(snapshot.value);
+          snapshotListener({ editor: instance, snapshot });
+        } else {
+          valueListener?.(
+            editorHtmlToValue(instance.getHTML(), modeRef.current),
+          );
+        }
       },
       onSelectionUpdate: ({ editor: instance }) => {
         const { selection } = instance.state;

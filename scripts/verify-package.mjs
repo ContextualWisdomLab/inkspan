@@ -131,6 +131,8 @@ function verifyConsumerTypes() {
     `import {
   markdownToHtml,
   validateSafeLinkHref,
+  type CwlEditorDocumentChangeEvent,
+  type CwlEditorDocumentSnapshot,
   type CwlEditorFormResetEvent,
   type CwlEditorHandle,
   type CwlEditorProps,
@@ -152,22 +154,33 @@ const collaborationGuard = assertCollaborationConfiguration;
 const encodeOptions: EncodeOptions = { mimeType: 'application/octet-stream' };
 const dataUri: string = bytesToDataUri(new Uint8Array([1]), encodeOptions);
 type EditorDestroyCallback = NonNullable<CwlEditorProps['onDestroy']>;
+type EditorDocumentChangeCallback = NonNullable<
+  CwlEditorProps['onDocumentChange']
+>;
 declare const editorHandle: CwlEditorHandle;
+declare const documentChangeEvent: CwlEditorDocumentChangeEvent;
+declare const documentSnapshot: CwlEditorDocumentSnapshot;
 declare const resetEvent: CwlEditorFormResetEvent;
 declare const selectionEvent: CwlEditorSelectionEvent;
 declare const selectionSnapshot: CwlEditorSelectionSnapshot;
 declare const destroyCallback: EditorDestroyCallback;
+declare const documentChangeCallback: EditorDocumentChangeCallback;
 declare const collaborationUser: CollaborationUser;
+const currentSnapshot: CwlEditorDocumentSnapshot = editorHandle.getSnapshot();
 void [
   renderMarkdown,
   safeHref,
   collaborationGuard,
   dataUri,
   editorHandle,
+  documentChangeEvent,
+  documentSnapshot,
+  currentSnapshot,
   resetEvent,
   selectionEvent,
   selectionSnapshot,
   destroyCallback,
+  documentChangeCallback,
   collaborationUser,
 ];
 `,

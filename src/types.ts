@@ -6,6 +6,30 @@ export type EditorMode = 'markdown' | 'html';
 /** Base writing direction exposed by the editable document surface. */
 export type EditorTextDirection = 'ltr' | 'rtl' | 'auto';
 
+/** Detached, portable representations of one current editor revision. */
+export interface CwlEditorDocumentSnapshot {
+  /** Serialization selected by the host for `value` and `onChange`. */
+  readonly mode: EditorMode;
+  /** Current document serialized in the active `mode`. */
+  readonly value: string;
+  /** Current ProseMirror document serialized as HTML. */
+  readonly html: string;
+  /** Current document serialized as normalized Markdown. */
+  readonly markdown: string;
+  /** Destination-free deterministic reading-order projection. */
+  readonly plainText: string;
+  /** Whether the current editor document has no meaningful content. */
+  readonly isEmpty: boolean;
+}
+
+/** Document-changing update emitted by an Inkspan editable surface. */
+export interface CwlEditorDocumentChangeEvent {
+  /** Stable TipTap editor instance whose document changed. */
+  editor: Editor;
+  /** Frozen detached representations of the same current document revision. */
+  snapshot: CwlEditorDocumentSnapshot;
+}
+
 /** Native focus transition emitted by an Inkspan editable surface. */
 export interface CwlEditorFocusEvent {
   /** Stable TipTap editor instance that received or lost focus. */
@@ -71,6 +95,11 @@ export interface CwlEditorHandle {
   getHTML(): string;
   /** Always Markdown (HTML → Markdown via the shipped serializer). */
   getMarkdown(): string;
+  /**
+   * Frozen active-mode, HTML, Markdown, and plain-text representations from one
+   * current editor revision.
+   */
+  getSnapshot(): CwlEditorDocumentSnapshot;
   /** Replace the whole document from a string in the active `mode`. */
   setValue(value: string): void;
   /**
@@ -98,6 +127,13 @@ export interface CwlEditorProps {
   defaultValue?: string;
   /** Fired on every change with the serialized document in `mode`'s format. */
   onChange?: (value: string) => void;
+  /**
+   * Fired on every document-changing update with one detached, frozen snapshot.
+   * Replacing this callback does not recreate the TipTap editor or Yjs binding.
+   */
+  onDocumentChange?: (
+    changeEvent: CwlEditorDocumentChangeEvent,
+  ) => void;
   /** Fired when the editable ProseMirror region receives focus. */
   onFocus?: (focusEvent: CwlEditorFocusEvent) => void;
   /**
