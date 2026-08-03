@@ -26,6 +26,11 @@ export default defineConfig({
         /^@tiptap\//,
         /^prosemirror-/,
       ],
+      output: {
+        // Match the editor entrypoint's CommonJS default-export handling for
+        // TipTap while retaining native interop for Yjs and host dependencies.
+        interop: 'auto',
+      },
     },
   },
 });
