@@ -34,7 +34,11 @@ export const CollaborativeCwlEditor = forwardRef<
   CwlEditorHandle,
   CollaborativeCwlEditorProps
 >(function CollaborativeCwlEditor(props, ref) {
-  if ('value' in props || 'defaultValue' in props) {
+  const legacyProps = props as { value?: unknown; defaultValue?: unknown };
+  if (
+    legacyProps.value !== undefined ||
+    legacyProps.defaultValue !== undefined
+  ) {
     throw new Error(
       'collaborative editors use the Yjs document as the sole source of truth; value and defaultValue are not allowed',
     );
