@@ -48,17 +48,20 @@ write_office_document(request, "quarterly-brief.docx")
 ```
 
 `render_office_document` returns bytes plus the format, extension, and MIME
-type. `write_office_document` uses a securely-created same-directory temporary
-file and an atomic replacement, so consumers never observe a partially-written
-Office file.
+type. `write_office_document` writes through a securely-created same-directory
+temporary file. A non-overwrite write is atomically published without a
+check-then-replace race; an explicit overwrite uses atomic replacement. A
+consumer therefore never observes a partially-written Office file.
 
 ## Machine-readable contract
 
 The bundled JSON Schema is available as `inkspan_office/schema.json` and through
 `load_schema()` or `inkspan-office --print-schema`. Unknown fields, missing
 required fields, non-finite numbers, mismatched table widths, invalid worksheet
-names, unsupported block/slide shapes, and output-extension mismatches are
-rejected before rendering.
+names, unsupported block/slide shapes, XML-incompatible text, storage-limit
+violations, and output-extension mismatches are rejected before publication.
+Cyclic Python containers are also rejected because the API accepts JSON-like
+mappings and arrays, not object graphs.
 
 Supported shapes are deliberately small and predictable:
 
@@ -74,6 +77,18 @@ whose first non-whitespace character is `=`, `+`, `-`, or `@`. AI-authored
 cells therefore cannot silently become formulas. Formula generation is not part
 of the 0.1 contract.
 
+Inkspan Office also rejects values that a spreadsheet library or Excel would
+silently alter:
+
+- worksheet grids are limited to 1,048,576 rows and 16,384 columns;
+- cell strings are limited to 32,767 characters rather than being truncated;
+- integers may contain at most 15 significant decimal digits unless supplied as
+  strings, preserving identifiers and other exact values;
+- freeze panes must be a simple A1 coordinate within `A1:XFD1048576`.
+
+Use strings for account numbers, document identifiers, or other digit sequences
+whose exact textual representation matters.
+
 ## Verification
 
 ```bash
@@ -84,5 +99,6 @@ python -m pip wheel . --no-deps --wheel-dir dist
 
 The suite re-opens every rendered format with its native library. CI installs
 runtime and test dependencies from `requirements-ci.txt` with wheel hashes on
-Python 3.11 and 3.13, then builds and inspects the distributable wheel. Code and
-all three direct runtime dependencies are MIT-licensed.
+Python 3.11 and 3.13, enforces 100% statement/branch and shipped-symbol docstring
+coverage, then builds and inspects the distributable wheel. Code and all three
+direct runtime dependencies are MIT-licensed.
