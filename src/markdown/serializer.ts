@@ -6,8 +6,8 @@
  *
  * The important guarantees for this project: base64 raster data-URI images
  * survive a full round-trip, external/active images never become network-capable
- * standalone HTML, and hyperlink targets use the same safe-URI policy as the
- * editor.
+ * standalone HTML, raw Markdown HTML is escaped, and hyperlink targets use the
+ * same safe-URI policy as the editor.
  */
 import { Marked, type Tokens } from 'marked';
 import TurndownService from 'turndown';
@@ -29,6 +29,9 @@ const marked = new Marked({
 
 marked.use({
   renderer: {
+    html({ text }: Tokens.HTML) {
+      return escapeHtml(text);
+    },
     link({ href, title, tokens }: Tokens.Link) {
       const content = this.parser.parseInline(tokens);
       if (!isSafeLinkHref(href)) return content;
@@ -61,8 +64,8 @@ marked.use({
  * This internal path intentionally leaves image/link source attributes for the
  * TipTap extensions to validate. That lets `Base64Image` report rejected image
  * sources through the host's `onImageError` callback before discarding them.
- * Standalone callers must use {@link markdownToHtml}, which emits only safe
- * links and strict inline raster images.
+ * Standalone callers must use {@link markdownToHtml}, which escapes raw HTML and
+ * emits only safe links and strict inline raster images.
  */
 export function markdownToEditorHtml(markdown: string): string {
   return editorMarked.parse(markdown, { async: false }) as string;
@@ -130,6 +133,7 @@ export interface MarkdownToEmailHtmlOptions {
  * (inkspan.io, naruon mail, etc.).
  *
  * - Same GFM/CommonMark pipeline as {@link markdownToHtml}
+ * - Raw HTML in Markdown is escaped rather than interpreted
  * - Only strict inline base64 raster images can become `<img>` elements
  * - Unsafe, local, executable, credential-bearing, and protocol-relative link
  *   targets are emitted as ordinary text rather than clickable anchors
