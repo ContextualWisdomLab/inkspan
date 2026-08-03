@@ -1,0 +1,294 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://inkspan.io/schemas/office-document-request.json",
+  "title": "Inkspan Office document request",
+  "description": "Deterministic, network-free contract for AI-authored DOCX, XLSX, and PPTX files.",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "blocks"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "const": "docx"
+        },
+        "title": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "author": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "subject": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/docxBlock"
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "sheets"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "const": "xlsx"
+        },
+        "title": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "author": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "sheets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/sheet"
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "slides"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "const": "pptx"
+        },
+        "title": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "author": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "slides": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/slide"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "scalar": {
+      "type": [
+        "string",
+        "number",
+        "integer",
+        "boolean",
+        "null"
+      ]
+    },
+    "docxBlock": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "text",
+            "level"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "heading"
+            },
+            "text": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "level": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "text"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "paragraph"
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "items"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "bullet_list"
+            },
+            "ordered": {
+              "type": "boolean",
+              "default": false
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "rows"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "table"
+            },
+            "headers": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/scalar"
+              }
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/scalar"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "page_break"
+            }
+          }
+        }
+      ]
+    },
+    "sheet": {
+      "type": "object",
+      "required": [
+        "name",
+        "rows"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/nonEmptyString",
+          "maxLength": 31
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/scalar"
+            }
+          }
+        },
+        "header_row": {
+          "type": "boolean",
+          "default": false
+        },
+        "freeze_panes": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "auto_filter": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "bullet": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "text"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string"
+            },
+            "level": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8,
+              "default": 0
+            }
+          }
+        }
+      ]
+    },
+    "slide": {
+      "type": "object",
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "subtitle": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "bullets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bullet"
+          }
+        }
+      },
+      "not": {
+        "required": [
+          "subtitle",
+          "bullets"
+        ]
+      }
+    }
+  }
+}
