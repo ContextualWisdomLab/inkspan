@@ -7,27 +7,28 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 ## [0.5.5] — 2026-08-04
 
 ### Added
-- Opt-in native form reset integration through `formResetValue`, interpreted in the active Markdown or HTML mode
+- Opt-in standalone native form reset integration through `formResetValue`, interpreted in the active Markdown or HTML mode
 - `onFormReset` lifecycle reporting with the stable TipTap editor and native reset event after an allowed reset completes
-- Shared standalone and provider-neutral collaborative reset behavior, including external form association
+- External form association and reset-only observation without requiring a named submission field
 - Public `CwlEditorFormResetEvent` and a documented host-owned reset contract
 
 ### Changed
 - Package version **0.5.5**
-- Form resets mutate editor state only when an explicit reset value is configured; callback-only integrations remain host-controlled
-- Collaborative reset values intentionally replace shared Yjs document state rather than creating a misleading local-only reset
+- Standalone form resets mutate editor state only when an explicit reset value is configured; callback-only integrations remain host-controlled
+- `CollaborativeCwlEditor` excludes and rejects `formResetValue`; collaborative resets are observational through `onFormReset` so hosts must explicitly authorize any shared Yjs mutation
 
 ### Security
 - Canceled reset events cannot mutate editor or collaborative document state
+- A local native form action cannot silently replace shared Yjs document state
 - Reset values are documented as client-side presentation state and cannot grant authorization, erase protected server state, or bypass collaborative permissions
-- CWL and naruon hosts remain responsible for authorizing shared-document reset operations and synchronizing persistence
+- CWL and naruon hosts remain responsible for authorizing shared-document reset operations and synchronizing transport and persistence
 
 ### Accessibility
 - Reset integrates with native form semantics without adding another focusable or accessibility-tree control
 - Hosts retain ownership of validation cleanup, focus recovery, user confirmation, and visible reset affordances through `onFormReset`
 
 ### Tests
-- Allowed and canceled native resets, `onChange` propagation, callback-only external form handling, and collaborative Yjs reset propagation are covered under the repository-wide 100% TypeScript coverage gate
+- Allowed and canceled standalone resets, `onChange` propagation, callback-only external form handling, queued-reset cleanup, collaborative automatic-reset rejection, and callback-only collaborative observation are covered under the repository-wide 100% TypeScript coverage gate
 
 ### Documentation
 - Expanded the form integration contract with WHATWG reset-event semantics, controlled-state requirements, collaborative authorization, and host responsibilities
