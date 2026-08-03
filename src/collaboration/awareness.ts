@@ -1,5 +1,6 @@
 import type {
   CollaborationAwareness,
+  CollaborationAwarenessEvent,
   CollaborationConnectionStatus,
   CollaborationProviderLike,
   CollaborationUser,
@@ -10,6 +11,11 @@ export interface CollaborationCursorUser {
   id: string;
   name: string;
   color: string;
+}
+
+/** Scoped provider adapter whose listeners can be detached on editor unmount. */
+export interface ScopedCollaborationProvider extends CollaborationProviderLike {
+  dispose(): void;
 }
 
 const CURSOR_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
@@ -57,6 +63,7 @@ export function assertCollaborationConfiguration(
   if (
     !awareness ||
     typeof awareness.clientID !== 'number' ||
+    !(awareness.states instanceof Map) ||
     typeof awareness.getLocalState !== 'function' ||
     typeof awareness.getStates !== 'function' ||
     typeof awareness.setLocalStateField !== 'function' ||
@@ -67,6 +74,62 @@ export function assertCollaborationConfiguration(
       'collaboration provider must expose a compatible Yjs awareness instance',
     );
   }
+}
+
+/**
+ * Isolate TipTap cursor listeners from the host awareness object so upstream
+ * extension listeners can be released even when they do not unregister.
+ */
+export function createScopedCollaborationProvider(
+  provider: CollaborationProviderLike,
+): ScopedCollaborationProvider {
+  const source = provider.awareness;
+  const listeners: Record<
+    CollaborationAwarenessEvent,
+    Set<(...args: unknown[]) => void>
+  > = {
+    change: new Set(),
+    update: new Set(),
+  };
+  const relay = {
+    change: (...args: unknown[]) => {
+      for (const listener of listeners.change) listener(...args);
+    },
+    update: (...args: unknown[]) => {
+      for (const listener of listeners.update) listener(...args);
+    },
+  };
+
+  source.on('change', relay.change);
+  source.on('update', relay.update);
+
+  const awareness: CollaborationAwareness = {
+    get clientID() {
+      return source.clientID;
+    },
+    get states() {
+      return source.states;
+    },
+    getLocalState: () => source.getLocalState(),
+    getStates: () => source.getStates(),
+    setLocalStateField: (field, value) =>
+      source.setLocalStateField(field, value),
+    on: (event, listener) => listeners[event].add(listener),
+    off: (event, listener) => listeners[event].delete(listener),
+  };
+
+  let disposed = false;
+  return {
+    awareness,
+    dispose: () => {
+      if (disposed) return;
+      disposed = true;
+      source.off('change', relay.change);
+      source.off('update', relay.update);
+      listeners.change.clear();
+      listeners.update.clear();
+    },
+  };
 }
 
 /** Count remote awareness clients carrying a valid public user identifier. */
