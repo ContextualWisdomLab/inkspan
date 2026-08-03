@@ -186,7 +186,7 @@ function cloneJsonArray(
   depth: number,
   active: WeakSet<object>,
 ): readonly unknown[] {
-  const descriptors = Object.getOwnPropertyDescriptors(value) as Record<
+  const descriptors = Object.getOwnPropertyDescriptors(value) as unknown as Record<
     PropertyKey,
     PropertyDescriptor
   >;
@@ -217,7 +217,7 @@ function cloneJsonArray(
 function readJsonObjectEntries(
   value: Record<string, unknown>,
 ): Array<[string, unknown]> {
-  const descriptors = Object.getOwnPropertyDescriptors(value) as Record<
+  const descriptors = Object.getOwnPropertyDescriptors(value) as unknown as Record<
     PropertyKey,
     PropertyDescriptor
   >;
