@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import math
 import os
 import re
 from collections.abc import Mapping, Sequence
+from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any
+from zipfile import ZipFile, ZipInfo
 
 from openpyxl.utils import column_index_from_string
 
@@ -17,14 +20,19 @@ OfficeDocumentError = _renderer.OfficeDocumentError
 RenderedOfficeDocument = _renderer.RenderedOfficeDocument
 
 _INVALID_XML_CHARACTER = re.compile(
-    r"[\x00-\x08\x0B\x0C\x0E-\x1F\uD800-\uDFFF\uFFFE\uFFFF]"
+    r"[\x00-\x08\x0B\x0C\x0E-\x1F\uD800-\uDFFF\uFFFE\uFFFF\U000F0000-\U0010FFFF]"
 )
 _EXCEL_COORDINATE = re.compile(r"^([A-Za-z]{1,3})([1-9][0-9]{0,6})$")
+_CORE_TIMESTAMP = re.compile(
+    rb"(<dcterms:(?:created|modified)\b[^>]*>)[^<]*(</dcterms:(?:created|modified)>)"
+)
 _EXCEL_MAX_ROWS = 1_048_576
 _EXCEL_MAX_COLUMNS = 16_384
 _EXCEL_MAX_TEXT_LENGTH = 32_767
 _EXCEL_MAX_SIGNIFICANT_DIGITS = 15
 _MAX_CONTAINER_DEPTH = 128
+_CANONICAL_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
+_CANONICAL_CORE_TIMESTAMP = b"1980-01-01T00:00:00Z"
 
 
 def load_schema() -> dict[str, Any]:
@@ -34,10 +42,16 @@ def load_schema() -> dict[str, Any]:
 
 
 def render_office_document(payload: Mapping[str, Any]) -> RenderedOfficeDocument:
-    """Validate safety invariants before delegating format-specific rendering."""
+    """Validate safety invariants and return canonical deterministic OOXML."""
 
     _validate_request(payload)
-    return _renderer.render_office_document(payload)
+    rendered = _renderer.render_office_document(payload)
+    return RenderedOfficeDocument(
+        rendered.format,
+        rendered.extension,
+        rendered.content_type,
+        _canonicalize_ooxml(rendered.data),
+    )
 
 
 def write_office_document(
@@ -78,6 +92,35 @@ def write_office_document(
     finally:
         temporary.unlink(missing_ok=True)
     return path
+
+
+def _canonicalize_ooxml(data: bytes) -> bytes:
+    """Normalize volatile ZIP and core-property timestamps in an OOXML package."""
+
+    output = BytesIO()
+    with ZipFile(BytesIO(data), "r") as source, ZipFile(output, "w") as target:
+        for source_info in sorted(source.infolist(), key=lambda item: item.filename):
+            content = source.read(source_info.filename)
+            if source_info.filename == "docProps/core.xml":
+                content = _normalize_core_properties(content)
+            target_info = ZipInfo(source_info.filename, _CANONICAL_ZIP_TIMESTAMP)
+            target_info.compress_type = source_info.compress_type
+            target_info.external_attr = source_info.external_attr
+            target_info.internal_attr = source_info.internal_attr
+            target_info.create_system = source_info.create_system
+            target_info.comment = source_info.comment
+            target.writestr(target_info, content)
+        target.comment = source.comment
+    return output.getvalue()
+
+
+def _normalize_core_properties(content: bytes) -> bytes:
+    """Replace generated OOXML creation and modification times with a constant."""
+
+    return _CORE_TIMESTAMP.sub(
+        lambda match: match.group(1) + _CANONICAL_CORE_TIMESTAMP + match.group(2),
+        content,
+    )
 
 
 def _validate_request(payload: Any) -> None:
@@ -198,9 +241,20 @@ def _validate_excel_cell(value: Any, path: str) -> None:
             f"{path} must contain at most {_EXCEL_MAX_TEXT_LENGTH} characters"
         )
     if isinstance(value, int) and not isinstance(value, bool):
-        significant_digits = len(str(abs(value)).rstrip("0"))
-        if significant_digits > _EXCEL_MAX_SIGNIFICANT_DIGITS:
+        try:
+            floating_value = float(value)
+        except OverflowError as exc:
             raise OfficeDocumentError(
-                f"{path} integer must fit within Excel's "
-                f"{_EXCEL_MAX_SIGNIFICANT_DIGITS} significant decimal digits"
+                f"{path} integer must be exactly representable by Excel's "
+                f"{_EXCEL_MAX_SIGNIFICANT_DIGITS}-significant-digit numeric model"
+            ) from exc
+        significant_digits = len(str(abs(value)).rstrip("0"))
+        if (
+            not math.isfinite(floating_value)
+            or int(floating_value) != value
+            or significant_digits > _EXCEL_MAX_SIGNIFICANT_DIGITS
+        ):
+            raise OfficeDocumentError(
+                f"{path} integer must be exactly representable by Excel's "
+                f"{_EXCEL_MAX_SIGNIFICANT_DIGITS}-significant-digit numeric model"
             )
