@@ -52,7 +52,7 @@ jobs:
           cache: pip
           cache-dependency-path: office/requirements-ci.txt
       - name: Install hash-locked dependencies
-        run: python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt
+        run: "python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt"
       - name: Verify dependency consistency
         run: python -m pip check
       - name: Verify 100% docstring coverage
