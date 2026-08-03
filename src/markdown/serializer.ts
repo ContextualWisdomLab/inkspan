@@ -4,20 +4,74 @@
  * Uses `marked` (CommonMark + GFM) for Markdown -> HTML and `turndown`
  * (+ GFM plugin for tables/strikethrough) for HTML -> Markdown. Both are MIT.
  *
- * The important guarantee for this project: **base64 data-URI images survive a
- * full round-trip** in both directions, so an embedded figure stays inline and
- * remains readable by a downstream LLM.
+ * The important guarantees for this project: base64 raster data-URI images
+ * survive a full round-trip, external/active images never become network-capable
+ * standalone HTML, raw Markdown HTML is escaped, and hyperlink targets use the
+ * same safe-URI policy as the editor.
  */
-import { Marked } from 'marked';
+import { Marked, type Tokens } from 'marked';
 import TurndownService from 'turndown';
 import { gfm } from 'turndown-plugin-gfm';
+import { validateInlineImageSource } from '../extensions/Base64Image.js';
+import { isSafeLinkHref } from '../extensions/SafeLink.js';
+
+const SERIALIZED_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+
+const editorMarked = new Marked({
+  gfm: true,
+  breaks: false,
+});
 
 const marked = new Marked({
   gfm: true,
   breaks: false,
 });
 
-/** Convert a Markdown string to HTML. */
+marked.use({
+  renderer: {
+    html({ text }: Tokens.HTML | Tokens.Tag) {
+      return escapeHtml(text);
+    },
+    link({ href, title, tokens }: Tokens.Link) {
+      const content = this.parser.parseInline(tokens);
+      if (!isSafeLinkHref(href)) return content;
+      const titleAttribute = title
+        ? ` title="${escapeHtml(title)}"`
+        : '';
+      return `<a href="${escapeHtml(href)}"${titleAttribute} rel="noopener noreferrer nofollow">${content}</a>`;
+    },
+    image({ href, title, text }: Tokens.Image) {
+      let source: string;
+      try {
+        source = validateInlineImageSource(
+          href,
+          SERIALIZED_IMAGE_MAX_BYTES,
+        );
+      } catch {
+        return `<span data-cwl-rejected-image="true">${escapeHtml(text)}</span>`;
+      }
+      const titleAttribute = title
+        ? ` title="${escapeHtml(title)}"`
+        : '';
+      return `<img src="${escapeHtml(source)}" alt="${escapeHtml(text)}"${titleAttribute}>`;
+    },
+  },
+});
+
+/**
+ * Convert Markdown to parser HTML for TipTap ingress.
+ *
+ * This internal path intentionally leaves image/link source attributes for the
+ * TipTap extensions to validate. That lets `Base64Image` report rejected image
+ * sources through the host's `onImageError` callback before discarding them.
+ * Standalone callers must use {@link markdownToHtml}, which escapes raw HTML and
+ * emits only safe links and strict inline raster images.
+ */
+export function markdownToEditorHtml(markdown: string): string {
+  return editorMarked.parse(markdown, { async: false }) as string;
+}
+
+/** Convert a Markdown string to safe standalone HTML. */
 export function markdownToHtml(markdown: string): string {
   return marked.parse(markdown, { async: false }) as string;
 }
@@ -58,7 +112,7 @@ export function htmlToMarkdown(html: string): string {
   return turndown.turndown(html);
 }
 
-/** Round-trip helper: Markdown -> HTML -> Markdown (useful in tests/tools). */
+/** Round-trip helper: Markdown -> safe HTML -> Markdown. */
 export function normalizeMarkdown(markdown: string): string {
   return htmlToMarkdown(markdownToHtml(markdown));
 }
@@ -79,8 +133,10 @@ export interface MarkdownToEmailHtmlOptions {
  * (inkspan.io, naruon mail, etc.).
  *
  * - Same GFM/CommonMark pipeline as {@link markdownToHtml}
- * - **Base64 data-URI images are preserved** so figures stay inline in the
- *   message body without a separate attachment pipeline
+ * - Raw HTML in Markdown is escaped rather than interpreted
+ * - Only strict inline base64 raster images can become `<img>` elements
+ * - Unsafe, local, executable, credential-bearing, and protocol-relative link
+ *   targets are emitted as ordinary text rather than clickable anchors
  * - Returns a body fragment by default; set `fullDocument: true` for a
  *   self-contained document shell
  *

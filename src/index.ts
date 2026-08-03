@@ -31,6 +31,13 @@ export {
   imageFileToInlineDataUri,
 } from './extensions/Base64Image.js';
 export type { Base64ImageOptions } from './extensions/Base64Image.js';
+export {
+  SafeLink,
+  SafeLinkHrefError,
+  isSafeLinkHref,
+  safeLinkPluginKey,
+  validateSafeLinkHref,
+} from './extensions/SafeLink.js';
 export { buildExtensions } from './extensions/kit.js';
 export type { BuildExtensionsOptions } from './extensions/kit.js';
 
