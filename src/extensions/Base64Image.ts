@@ -16,7 +16,7 @@ import {
 } from '../converter/base64.js';
 
 const INLINE_RASTER_SOURCE_PATTERN =
-  /^data:image\/(?:png|jpe?g|gif|webp|avif|apng|bmp|x-icon|vnd\.microsoft\.icon);base64,(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/i;
+  /^data:image\/(?:png|jpe?g|gif|webp|avif|apng|bmp|x-icon|vnd\.microsoft\.icon);base64,(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)$/i;
 
 /** Return a bounded, payload-free category for an untrusted image source. */
 function redactImageSource(source: unknown): string {
