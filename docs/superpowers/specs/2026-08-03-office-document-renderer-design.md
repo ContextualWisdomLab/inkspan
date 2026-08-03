@@ -34,9 +34,12 @@ The Python API exposes:
 - `write_office_document(payload, path, overwrite=False)`,
 - `OfficeDocumentError` for validation failures.
 
-The `inkspan-office` CLI renders JSON files and can print the bundled schema.
-Validation rejects unknown fields as well as missing or malformed values so a
-model cannot smuggle ignored instructions through an apparently valid payload.
+The package public API and CLI enter through `safe_renderer.py`. This facade
+applies cross-format OOXML and storage-safety validation before delegating to
+the format-specific renderer, keeping validation policy separate from document
+construction. Validation rejects unknown fields as well as missing or malformed
+values so a model cannot smuggle ignored instructions through an apparently
+valid payload.
 
 ## Format scope
 
@@ -48,27 +51,45 @@ levels 0–8.
 
 The first release intentionally excludes arbitrary XML, macros, formulas,
 remote images, charts, theme/template upload, and embedded executables. Those
-features would require separate capability and trust decisions rather than
-being silently accepted by this renderer.
+features require separate capability and trust decisions rather than being
+silently accepted by this renderer.
 
 ## Safety and failure behavior
 
 All rendering is in memory. Output writes require a matching extension and use
-a securely-created temporary file in the destination directory followed by an
-atomic replacement. Existing output is protected unless overwrite is explicit.
+a securely-created temporary file in the destination directory. Explicit
+overwrite uses atomic replacement. Non-overwrite publication uses an atomic
+hard-link operation, so a file created concurrently cannot be overwritten by a
+check-then-replace race. The temporary link is removed after publication.
+
+The safety facade rejects XML 1.0-incompatible control characters before any
+OOXML library receives them and detects cyclic Python containers that cannot be
+represented by the JSON contract.
 
 XLSX strings beginning, after leading whitespace, with `=`, `+`, `-`, or `@`
 are forced to the string cell type. This prevents AI-authored content from
 becoming an executable spreadsheet formula. Non-finite numbers are rejected as
 outside the JSON data model.
 
+Excel-specific losslessness limits are validated before rendering:
+
+- at most 1,048,576 rows and 16,384 columns per worksheet,
+- at most 32,767 characters per cell string,
+- no integer with more than 15 significant decimal digits,
+- freeze panes limited to a simple coordinate within `A1:XFD1048576`.
+
+Callers can preserve account numbers and identifiers with more significant
+digits by supplying them as strings.
+
 ## Verification
 
 Tests author and re-open all three formats with their native libraries, exercise
 metadata and every supported content shape, and cover malformed or ambiguous
-requests, formula neutralization, output rules, and CLI behavior. CI runs the
-suite on Python 3.11 and 3.13 after installing hash-locked binary dependencies,
-performs `pip check`, and builds a wheel containing the JSON Schema and license.
+requests, formula neutralization, XML controls, Excel storage limits, atomic
+publication races, output rules, and CLI behavior. CI runs the suite on Python
+3.11 and 3.13 after installing hash-locked binary dependencies, requires 100%
+statement/branch and shipped-symbol docstring coverage, performs `pip check`,
+and builds a wheel containing the JSON Schema and license.
 
 ## Integration boundary
 
