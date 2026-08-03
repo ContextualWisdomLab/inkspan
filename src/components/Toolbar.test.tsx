@@ -79,6 +79,108 @@ describe('Toolbar', () => {
     }
   });
 
+  describe('toolbar keyboard accessibility', () => {
+    it('exposes one tab stop, horizontal orientation, and toggle-only pressed state', async () => {
+      const editor = makeEditor();
+      render(<Toolbar editor={editor} />);
+
+      const toolbar = screen.getByRole('toolbar', { name: 'Formatting' });
+      expect(toolbar).toHaveAttribute('aria-orientation', 'horizontal');
+      fireEvent.focus(toolbar);
+      fireEvent.keyDown(toolbar, { key: 'ArrowRight' });
+
+      const buttons = screen.getAllByRole('button') as HTMLButtonElement[];
+      await waitFor(() => expect(buttons[0]).toHaveAttribute('tabindex', '0'));
+      for (const button of buttons.slice(1)) {
+        expect(button).toHaveAttribute('tabindex', '-1');
+      }
+
+      expect(screen.getByRole('button', { name: /Bold/ })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
+      expect(
+        screen.getByRole('button', { name: /Horizontal rule/ }),
+      ).not.toHaveAttribute('aria-pressed');
+    });
+
+    it('supports wrapping arrows, Home/End, and skips disabled controls', () => {
+      const editor = makeEditor();
+      render(<Toolbar editor={editor} />);
+
+      const bold = screen.getByRole('button', { name: /Bold/ });
+      const italic = screen.getByRole('button', { name: /Italic/ });
+      const insertTable = screen.getByRole('button', { name: /^Insert table$/ });
+      const insertImage = screen.getByRole('button', {
+        name: /Insert inline \(base64\) image/,
+      });
+      const enabledButtons = (
+        screen.getAllByRole('button') as HTMLButtonElement[]
+      ).filter((button) => !button.disabled);
+      const lastEnabled = enabledButtons.at(-1)!;
+
+      bold.focus();
+      fireEvent.keyDown(bold, { key: 'ArrowRight' });
+      expect(italic).toHaveFocus();
+
+      fireEvent.keyDown(italic, { key: 'End' });
+      expect(lastEnabled).toHaveFocus();
+
+      fireEvent.keyDown(lastEnabled, { key: 'ArrowRight' });
+      expect(bold).toHaveFocus();
+
+      fireEvent.keyDown(bold, { key: 'ArrowLeft' });
+      expect(lastEnabled).toHaveFocus();
+
+      fireEvent.keyDown(lastEnabled, { key: 'Home' });
+      expect(bold).toHaveFocus();
+
+      insertTable.focus();
+      fireEvent.keyDown(insertTable, { key: 'ArrowRight' });
+      expect(insertImage).toHaveFocus();
+
+      fireEvent.keyDown(insertImage, { key: 'PageDown' });
+      expect(insertImage).toHaveFocus();
+    });
+
+    it('remembers the focused tab stop and falls back when it becomes disabled', async () => {
+      const editor = makeEditor();
+      render(<Toolbar editor={editor} />);
+
+      const bold = screen.getByRole('button', { name: /Bold/ });
+      const insertImage = screen.getByRole('button', {
+        name: /Insert inline \(base64\) image/,
+      });
+      insertImage.focus();
+      expect(insertImage).toHaveAttribute('tabindex', '0');
+      expect(bold).toHaveAttribute('tabindex', '-1');
+
+      await act(async () => {
+        editor.chain().focus().insertContent(' updated').run();
+      });
+      await waitFor(() => expect(insertImage).toHaveAttribute('tabindex', '0'));
+
+      await act(async () => {
+        editor
+          .chain()
+          .focus()
+          .insertTable({ rows: 2, cols: 2, withHeaderRow: true })
+          .run();
+      });
+      const deleteTable = screen.getByRole('button', { name: /Delete table/ });
+      await waitFor(() => expect(deleteTable).not.toBeDisabled());
+      deleteTable.focus();
+      expect(deleteTable).toHaveAttribute('tabindex', '0');
+
+      await act(async () => {
+        editor.chain().focus().deleteTable().run();
+      });
+      await waitFor(() => expect(deleteTable).toBeDisabled());
+      expect(deleteTable).toHaveAttribute('tabindex', '-1');
+      expect(bold).toHaveAttribute('tabindex', '0');
+    });
+  });
+
   it('enables and fires the redo command after an undo', () => {
     const editor = makeEditor();
     editor.chain().focus().insertContent(' more').run();
