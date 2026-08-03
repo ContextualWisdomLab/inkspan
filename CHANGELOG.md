@@ -124,7 +124,7 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 - **Strict inline raster image boundary** — initial HTML/Markdown, controlled and imperative APIs, direct ProseMirror transactions, collaborative updates, and serialization now enforce one source policy
 - External, protocol-relative, `blob:`, `file:`, JavaScript, SVG/active-vector, unsupported-MIME, malformed, empty, and oversized image sources are rejected before decoder use, editor-state entry, or emission of a network-capable `<img>`
 - Rejected source diagnostics are categorized and redacted so URL secrets and base64 payload bytes are not retained in host telemetry
-- Removed temporary branch-patching workflows that were inadvertently retained after the previous image-policy merge
+- Removed temporary branch-patching workflows that were inadvertently retained by the preceding merge
 
 ### Changed
 - Package version **0.3.2**
@@ -194,10 +194,10 @@ Commercial host-integration release: a buyer embedding the editor can control it
 
 ### Added
 - **`CwlEditorHandle`** via `ref` — `getValue` / `getHTML` / `getMarkdown` / `setValue` / `clear` / `focus` / `blur` / `isEmpty` / `getEditor`
-- **`onImageError`** — image size-guard and decode failures are never silent
-- **Table editing toolbar** — add column after, add row after, delete table (enabled only in-table)
+- **`onImageError`** — size-guard and decode failures are reported to the host (no silent swallow on the commercial path)
+- **Table editing toolbar** — add column after, add row after, delete table (enabled only when the cursor is in a table)
 - **Horizontal rule** toolbar control
-- **Live toolbar state** — re-renders on TipTap transaction / selectionUpdate so active/disabled UI stays correct
+- **Live toolbar state** — re-renders on TipTap `transaction` / `selectionUpdate` so active/disabled UI stays correct
 - **`markdownToEmailHtml`** — Markdown → email body HTML (fragment or full document), preserving inline base64 images for compose→send
 
 ### Fixed
