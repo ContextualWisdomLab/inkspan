@@ -23,6 +23,11 @@ describe('package entry point', () => {
     expect(api.base64ImagePluginKey).toBeTruthy();
     expect(typeof api.downscaleDataUri).toBe('function');
     expect(typeof api.imageFileToInlineDataUri).toBe('function');
+    expect(api.SafeLink).toBeTruthy();
+    expect(api.safeLinkPluginKey).toBeTruthy();
+    expect(typeof api.SafeLinkHrefError).toBe('function');
+    expect(typeof api.isSafeLinkHref).toBe('function');
+    expect(typeof api.validateSafeLinkHref).toBe('function');
     expect(typeof api.buildExtensions).toBe('function');
   });
 
