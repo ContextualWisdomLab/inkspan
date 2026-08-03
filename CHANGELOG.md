@@ -4,6 +4,31 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.4] — 2026-08-04
+
+### Added
+- Native form serialization through `formFieldName`, with the current Markdown or HTML document mirrored into a hidden input
+- External form association through `formId` and native submission exclusion through `formFieldDisabled`
+- Shared standalone and provider-neutral collaborative form behavior without introducing a form-library dependency
+
+### Changed
+- Package version **0.5.4**
+- The form field listens only to document-changing TipTap transactions, preserving imperative `setValue` synchronization without repeatedly serializing cursor-only movement
+
+### Security
+- Documentation now makes the client-controlled and non-secret nature of hidden form values explicit and requires server-side authorization, validation, and request-size enforcement
+- Inline base64 image payloads remain subject to host gateway and persistence limits during native submission
+
+### Accessibility
+- The hidden field is excluded from the accessibility tree and does not duplicate the editable textbox's accessible name, descriptions, or validation state
+- Native constraint validation remains host-owned because hidden inputs are barred from browser constraint validation
+
+### Tests
+- Native `FormData`, external form association, disabled fields, live mode changes, selection-only transactions, imperative replacement, and Yjs-backed collaborative updates are covered under the repository-wide 100% TypeScript coverage gate
+
+### Documentation
+- Expanded the form integration contract with WHATWG hidden-input and form-control semantics, reset behavior, trust boundaries, CWL/naruon gateway limits, and host responsibilities
+
 ## [0.5.3] — 2026-08-04
 
 ### Added
