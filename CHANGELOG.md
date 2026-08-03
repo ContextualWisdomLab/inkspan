@@ -4,6 +4,30 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.10] — 2026-08-04
+
+### Added
+- Frozen `CwlEditorDocumentSnapshot` values containing active-mode output, HTML, normalized Markdown, deterministic plain text, and emptiness state
+- Host-owned `onDocumentChange` callbacks for standalone and provider-neutral collaborative editor surfaces
+- `CwlEditorHandle.getSnapshot()` for synchronous autosave, submit, preview, indexing, and AI-context workflows
+
+### Changed
+- Package version **0.5.10**
+- `onChange` and `onDocumentChange` share one snapshot built from the same current editor revision when the snapshot callback is configured
+- Markdown is normalized once per snapshot and reused for destination-free plain-text projection
+- `onChange`-only integrations retain the existing active-mode-only serialization path
+- Snapshot callbacks use live refs without recreating TipTap state, selection, history, or Yjs bindings
+
+### Security
+- Snapshot plain text omits hyperlink destinations, HTML attributes, image sources, and inline base64 payloads through the existing hardened projection boundary
+- Snapshot content remains client-controlled data; CWL and naruon hosts retain authorization, tenant scope, retention, telemetry minimization, and downstream AI-use policy
+
+### Tests
+- Standalone, collaborative, imperative, empty, Markdown, HTML, live-callback replacement, stable-instance, and strict packed-package declaration behavior are covered under the repository-wide 100% TypeScript coverage gate
+
+### Documentation
+- Added `docs/document-snapshots.md` with autosave, indexing, AI-context, privacy, performance, collaboration, and CWL/naruon integration guidance
+
 ## [0.5.9] — 2026-08-04
 
 ### Added
