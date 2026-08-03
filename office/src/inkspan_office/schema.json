@@ -99,6 +99,24 @@
         "null"
       ]
     },
+    "excelScalar": {
+      "description": "Excel strings are bounded to the OOXML cell limit. Runtime validation also rejects integers with more than 15 significant decimal digits.",
+      "oneOf": [
+        {
+          "type": "string",
+          "maxLength": 32767
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "docxBlock": {
       "oneOf": [
         {
@@ -218,10 +236,12 @@
         },
         "rows": {
           "type": "array",
+          "maxItems": 1048576,
           "items": {
             "type": "array",
+            "maxItems": 16384,
             "items": {
-              "$ref": "#/$defs/scalar"
+              "$ref": "#/$defs/excelScalar"
             }
           }
         },
@@ -230,7 +250,9 @@
           "default": false
         },
         "freeze_panes": {
-          "$ref": "#/$defs/nonEmptyString"
+          "type": "string",
+          "pattern": "^[A-Za-z]{1,3}[1-9][0-9]{0,6}$",
+          "description": "A simple A1 coordinate; runtime validation further limits it to XFD1048576."
         },
         "auto_filter": {
           "type": "boolean",
