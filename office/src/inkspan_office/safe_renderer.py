@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 import os
 import re
 from collections.abc import Mapping, Sequence
@@ -250,8 +249,7 @@ def _validate_excel_cell(value: Any, path: str) -> None:
             ) from exc
         significant_digits = len(str(abs(value)).rstrip("0"))
         if (
-            not math.isfinite(floating_value)
-            or int(floating_value) != value
+            int(floating_value) != value
             or significant_digits > _EXCEL_MAX_SIGNIFICANT_DIGITS
         ):
             raise OfficeDocumentError(
