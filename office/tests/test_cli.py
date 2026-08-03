@@ -38,6 +38,7 @@ def test_cli_module_entrypoint_prints_schema(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.setattr(sys, "argv", ["inkspan-office", "--print-schema"])
+    monkeypatch.delitem(sys.modules, "inkspan_office.cli", raising=False)
 
     with pytest.raises(SystemExit) as exc:
         runpy.run_module("inkspan_office.cli", run_name="__main__", alter_sys=True)
