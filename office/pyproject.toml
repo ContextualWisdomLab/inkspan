@@ -29,7 +29,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["coverage==7.15.3", "pytest==9.0.2"]
+test = ["coverage==7.15.3", "pytest==9.0.3"]
 
 [project.urls]
 Repository = "https://github.com/ContextualWisdomLab/inkspan"
