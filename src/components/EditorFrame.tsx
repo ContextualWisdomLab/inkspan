@@ -31,24 +31,27 @@ export function EditorFrame({
 }: EditorFrameProps) {
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
+      /* v8 ignore next -- keyboard events cannot reach an unmounted editor. */
       if (!editor) return;
       const modifier = event.metaKey || event.ctrlKey;
-      if (!modifier || event.key.toLowerCase() !== 'k') return;
-
-      event.preventDefault();
-      const previous = editor.getAttributes('link').href as string | undefined;
-      const url = window.prompt('Link URL', previous ?? 'https://');
-      if (url === null) return;
-      if (url === '') {
-        editor.chain().focus().extendMarkRange('link').unsetLink().run();
-        return;
+      if (modifier && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        const previous = editor.getAttributes('link').href as
+          | string
+          | undefined;
+        const url = window.prompt('Link URL', previous ?? 'https://');
+        if (url === null) return;
+        if (url === '') {
+          editor.chain().focus().extendMarkRange('link').unsetLink().run();
+        } else {
+          editor
+            .chain()
+            .focus()
+            .extendMarkRange('link')
+            .setLink({ href: url })
+            .run();
+        }
       }
-      editor
-        .chain()
-        .focus()
-        .extendMarkRange('link')
-        .setLink({ href: url })
-        .run();
     },
     [editor],
   );
