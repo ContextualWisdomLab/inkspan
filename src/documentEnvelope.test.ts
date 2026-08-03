@@ -11,6 +11,7 @@ describe('document envelope', () => {
   it('creates a detached frozen versioned persistence envelope', () => {
     const documentJson = {
       type: 'doc',
+      attrs: { enabled: true, score: 3, note: null },
       content: [
         {
           type: 'paragraph',
@@ -32,6 +33,18 @@ describe('document envelope', () => {
     expect(envelope.documentJson).not.toBe(documentJson);
   });
 
+  it('supports null-prototype JSON objects', () => {
+    const documentJson = Object.assign(Object.create(null) as object, {
+      type: 'doc',
+      content: [],
+    });
+
+    expect(createDocumentEnvelope(documentJson).documentJson).toEqual({
+      type: 'doc',
+      content: [],
+    });
+  });
+
   it('parses JSON text and returns a detached frozen envelope', () => {
     const source = JSON.stringify({
       schemaId: DOCUMENT_ENVELOPE_SCHEMA_ID,
@@ -50,6 +63,11 @@ describe('document envelope', () => {
     null,
     [],
     {},
+    { schemaId: DOCUMENT_ENVELOPE_SCHEMA_ID },
+    {
+      schemaId: DOCUMENT_ENVELOPE_SCHEMA_ID,
+      schemaVersion: DOCUMENT_ENVELOPE_SCHEMA_VERSION,
+    },
     {
       schemaId: 'https://example.invalid/schema',
       schemaVersion: DOCUMENT_ENVELOPE_SCHEMA_VERSION,
@@ -102,16 +120,24 @@ describe('document envelope', () => {
     ).toThrow('nesting');
   });
 
-  it('rejects non-JSON values and non-finite numbers', () => {
+  it.each([
+    () => undefined,
+    1n,
+    Symbol('not-json'),
+    undefined,
+    new Date(0),
+  ])('rejects non-JSON values: %s', (value) => {
     expect(() =>
-      createDocumentEnvelope({
-        type: 'doc',
-        attrs: { callback: () => undefined },
-      }),
+      createDocumentEnvelope({ type: 'doc', attrs: { value } }),
     ).toThrow('JSON-compatible');
-
-    expect(() =>
-      createDocumentEnvelope({ type: 'doc', attrs: { score: Number.NaN } }),
-    ).toThrow('finite');
   });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    'rejects non-finite numbers: %s',
+    (value) => {
+      expect(() =>
+        createDocumentEnvelope({ type: 'doc', attrs: { value } }),
+      ).toThrow('finite');
+    },
+  );
 });
