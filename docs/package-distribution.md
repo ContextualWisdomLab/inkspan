@@ -45,8 +45,12 @@ embedded in the npm tarball.
 
 - React and React DOM are peer dependencies so a host supplies its own compatible
   application runtime.
-- The converter entrypoint is framework-independent and does not import React,
-  TipTap, or Yjs.
+- `@tiptap/core` is an externalized runtime dependency used by the root editor
+  and collaboration entrypoints. It is declared in Inkspan's package
+  dependencies so the consumer's package manager installs and resolves it; it
+  is not merely a type-only dependency.
+- The converter entrypoint is framework-independent and does not import or
+  require `@tiptap/core`, React, TipTap extensions, or Yjs.
 - The collaboration entrypoint is optional. Standalone consumers do not need to
   import it, and bundlers can retain the separate dependency boundary.
 - Importing any JavaScript entrypoint in Node.js must not require a browser DOM.
