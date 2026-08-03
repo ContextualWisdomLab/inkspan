@@ -29,6 +29,8 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       value,
       defaultValue,
       onChange,
+      onFocus,
+      onBlur,
       onImageError,
       placeholder = 'Start writing…',
       editable = true,
@@ -49,6 +51,8 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     const emittingRef = useRef(false);
     const modeRef = useLatestRef(mode);
     const onChangeRef = useLatestRef(onChange);
+    const onFocusRef = useLatestRef(onFocus);
+    const onBlurRef = useLatestRef(onBlur);
     const onImageErrorRef = useLatestRef(onImageError);
     const reportImageError = useCallback((error: Error) => {
       onImageErrorRef.current?.(error);
@@ -96,6 +100,12 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         } finally {
           emittingRef.current = false;
         }
+      },
+      onFocus: ({ editor: instance, event }) => {
+        onFocusRef.current?.({ editor: instance, event });
+      },
+      onBlur: ({ editor: instance, event }) => {
+        onBlurRef.current?.({ editor: instance, event });
       },
     });
 

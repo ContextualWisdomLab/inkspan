@@ -4,6 +4,22 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.2] — 2026-08-04
+
+### Added
+- Host-owned `onFocus` and `onBlur` lifecycle callbacks for standalone and provider-neutral collaborative editor surfaces
+- Public `CwlEditorFocusEvent` with the stable TipTap editor instance and native DOM `FocusEvent`
+
+### Changed
+- Package version **0.5.2**
+- Focus callback props are read through live refs so hosts can add or replace handlers after mount without recreating editor state or Yjs bindings
+
+### Tests
+- Standalone and collaborative tests cover absent callbacks, handlers added after mount, stable editor identity, and native focus/blur event types under the repository-wide 100% coverage gate
+
+### Documentation
+- Added the host focus lifecycle, validation, persistence, telemetry, accessibility, and CWL/naruon interoperability contract
+
 ## [0.5.1] — 2026-08-03
 
 ### Added

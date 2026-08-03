@@ -3,6 +3,14 @@ import type { Editor } from '@tiptap/react';
 /** Which document surface the editor reads from and writes to. */
 export type EditorMode = 'markdown' | 'html';
 
+/** Native focus transition emitted by an Inkspan editable surface. */
+export interface CwlEditorFocusEvent {
+  /** Stable TipTap editor instance that received or lost focus. */
+  editor: Editor;
+  /** Native DOM focus event emitted by the ProseMirror editable region. */
+  event: FocusEvent;
+}
+
 /** Configuration for inline base64 image handling. Config comes from props/KV. */
 export interface ImageConfig {
   /** Max source size in bytes before an image is rejected. Default 10 MB. */
@@ -57,6 +65,13 @@ export interface CwlEditorProps {
   defaultValue?: string;
   /** Fired on every change with the serialized document in `mode`'s format. */
   onChange?: (value: string) => void;
+  /** Fired when the editable ProseMirror region receives focus. */
+  onFocus?: (focusEvent: CwlEditorFocusEvent) => void;
+  /**
+   * Fired when the editable ProseMirror region loses focus. Hosts can use this
+   * to mark a field touched or schedule persistence without inspecting the DOM.
+   */
+  onBlur?: (focusEvent: CwlEditorFocusEvent) => void;
   /**
    * Fired when an image **paste, drop, or toolbar upload** fails (size guard,
    * decode error, etc.). Wired through both the toolbar file picker and the
