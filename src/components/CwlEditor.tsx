@@ -128,14 +128,20 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         const valueListener = onChangeRef.current;
         const snapshotListener = onDocumentChangeRef.current;
         if (!valueListener && !snapshotListener) return;
-        const snapshot = createEditorDocumentSnapshot(
-          instance,
-          modeRef.current,
-        );
         emittingRef.current = true;
         try {
-          valueListener?.(snapshot.value);
-          snapshotListener?.({ editor: instance, snapshot });
+          if (snapshotListener) {
+            const snapshot = createEditorDocumentSnapshot(
+              instance,
+              modeRef.current,
+            );
+            valueListener?.(snapshot.value);
+            snapshotListener({ editor: instance, snapshot });
+          } else {
+            valueListener?.(
+              editorHtmlToValue(instance.getHTML(), modeRef.current),
+            );
+          }
         } finally {
           emittingRef.current = false;
         }
