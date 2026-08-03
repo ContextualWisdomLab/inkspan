@@ -42,8 +42,16 @@ silently asking the current editor schema to interpret them.
 
 Both creation and parsing return a detached, deeply frozen envelope. The
 validator rejects cycles, non-JSON values, non-finite numbers, non-plain
-objects, a non-`doc` root, and nesting deeper than 128 containers. Parse errors
-are bounded and do not echo the source document or tenant data.
+objects, a non-`doc` root, sparse or decorated arrays, accessor properties,
+symbol or non-enumerable fields, and nesting deeper than 128 containers.
+`__proto__` is retained only as an inert own data field and cannot mutate the
+prototype of the cloned document.
+
+The public functions also treat direct JavaScript objects as hostile. Proxy
+traps and reflection failures are converted to a bounded
+`DocumentEnvelopeError`; getters are never executed during validation. Error
+messages do not include source values, source-defined property names, URLs,
+inline image bytes, or tenant data.
 
 This validation establishes a portable storage boundary; it does not sanitize
 or authorize the document body. The JSON may still contain client-controlled
