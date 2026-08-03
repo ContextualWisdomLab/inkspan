@@ -10,6 +10,7 @@ import { buildExtensions } from '../extensions/kit.js';
 import type { CwlEditorHandle, CwlEditorProps } from '../types.js';
 import { EditorFrame } from './EditorFrame.js';
 import { buildEditorAccessibilityAttributes } from './editorAccessibility.js';
+import { applyEditorFormReset } from './editorFormReset.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
 import { useEditorHandle } from './useEditorHandle.js';
 import { useLatestRef } from './useLatestRef.js';
@@ -41,6 +42,8 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       formFieldName,
       formId,
       formFieldDisabled,
+      formResetValue,
+      onFormReset,
       languageTag,
       textDirection,
       ariaLabel,
@@ -59,6 +62,8 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     const onFocusRef = useLatestRef(onFocus);
     const onBlurRef = useLatestRef(onBlur);
     const onImageErrorRef = useLatestRef(onImageError);
+    const formResetValueRef = useLatestRef(formResetValue);
+    const onFormResetRef = useLatestRef(onFormReset);
     const reportImageError = useCallback((error: Error) => {
       onImageErrorRef.current?.(error);
     }, [onImageErrorRef]);
@@ -149,6 +154,23 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       }
     }, [editor, isControlled, value, mode]);
 
+    const handleFormReset = useCallback(
+      (event: Event) => {
+        applyEditorFormReset({
+          /* v8 ignore next -- the handler is passed only while editor exists. */
+          editor: editor!,
+          mode: modeRef.current,
+          resetValue: formResetValueRef.current,
+          event,
+          onChange: onChangeRef.current,
+          onFormReset: onFormResetRef.current,
+        });
+      },
+      [editor, formResetValueRef, modeRef, onChangeRef, onFormResetRef],
+    );
+    const observesFormReset =
+      formResetValue !== undefined || onFormReset !== undefined;
+
     return (
       <EditorFrame
         editor={editor}
@@ -161,6 +183,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         formFieldName={formFieldName}
         formId={formId}
         formFieldDisabled={formFieldDisabled}
+        onFormReset={editor && observesFormReset ? handleFormReset : undefined}
       />
     );
   },

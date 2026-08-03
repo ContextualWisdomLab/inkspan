@@ -14,6 +14,14 @@ export interface CwlEditorFocusEvent {
   event: FocusEvent;
 }
 
+/** Native form reset observed through Inkspan's associated hidden field. */
+export interface CwlEditorFormResetEvent {
+  /** Stable TipTap editor instance associated with the reset form. */
+  editor: Editor;
+  /** Native cancelable reset event emitted by the associated form. */
+  event: Event;
+}
+
 /** Configuration for inline base64 image handling. Config comes from props/KV. */
 export interface ImageConfig {
   /** Max source size in bytes before an image is rejected. Default 10 MB. */
@@ -106,6 +114,16 @@ export interface CwlEditorProps {
   formId?: string;
   /** Exclude the hidden serialization field from native form submission. */
   formFieldDisabled?: boolean;
+  /**
+   * Serialized document to apply after a non-canceled native form reset.
+   * Omit this to leave document mutation entirely to `onFormReset` or the host.
+   */
+  formResetValue?: string;
+  /**
+   * Fired after an associated native form reset is allowed to proceed. The
+   * callback runs after `formResetValue`, when configured, has been applied.
+   */
+  onFormReset?: (resetEvent: CwlEditorFormResetEvent) => void;
   /**
    * BCP 47 language tag for the authored document, such as `ko`, `en-US`, or
    * `ar-EG`. Blank values are omitted from the editable surface.

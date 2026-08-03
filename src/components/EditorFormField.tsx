@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { EditorMode } from '../types.js';
 import { editorHtmlToValue } from './editorSerialization.js';
 
@@ -10,15 +10,19 @@ export interface EditorFormFieldProps {
   name?: string;
   formId?: string;
   disabled?: boolean;
+  onFormReset?: (event: Event) => void;
 }
 
 /**
  * Mirror the current serialized document into a native hidden form field.
  *
- * The field subscribes only to document-changing transactions, avoiding a full
- * Markdown/HTML serialization on cursor movement while still observing
+ * Named fields subscribe only to document-changing transactions, avoiding a
+ * full Markdown/HTML serialization on cursor movement while still observing
  * programmatic `setContent(..., false)` calls that intentionally suppress the
- * higher-level TipTap update event.
+ * higher-level TipTap update event. Reset-only unnamed fields skip document
+ * serialization entirely. When configured, the field observes the associated
+ * form's cancelable reset event and schedules editor work in the next task,
+ * after native dispatch and the reset algorithm have completed.
  */
 export function EditorFormField({
   editor,
@@ -26,17 +30,23 @@ export function EditorFormField({
   name,
   formId,
   disabled,
+  onFormReset,
 }: EditorFormFieldProps) {
+  const fieldRef = useRef<HTMLInputElement | null>(null);
+  const serializedValueRef = useRef('');
   const [serializedValue, setSerializedValue] = useState('');
 
   useEffect(() => {
-    if (!editor) {
+    if (!editor || name === undefined) {
+      serializedValueRef.current = '';
       setSerializedValue('');
       return;
     }
 
     const synchronizeValue = () => {
-      setSerializedValue(editorHtmlToValue(editor.getHTML(), mode));
+      const nextValue = editorHtmlToValue(editor.getHTML(), mode);
+      serializedValueRef.current = nextValue;
+      setSerializedValue(nextValue);
     };
     const handleTransaction = ({
       transaction,
@@ -51,12 +61,40 @@ export function EditorFormField({
     return () => {
       editor.off('transaction', handleTransaction);
     };
-  }, [editor, mode]);
+  }, [editor, mode, name]);
 
-  if (name === undefined) return null;
+  useEffect(() => {
+    if (!onFormReset) return;
+    const field = fieldRef.current;
+    /* v8 ignore next -- the effect runs only after the rendered field mounts. */
+    if (!field) return;
+    const eventRoot = field.getRootNode();
+    const pendingResetTasks = new Set<ReturnType<typeof setTimeout>>();
+
+    const handleReset = (event: Event) => {
+      if (event.target !== field.form) return;
+      const pendingTask = setTimeout(() => {
+        pendingResetTasks.delete(pendingTask);
+        if (event.defaultPrevented) return;
+        if (name !== undefined) field.value = serializedValueRef.current;
+        onFormReset(event);
+      }, 0);
+      pendingResetTasks.add(pendingTask);
+    };
+
+    eventRoot.addEventListener('reset', handleReset);
+    return () => {
+      eventRoot.removeEventListener('reset', handleReset);
+      for (const pendingTask of pendingResetTasks) clearTimeout(pendingTask);
+      pendingResetTasks.clear();
+    };
+  }, [formId, name, onFormReset]);
+
+  if (name === undefined && onFormReset === undefined) return null;
 
   return (
     <input
+      ref={fieldRef}
       type="hidden"
       name={name}
       value={serializedValue}

@@ -24,6 +24,8 @@ Inkspan treats keyboard and assistive-technology behavior as part of its public 
   <CwlEditor
     mode="markdown"
     formFieldName="message_body"
+    formResetValue="# New message"
+    onFormReset={() => clearHostValidation()}
     languageTag="ko-KR"
     textDirection="ltr"
     ariaLabelledBy="message-body-label"
@@ -35,20 +37,27 @@ Inkspan treats keyboard and assistive-technology behavior as part of its public 
   />
 
   <button type="submit">Send</button>
+  <button type="reset">Reset</button>
 </form>
 ```
 
-When `formFieldName` is supplied, Inkspan renders a native hidden input whose live value is the current document serialized in `mode`. The field participates in `FormData`, ordinary browser submission, and form-library workflows that read native controls. `formId` associates the field with a form elsewhere in the document, and `formFieldDisabled` excludes it from submission using the native disabled-control rule. The same props are inherited by `CollaborativeCwlEditor`; its field follows Yjs-backed document changes rather than a static `value` prop.
+When `formFieldName` is supplied, Inkspan renders a native hidden input whose live value is the current document serialized in `mode`. The field participates in `FormData`, ordinary browser submission, and form-library workflows that read native controls. `formId` associates the field with a form elsewhere in the document, and `formFieldDisabled` excludes it from submission using the native disabled-control rule. The same serialization props are inherited by `CollaborativeCwlEditor`; its field follows Yjs-backed document changes rather than a static `value` prop.
 
-The hidden field is a submission bridge, not a second editable control. It is absent from the accessibility tree and does not duplicate the textbox name, description, or validation state. Hidden inputs are barred from native constraint validation, so `ariaRequired`, `ariaInvalid`, visible error copy, business validation, and focus recovery remain host responsibilities. Native form reset does not replace Inkspan document state; controlled hosts should reset `value`, and uncontrolled or collaborative hosts should call the imperative API or mutate the authorized Yjs document.
+The hidden field is a submission bridge, not a second editable control. It is absent from the accessibility tree and does not duplicate the textbox name, description, or validation state. Hidden inputs are barred from native constraint validation, so `ariaRequired`, `ariaInvalid`, visible error copy, business validation, and focus recovery remain host responsibilities.
+
+Native form reset is opt-in for standalone editor state. When `formResetValue` is supplied to `CwlEditor`, Inkspan interprets it in the active `mode` and applies it only after the associated form's cancelable `reset` event completes without `preventDefault()`. `onFormReset` then receives the stable TipTap editor and native reset event after the configured reset document has been applied. With only `onFormReset`, Inkspan reports the allowed reset without mutating the document, allowing controlled hosts to update `value` or invoke their own domain-specific reset workflow. Controlled hosts that use `formResetValue` must continue accepting the resulting `onChange` value as their source of truth.
+
+Reset integration does not require a submission field name. When either supported reset prop is configured without `formFieldName`, Inkspan renders an unnamed hidden form owner so it can observe the enclosing form or the form selected by `formId`; because the control has no name, it contributes no entry to `FormData` or ordinary submission.
+
+A canceled reset leaves document state untouched and does not call `onFormReset`. `CollaborativeCwlEditor` intentionally excludes and rejects `formResetValue`: a local browser form action cannot silently replace shared Yjs state. Collaborative hosts may use `onFormReset` to observe an allowed reset, confirm authorization and user intent, and then perform an explicit shared-document transaction through their own collaboration, transport, and persistence policy. Omitting reset props preserves entirely host-owned reset semantics.
 
 For Arabic, Persian, Hebrew, or another right-to-left document, use the corresponding BCP 47 language tag and `textDirection="rtl"`. Use `textDirection="auto"` only when the host intentionally delegates base-direction detection to the browser; the HTML algorithm uses the first strongly directional character and is not a substitute for document-level language knowledge.
 
-`ariaLabelledBy` and `ariaDescribedBy` accept space-separated ID references. Blank references are omitted rather than emitted as broken relationships. `ariaInvalid` accepts the WAI-ARIA textbox values `true`, `false`, `grammar`, and `spelling`. The same language, direction, form-serialization, and ARIA props are inherited by `CollaborativeCwlEditor`; presence and connection announcements remain a separate polite status region.
+`ariaLabelledBy` and `ariaDescribedBy` accept space-separated ID references. Blank references are omitted rather than emitted as broken relationships. `ariaInvalid` accepts the WAI-ARIA textbox values `true`, `false`, `grammar`, and `spelling`. The same language, direction, form-serialization, reset-observation, and ARIA props are inherited by `CollaborativeCwlEditor`; automatic reset values are standalone-only, and presence and connection announcements remain a separate polite status region.
 
 Inkspan does not infer a document language, translate validation copy, or choose writing direction from user identity because those decisions belong to the host's document metadata and locale policy. Inkspan also does not render validation copy because business rules, localization, submit timing, and error recovery belong to the host. Hosts should set `aria-invalid="true"` only after detecting an actual input error and should keep the referenced error text visible and actionable.
 
-Form values are ordinary client-controlled input. Hidden inputs are visible and mutable through developer tools, so servers must authorize the target document, validate the submitted serialization, reapply size limits, and never treat the field as a trust or secrecy boundary. Inline base64 images can make request bodies large; CWL and naruon gateways should align reverse-proxy, application, and persistence limits with the configured image policy before enabling native submission.
+Form values are ordinary client-controlled input. Hidden inputs are visible and mutable through developer tools, so servers must authorize the target document, validate the submitted serialization, reapply size limits, and never treat the field as a trust or secrecy boundary. Inline base64 images can make request bodies large; CWL and naruon gateways should align reverse-proxy, application, and persistence limits with the configured image policy before enabling native submission. Reset values are likewise client-side presentation state and must not grant authorization, erase protected server state, or bypass collaborative permissions.
 
 ## Formatting toolbar
 
@@ -79,6 +88,8 @@ Inkspan cannot determine the complete accessibility of an embedding application.
 - providing a visible, context-specific label through `ariaLabelledBy` when practical, or a concise `ariaLabel` when no visible label exists;
 - keeping every `ariaLabelledBy`, `ariaDescribedBy`, and `ariaErrorMessage` target present with a descriptive nonnumeric DOM identifier;
 - choosing a descriptive `formFieldName`, validating submitted content server-side, and aligning request-size limits when native form serialization is enabled;
+- choosing whether standalone form reset should mutate the document and keeping controlled state synchronized;
+- treating collaborative reset callbacks as requests for a separately authorized shared-document operation rather than passing an automatic reset value;
 - identifying errors in text, supplying known correction guidance, and synchronizing `ariaInvalid` with the visible validation state;
 - preserving sufficient contrast when overriding Inkspan CSS variables;
 - announcing persistence and network failures in an appropriate live region;
@@ -91,6 +102,7 @@ Inkspan cannot determine the complete accessibility of an embedding application.
 - [HTML Living Standard: global `lang` and `dir` attributes](https://html.spec.whatwg.org/multipage/dom.html#global-attributes) — language metadata and the enumerated `ltr`, `rtl`, and `auto` direction states.
 - [HTML Living Standard: hidden input state](https://html.spec.whatwg.org/multipage/input.html#hidden-state-(type=hidden)) — hidden values, form submission participation, and exclusion from constraint validation.
 - [HTML Living Standard: form control infrastructure](https://html.spec.whatwg.org/multipage/form-control-infrastructure.html) — control naming, external form association, disabled controls, and form entry construction.
+- [HTML Living Standard: resetting a form](https://html.spec.whatwg.org/multipage/form-control-infrastructure.html#resetting-a-form) — the bubbling, cancelable reset event and resettable-control algorithm.
 - [WAI-ARIA 1.2 textbox role](https://www.w3.org/TR/wai-aria/#textbox) — accessible name, multiline, readonly, required, invalid, description, and error-message states.
 - [WAI-ARIA APG: Accessible names and descriptions](https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions/) — visible-label preference and `aria-labelledby`/`aria-describedby` relationships.
 - [WCAG 2.2, Guideline 3.3 Input Assistance](https://www.w3.org/TR/WCAG22/#input-assistance) — labels or instructions, textual error identification, and correction suggestions.
@@ -98,4 +110,4 @@ Inkspan cannot determine the complete accessibility of an embedding application.
 
 ## Verification
 
-The TypeScript test suite verifies the single-tab-stop invariant, remembered focus, disabled-control fallback, wrapping arrow navigation, Home/End behavior, toggle semantics, toolbar orientation, accessible-name precedence, blank language and ID-reference omission, `lang`/`dir` propagation, validation states, read-only semantics, native form submission, disabled/external form behavior, live serialization-mode changes, imperative replacement, collaborative updates, and live prop updates for standalone and collaborative surfaces under the repository-wide 100% statement/branch/function/line coverage gate.
+The TypeScript test suite verifies the single-tab-stop invariant, remembered focus, disabled-control fallback, wrapping arrow navigation, Home/End behavior, toggle semantics, toolbar orientation, accessible-name precedence, blank language and ID-reference omission, `lang`/`dir` propagation, validation states, read-only semantics, native form submission, disabled/external form behavior, live serialization-mode changes, imperative replacement, allowed and canceled standalone resets, reset-only form ownership, unrelated-form isolation, callback-only reset handling, queued-reset cleanup, collaborative automatic-reset rejection, collaborative callback-only observation without shared-state mutation, collaborative updates, and live prop updates for standalone and collaborative surfaces under the repository-wide 100% statement/branch/function/line coverage gate.

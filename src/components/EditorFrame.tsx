@@ -16,6 +16,7 @@ export interface EditorFrameProps {
   formFieldName?: string;
   formId?: string;
   formFieldDisabled?: boolean;
+  onFormReset?: (event: Event) => void;
   status?: ReactNode;
 }
 
@@ -34,6 +35,7 @@ export function EditorFrame({
   formFieldName,
   formId,
   formFieldDisabled,
+  onFormReset,
   status,
 }: EditorFrameProps) {
   const onKeyDown = useCallback(
@@ -74,6 +76,7 @@ export function EditorFrame({
         name={formFieldName}
         formId={formId}
         disabled={formFieldDisabled}
+        onFormReset={onFormReset}
       />
       {status}
       {!hideToolbar && editor && editable ? (
