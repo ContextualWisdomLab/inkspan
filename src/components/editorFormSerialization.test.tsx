@@ -16,6 +16,17 @@ function submittedValue(
   return new FormData(form).get(name);
 }
 
+async function dispatchReset(form: HTMLFormElement): Promise<boolean> {
+  let allowed = false;
+  await act(async () => {
+    allowed = form.dispatchEvent(
+      new Event('reset', { bubbles: true, cancelable: true }),
+    );
+    await Promise.resolve();
+  });
+  return allowed;
+}
+
 describe('native form serialization', () => {
   it('renders an empty native field safely before an editor or form exists', () => {
     const { container } = render(
@@ -164,10 +175,7 @@ describe('native form serialization', () => {
       expect(String(submittedValue(form, 'message_body'))).toContain('# Changed'),
     );
 
-    await act(async () => {
-      form.reset();
-      await Promise.resolve();
-    });
+    expect(await dispatchReset(form)).toBe(true);
 
     await waitFor(() => {
       expect(editorRef.current!.getValue()).toContain('# Reset baseline');
@@ -208,10 +216,7 @@ describe('native form serialization', () => {
     });
     await waitFor(() => expect(editorRef.current!.getValue()).toBe('Changed'));
 
-    await act(async () => {
-      form.reset();
-      await Promise.resolve();
-    });
+    expect(await dispatchReset(form)).toBe(false);
 
     expect(editorRef.current!.getValue()).toBe('Changed');
     expect(onFormReset).not.toHaveBeenCalled();
@@ -246,18 +251,12 @@ describe('native form serialization', () => {
       editorRef.current!.setValue('Changed');
     });
 
-    await act(async () => {
-      unrelatedForm.reset();
-      await Promise.resolve();
-    });
+    expect(await dispatchReset(unrelatedForm)).toBe(true);
     expect(editorRef.current!.getValue()).toBe('Changed');
     expect(onFormReset).not.toHaveBeenCalled();
     expect(Array.from(new FormData(resetTarget).entries())).toHaveLength(0);
 
-    await act(async () => {
-      resetTarget.reset();
-      await Promise.resolve();
-    });
+    expect(await dispatchReset(resetTarget)).toBe(true);
     await waitFor(() => {
       expect(editorRef.current!.getValue()).toBe('Reset baseline');
       expect(onFormReset).toHaveBeenCalledTimes(1);
@@ -288,10 +287,7 @@ describe('native form serialization', () => {
     act(() => {
       editorRef.current!.setValue('Changed');
     });
-    await act(async () => {
-      form.reset();
-      await Promise.resolve();
-    });
+    expect(await dispatchReset(form)).toBe(true);
 
     await waitFor(() => expect(onFormReset).toHaveBeenCalledTimes(1));
     expect(editorRef.current!.getValue()).toBe('Changed');
@@ -345,10 +341,7 @@ describe('native form serialization', () => {
       ),
     );
 
-    await act(async () => {
-      form.reset();
-      await Promise.resolve();
-    });
+    expect(await dispatchReset(form)).toBe(true);
     await waitFor(() => expect(onFormReset).toHaveBeenCalledTimes(1));
     expect(editorRef.current!.getValue()).toContain('Shared body');
     expect(String(submittedValue(form, 'shared_body'))).toContain('Shared body');
