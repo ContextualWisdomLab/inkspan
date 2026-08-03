@@ -13,7 +13,7 @@ import math
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from importlib import resources
+from importlib import resources  # nosemgrep: python.lang.compatibility.python37.python37-compatibility-importlib2
 from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
