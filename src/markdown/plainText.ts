@@ -156,10 +156,11 @@ function renderTable(
 
 /** Normalize ordinary text while preserving code-token whitespace verbatim. */
 function normalizePlainText(segments: PlainTextSegment[]): string {
-  const normalized = mergeAdjacentTextSegments(segments).map((segment) =>
-    segment.kind === 'code'
-      ? segment
-      : { kind: 'text', value: normalizeTextSegment(segment.value) },
+  const normalized: PlainTextSegment[] = mergeAdjacentTextSegments(segments).map(
+    (segment) =>
+      segment.kind === 'code'
+        ? segment
+        : { kind: 'text', value: normalizeTextSegment(segment.value) },
   );
   return trimSegmentEdges(normalized)
     .map((segment) => segment.value)
@@ -181,7 +182,7 @@ function mergeAdjacentTextSegments(
   segments: PlainTextSegment[],
 ): PlainTextSegment[] {
   return segments.reduce<PlainTextSegment[]>((merged, segment) => {
-    const previous = merged.at(-1);
+    const previous = merged[merged.length - 1];
     if (previous?.kind === 'text' && segment.kind === 'text') {
       previous.value += segment.value;
     } else {
