@@ -6,15 +6,21 @@
 
 Inkspan is a modular, commercial-grade authoring surface for applications and
 AI systems. It combines a React Markdown/HTML WYSIWYG editor, self-contained
-base64 images, provider-neutral Yjs collaboration, offline multilingual
-fonts, email-ready serialization, a framework-independent data-URI converter,
-and a deterministic Office Open XML renderer for DOCX, XLSX, and PPTX.
+base64 images, strict hyperlink validation, provider-neutral Yjs collaboration,
+offline multilingual fonts, email-ready serialization, a framework-independent
+data-URI converter, and a deterministic Office Open XML renderer for DOCX,
+XLSX, and PPTX.
 
 ## Product capabilities
 
 - **Markdown and HTML editing** — one TipTap/ProseMirror editor, accessible
   composite keyboard toolbar, tables, links, code blocks, lists, and horizontal
   rules.
+- **Safe hyperlinks** — credential-free HTTP(S), non-empty `mailto:`/`tel:`,
+  relative paths, queries, and fragments are allowed. Protocol-relative,
+  executable, local/blob, unknown-scheme, malformed, credential-bearing, and
+  obfuscated targets are rejected across parsing, commands, transactions,
+  collaboration, and serialization.
 - **Self-contained, accessible images** — every editor image must be a strict
   inline base64 raster data URI. External, protocol-relative, blob, file,
   JavaScript, SVG/active-vector, unsupported-MIME, malformed, and oversized
@@ -25,8 +31,9 @@ and a deterministic Office Open XML renderer for DOCX, XLSX, and PPTX.
   and access to the underlying TipTap instance.
 - **Provider-neutral collaboration** — opt-in Yjs/TipTap real-time editing with
   host-owned transport, persistence, authorization, and lifecycle boundaries.
-- **Email output** — Markdown-to-email HTML conversion preserves inline base64
-  figures and can emit either a fragment or a complete HTML document.
+- **Email output** — Markdown-to-email HTML conversion preserves accepted inline
+  base64 figures, emits only safe clickable links, and can return either a
+  fragment or a complete HTML document.
 - **Offline multilingual typography** — bundled Noto Sans subsets cover Korean,
   English, Japanese, Simplified/Traditional Chinese, and Vietnamese with no CDN
   or runtime font request.
@@ -170,6 +177,35 @@ Enter/Space to invoke the focused button. See
 [`docs/accessibility.md`](docs/accessibility.md) for the complete integration
 contract and host responsibilities.
 
+### Safe hyperlink boundary
+
+Inkspan applies one link policy to initial content, toolbar and Ctrl/Cmd+K
+commands, pasted/autolinked URLs, direct ProseMirror transactions, collaborative
+changes, and HTML output. Accepted targets are credential-free HTTP(S),
+non-empty `mailto:` and `tel:`, ordinary document-relative paths, query-only
+references, and fragments.
+
+Protocol-relative URLs and `javascript:`, `data:`, `vbscript:`, `file:`,
+`blob:`, unknown custom schemes, embedded HTTP(S) credentials, malformed URLs,
+literal whitespace/control characters, and backslashes are rejected without
+trimming or repair. Use the public validators in host-owned workflows:
+
+```ts
+import {
+  isSafeLinkHref,
+  validateSafeLinkHref,
+} from '@contextualwisdomlab/cwl-editor';
+
+if (isSafeLinkHref(candidate)) {
+  // Safe to supply to the shared Inkspan Link mark.
+}
+
+const href = validateSafeLinkHref('/documents/current');
+```
+
+See [`docs/link-security.md`](docs/link-security.md) for enforcement points,
+CWL/naruon host responsibilities, standards references, and verification.
+
 ## Real-time collaboration
 
 Import `CollaborativeCwlEditor` from the opt-in collaboration entrypoint and
@@ -202,8 +238,11 @@ const emailDocument = markdownToEmailHtml(markdown, {
 });
 ```
 
-The GFM/CommonMark pipeline preserves inline image data URIs and image
-alternative text through Markdown ⇄ HTML conversion.
+The GFM/CommonMark pipeline preserves accepted inline image data URIs and image
+alternative text through Markdown ⇄ HTML conversion. `markdownToHtml` and
+`markdownToEmailHtml` emit `<img>` only for strict inline base64 raster sources
+within a 10 MB serializer boundary. Rejected image sources become inert markers,
+and unsafe links become ordinary text rather than clickable anchors.
 `markdownToEmailHtml` creates an email body, not a complete MIME multipart
 message.
 
@@ -373,7 +412,9 @@ The repository CI pins GitHub Actions by full commit SHA. The Office matrix uses
 hash-locked binary dependencies on Python 3.11 and 3.14. JavaScript and Python
 shipped code are gated at 100% coverage; the Python package additionally enforces
 100% shipped-symbol docstring coverage and verifies the contents of its built
-wheel.
+wheel. Link-policy tests cover parsing, commands, direct transactions,
+serialization, and redacted diagnostics; image-policy tests cover every editor
+and standalone serializer ingress path.
 
 ## Architecture
 
@@ -382,14 +423,14 @@ src/
   collaboration/   Provider-neutral Yjs editor, awareness, and presence
   components/      Shared React editor frame, standalone editor, and toolbar
   converter/       Framework-independent base64/data-URI utilities
-  extensions/      TipTap extension kit and inline Base64Image extension
+  extensions/      TipTap extension kit, SafeLink, and inline Base64Image
   fonts/           Offline Noto Sans subsets, CSS, license, and attribution
   markdown/        Markdown/HTML/email serializers
   styles.css       Self-contained theme-aware editor styling
 demo/              Standalone Vite demo
 office/            JSON Schema, Python renderer/CLI, tests, and package metadata
 scripts/           Build helpers and offline-font generator
-docs/              Design records, specifications, and citations
+docs/              Design records, specifications, security contracts, citations
 ```
 
 Inkspan is designed to run independently and as a module within CWL/naruon
