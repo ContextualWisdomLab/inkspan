@@ -1,22 +1,27 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   assertCollaborationConfiguration,
   collaborationConnectionLabel,
   contrastingTextColor,
   countRemoteCollaborators,
+  createScopedCollaborationProvider,
   renderCollaborationCursor,
   serializeCollaborationUser,
 } from './awareness.js';
 import type {
   CollaborationAwareness,
+  CollaborationAwarenessEvent,
   CollaborationProviderLike,
 } from './types.js';
 
-function validAwareness(): CollaborationAwareness {
+function validAwareness(
+  states: Map<number, Record<string, unknown>> = new Map(),
+): CollaborationAwareness {
   return {
     clientID: 11,
+    states,
     getLocalState: () => null,
-    getStates: () => new Map(),
+    getStates: () => states,
     setLocalStateField: () => undefined,
     on: () => undefined,
     off: () => undefined,
@@ -56,7 +61,9 @@ describe('collaboration awareness validation', () => {
   });
 
   it('allows collaboration without an awareness provider', () => {
-    expect(() => assertCollaborationConfiguration(undefined, undefined)).not.toThrow();
+    expect(() =>
+      assertCollaborationConfiguration(undefined, undefined),
+    ).not.toThrow();
   });
 
   it('requires a provider when a public user is supplied', () => {
@@ -82,16 +89,24 @@ describe('collaboration awareness validation', () => {
     undefined,
     {},
     { clientID: 'bad' },
-    { clientID: 1, getLocalState: null },
-    { clientID: 1, getLocalState: () => null, getStates: null },
+    { clientID: 1, states: {} },
+    { clientID: 1, states: new Map(), getLocalState: null },
     {
       clientID: 1,
+      states: new Map(),
+      getLocalState: () => null,
+      getStates: null,
+    },
+    {
+      clientID: 1,
+      states: new Map(),
       getLocalState: () => null,
       getStates: () => new Map(),
       setLocalStateField: null,
     },
     {
       clientID: 1,
+      states: new Map(),
       getLocalState: () => null,
       getStates: () => new Map(),
       setLocalStateField: () => undefined,
@@ -99,17 +114,78 @@ describe('collaboration awareness validation', () => {
     },
     {
       clientID: 1,
+      states: new Map(),
       getLocalState: () => null,
       getStates: () => new Map(),
       setLocalStateField: () => undefined,
       on: () => undefined,
       off: null,
     },
-  ])('rejects an incompatible awareness shape %#', (awareness) => {
+  ] as unknown[])('rejects an incompatible awareness shape %#', (awareness) => {
     const provider = { awareness } as unknown as CollaborationProviderLike;
     expect(() =>
       assertCollaborationConfiguration(provider, undefined),
     ).toThrow(/compatible Yjs awareness/);
+  });
+});
+
+describe('scoped collaboration provider', () => {
+  it('relays awareness events and delegates state without leaking listeners', () => {
+    const states = new Map<number, Record<string, unknown>>([
+      [5, { user: { id: 'local' } }],
+    ]);
+    let localState: Record<string, unknown> | null = null;
+    const sourceListeners: Record<
+      CollaborationAwarenessEvent,
+      Set<(...args: unknown[]) => void>
+    > = {
+      change: new Set(),
+      update: new Set(),
+    };
+    const source: CollaborationAwareness = {
+      clientID: 5,
+      states,
+      getLocalState: () => localState,
+      getStates: () => states,
+      setLocalStateField: (field, value) => {
+        localState = { ...(localState ?? {}), [field]: value };
+      },
+      on: (event, listener) => sourceListeners[event].add(listener),
+      off: (event, listener) => sourceListeners[event].delete(listener),
+    };
+    const scoped = createScopedCollaborationProvider({ awareness: source });
+    const onChange = vi.fn();
+    const removedChange = vi.fn();
+    const onUpdate = vi.fn();
+
+    scoped.awareness.on('change', onChange);
+    scoped.awareness.on('change', removedChange);
+    scoped.awareness.off('change', removedChange);
+    scoped.awareness.on('update', onUpdate);
+    for (const listener of sourceListeners.change) listener('changed');
+    for (const listener of sourceListeners.update) listener('updated');
+
+    expect(onChange).toHaveBeenCalledWith('changed');
+    expect(removedChange).not.toHaveBeenCalled();
+    expect(onUpdate).toHaveBeenCalledWith('updated');
+    expect(scoped.awareness.clientID).toBe(5);
+    expect(scoped.awareness.states).toBe(states);
+    expect(scoped.awareness.getStates()).toBe(states);
+    expect(scoped.awareness.getLocalState()).toBeNull();
+
+    scoped.awareness.setLocalStateField('user', { id: 'editor-alice' });
+    expect(scoped.awareness.getLocalState()).toEqual({
+      user: { id: 'editor-alice' },
+    });
+
+    expect(sourceListeners.change).toHaveLength(1);
+    expect(sourceListeners.update).toHaveLength(1);
+    scoped.dispose();
+    expect(sourceListeners.change).toHaveLength(0);
+    expect(sourceListeners.update).toHaveLength(0);
+
+    scoped.dispose();
+    expect(sourceListeners.change).toHaveLength(0);
   });
 });
 
@@ -125,7 +201,7 @@ describe('collaboration awareness presentation', () => {
       [17, {}],
       [18, { user: { id: 'remote-two' } }],
     ]);
-    const awareness = { ...validAwareness(), getStates: () => states };
+    const awareness = validAwareness(states);
 
     expect(countRemoteCollaborators(awareness)).toBe(2);
     expect(countRemoteCollaborators(undefined)).toBe(0);
@@ -159,7 +235,9 @@ describe('collaboration awareness presentation', () => {
       name: '<img src=x onerror=alert(1)>'.repeat(8),
       color: 'url(javascript:alert(1))',
     });
-    const label = cursor.querySelector('.collaboration-cursor__label') as HTMLElement;
+    const label = cursor.querySelector(
+      '.collaboration-cursor__label',
+    ) as HTMLElement;
 
     expect(cursor.style.borderColor).toBe('rgb(71, 85, 105)');
     expect(label.textContent).toHaveLength(80);
