@@ -17,10 +17,12 @@ describe('buildEditorAccessibilityAttributes', () => {
     });
   });
 
-  it('prefers a visible label and exposes complete validation metadata', () => {
+  it('prefers a visible label and exposes language, direction, and validation metadata', () => {
     expect(
       buildEditorAccessibilityAttributes({
         defaultLabel: 'Fallback',
+        languageTag: ' ar-EG ',
+        textDirection: 'rtl',
         ariaLabel: 'Ignored string label',
         ariaLabelledBy: ' compose-title compose-context ',
         ariaDescribedBy: ' compose-help ',
@@ -34,6 +36,8 @@ describe('buildEditorAccessibilityAttributes', () => {
       role: 'textbox',
       'aria-multiline': 'true',
       'aria-readonly': 'true',
+      lang: 'ar-EG',
+      dir: 'rtl',
       'aria-labelledby': 'compose-title compose-context',
       'aria-describedby': 'compose-help',
       'aria-errormessage': 'compose-error',
@@ -42,10 +46,12 @@ describe('buildEditorAccessibilityAttributes', () => {
     });
   });
 
-  it('omits blank relationships while retaining explicit false states', () => {
+  it('omits blank relationships and language while retaining explicit states', () => {
     expect(
       buildEditorAccessibilityAttributes({
         defaultLabel: 'Fallback',
+        languageTag: '   ',
+        textDirection: 'auto',
         ariaLabel: 'Draft body',
         ariaLabelledBy: '   ',
         ariaDescribedBy: '',
@@ -59,6 +65,7 @@ describe('buildEditorAccessibilityAttributes', () => {
       role: 'textbox',
       'aria-multiline': 'true',
       'aria-readonly': 'false',
+      dir: 'auto',
       'aria-label': 'Draft body',
       'aria-invalid': 'false',
       'aria-required': 'false',
