@@ -39,7 +39,9 @@ export function EditorFormField({
   const serializedValueRef = useRef('');
 
   useEffect(() => {
-    const field = fieldRef.current!;
+    const field = fieldRef.current;
+    /* v8 ignore next -- the effect runs only after the rendered field mounts. */
+    if (!field) return;
     if (!editor || name === undefined) {
       serializedValueRef.current = '';
       field.value = '';
