@@ -16,10 +16,11 @@ export interface EditorFormFieldProps {
 /**
  * Mirror the current serialized document into a native hidden form field.
  *
- * The field subscribes only to document-changing transactions, avoiding a full
- * Markdown/HTML serialization on cursor movement while still observing
+ * Named fields subscribe only to document-changing transactions, avoiding a
+ * full Markdown/HTML serialization on cursor movement while still observing
  * programmatic `setContent(..., false)` calls that intentionally suppress the
- * higher-level TipTap update event. When configured, it also observes the
+ * higher-level TipTap update event. Reset-only unnamed fields skip document
+ * serialization entirely. When configured, the field also observes the
  * associated form's cancelable reset event and notifies the editor only after
  * every listener has had an opportunity to cancel the native reset.
  */
@@ -35,7 +36,7 @@ export function EditorFormField({
   const [serializedValue, setSerializedValue] = useState('');
 
   useEffect(() => {
-    if (!editor) {
+    if (!editor || name === undefined) {
       setSerializedValue('');
       return;
     }
@@ -56,7 +57,7 @@ export function EditorFormField({
     return () => {
       editor.off('transaction', handleTransaction);
     };
-  }, [editor, mode]);
+  }, [editor, mode, name]);
 
   useEffect(() => {
     if (!onFormReset) return;
