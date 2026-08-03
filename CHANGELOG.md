@@ -10,14 +10,20 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 - **Composite toolbar keyboard access** — the formatting toolbar is now one remembered tab stop with wrapping Left/Right navigation, Home/End navigation, disabled-control skipping, and automatic fallback when the remembered control becomes unavailable
 - Toggle buttons retain `aria-pressed`, while one-shot command buttons no longer expose a misleading pressed state
 - Visible `:focus-visible` indicators now ship for normal and forced-colors modes
+- **Strict inline raster image boundary** — initial HTML/Markdown, controlled and imperative APIs, direct ProseMirror transactions, collaborative updates, and serialization now enforce one source policy
+- External, protocol-relative, `blob:`, `file:`, JavaScript, SVG/active-vector, unsupported-MIME, malformed, empty, and oversized image sources are rejected before decoder use, editor-state entry, or emission of a network-capable `<img>`
+- Rejected source diagnostics are categorized and redacted so URL secrets and base64 payload bytes are not retained in host telemetry
+- Removed temporary branch-patching workflows that were inadvertently retained after the previous image-policy merge
 
 ### Changed
 - Package version **0.3.2**
 - The toolbar declares horizontal orientation and follows the WAI-ARIA Authoring Practices toolbar interaction model
-- Added a documented accessibility integration contract covering editor semantics, toolbar behavior, host responsibilities, and verification
+- Added documented accessibility and image-security integration contracts covering behavior, host responsibilities, and verification
+- Supported inline image MIME types are PNG, JPEG/JPG, GIF, WebP, AVIF, APNG, BMP, and ICO
 
 ### Tests
 - Single-tab-stop behavior, remembered focus, disabled-control fallback, wrapping navigation, Home/End, orientation, and toggle-only pressed semantics are covered under the 100% TypeScript coverage gate
+- Source-policy tests cover initial and controlled content, imperative insertion/replacement, direct transactions, collaborative propagation, active-vector rejection, byte limits, redacted errors, and block/inline defense-in-depth serialization
 
 ## [0.3.1] — 2026-08-03
 
