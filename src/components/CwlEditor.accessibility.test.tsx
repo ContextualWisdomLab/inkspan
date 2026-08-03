@@ -1,0 +1,62 @@
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
+import { CwlEditor } from './CwlEditor.js';
+
+afterEach(cleanup);
+
+describe('CwlEditor form accessibility metadata', () => {
+  it('binds visible labels, instructions, validation, and live prop updates', async () => {
+    const { rerender } = render(
+      <>
+        <h2 id="compose-title">Compose body</h2>
+        <p id="compose-help">Include the decision and cited evidence.</p>
+        <p id="compose-error">A body is required.</p>
+        <CwlEditor
+          defaultValue="Draft"
+          hideToolbar
+          ariaLabel="Fallback body label"
+          ariaLabelledBy="compose-title"
+          ariaDescribedBy="compose-help"
+          ariaErrorMessage="compose-error"
+          ariaInvalid
+          ariaRequired
+        />
+      </>,
+    );
+
+    const editor = await screen.findByRole('textbox', { name: 'Compose body' });
+    expect(editor).not.toHaveAttribute('aria-label');
+    expect(editor).toHaveAttribute('aria-describedby', 'compose-help');
+    expect(editor).toHaveAttribute('aria-errormessage', 'compose-error');
+    expect(editor).toHaveAttribute('aria-invalid', 'true');
+    expect(editor).toHaveAttribute('aria-required', 'true');
+    expect(editor).toHaveAttribute('aria-readonly', 'false');
+
+    rerender(
+      <>
+        <h2 id="compose-title">Compose body</h2>
+        <p id="compose-help">Include the decision and cited evidence.</p>
+        <CwlEditor
+          defaultValue="Draft"
+          hideToolbar
+          editable={false}
+          ariaLabel="Archived body"
+          ariaInvalid={false}
+          ariaRequired={false}
+        />
+      </>,
+    );
+
+    await waitFor(() => {
+      const readOnlyEditor = screen.getByRole('textbox', {
+        name: 'Archived body',
+      });
+      expect(readOnlyEditor).toHaveAttribute('aria-readonly', 'true');
+      expect(readOnlyEditor).toHaveAttribute('aria-invalid', 'false');
+      expect(readOnlyEditor).toHaveAttribute('aria-required', 'false');
+      expect(readOnlyEditor).not.toHaveAttribute('aria-labelledby');
+      expect(readOnlyEditor).not.toHaveAttribute('aria-describedby');
+      expect(readOnlyEditor).not.toHaveAttribute('aria-errormessage');
+    });
+  });
+});
