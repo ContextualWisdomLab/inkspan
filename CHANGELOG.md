@@ -4,6 +4,27 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-08-03
+
+### Added
+- **Strict safe-hyperlink boundary** — one allowlist now governs initial HTML/Markdown, toolbar and keyboard commands, pasted/autolinked content, direct ProseMirror transactions, provider-neutral collaborative updates, and HTML serialization
+- Public `SafeLink`, `SafeLinkHrefError`, `validateSafeLinkHref`, `isSafeLinkHref`, and `safeLinkPluginKey` exports for CWL/naruon hosts and headless integrations
+- A documented hyperlink and serializer security contract with TipTap, OWASP, WHATWG URL, and CSP references
+
+### Changed
+- Package version **0.4.0**
+- Allowed targets are credential-free HTTP(S), non-empty `mailto:`/`tel:`, ordinary document-relative paths, query-only references, and fragments
+- Protocol-relative, executable, active-data, local/blob, unknown-scheme, credential-bearing, malformed, whitespace/control-character, and backslash-obfuscated targets are rejected without trimming or repair
+- `markdownToHtml` and `markdownToEmailHtml` now emit clickable anchors only for safe targets and emit `<img>` only for strict inline base64 raster sources within the 10 MB serializer boundary
+- Rejected Markdown links render as ordinary text; rejected external, active-vector, malformed, unsupported, local, or oversized image sources render as inert `data-cwl-rejected-image` markers and cannot trigger a network request
+
+### Security
+- Rejected hyperlink diagnostics expose bounded categories rather than complete URLs, query strings, fragments, credentials, or payloads
+- A full-document transaction filter closes bypasses through direct ProseMirror dispatch and CRDT ingress while preserving TipTap's native link paste/autolink plugins
+
+### Tests
+- Accepted and rejected target classes, redacted diagnostics, HTML parsing, command insertion, direct transactions, public exports, shared-kit configuration, Markdown/email link rendering, and external/active image rejection are covered under the 100% TypeScript coverage gate
+
 ## [0.3.2] — 2026-08-03
 
 ### Fixed
