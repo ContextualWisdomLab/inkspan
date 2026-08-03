@@ -26,12 +26,16 @@ const htmlText = htmlToPlainText(
 The projection preserves authored reading order and emits:
 
 - heading, paragraph, blockquote, code, and explicit line-break text;
-- list items separated by line breaks;
+- unordered markers, ordered-list start numbers, and two-space nesting depth;
 - table cells separated by tabs and rows separated by line breaks;
 - link labels without hyperlink destinations;
 - image alternative text by default.
 
-It does not emit Markdown delimiters, HTML element names or attributes,
+Code-token indentation, consecutive spaces, and blank lines remain verbatim.
+List structure remains distinguishable from ordinary adjacent lines, including
+ordered lists whose configured start is not `1` and nested mixed list types.
+
+It does not emit other Markdown delimiters, HTML element names or attributes,
 hyperlink targets, image sources, or inline base64 payloads. Raw Markdown HTML
 blocks and link-definition records are omitted rather than interpreted. This is
 a projection for text-bearing host workflows, not an HTML sanitizer or a
