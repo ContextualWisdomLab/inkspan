@@ -63,8 +63,9 @@ hard-link operation, so a file created concurrently cannot be overwritten by a
 check-then-replace race. The temporary link is removed after publication.
 
 The safety facade rejects XML 1.0-incompatible control characters before any
-OOXML library receives them and detects cyclic Python containers that cannot be
-represented by the JSON contract.
+OOXML library receives them, detects cyclic Python containers that cannot be
+represented by the JSON contract, and rejects JSON-like container nesting
+deeper than 128 levels before it can exhaust the Python call stack.
 
 XLSX strings beginning, after leading whitespace, with `=`, `+`, `-`, or `@`
 are forced to the string cell type. This prevents AI-authored content from
@@ -86,10 +87,11 @@ digits by supplying them as strings.
 Tests author and re-open all three formats with their native libraries, exercise
 metadata and every supported content shape, and cover malformed or ambiguous
 requests, formula neutralization, XML controls, Excel storage limits, atomic
-publication races, output rules, and CLI behavior. CI runs the suite on Python
-3.11 and 3.13 after installing hash-locked binary dependencies, requires 100%
-statement/branch and shipped-symbol docstring coverage, performs `pip check`,
-and builds a wheel containing the JSON Schema and license.
+publication races, output rules, and CLI behavior. CI runs the suite on minimum
+Python 3.11 and current stable Python 3.14 after installing hash-locked binary
+dependencies, requires 100% statement/branch and shipped-symbol docstring
+coverage, performs `pip check`, and builds a wheel containing the JSON Schema
+and license.
 
 ## Integration boundary
 
