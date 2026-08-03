@@ -41,6 +41,9 @@ describe('useEditorHandle', () => {
     });
     expect(Object.isFrozen(handle.getSnapshot())).toBe(true);
     expect(() => handle.setValue('ignored')).not.toThrow();
+    expect(
+      handle.validateDocumentJson({ type: 'doc', content: [] }),
+    ).toBe(false);
     expect(() =>
       handle.setDocumentJson({ type: 'doc', content: [] }),
     ).not.toThrow();
