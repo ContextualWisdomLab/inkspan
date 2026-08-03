@@ -4,6 +4,21 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-08-03
+
+### Added
+- **Accessible image alternative-text authoring** — an `Alt` toolbar action is enabled only for a selected image, prefills existing replacement text, and supports either a meaningful description or an explicit empty value for decorative images
+- New toolbar uploads and paste/drop image insertion now write `alt=""` explicitly until an author supplies meaningful replacement text
+
+### Changed
+- Package version **0.3.1**
+- Image alternative text remains intact through HTML, Markdown, and collaborative Yjs editing
+
+### Tests
+- Alternative-text editing, cancellation, decorative images, upload/paste/drop defaults, Markdown serialization, and collaborative convergence are covered under the 100% TypeScript coverage gate
+
+## [0.3.0] — 2026-08-03
+
 ### Added
 - **Provider-neutral real-time collaboration** — a separate `@contextualwisdomlab/cwl-editor/collaboration` entrypoint backed by a host-owned `Y.Doc`, with no transport, authentication, persistence, credential, or provider-lifecycle coupling
 - Shared CRDT-aware editor shell preserving the existing toolbar, tables, inline base64 images, Markdown/HTML exports, read-only behavior, and `CwlEditorHandle`
