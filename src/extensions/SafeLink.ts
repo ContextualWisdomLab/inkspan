@@ -9,6 +9,7 @@
  * absolute URLs, and unknown schemes are rejected.
  */
 import Link from '@tiptap/extension-link';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 
 const SAFE_ABSOLUTE_SCHEMES = new Set(['http', 'https', 'mailto', 'tel']);
@@ -81,7 +82,7 @@ export function validateSafeLinkHref(href: unknown): string {
     throw new SafeLinkHrefError(href);
   }
   if (scheme === 'http' || scheme === 'https') {
-    if (!href.slice(scheme.length + 1).startsWith('//')) {
+    if (!payload.startsWith('//')) {
       throw new SafeLinkHrefError(href);
     }
     validateWebHref(href);
@@ -103,7 +104,7 @@ export function isSafeLinkHref(href: unknown): href is string {
 export const safeLinkPluginKey = new PluginKey('cwlSafeLink');
 
 /** Return true when every link mark in a document has a safe target. */
-function documentHasOnlySafeLinks(documentNode: Parameters<Plugin['spec']['filterTransaction']>[0]['doc']): boolean {
+function documentHasOnlySafeLinks(documentNode: ProseMirrorNode): boolean {
   let safe = true;
   documentNode.descendants((node) => {
     if (!safe) return false;
