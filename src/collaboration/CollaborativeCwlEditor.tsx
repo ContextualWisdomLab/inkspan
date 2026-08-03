@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react';
 import { EditorFrame } from '../components/EditorFrame.js';
+import { buildEditorAccessibilityAttributes } from '../components/editorAccessibility.js';
 import { editorHtmlToValue } from '../components/editorSerialization.js';
 import { useEditorHandle } from '../components/useEditorHandle.js';
 import { useLatestRef } from '../components/useLatestRef.js';
@@ -59,7 +60,12 @@ export const CollaborativeCwlEditor = forwardRef<
     image,
     className,
     onReady,
-    ariaLabel = 'Collaborative rich text editor',
+    ariaLabel,
+    ariaLabelledBy,
+    ariaDescribedBy,
+    ariaErrorMessage,
+    ariaInvalid,
+    ariaRequired,
   } = props;
 
   assertCollaborationConfiguration(provider, user);
@@ -96,6 +102,28 @@ export const CollaborativeCwlEditor = forwardRef<
   const reportImageError = useCallback((error: Error) => {
     onImageErrorRef.current?.(error);
   }, [onImageErrorRef]);
+  const editorAttributes = useMemo(
+    () =>
+      buildEditorAccessibilityAttributes({
+        defaultLabel: 'Collaborative rich text editor',
+        ariaLabel,
+        ariaLabelledBy,
+        ariaDescribedBy,
+        ariaErrorMessage,
+        ariaInvalid,
+        ariaRequired,
+        editable,
+      }),
+    [
+      ariaLabel,
+      ariaLabelledBy,
+      ariaDescribedBy,
+      ariaErrorMessage,
+      ariaInvalid,
+      ariaRequired,
+      editable,
+    ],
+  );
 
   const editor = useEditor(
     {
@@ -123,12 +151,7 @@ export const CollaborativeCwlEditor = forwardRef<
         ],
       }),
       editorProps: {
-        attributes: {
-          class: 'cwl-editor__content',
-          role: 'textbox',
-          'aria-multiline': 'true',
-          'aria-label': ariaLabel,
-        },
+        attributes: editorAttributes,
       },
       onUpdate: ({ editor: instance }) => {
         onChangeRef.current?.(
@@ -148,6 +171,17 @@ export const CollaborativeCwlEditor = forwardRef<
   useEffect(() => {
     editor?.setEditable(editable);
   }, [editor, editable]);
+
+  useEffect(() => {
+    /* v8 ignore next -- the editor is created synchronously in supported React clients. */
+    if (!editor) return;
+    editor.setOptions({
+      editorProps: {
+        ...editor.options.editorProps,
+        attributes: editorAttributes,
+      },
+    });
+  }, [editor, editorAttributes]);
 
   useEffect(() => {
     if (!editor || !cursorUser || !presenceEnabled) return;
