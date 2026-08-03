@@ -18,8 +18,9 @@ export interface ApplyEditorFormResetOptions {
  * Apply an optional serialized reset document, then notify the host.
  *
  * The caller invokes this only after the associated form's cancelable reset
- * event has completed without `preventDefault()`. Collaborative callers therefore
- * mutate shared Yjs state only when the host explicitly supplies a reset value.
+ * event has completed without `preventDefault()`. Standalone callers may supply
+ * a reset value; collaborative callers use notification-only behavior so shared
+ * Yjs mutation remains an explicit, authorized host operation.
  */
 export function applyEditorFormReset({
   editor,
