@@ -11,6 +11,8 @@ from .renderer import OfficeDocumentError, load_schema, write_office_document
 
 
 def _parser() -> argparse.ArgumentParser:
+    """Build the argument parser shared by the console script and tests."""
+
     parser = argparse.ArgumentParser(
         prog="inkspan-office",
         description="Render strict AI-authored JSON to DOCX, XLSX, or PPTX.",
