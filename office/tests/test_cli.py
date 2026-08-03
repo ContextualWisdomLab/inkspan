@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import runpy
+import sys
 from pathlib import Path
 
 import pytest
@@ -27,6 +29,20 @@ def test_cli_renders_json_request(tmp_path: Path) -> None:
 
 def test_cli_prints_machine_readable_schema(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["--print-schema"]) == 0
+    printed = json.loads(capsys.readouterr().out)
+    assert printed["title"] == "Inkspan Office document request"
+
+
+def test_cli_module_entrypoint_prints_schema(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(sys, "argv", ["inkspan-office", "--print-schema"])
+
+    with pytest.raises(SystemExit) as exc:
+        runpy.run_module("inkspan_office.cli", run_name="__main__", alter_sys=True)
+
+    assert exc.value.code == 0
     printed = json.loads(capsys.readouterr().out)
     assert printed["title"] == "Inkspan Office document request"
 
