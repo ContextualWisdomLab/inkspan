@@ -10,7 +10,8 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 - Formula-injection protection for AI-authored spreadsheet strings and strict rejection of unknown or malformed fields
 
 ### Tests
-- 48 Python tests re-open all generated Office formats and enforce 100% statement and branch coverage on Python 3.11 and 3.13
+- 48 Python tests re-open all generated Office formats on Python 3.11 and 3.13
+- Hash-locked binary dependencies protect the Office CI jobs from unreviewed package changes
 - Wheel packaging gate verifies that the JSON Schema and MIT license ship with the package
 
 ## [0.2.1] — 2026-07-31
