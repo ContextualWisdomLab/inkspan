@@ -109,9 +109,14 @@ export interface CwlEditorHandle {
   /** Replace the whole document from a string in the active `mode`. */
   setValue(value: string): void;
   /**
+   * Check whether JSON can be restored by the active TipTap/ProseMirror schema
+   * without mutating the document. Returns `false` before editor creation.
+   */
+  validateDocumentJson(documentJson: JSONContent): boolean;
+  /**
    * Replace the whole document from TipTap/ProseMirror JSON without an
-   * HTML/Markdown conversion round-trip. The JSON must match Inkspan's current
-   * extension schema. This mirrors `setValue` and does not emit `onChange`.
+   * HTML/Markdown conversion round-trip. The complete node tree is validated
+   * before mutation. This mirrors `setValue` and does not emit `onChange`.
    */
   setDocumentJson(documentJson: JSONContent): void;
   /**
