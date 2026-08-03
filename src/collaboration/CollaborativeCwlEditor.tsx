@@ -5,6 +5,7 @@ import {
   forwardRef,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -17,6 +18,7 @@ import {
   assertCollaborationConfiguration,
   collaborationConnectionLabel,
   countRemoteCollaborators,
+  createScopedCollaborationProvider,
   renderCollaborationCursor,
   serializeCollaborationUser,
 } from './awareness.js';
@@ -69,6 +71,19 @@ export const CollaborativeCwlEditor = forwardRef<
   const normalizedField = field.trim();
   const cursorUser = user ? serializeCollaborationUser(user) : undefined;
   const presenceEnabled = provider !== undefined && cursorUser !== undefined;
+  const scopedProvider = useMemo(
+    () =>
+      provider && presenceEnabled
+        ? createScopedCollaborationProvider(provider)
+        : undefined,
+    [provider, presenceEnabled],
+  );
+  useEffect(
+    () => () => {
+      scopedProvider?.dispose();
+    },
+    [scopedProvider],
+  );
 
   const modeRef = useRef(mode);
   modeRef.current = mode;
@@ -93,10 +108,10 @@ export const CollaborativeCwlEditor = forwardRef<
             document: collaborationDocument,
             field: normalizedField,
           }),
-          ...(presenceEnabled
+          ...(scopedProvider && cursorUser
             ? [
                 CollaborationCursor.configure({
-                  provider,
+                  provider: scopedProvider,
                   user: cursorUser,
                   render: renderCollaborationCursor,
                 }),
@@ -118,7 +133,7 @@ export const CollaborativeCwlEditor = forwardRef<
         );
       },
     },
-    [collaborationDocument, provider, normalizedField, presenceEnabled],
+    [collaborationDocument, scopedProvider, normalizedField, presenceEnabled],
   );
 
   useEditorHandle(ref, editor, modeRef);
