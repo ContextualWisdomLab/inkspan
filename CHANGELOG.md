@@ -4,6 +4,21 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.3.2] — 2026-08-03
+
+### Fixed
+- **Composite toolbar keyboard access** — the formatting toolbar is now one remembered tab stop with wrapping Left/Right navigation, Home/End navigation, disabled-control skipping, and automatic fallback when the remembered control becomes unavailable
+- Toggle buttons retain `aria-pressed`, while one-shot command buttons no longer expose a misleading pressed state
+- Visible `:focus-visible` indicators now ship for normal and forced-colors modes
+
+### Changed
+- Package version **0.3.2**
+- The toolbar declares horizontal orientation and follows the WAI-ARIA Authoring Practices toolbar interaction model
+- Added a documented accessibility integration contract covering editor semantics, toolbar behavior, host responsibilities, and verification
+
+### Tests
+- Single-tab-stop behavior, remembered focus, disabled-control fallback, wrapping navigation, Home/End, orientation, and toggle-only pressed semantics are covered under the 100% TypeScript coverage gate
+
 ## [0.3.1] — 2026-08-03
 
 ### Added
