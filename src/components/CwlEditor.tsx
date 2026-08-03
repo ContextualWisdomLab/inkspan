@@ -32,6 +32,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       onChange,
       onFocus,
       onBlur,
+      onSelectionChange,
       onImageError,
       placeholder = 'Start writing…',
       editable = true,
@@ -61,6 +62,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     const onChangeRef = useLatestRef(onChange);
     const onFocusRef = useLatestRef(onFocus);
     const onBlurRef = useLatestRef(onBlur);
+    const onSelectionChangeRef = useLatestRef(onSelectionChange);
     const onImageErrorRef = useLatestRef(onImageError);
     const formResetValueRef = useLatestRef(formResetValue);
     const onFormResetRef = useLatestRef(onFormReset);
@@ -115,6 +117,19 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         } finally {
           emittingRef.current = false;
         }
+      },
+      onSelectionUpdate: ({ editor: instance }) => {
+        const { selection } = instance.state;
+        onSelectionChangeRef.current?.({
+          editor: instance,
+          selection: {
+            anchor: selection.anchor,
+            head: selection.head,
+            from: selection.from,
+            to: selection.to,
+            empty: selection.empty,
+          },
+        });
       },
       onFocus: ({ editor: instance, event }) => {
         onFocusRef.current?.({ editor: instance, event });

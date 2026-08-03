@@ -4,6 +4,28 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.8] — 2026-08-04
+
+### Added
+- Host-owned `onSelectionChange` callbacks for standalone and provider-neutral collaborative editor surfaces
+- Public `CwlEditorSelectionEvent` and immutable `CwlEditorSelectionSnapshot` types exposing `anchor`, `head`, `from`, `to`, and `empty`
+
+### Changed
+- Package version **0.5.8**
+- Selection callback props are read through live refs so hosts can add or replace handlers without recreating TipTap state or Yjs bindings
+- Selection events contain detached ProseMirror position snapshots rather than mutable selection objects or selected document content
+
+### Security
+- Selection coordinates are documented as ephemeral client-side presentation state, not durable identifiers, authorization evidence, or trusted audit records
+- Inkspan does not copy selected content into callbacks; CWL and naruon hosts remain responsible for deliberate content access, classification, telemetry minimization, and revalidation before later mutations
+
+### Tests
+- Standalone and collaborative tests cover absent callbacks, callbacks attached after mount, live callback replacement, stable editor identity, caret snapshots, and range snapshots under the repository-wide 100% TypeScript coverage gate
+- Packed-package verification compiles the public selection lifecycle declarations through a strict external TypeScript consumer
+
+### Documentation
+- Added `docs/selection-lifecycle.md` with ProseMirror coordinate semantics, collaborative remapping, AI/contextual-action usage, privacy boundaries, accessibility responsibilities, and primary TipTap/ProseMirror references
+
 ## [0.5.7] — 2026-08-04
 
 ### Changed

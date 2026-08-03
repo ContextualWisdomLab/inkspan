@@ -133,6 +133,8 @@ function verifyConsumerTypes() {
   validateSafeLinkHref,
   type CwlEditorFormResetEvent,
   type CwlEditorHandle,
+  type CwlEditorSelectionEvent,
+  type CwlEditorSelectionSnapshot,
 } from '${packageName}';
 import {
   assertCollaborationConfiguration,
@@ -150,6 +152,8 @@ const encodeOptions: EncodeOptions = { mimeType: 'application/octet-stream' };
 const dataUri: string = bytesToDataUri(new Uint8Array([1]), encodeOptions);
 declare const editorHandle: CwlEditorHandle;
 declare const resetEvent: CwlEditorFormResetEvent;
+declare const selectionEvent: CwlEditorSelectionEvent;
+declare const selectionSnapshot: CwlEditorSelectionSnapshot;
 declare const collaborationUser: CollaborationUser;
 void [
   renderMarkdown,
@@ -158,6 +162,8 @@ void [
   dataUri,
   editorHandle,
   resetEvent,
+  selectionEvent,
+  selectionSnapshot,
   collaborationUser,
 ];
 `,
