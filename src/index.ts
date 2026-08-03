@@ -17,6 +17,8 @@ export { Toolbar } from './components/Toolbar.js';
 
 // Types.
 export type {
+  CwlEditorDocumentChangeEvent,
+  CwlEditorDocumentSnapshot,
   CwlEditorFocusEvent,
   CwlEditorFormResetEvent,
   CwlEditorHandle,
