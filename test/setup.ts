@@ -1,4 +1,9 @@
 import '@testing-library/jest-dom/vitest';
+import { beforeEach, expect } from 'vitest';
+
+beforeEach(() => {
+  console.log(`[test-start] ${expect.getState().currentTestName}`);
+});
 
 // jsdom does not implement canvas; the downscale path falls back gracefully,
 // but stubbing getContext keeps any accidental calls from throwing.
