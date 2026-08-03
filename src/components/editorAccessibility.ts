@@ -21,7 +21,10 @@ export interface EditorAccessibilityOptions {
   editable: boolean;
 }
 
-function normalizedIdReference(value: string | undefined): string | undefined {
+/** Normalize a host-supplied accessible-name or ID-reference string. */
+function normalizedAccessibilityValue(
+  value: string | undefined,
+): string | undefined {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
 }
@@ -37,9 +40,10 @@ function normalizedIdReference(value: string | undefined): string | undefined {
 export function buildEditorAccessibilityAttributes(
   options: EditorAccessibilityOptions,
 ): Record<string, string> {
-  const labelledBy = normalizedIdReference(options.ariaLabelledBy);
-  const describedBy = normalizedIdReference(options.ariaDescribedBy);
-  const errorMessage = normalizedIdReference(options.ariaErrorMessage);
+  const labelledBy = normalizedAccessibilityValue(options.ariaLabelledBy);
+  const describedBy = normalizedAccessibilityValue(options.ariaDescribedBy);
+  const errorMessage = normalizedAccessibilityValue(options.ariaErrorMessage);
+  const explicitLabel = normalizedAccessibilityValue(options.ariaLabel);
   const attributes: Record<string, string> = {
     class: 'cwl-editor__content',
     role: 'textbox',
@@ -50,7 +54,7 @@ export function buildEditorAccessibilityAttributes(
   if (labelledBy) {
     attributes['aria-labelledby'] = labelledBy;
   } else {
-    attributes['aria-label'] = options.ariaLabel ?? options.defaultLabel;
+    attributes['aria-label'] = explicitLabel ?? options.defaultLabel;
   }
   if (describedBy) attributes['aria-describedby'] = describedBy;
   if (errorMessage) attributes['aria-errormessage'] = errorMessage;
