@@ -81,30 +81,19 @@ export function assertCollaborationConfiguration(
 
 /**
  * Isolate TipTap cursor listeners from the host awareness object so upstream
- * extension listeners can be released even when they do not unregister.
+ * extension listeners can always be released at editor unmount.
  */
 export function createScopedCollaborationProvider(
   provider: CollaborationProviderLike,
 ): ScopedCollaborationProvider {
   const source = provider.awareness;
-  const listeners: Record<
+  const listenerWrappers: Record<
     CollaborationAwarenessEvent,
-    Set<(...args: unknown[]) => void>
+    Map<(...args: unknown[]) => void, (...args: unknown[]) => void>
   > = {
-    change: new Set(),
-    update: new Set(),
+    change: new Map(),
+    update: new Map(),
   };
-  const relay = {
-    change: (...args: unknown[]) => {
-      for (const listener of listeners.change) listener(...args);
-    },
-    update: (...args: unknown[]) => {
-      for (const listener of listeners.update) listener(...args);
-    },
-  };
-
-  source.on('change', relay.change);
-  source.on('update', relay.update);
 
   const awareness: CollaborationAwareness = {
     get clientID() {
@@ -117,8 +106,18 @@ export function createScopedCollaborationProvider(
     getStates: () => source.getStates(),
     setLocalStateField: (field, value) =>
       source.setLocalStateField(field, value),
-    on: (event, listener) => listeners[event].add(listener),
-    off: (event, listener) => listeners[event].delete(listener),
+    on: (event, listener) => {
+      if (listenerWrappers[event].has(listener)) return;
+      const wrapper = (...args: unknown[]) => listener(...args);
+      listenerWrappers[event].set(listener, wrapper);
+      source.on(event, wrapper);
+    },
+    off: (event, listener) => {
+      const wrapper = listenerWrappers[event].get(listener);
+      if (!wrapper) return;
+      source.off(event, wrapper);
+      listenerWrappers[event].delete(listener);
+    },
   };
 
   let disposed = false;
@@ -127,10 +126,12 @@ export function createScopedCollaborationProvider(
     dispose: () => {
       if (disposed) return;
       disposed = true;
-      source.off('change', relay.change);
-      source.off('update', relay.update);
-      listeners.change.clear();
-      listeners.update.clear();
+      for (const event of ['change', 'update'] as const) {
+        for (const wrapper of listenerWrappers[event].values()) {
+          source.off(event, wrapper);
+        }
+        listenerWrappers[event].clear();
+      }
     },
   };
 }
