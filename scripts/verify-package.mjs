@@ -131,6 +131,7 @@ function verifyConsumerTypes() {
     `import {
   markdownToHtml,
   validateSafeLinkHref,
+  type CwlEditorFormResetEvent,
   type CwlEditorHandle,
 } from '${packageName}';
 import {
@@ -148,6 +149,7 @@ const collaborationGuard = assertCollaborationConfiguration;
 const encodeOptions: EncodeOptions = { mimeType: 'application/octet-stream' };
 const dataUri: string = bytesToDataUri(new Uint8Array([1]), encodeOptions);
 declare const editorHandle: CwlEditorHandle;
+declare const resetEvent: CwlEditorFormResetEvent;
 declare const collaborationUser: CollaborationUser;
 void [
   renderMarkdown,
@@ -155,6 +157,7 @@ void [
   collaborationGuard,
   dataUri,
   editorHandle,
+  resetEvent,
   collaborationUser,
 ];
 `,
