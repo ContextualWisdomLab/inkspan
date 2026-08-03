@@ -39,7 +39,7 @@ const total = 120;
         '',
         'Intro safe label and inline code.\nNext line.',
         '',
-        'First item\nSecond item',
+        '- First item\n- Second item',
         '',
         'Metric\tValue\nRevenue\t120',
         '',
@@ -51,6 +51,18 @@ const total = 120;
     expect(plainText).not.toContain('https://');
     expect(plainText).not.toContain('**');
     expect(plainText).not.toContain('| --- |');
+  });
+
+  it('preserves unordered, ordered-start, and nested list structure', () => {
+    expect(markdownToPlainText('- Alpha\n- Beta')).toBe('- Alpha\n- Beta');
+    expect(markdownToPlainText('3. Third\n4. Fourth')).toBe(
+      '3. Third\n4. Fourth',
+    );
+    expect(
+      markdownToPlainText(
+        ['- Parent', '  - Child', '    2. Grandchild'].join('\n'),
+      ),
+    ).toBe('- Parent\n  - Child\n    2. Grandchild');
   });
 
   it('preserves inline and fenced code whitespace verbatim', () => {
