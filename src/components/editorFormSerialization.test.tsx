@@ -5,6 +5,7 @@ import * as Y from 'yjs';
 import { CollaborativeCwlEditor } from '../collaboration/CollaborativeCwlEditor.js';
 import type { CwlEditorHandle } from '../types.js';
 import { CwlEditor } from './CwlEditor.js';
+import { EditorFormField } from './EditorFormField.js';
 
 afterEach(cleanup);
 
@@ -13,6 +14,21 @@ function submittedValue(form: HTMLFormElement, name: string): FormDataEntryValue
 }
 
 describe('native form serialization', () => {
+  it('renders an empty native field safely before an editor exists', () => {
+    const { container } = render(
+      <EditorFormField
+        editor={null}
+        mode="markdown"
+        name="message_body"
+      />,
+    );
+
+    expect(
+      container.querySelector<HTMLInputElement>('[data-inkspan-form-field]')
+        ?.value,
+    ).toBe('');
+  });
+
   it('omits the hidden field when no form field name is configured', async () => {
     const { container } = render(
       <CwlEditor defaultValue="Draft" hideToolbar />,
