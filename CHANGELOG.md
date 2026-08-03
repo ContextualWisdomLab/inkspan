@@ -240,3 +240,15 @@ Commercial host-integration release: a buyer embedding the editor can control it
 
 ### Fixed
 - **`onImageError` paste/drop path** — previously only toolbar file-picker failures reached the host; paste/drop size-guard failures were silently dropped because `buildExtensions` never forwarded `onError` to `Base64Image`. Wired via a live ref so hosts can attach the handler after mount (including `hideToolbar`).
+
+### Changed
+- Package version **0.2.0**
+- README documents the imperative handle, `onImageError`, table ops, and email helper
+- README submodule URL corrected to `ContextualWisdomLab/inkspan`
+
+### Tests
+- 116 real vitest cases driving shipped modules (handle, image errors including paste path, table ops, email HTML)
+
+## [0.1.0] — prior
+
+Initial public surface: Markdown/HTML modes, base64 inline images, standalone converter, bundled Noto Sans fonts, ship gates.
