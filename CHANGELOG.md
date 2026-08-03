@@ -8,9 +8,15 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 - **Inkspan Office 0.1.0** — a deterministic, network-free Python package and CLI that renders strict machine-readable JSON to DOCX, XLSX, or PPTX through `python-docx`, `openpyxl`, and `python-pptx`
 - Bundled JSON Schema for structured LLM output, plus in-memory and atomic file-writing APIs
 - Formula-injection protection for AI-authored spreadsheet strings and strict rejection of unknown or malformed fields
+- Public Office safety facade that rejects XML-incompatible text, cyclic containers, invalid freeze-pane coordinates, oversized Excel grids/cells, and integers Excel cannot preserve exactly
+
+### Fixed
+- Non-overwrite Office writes now use atomic link publication, closing the check-then-replace race that could overwrite a file created concurrently
+- Excel strings longer than 32,767 characters are rejected instead of being silently truncated by `openpyxl`
 
 ### Tests
-- 48 Python tests re-open all generated Office formats on Python 3.11 and 3.13
+- 71 Python tests re-open all generated Office formats and exercise validation, storage limits, atomic publication, CLI, and module entrypoints on Python 3.11 and 3.13
+- 100% statement/branch and shipped-symbol docstring coverage are required by CI
 - Hash-locked binary dependencies protect the Office CI jobs from unreviewed package changes
 - Wheel packaging gate verifies that the JSON Schema and MIT license ship with the package
 
