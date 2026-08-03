@@ -10,10 +10,26 @@ describe('buildExtensions', () => {
   it('builds the default set when called with no options', () => {
     const exts = buildExtensions();
     expect(Array.isArray(exts)).toBe(true);
-    // StarterKit + Link + Placeholder + Table(+row/header/cell) + image.
+    // StarterKit + SafeLink + Placeholder + Table(+row/header/cell) + image.
     expect(names(exts)).toContain('image');
     expect(names(exts)).toContain('link');
     expect(names(exts)).toContain('table');
+  });
+
+  it('applies the strict shared hyperlink policy', () => {
+    const exts = buildExtensions();
+    const link = exts.find((extension) => extension.name === 'link');
+    const isAllowedUri = link?.options.isAllowedUri as
+      | ((href: string, context: unknown) => boolean)
+      | undefined;
+    expect(isAllowedUri).toBeTypeOf('function');
+    expect(isAllowedUri?.('https://example.com', {})).toBe(true);
+    expect(isAllowedUri?.('/relative/path', {})).toBe(true);
+    expect(isAllowedUri?.('javascript:alert(1)', {})).toBe(false);
+    expect(isAllowedUri?.('//attacker.example/path', {})).toBe(false);
+    expect(link?.options.HTMLAttributes).toEqual({
+      rel: 'noopener noreferrer nofollow',
+    });
   });
 
   it('applies image defaults when the image config is an empty object', () => {
