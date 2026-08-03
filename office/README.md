@@ -101,6 +101,7 @@ python -m pip wheel . --no-deps --wheel-dir dist
 
 The suite re-opens every rendered format with its native library. CI installs
 runtime and test dependencies from `requirements-ci.txt` with wheel hashes on
-Python 3.11 and 3.13, enforces 100% statement/branch and shipped-symbol docstring
-coverage, then builds and inspects the distributable wheel. Code and all three
-direct runtime dependencies are MIT-licensed.
+minimum Python 3.11 and current stable Python 3.14, enforces 100% statement/
+branch and shipped-symbol docstring coverage, then builds and inspects the
+distributable wheel. Code and all three direct runtime dependencies are
+MIT-licensed.
