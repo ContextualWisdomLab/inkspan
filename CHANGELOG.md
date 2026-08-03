@@ -4,6 +4,28 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.13] — 2026-08-04
+
+### Added
+- Versioned `CwlEditorDocumentEnvelope` persistence contract with a canonical schema identifier and version, deterministic creation and parsing APIs, and root-package exports
+- `DocumentEnvelopeError` for bounded, redacted reporting of malformed or incompatible persistence input
+
+### Changed
+- Package version **0.5.13**
+- Lossless TipTap/ProseMirror JSON persistence now has an explicit compatibility and migration boundary before `setDocumentJson()` restoration
+
+### Security
+- Envelope processing fails closed on unknown fields, schema identifiers, versions, cycles, excessive nesting, non-JSON values, non-finite numbers, accessors, symbols, non-enumerable fields, and sparse or decorated arrays
+- Hostile Proxy and reflection failures become bounded redacted errors, and source getters are never executed during validation
+- `__proto__` is preserved only as inert own JSON data and cannot modify the prototype of cloned documents
+- CWL and naruon hosts retain authorization, request-size enforcement, migration, tenant isolation, encryption, retention, audit, and model-use policy
+
+### Tests
+- Added hostile-object, prototype-pollution, dense-array, deep-freeze, compatibility, and redaction regressions under the repository-wide 100% TypeScript coverage gate
+
+### Documentation
+- Added `docs/document-envelope.md` covering persistence, migration, collaboration authorization, privacy, security, and modular CWL/naruon integration
+
 ## [0.5.12] — 2026-08-04
 
 ### Added
@@ -245,7 +267,7 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 - Focus callback props are read through live refs so hosts can add or replace handlers after mount without recreating editor state or Yjs bindings
 
 ### Tests
-- Standalone and collaborative tests cover absent callbacks, handlers added after mount, stable editor identity, and native focus/blur event types under the repository-wide 100% coverage gate
+- Standalone and collaborative tests cover absent callbacks, handlers added after mount, stable editor identity, and native focus/blur event types under the repository-wide 100% TypeScript coverage gate
 
 ### Documentation
 - Added the host focus lifecycle, validation, persistence, telemetry, accessibility, and CWL/naruon interoperability contract

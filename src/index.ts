@@ -30,6 +30,16 @@ export type {
   ImageConfig,
 } from './types.js';
 
+// Versioned, lossless persistence boundary.
+export {
+  DOCUMENT_ENVELOPE_SCHEMA_ID,
+  DOCUMENT_ENVELOPE_SCHEMA_VERSION,
+  DocumentEnvelopeError,
+  createDocumentEnvelope,
+  parseDocumentEnvelope,
+} from './documentEnvelope.js';
+export type { CwlEditorDocumentEnvelope } from './documentEnvelope.js';
+
 // Extensions (reusable headlessly).
 export {
   Base64Image,
