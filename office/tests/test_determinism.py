@@ -4,6 +4,7 @@ from io import BytesIO
 from zipfile import ZipFile
 
 import pytest
+from docx import Document
 
 from inkspan_office import OfficeDocumentError, render_office_document
 
@@ -39,14 +40,16 @@ def test_rendered_ooxml_is_byte_deterministic(payload: dict[str, object]) -> Non
     assert core_properties.count(b"1980-01-01T00:00:00Z") == 2
 
 
-def test_rejects_codepoints_above_the_xml_1_0_character_range() -> None:
+def test_accepts_the_full_xml_1_0_unicode_character_range() -> None:
+    text = "valid\U000F0000text"
     payload = {
         "format": "docx",
-        "blocks": [{"type": "paragraph", "text": "bad\U000F0000text"}],
+        "blocks": [{"type": "paragraph", "text": text}],
     }
 
-    with pytest.raises(OfficeDocumentError, match=r"U\+F0000"):
-        render_office_document(payload)
+    rendered = render_office_document(payload)
+    document = Document(BytesIO(rendered.data))
+    assert document.paragraphs[0].text == text
 
 
 @pytest.mark.parametrize("value", [10**100, 10**400])
