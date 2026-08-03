@@ -12,12 +12,14 @@ and a deterministic Office Open XML renderer for DOCX, XLSX, and PPTX.
 
 ## Product capabilities
 
-- **Markdown and HTML editing** — one TipTap/ProseMirror editor, toolbar,
-  keyboard behavior, tables, links, code blocks, lists, and horizontal rules.
-- **Self-contained, accessible images** — paste, drop, or upload images as
-  inline base64 data URIs, then author meaningful alternative text or explicitly
-  mark decorative images. Configurable limits keep documents portable and
-  directly readable by downstream LLMs.
+- **Markdown and HTML editing** — one TipTap/ProseMirror editor, accessible
+  composite keyboard toolbar, tables, links, code blocks, lists, and horizontal
+  rules.
+- **Self-contained, accessible images** — every editor image must be a strict
+  inline base64 raster data URI. External, protocol-relative, blob, file,
+  JavaScript, SVG/active-vector, unsupported-MIME, malformed, and oversized
+  sources are rejected before rendering; authors can add meaningful alternative
+  text or explicitly mark decorative images.
 - **Host-grade control** — controlled/uncontrolled modes, an imperative ref API,
   AI insertion at the current selection, read-only mode, image-error reporting,
   and access to the underlying TipTap instance.
@@ -133,7 +135,7 @@ normal `onChange` path without wiping the document.
 | `value` | `string` | — | Controlled document value |
 | `defaultValue` | `string` | `''` | Uncontrolled initial document |
 | `onChange` | `(value: string) => void` | — | Emits the active mode's serialization |
-| `onImageError` | `(error: unknown) => void` | — | Reports paste/drop/upload rejection and decode failures |
+| `onImageError` | `(error: unknown) => void` | — | Reports source-policy, size, and decode failures |
 | `placeholder` | `string` | `'Start writing…'` | Empty-editor prompt |
 | `editable` | `boolean` | `true` | Read-only when false |
 | `hideToolbar` | `boolean` | `false` | Suppresses the built-in toolbar |
@@ -150,8 +152,23 @@ When an image is selected, the **Alt** action prefills its current replacement
 text. Enter a meaningful description for informative images, or leave the value
 empty to produce an explicit `alt=""` for decorative images. Upload, paste, and
 drop start with that explicit decorative default instead of omitting `alt`.
-Toolbar active and disabled states follow editor transactions and selection
-updates.
+
+Inkspan enforces the same image-source policy on initial HTML/Markdown,
+controlled values, `setValue`, `insertValue`, pasted HTML, direct TipTap
+transactions, and collaborative changes. Only strict base64 raster sources
+(`png`, `jpeg`/`jpg`, `gif`, `webp`, `avif`, `apng`, `bmp`, and ICO) within
+`image.maxSizeBytes` survive into editor state or serialized HTML. SVG is
+intentionally rejected before decoder use because active/vector payloads can
+reference external resources. Rejections reach the host through `onImageError`
+as `Base64ImageSourceError` or `Base64SizeError`; malformed state supplied
+outside the supported API renders as an inert marker rather than a
+network-capable `<img>`.
+
+The formatting toolbar is one tab stop. Use Left/Right Arrow to move between
+enabled controls, Home/End to move to the first or last enabled control, and
+Enter/Space to invoke the focused button. See
+[`docs/accessibility.md`](docs/accessibility.md) for the complete integration
+contract and host responsibilities.
 
 ## Real-time collaboration
 
@@ -353,7 +370,7 @@ python -m pip wheel . --no-deps --wheel-dir dist
 ```
 
 The repository CI pins GitHub Actions by full commit SHA. The Office matrix uses
-hash-locked binary dependencies on Python 3.11 and 3.13. JavaScript and Python
+hash-locked binary dependencies on Python 3.11 and 3.14. JavaScript and Python
 shipped code are gated at 100% coverage; the Python package additionally enforces
 100% shipped-symbol docstring coverage and verifies the contents of its built
 wheel.
