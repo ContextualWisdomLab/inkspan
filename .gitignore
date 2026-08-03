@@ -8,5 +8,14 @@ coverage/
 .eslintcache
 *.tsbuildinfo
 
+# Python build, test, and environment artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+.venv/
+
 # CodeGraph local index
 .codegraph/

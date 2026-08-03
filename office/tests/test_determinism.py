@@ -1,0 +1,84 @@
+from __future__ import annotations
+
+from io import BytesIO
+from zipfile import ZipFile
+
+import pytest
+from docx import Document
+
+from inkspan_office import OfficeDocumentError, render_office_document
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "format": "docx",
+            "blocks": [{"type": "paragraph", "text": "Deterministic Word"}],
+        },
+        {
+            "format": "xlsx",
+            "sheets": [{"name": "Data", "rows": [["Deterministic Excel"]]}],
+        },
+        {
+            "format": "pptx",
+            "slides": [{"title": "Deterministic PowerPoint", "bullets": []}],
+        },
+    ],
+    ids=["docx", "xlsx", "pptx"],
+)
+def test_rendered_ooxml_is_byte_deterministic(payload: dict[str, object]) -> None:
+    first = render_office_document(payload)
+    second = render_office_document(payload)
+
+    assert first.data == second.data
+    with ZipFile(BytesIO(first.data)) as archive:
+        assert {entry.date_time for entry in archive.infolist()} == {
+            (1980, 1, 1, 0, 0, 0)
+        }
+        core_properties = archive.read("docProps/core.xml")
+    assert core_properties.count(b"1980-01-01T00:00:00Z") == 2
+
+
+def test_accepts_the_full_xml_1_0_unicode_character_range() -> None:
+    text = "valid\U000F0000text"
+    payload = {
+        "format": "docx",
+        "blocks": [{"type": "paragraph", "text": text}],
+    }
+
+    rendered = render_office_document(payload)
+    document = Document(BytesIO(rendered.data))
+    assert document.paragraphs[0].text == text
+
+
+@pytest.mark.parametrize("value", [10**100, 10**400])
+def test_rejects_integers_excel_cannot_represent_exactly(value: int) -> None:
+    payload = {
+        "format": "xlsx",
+        "sheets": [{"name": "Data", "rows": [[value]]}],
+    }
+
+    with pytest.raises(OfficeDocumentError, match="exactly representable"):
+        render_office_document(payload)
+
+
+@pytest.mark.parametrize("name", ["'Leading", "Trailing'", "History"])
+def test_rejects_excel_incompatible_worksheet_names(name: str) -> None:
+    payload = {
+        "format": "xlsx",
+        "sheets": [{"name": name, "rows": []}],
+    }
+
+    with pytest.raises(OfficeDocumentError, match="invalid for Excel"):
+        render_office_document(payload)
+
+
+def test_defers_non_string_worksheet_names_to_the_strict_renderer() -> None:
+    payload = {
+        "format": "xlsx",
+        "sheets": [{"name": 7, "rows": []}],
+    }
+
+    with pytest.raises(OfficeDocumentError, match="name must be a string"):
+        render_office_document(payload)

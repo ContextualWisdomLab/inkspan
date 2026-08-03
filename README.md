@@ -1,288 +1,369 @@
 # Inkspan
 
-> **Inkspan** ([inkspan.io](https://inkspan.io)) — the product. Repository slug:
-> `cwl-editor`. npm package: `@contextualwisdomlab/cwl-editor`.
+> **Inkspan** ([inkspan.io](https://inkspan.io)) is the product. Repository:
+> `ContextualWisdomLab/inkspan`. npm package:
+> `@contextualwisdomlab/cwl-editor`.
 
-**Commercial-grade Markdown + HTML WYSIWYG editor** built on
-[TipTap v2](https://tiptap.dev/) / [ProseMirror](https://prosemirror.net/)
-(both MIT), with **inline base64 images**, a **standalone base64 converter**, and
-**bundled offline multilingual fonts**.
+Inkspan is a modular, commercial-grade authoring surface for applications and
+AI systems. It combines a React Markdown/HTML WYSIWYG editor, self-contained
+base64 images, offline multilingual fonts, email-ready serialization, a
+framework-independent data-URI converter, and a deterministic Office Open XML
+renderer for DOCX, XLSX, and PPTX.
 
-- 📝 **Two modes** — a Markdown editor and an HTML WYSIWYG editor sharing one
-  toolbar, keyboard shortcuts, and paste handling.
-- 🖼 **Images are inline base64 data URIs** — paste, drop, or upload an image and
-  it is embedded directly in the document (`![alt](data:image/png;base64,…)` /
-  `<img src="data:…">`). Nothing is uploaded to a server, so the content is fully
-  self-contained and a downstream **LLM can read the image bytes straight from
-  the text**. Configurable size guard + downscaling.
-- 🌏 **Bundled offline fonts** — self-contained [Noto Sans](https://fonts.google.com/noto)
-  web fonts covering **Korean, English, Japanese, Chinese (Simplified +
-  Traditional) and Vietnamese**. No CDN, no Google Fonts URL — every glyph
-  renders with **zero network fetch**, so it works in **air-gapped / 폐쇄망**
-  environments. All fonts are **SIL OFL 1.1** (no copyright/licensing issues).
-- 🔁 **Round-trip safe** — the embedded data URI survives Markdown ⇄ HTML
-  conversion in both directions.
-- 🧩 **Standalone base64 converter** — `File`/`Blob`/`ArrayBuffer` → data URI and
-  back, with MIME sniffing and a size guard. **Zero dependencies, no React** —
-  reusable on its own (e.g. by the *naruon* / DOM-understanding pipeline).
-- 📦 **Standalone _and_ embeddable** — own Vite build + demo, publishable as an
-  npm package, or vendorable as a git submodule.
-- ⚖️ **MIT** code + **OFL-1.1** fonts — permissive licenses only (TipTap MIT,
-  ProseMirror MIT, Noto Sans OFL-1.1). No GPL/AGPL.
+## Product capabilities
 
-All configuration comes from **props / KV**, never from `process.env` or OS
-environment lookups at runtime.
+- **Markdown and HTML editing** — one TipTap/ProseMirror editor, toolbar,
+  keyboard behavior, tables, links, code blocks, lists, and horizontal rules.
+- **Self-contained images** — paste, drop, or upload images as inline base64
+  data URIs. Configurable size limits and downscaling keep the document portable
+  and directly readable by downstream LLMs.
+- **Host-grade control** — controlled/uncontrolled modes, an imperative ref API,
+  AI insertion at the current selection, read-only mode, image-error reporting,
+  and access to the underlying TipTap instance.
+- **Email output** — Markdown-to-email HTML conversion preserves inline base64
+  figures and can emit either a fragment or a complete HTML document.
+- **Offline multilingual typography** — bundled Noto Sans subsets cover Korean,
+  English, Japanese, Simplified/Traditional Chinese, and Vietnamese with no CDN
+  or runtime font request.
+- **Standalone conversion utilities** — browser/Node data-URI and base64 helpers
+  are available without React or TipTap.
+- **AI-authored Office files** — a network-free Python package renders strict
+  JSON to DOCX, XLSX, or PPTX with formula-injection protection, losslessness
+  checks, atomic publication, and a bundled JSON Schema.
+- **Permissive licensing** — application code and direct dependencies are MIT;
+  bundled Noto fonts are SIL OFL 1.1. No GPL/AGPL dependency is introduced.
+
+Runtime configuration is supplied through props or host-owned values. Inkspan
+does not read `process.env` or operating-system environment variables at
+runtime.
+
+## Distribution surfaces
+
+| Surface | Import or location | Purpose |
+| --- | --- | --- |
+| React editor | `@contextualwisdomlab/cwl-editor` | Markdown/HTML WYSIWYG component and serializers |
+| Converter | `@contextualwisdomlab/cwl-editor/converter` | Framework-independent base64/data-URI utilities |
+| Styles | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
+| Full fonts | `@contextualwisdomlab/cwl-editor/fonts.css` | KR/EN/JP/SC/TC/VI offline font bundle |
+| Latin fonts | `@contextualwisdomlab/cwl-editor/fonts-latin.css` | Smaller Latin/Vietnamese-only bundle |
+| Office renderer | [`office/`](office/) | Strict JSON → DOCX/XLSX/PPTX Python package and CLI |
 
 ---
 
-## Install
+## React editor
+
+### Install
 
 ```bash
-pnpm add @contextualwisdomlab/cwl-editor
-# peer deps (only needed for the React editor, not the converter)
-pnpm add react react-dom
+pnpm add @contextualwisdomlab/cwl-editor react react-dom
 ```
 
-## Quick start (React)
+### Quick start
 
 ```tsx
 import { useState } from 'react';
 import { CwlEditor } from '@contextualwisdomlab/cwl-editor';
 import '@contextualwisdomlab/cwl-editor/styles.css';
-import '@contextualwisdomlab/cwl-editor/fonts.css'; // bundled offline fonts (see below)
+import '@contextualwisdomlab/cwl-editor/fonts.css';
 
 export function Example() {
-  const [md, setMd] = useState('# Hello\n\nDrop an image below 👇');
+  const [markdown, setMarkdown] = useState(
+    '# Hello\n\nDrop an image below 👇',
+  );
+
   return (
     <CwlEditor
-      mode="markdown"            // or "html"
-      value={md}
-      onChange={setMd}
-      onImageError={(err) => console.error('image rejected', err)}
-      image={{ maxSizeBytes: 8 * 1024 * 1024, maxDimension: 1400, quality: 0.85 }}
+      mode="markdown"
+      value={markdown}
+      onChange={setMarkdown}
+      onImageError={(error) => console.error('image rejected', error)}
+      image={{
+        maxSizeBytes: 8 * 1024 * 1024,
+        maxDimension: 1400,
+        quality: 0.85,
+      }}
     />
   );
 }
 ```
 
-Switch `mode` to `"html"` and `value`/`onChange` speak HTML instead of Markdown.
-Both modes embed images as inline base64.
+Set `mode="html"` when `value` and `onChange` should exchange HTML. Both modes
+embed accepted images as inline data URIs.
 
-### Imperative handle (`ref`)
+### Imperative host API
 
-Host apps that need form-submit / AI-insert / focus control should use the
-shipped `CwlEditorHandle` — never scrape the DOM:
+Hosts that submit forms, insert AI output, or manage focus should use
+`CwlEditorHandle` rather than scraping the DOM.
 
 ```tsx
 import { useRef } from 'react';
-import { CwlEditor, type CwlEditorHandle } from '@contextualwisdomlab/cwl-editor';
-
-const ref = useRef<CwlEditorHandle>(null);
-// …
-<CwlEditor ref={ref} mode="markdown" defaultValue="# draft" />
-// ref.current?.getValue() | getHTML() | getMarkdown()
-// ref.current?.setValue(md) | insertValue(snippet) | clear() | focus()
-// insertValue = AI/snippet insert at cursor (fires onChange; does not wipe doc)
-```
-
-### Props
-
-| Prop           | Type                        | Default             | Notes |
-| -------------- | --------------------------- | ------------------- | ----- |
-| `mode`         | `'markdown' \| 'html'`      | `'markdown'`        | Format of `value`/`onChange`. |
-| `value`        | `string`                    | —                   | Controlled document. |
-| `defaultValue` | `string`                    | `''`                | Uncontrolled initial document. |
-| `onChange`     | `(value: string) => void`   | —                   | Serialized document in `mode`'s format. |
-| `onImageError` | `(error: unknown) => void`  | —                   | Size-guard / decode failures (never silent). |
-| `placeholder`  | `string`                    | `'Start writing…'`  | |
-| `editable`     | `boolean`                   | `true`              | Read-only when false. |
-| `hideToolbar`  | `boolean`                   | `false`             | |
-| `image`        | `ImageConfig`               | see below           | Inline base64 behaviour. |
-| `onReady`      | `(editor: Editor) => void`  | —                   | Escape hatch to the TipTap instance. |
-| `ref`          | `Ref<CwlEditorHandle>`      | —                   | Imperative API (see above). |
-
-`ImageConfig`: `{ maxSizeBytes?: number; maxDimension?: number; quality?: number }`
-— defaults `10 MB`, `1600 px`, `0.85`. Set `maxDimension: 0` to disable downscaling.
-
-Toolbar also supports **table edit** (add column / add row / delete column /
-delete row / delete table), **horizontal rule**, and live active/disabled state
-via editor transactions.
-
-## Bundled offline fonts (Korean / English / Japanese / Chinese / Vietnamese)
-
-Inkspan ships **self-contained web fonts** so the editor renders all five
-scripts **without any network fetch** — ideal for **air-gapped / 폐쇄망**
-deployments. The fonts are the [Noto Sans](https://fonts.google.com/noto)
-family under the **SIL Open Font License 1.1** (no copyright/licensing issues,
-compatible with the MIT code):
-
-| Family         | Scripts                                   | Weights  |
-| -------------- | ----------------------------------------- | -------- |
-| Noto Sans      | Latin, Latin-ext, **Vietnamese**, Cyrillic | 400, 700 |
-| Noto Sans KR   | **Korean** (Hangul)                       | 400      |
-| Noto Sans JP   | **Japanese** (Kana + Kanji)               | 400      |
-| Noto Sans SC   | **Chinese, Simplified**                   | 400      |
-| Noto Sans TC   | **Chinese, Traditional**                  | 400      |
-
-The `@font-face` rules point at **woff2 files bundled inside the package**
-(`src/fonts/files/`), split by `unicode-range` — never a CDN or Google Fonts
-URL. Because they are `unicode-range`-subset, a browser only downloads the
-subset files whose glyphs actually appear, and everything resolves from local
-bundled bytes.
-
-```tsx
-// Full multilingual stack (all five scripts):
-import '@contextualwisdomlab/cwl-editor/fonts.css';
-
-// …or Latin/Vietnamese only — opt out of the ~9 MB of CJK to keep it tiny:
-import '@contextualwisdomlab/cwl-editor/fonts-latin.css';
-```
-
-The default editor font stack
-(`--cwl-font: 'Noto Sans', 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC',
-'Noto Sans TC', …`) is set in `styles.css`, so once you import a fonts CSS the
-scripts render automatically. Override `--cwl-font` to re-theme.
-
-**Size tradeoff.** Full CJK coverage is inherently large: the complete bundle is
-**≈ 9.7 MB across ~470 woff2 subset files** (Latin 400+700 ≈ 0.8 MB; each CJK
-family at weight 400 ≈ 1.8–2.7 MB). To control this:
-
-- **Tree-shake CJK** — import `fonts-latin.css` instead of `fonts.css` if you
-  only need Latin/Vietnamese (a few hundred KB).
-- **Runtime cost is small** — `unicode-range` subsetting means only the subset
-  files for glyphs on the page are ever fetched from the bundle.
-- **CJK bold is synthesized** — CJK families ship weight 400 only; browsers
-  render bold headings with faux-bold. Regenerate with 700 via
-  `scripts/fetch-fonts.mjs` if you need true CJK bold (roughly doubles CJK size).
-- **Regenerate** the bundle any time with `node scripts/fetch-fonts.mjs` (the
-  only step that touches the network; rendering never does).
-
-License: [`src/fonts/OFL.txt`](src/fonts/OFL.txt) +
-[`src/fonts/NOTICE`](src/fonts/NOTICE).
-
-## Standalone base64 converter (no React)
-
-```ts
 import {
-  fileToDataUri,
-  dataUriToBytes,
-  bytesToDataUri,
-  sniffMimeType,
-  Base64SizeError,
-} from '@contextualwisdomlab/cwl-editor/converter';
-
-// Encode a figure for LLM consumption:
-const dataUri = await fileToDataUri(file, { maxBytes: 5_000_000 });
-// -> "data:image/png;base64,iVBORw0KGgo…"
-
-// Decode back to bytes (with MIME + size guard):
-const { mimeType, bytes } = dataUriToBytes(dataUri, { maxBytes: 5_000_000 });
-```
-
-The converter is framework-agnostic and works in both Node.js and the browser.
-Full surface: `bytesToBase64` / `base64ToBytes`, `bytesToDataUri` /
-`arrayBufferToDataUri`, `blobToDataUri` / `fileToDataUri`, `parseDataUri` /
-`isDataUri`, `dataUriToBytes` / `dataUriToBlob` / `dataUriByteLength`,
-`sniffMimeType`, `toUint8Array`.
-
-## Markdown ⇄ HTML utilities
-
-```ts
-import {
-  markdownToHtml,
-  htmlToMarkdown,
-  markdownToEmailHtml,
+  CwlEditor,
+  type CwlEditorHandle,
 } from '@contextualwisdomlab/cwl-editor';
 
-const html = markdownToHtml('# Title\n\n![fig](data:image/png;base64,…)');
-const md = htmlToMarkdown(html); // data URI preserved verbatim
+const editorRef = useRef<CwlEditorHandle>(null);
 
-// Email compose → send (inkspan.io / naruon mail path): same pipeline,
-// base64 figures stay inline. Optional full document shell for MUAs:
-const emailBody = markdownToEmailHtml(md);
-const emailDoc = markdownToEmailHtml(md, {
+<CwlEditor
+  ref={editorRef}
+  mode="markdown"
+  defaultValue="# Draft"
+/>;
+
+editorRef.current?.getValue();
+editorRef.current?.getHTML();
+editorRef.current?.getMarkdown();
+editorRef.current?.insertValue('AI-authored text at the cursor');
+editorRef.current?.setValue('# Replace the complete document');
+editorRef.current?.focus();
+```
+
+`insertValue` is mode-aware, inserts at the current selection, and triggers the
+normal `onChange` path without wiping the document.
+
+### Main props
+
+| Prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `mode` | `'markdown' \| 'html'` | `'markdown'` | Serialization used by `value` and `onChange` |
+| `value` | `string` | — | Controlled document value |
+| `defaultValue` | `string` | `''` | Uncontrolled initial document |
+| `onChange` | `(value: string) => void` | — | Emits the active mode's serialization |
+| `onImageError` | `(error: unknown) => void` | — | Reports paste/drop/upload rejection and decode failures |
+| `placeholder` | `string` | `'Start writing…'` | Empty-editor prompt |
+| `editable` | `boolean` | `true` | Read-only when false |
+| `hideToolbar` | `boolean` | `false` | Suppresses the built-in toolbar |
+| `image` | `ImageConfig` | See below | Inline-image limits and downscaling |
+| `onReady` | `(editor: Editor) => void` | — | Receives the TipTap editor instance |
+| `ref` | `Ref<CwlEditorHandle>` | — | Imperative host surface |
+
+`ImageConfig` is
+`{ maxSizeBytes?: number; maxDimension?: number; quality?: number }`. Defaults
+are 10 MB, 1600 px, and 0.85. Set `maxDimension: 0` to disable downscaling.
+
+The table toolbar supports add/delete row, add/delete column, and delete table.
+Toolbar active and disabled states follow editor transactions and selection
+updates.
+
+## Markdown, HTML, and email serialization
+
+```ts
+import {
+  htmlToMarkdown,
+  markdownToEmailHtml,
+  markdownToHtml,
+} from '@contextualwisdomlab/cwl-editor';
+
+const html = markdownToHtml(
+  '# Title\n\n![figure](data:image/png;base64,...)',
+);
+const markdown = htmlToMarkdown(html);
+const emailFragment = markdownToEmailHtml(markdown);
+const emailDocument = markdownToEmailHtml(markdown, {
   fullDocument: true,
   title: 'Weekly update',
 });
 ```
 
----
+The GFM/CommonMark pipeline preserves inline image data URIs through Markdown ⇄
+HTML conversion. `markdownToEmailHtml` creates an email body, not a complete
+MIME multipart message.
 
-## Use as a git submodule
+## Standalone base64 converter
 
-```bash
-git submodule add https://github.com/ContextualWisdomLab/inkspan.git vendor/inkspan
-cd vendor/cwl-editor && pnpm install && pnpm build
+```ts
+import {
+  Base64SizeError,
+  bytesToDataUri,
+  dataUriToBytes,
+  fileToDataUri,
+  sniffMimeType,
+} from '@contextualwisdomlab/cwl-editor/converter';
+
+const dataUri = await fileToDataUri(file, { maxBytes: 5_000_000 });
+const { mimeType, bytes } = dataUriToBytes(dataUri, {
+  maxBytes: 5_000_000,
+});
 ```
 
-Then import from the built `dist/`, or point your bundler at `src/index.ts` for a
-source build. The converter (`src/converter/index.ts`) has no React/TipTap deps
-and can be imported entirely on its own.
+The converter works in Node.js and browsers and does not import React or
+TipTap. The public surface also includes byte/base64 conversion, Blob and
+ArrayBuffer conversion, data-URI parsing and validation, MIME sniffing, byte
+length calculation, and typed converter errors.
 
-## Standalone demo
+## Offline fonts
+
+Import the full multilingual bundle:
+
+```ts
+import '@contextualwisdomlab/cwl-editor/fonts.css';
+```
+
+Or use the smaller Latin/Vietnamese subset:
+
+```ts
+import '@contextualwisdomlab/cwl-editor/fonts-latin.css';
+```
+
+The full package contains Noto Sans web-font subsets for Korean, English,
+Japanese, Simplified Chinese, Traditional Chinese, and Vietnamese. All files
+resolve locally from the package. Unicode-range subsetting lets browsers request
+only the glyph subsets used on the page.
+
+The complete CJK bundle is approximately 9.7 MB across many WOFF2 subsets.
+Applications that do not require CJK should import `fonts-latin.css`. CJK
+families currently ship weight 400; browsers synthesize bold unless the font
+bundle is regenerated with weight 700.
+
+Font license and attribution:
+[`src/fonts/OFL.txt`](src/fonts/OFL.txt) and
+[`src/fonts/NOTICE`](src/fonts/NOTICE).
+
+---
+
+## Inkspan Office
+
+Inkspan Office is a separate Python distribution under [`office/`](office/).
+It accepts an allowlisted JSON contract and generates Office Open XML without
+calling an LLM, fetching remote content, executing macros, or driving desktop
+Office software.
+
+### Install and run
+
+```bash
+cd office
+python -m pip install -e '.[test]'
+inkspan-office --print-schema
+inkspan-office request.json output.docx
+```
+
+### Python API
+
+```python
+from inkspan_office import render_office_document, write_office_document
+
+request = {
+    "format": "xlsx",
+    "title": "Quarterly metrics",
+    "sheets": [
+        {
+            "name": "Summary",
+            "header_row": True,
+            "freeze_panes": "A2",
+            "auto_filter": True,
+            "rows": [
+                ["Metric", "Value"],
+                ["Revenue", 120],
+                ["Churn", 0.03],
+            ],
+        }
+    ],
+}
+
+artifact = render_office_document(request)
+assert artifact.extension == '.xlsx'
+write_office_document(request, 'quarterly-metrics.xlsx')
+```
+
+Supported document shapes:
+
+- DOCX — metadata, headings, paragraphs, ordered/unordered lists, tables, and
+  page breaks.
+- XLSX — multiple worksheets, scalar cells, header styling, freeze panes,
+  filters, and bounded column sizing.
+- PPTX — title/subtitle slides and title/bullet slides with nesting levels.
+
+The renderer rejects unknown fields, XML-incompatible controls, cyclic Python
+containers, non-finite numbers, formula-like strings as executable formulas,
+invalid worksheet names and freeze panes, non-rectangular Word tables, and Excel
+content that would be truncated or lose integer precision. Non-overwrite file
+publication is atomic and race-safe. See [`office/README.md`](office/README.md)
+for the complete contract and security limits.
+
+---
+
+## Git submodule integration
+
+```bash
+git submodule add \
+  https://github.com/ContextualWisdomLab/inkspan.git \
+  vendor/inkspan
+cd vendor/inkspan
+pnpm install
+pnpm build
+```
+
+Consumers can import the built `dist/` artifacts or point a source build at
+`src/index.ts`. The converter remains independently importable from
+`src/converter/index.ts`.
+
+## Demo and container
 
 ```bash
 pnpm install
-pnpm dev            # live demo at http://localhost:5173
-pnpm build:demo     # static site -> dist-demo/
+pnpm dev
+pnpm build:demo
 ```
-
-### Docker (static demo)
 
 ```bash
-docker build -t cwl-editor-demo .
-docker run --rm -p 8080:8080 cwl-editor-demo   # http://localhost:8080
+docker build -t inkspan-demo .
+docker run --rm -p 8080:8080 inkspan-demo
 ```
 
-## Scripts
+The static demo is then available at `http://localhost:8080`.
 
-| Command             | Description |
-| ------------------- | ----------- |
-| `pnpm dev`          | Vite dev server for the demo. |
-| `pnpm build`        | Build the library (ESM + CJS + types) and the standalone converter bundle. |
-| `pnpm build:demo`   | Build the static demo to `dist-demo/`. |
-| `pnpm test`         | Run the vitest suite. |
-| `pnpm coverage`     | Tests with coverage. |
-| `pnpm typecheck`    | `tsc --noEmit`. |
+## Verification
 
-## Testing
+```bash
+pnpm install --frozen-lockfile
+pnpm typecheck
+pnpm test
+pnpm coverage
+pnpm build
+pnpm build:demo
 
-- **Converter** — encode / decode / round-trip / size-guard / MIME sniffing.
-- **Markdown ⇄ HTML** — round-trip with an embedded base64 image, verifying the
-  original image bytes are recoverable after `md → html → md`.
-- **Editor component** — smoke tests (render, markdown/HTML hydration, toolbar,
-  read-only, `onReady`) via vitest + @testing-library/react.
+cd office
+python -m pip install -e '.[test]'
+python scripts/check_docstrings.py
+coverage run -m pytest
+coverage report
+python -m pip check
+python -m pip wheel . --no-deps --wheel-dir dist
+```
+
+The repository CI pins GitHub Actions by full commit SHA. The Office matrix uses
+hash-locked binary dependencies on Python 3.11 and 3.13. JavaScript and Python
+shipped code are gated at 100% coverage; the Python package additionally enforces
+100% shipped-symbol docstring coverage and verifies the contents of its built
+wheel.
 
 ## Architecture
 
-```
+```text
 src/
-  converter/      Framework-agnostic base64 / data-URI utils (standalone export)
-  markdown/       marked + turndown serializers (base64-image round-trip safe)
-  extensions/     Base64Image TipTap extension + shared extension kit
-  components/      CwlEditor React component + Toolbar
-  fonts/          Bundled Noto Sans woff2 (offline) + fonts.css / fonts-latin.css
-                  + OFL.txt + NOTICE
-  styles.css      Self-contained, theme-aware styling
-demo/             Standalone Vite demo app (renders all five scripts offline)
-scripts/          copy-styles + fetch-fonts (font bundle generator)
-docs/papers/      CommonMark spec + citations (see docs/papers/README.md)
+  components/      React editor and toolbar
+  converter/       Framework-independent base64/data-URI utilities
+  extensions/      TipTap extension kit and inline Base64Image extension
+  fonts/           Offline Noto Sans subsets, CSS, license, and attribution
+  markdown/        Markdown/HTML/email serializers
+  styles.css       Self-contained theme-aware editor styling
+demo/              Standalone Vite demo
+office/            JSON Schema, Python renderer/CLI, tests, and package metadata
+scripts/           Build helpers and offline-font generator
+docs/              Design records, specifications, and citations
 ```
+
+Inkspan is designed to run independently and as a module within CWL/naruon
+hosts. The editor, converter, and Office renderer have separate dependency and
+runtime boundaries so hosts can adopt only the capabilities they require.
 
 ## Licenses
 
-**Code: MIT.** Dependency licenses are all permissive: TipTap (MIT), ProseMirror
-(MIT), `marked` (MIT), `turndown` (MIT), `turndown-plugin-gfm` (MIT). No
-GPL/AGPL.
+- **Code:** MIT.
+- **Editor dependencies:** TipTap, ProseMirror, marked, turndown, and
+  turndown-plugin-gfm are permissively licensed.
+- **Office dependencies:** python-docx, openpyxl, and python-pptx are MIT.
+- **Fonts:** Noto Sans families are SIL Open Font License 1.1.
 
-**Fonts: SIL OFL 1.1.** The bundled Noto Sans families are under the SIL Open
-Font License 1.1 — permissive and compatible with MIT (fonts are content, not
-linked code). Full text: [`src/fonts/OFL.txt`](src/fonts/OFL.txt); attribution:
+See [`LICENSE`](LICENSE), [`src/fonts/OFL.txt`](src/fonts/OFL.txt), and
 [`src/fonts/NOTICE`](src/fonts/NOTICE).
-
-See [`docs/papers/README.md`](docs/papers/README.md) for the CommonMark
-specification and citations.
-
----
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
