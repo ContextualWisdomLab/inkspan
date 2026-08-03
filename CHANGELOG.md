@@ -2,6 +2,17 @@
 
 All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Inkspan Office 0.1.0** — a deterministic, network-free Python package and CLI that renders strict machine-readable JSON to DOCX, XLSX, or PPTX through `python-docx`, `openpyxl`, and `python-pptx`
+- Bundled JSON Schema for structured LLM output, plus in-memory and atomic file-writing APIs
+- Formula-injection protection for AI-authored spreadsheet strings and strict rejection of unknown or malformed fields
+
+### Tests
+- 48 Python tests re-open all generated Office formats and enforce 100% statement and branch coverage on Python 3.11 and 3.13
+- Wheel packaging gate verifies that the JSON Schema and MIT license ship with the package
+
 ## [0.2.1] — 2026-07-31
 
 ### Added
