@@ -6,12 +6,12 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { EditorFrame } from '../components/EditorFrame.js';
 import { editorHtmlToValue } from '../components/editorSerialization.js';
 import { useEditorHandle } from '../components/useEditorHandle.js';
+import { useLatestRef } from '../components/useLatestRef.js';
 import { buildExtensions } from '../extensions/kit.js';
 import type { CwlEditorHandle } from '../types.js';
 import {
@@ -90,15 +90,12 @@ export const CollaborativeCwlEditor = forwardRef<
     [scopedProvider],
   );
 
-  const modeRef = useRef(mode);
-  modeRef.current = mode;
-  const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
-  const onImageErrorRef = useRef(onImageError);
-  onImageErrorRef.current = onImageError;
+  const modeRef = useLatestRef(mode);
+  const onChangeRef = useLatestRef(onChange);
+  const onImageErrorRef = useLatestRef(onImageError);
   const reportImageError = useCallback((error: Error) => {
     onImageErrorRef.current?.(error);
-  }, []);
+  }, [onImageErrorRef]);
 
   const editor = useEditor(
     {
