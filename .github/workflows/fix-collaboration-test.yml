@@ -1,0 +1,49 @@
+name: Fix collaboration lifecycle test
+
+on:
+  push:
+    branches: [feat/provider-neutral-collaboration]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fix-collaboration-test
+  cancel-in-progress: false
+
+jobs:
+  patch-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: feat/provider-neutral-collaboration
+      - name: Assert the remounted current CRDT state
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/collaboration/CollaborativeCwlEditor.test.tsx')
+          text = path.read_text()
+          old = """    await waitFor(() =>
+      expect(remountedRef.current?.getHTML()).toContain('Shared paragraph'),
+    );
+"""
+          new = """    await waitFor(() => {
+      expect(remountedRef.current?.getHTML()).toContain('Left concurrent edit');
+      expect(remountedRef.current?.getHTML()).toContain('Right concurrent edit');
+    });
+"""
+          if old not in text:
+              raise SystemExit('missing lifecycle assertion anchor')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Commit test fix and remove bootstrap workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/collaboration/CollaborativeCwlEditor.test.tsx
+          git rm .github/workflows/fix-collaboration-test.yml
+          git commit -m "test: assert remounted CRDT state after undo"
+          git push origin HEAD:feat/provider-neutral-collaboration
