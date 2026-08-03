@@ -60,22 +60,25 @@ export function EditorFormField({
 
   useEffect(() => {
     if (!onFormReset) return;
-    const form = fieldRef.current?.form;
-    if (!form) return;
+    const field = fieldRef.current;
+    /* v8 ignore next -- the effect runs only after the rendered field mounts. */
+    if (!field) return;
+    const eventRoot = field.getRootNode();
 
     const handleReset = (event: Event) => {
+      if (event.target !== field.form) return;
       queueMicrotask(() => {
         if (!event.defaultPrevented) onFormReset(event);
       });
     };
 
-    form.addEventListener('reset', handleReset);
+    eventRoot.addEventListener('reset', handleReset);
     return () => {
-      form.removeEventListener('reset', handleReset);
+      eventRoot.removeEventListener('reset', handleReset);
     };
   }, [formId, name, onFormReset]);
 
-  if (name === undefined) return null;
+  if (name === undefined && onFormReset === undefined) return null;
 
   return (
     <input
