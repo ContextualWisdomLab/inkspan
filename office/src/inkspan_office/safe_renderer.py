@@ -19,7 +19,7 @@ OfficeDocumentError = _renderer.OfficeDocumentError
 RenderedOfficeDocument = _renderer.RenderedOfficeDocument
 
 _INVALID_XML_CHARACTER = re.compile(
-    r"[\x00-\x08\x0B\x0C\x0E-\x1F\uD800-\uDFFF\uFFFE\uFFFF\U000F0000-\U0010FFFF]"
+    r"[\x00-\x08\x0B\x0C\x0E-\x1F\uD800-\uDFFF\uFFFE\uFFFF]"
 )
 _EXCEL_COORDINATE = re.compile(r"^([A-Za-z]{1,3})([1-9][0-9]{0,6})$")
 _CORE_TIMESTAMP = re.compile(
