@@ -14,6 +14,7 @@ export {
 export type { CollaborationCursorUser } from './awareness.js';
 export type {
   CollaborationAwareness,
+  CollaborationAwarenessEvent,
   CollaborationConnectionStatus,
   CollaborationProviderLike,
   CollaborationUser,
