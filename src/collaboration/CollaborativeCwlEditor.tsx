@@ -62,6 +62,8 @@ export const CollaborativeCwlEditor = forwardRef<
     image,
     className,
     onReady,
+    languageTag,
+    textDirection,
     ariaLabel,
     ariaLabelledBy,
     ariaDescribedBy,
@@ -110,6 +112,8 @@ export const CollaborativeCwlEditor = forwardRef<
     () =>
       buildEditorAccessibilityAttributes({
         defaultLabel: 'Collaborative rich text editor',
+        languageTag,
+        textDirection,
         ariaLabel,
         ariaLabelledBy,
         ariaDescribedBy,
@@ -119,6 +123,8 @@ export const CollaborativeCwlEditor = forwardRef<
         editable,
       }),
     [
+      languageTag,
+      textDirection,
       ariaLabel,
       ariaLabelledBy,
       ariaDescribedBy,
