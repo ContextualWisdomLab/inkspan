@@ -164,8 +164,9 @@ describe('native form serialization', () => {
       expect(String(submittedValue(form, 'message_body'))).toContain('# Changed'),
     );
 
-    act(() => {
+    await act(async () => {
       form.reset();
+      await Promise.resolve();
     });
 
     await waitFor(() => {
@@ -253,8 +254,9 @@ describe('native form serialization', () => {
     expect(onFormReset).not.toHaveBeenCalled();
     expect(Array.from(new FormData(resetTarget).entries())).toHaveLength(0);
 
-    act(() => {
+    await act(async () => {
       resetTarget.reset();
+      await Promise.resolve();
     });
     await waitFor(() => {
       expect(editorRef.current!.getValue()).toBe('Reset baseline');
@@ -285,7 +287,10 @@ describe('native form serialization', () => {
     await waitFor(() => expect(editorRef.current).toBeTruthy());
     act(() => {
       editorRef.current!.setValue('Changed');
+    });
+    await act(async () => {
       form.reset();
+      await Promise.resolve();
     });
 
     await waitFor(() => expect(onFormReset).toHaveBeenCalledTimes(1));
@@ -340,8 +345,9 @@ describe('native form serialization', () => {
       ),
     );
 
-    act(() => {
+    await act(async () => {
       form.reset();
+      await Promise.resolve();
     });
     await waitFor(() => expect(onFormReset).toHaveBeenCalledTimes(1));
     expect(editorRef.current!.getValue()).toContain('Shared body');
