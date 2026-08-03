@@ -13,6 +13,7 @@ import { EditorFrame } from '../components/EditorFrame.js';
 import { buildEditorAccessibilityAttributes } from '../components/editorAccessibility.js';
 import { createEditorDocumentSnapshot } from '../components/editorDocumentSnapshot.js';
 import { applyEditorFormReset } from '../components/editorFormReset.js';
+import { editorHtmlToValue } from '../components/editorSerialization.js';
 import { useEditorHandle } from '../components/useEditorHandle.js';
 import { useLatestRef } from '../components/useLatestRef.js';
 import { buildExtensions } from '../extensions/kit.js';
@@ -201,12 +202,18 @@ export const CollaborativeCwlEditor = forwardRef<
         const valueListener = onChangeRef.current;
         const snapshotListener = onDocumentChangeRef.current;
         if (!valueListener && !snapshotListener) return;
-        const snapshot = createEditorDocumentSnapshot(
-          instance,
-          modeRef.current,
-        );
-        valueListener?.(snapshot.value);
-        snapshotListener?.({ editor: instance, snapshot });
+        if (snapshotListener) {
+          const snapshot = createEditorDocumentSnapshot(
+            instance,
+            modeRef.current,
+          );
+          valueListener?.(snapshot.value);
+          snapshotListener({ editor: instance, snapshot });
+        } else {
+          valueListener?.(
+            editorHtmlToValue(instance.getHTML(), modeRef.current),
+          );
+        }
       },
       onSelectionUpdate: ({ editor: instance }) => {
         const { selection } = instance.state;
