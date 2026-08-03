@@ -1,6 +1,8 @@
 # Hash-locked Linux wheels for GitHub-hosted ubuntu-latest runners.
 # Supports CPython 3.11 and 3.13.
 
+coverage @ https://files.pythonhosted.org/packages/37/e7/7069b3d6c018917f49ba2e1c5fb910e498c7fefa3a1b78cb1b79e61ff45d/coverage-7.15.3-py3-none-any.whl \
+    --hash=sha256:da78fa6fc7dafe4212839173133ee85afcf42c5cd5f3e47fa7c1c210453b445e
 et-xmlfile==2.0.0 \
     --hash=sha256:7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa
 iniconfig==2.3.0 \
