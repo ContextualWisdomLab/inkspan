@@ -11,6 +11,9 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 - The npm distribution now ships compiled JavaScript, declarations, documentation, licenses, and the public offline-font assets without bundling internal TypeScript implementation or test files
 - Added a package-distribution contract for CWL/naruon integrators covering public subpaths, runtime dependency boundaries, and release verification
 
+### Fixed
+- CommonJS `require()` now unwraps TipTap's transpiler-shaped default exports correctly for both the editor and collaboration entrypoints instead of failing during module initialization
+
 ### Tests
 - CI now inspects the exact `npm pack` file manifest and rejects missing exports, missing license/font assets, internal source, tests, demos, Office sources, coverage data, or workflow files
 - ESM, CommonJS, SSR-safe Node imports, collaboration/converter subpaths, CSS/font resolution, and strict TypeScript consumer declarations are executed against the built package before merge
