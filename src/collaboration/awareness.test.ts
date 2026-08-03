@@ -6,6 +6,7 @@ import {
   countRemoteCollaborators,
   createScopedCollaborationProvider,
   renderCollaborationCursor,
+  renderCollaborationSelection,
   serializeCollaborationUser,
 } from './awareness.js';
 import type {
@@ -242,6 +243,19 @@ describe('collaboration awareness presentation', () => {
     expect(cursor.style.borderColor).toBe('rgb(71, 85, 105)');
     expect(label.textContent).toHaveLength(80);
     expect(label.querySelector('img')).toBeNull();
+  });
+
+  it('sanitizes remote selection highlight colors', () => {
+    expect(renderCollaborationSelection({ color: '#AABBCC' })).toEqual({
+      class: 'collaboration-cursor__selection',
+      style: 'background-color: #aabbcc33',
+    });
+    expect(
+      renderCollaborationSelection({ color: 'url(javascript:alert(1))' }),
+    ).toEqual({
+      class: 'collaboration-cursor__selection',
+      style: 'background-color: #47556933',
+    });
   });
 
   it('falls back for blank and non-string remote names', () => {
