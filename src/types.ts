@@ -14,6 +14,28 @@ export interface CwlEditorFocusEvent {
   event: FocusEvent;
 }
 
+/** Detached snapshot of the current ProseMirror document selection. */
+export interface CwlEditorSelectionSnapshot {
+  /** Fixed side of the selection in the current ProseMirror document. */
+  readonly anchor: number;
+  /** Moving side of the selection in the current ProseMirror document. */
+  readonly head: number;
+  /** Lower document-position bound of the selection. */
+  readonly from: number;
+  /** Upper document-position bound of the selection. */
+  readonly to: number;
+  /** Whether the selection is a caret rather than a range. */
+  readonly empty: boolean;
+}
+
+/** Local selection transition emitted by an Inkspan editable surface. */
+export interface CwlEditorSelectionEvent {
+  /** Stable TipTap editor instance whose local selection changed. */
+  editor: Editor;
+  /** Detached position snapshot valid for the editor's current document state. */
+  selection: CwlEditorSelectionSnapshot;
+}
+
 /** Native form reset observed through Inkspan's associated hidden field. */
 export interface CwlEditorFormResetEvent {
   /** Stable TipTap editor instance associated with the reset form. */
@@ -83,6 +105,11 @@ export interface CwlEditorProps {
    * to mark a field touched or schedule persistence without inspecting the DOM.
    */
   onBlur?: (focusEvent: CwlEditorFocusEvent) => void;
+  /**
+   * Fired when the local ProseMirror selection changes. Position snapshots are
+   * ephemeral document coordinates, not DOM offsets or durable identifiers.
+   */
+  onSelectionChange?: (selectionEvent: CwlEditorSelectionEvent) => void;
   /**
    * Fired when an image **paste, drop, or toolbar upload** fails (size guard,
    * decode error, etc.). Wired through both the toolbar file picker and the
