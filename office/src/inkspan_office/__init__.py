@@ -1,6 +1,6 @@
 """Deterministic Office document rendering for AI-authored Inkspan payloads."""
 
-from .renderer import (
+from .safe_renderer import (
     OfficeDocumentError,
     RenderedOfficeDocument,
     load_schema,
