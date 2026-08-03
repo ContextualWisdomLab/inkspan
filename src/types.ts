@@ -1,3 +1,4 @@
+import type { JSONContent } from '@tiptap/core';
 import type { Editor } from '@tiptap/react';
 
 /** Which document surface the editor reads from and writes to. */
@@ -18,6 +19,11 @@ export interface CwlEditorDocumentSnapshot {
   readonly markdown: string;
   /** Destination-free deterministic reading-order projection. */
   readonly plainText: string;
+  /**
+   * Deep-frozen TipTap/ProseMirror JSON for lossless structural persistence.
+   * `null` is returned before the editor instance has been created.
+   */
+  readonly documentJson: Readonly<JSONContent> | null;
   /** Whether the current editor document has no meaningful content. */
   readonly isEmpty: boolean;
 }
@@ -96,8 +102,8 @@ export interface CwlEditorHandle {
   /** Always Markdown (HTML → Markdown via the shipped serializer). */
   getMarkdown(): string;
   /**
-   * Frozen active-mode, HTML, Markdown, and plain-text representations from one
-   * current editor revision.
+   * Frozen active-mode, HTML, Markdown, plain-text, and structural JSON
+   * representations from one current editor revision.
    */
   getSnapshot(): CwlEditorDocumentSnapshot;
   /** Replace the whole document from a string in the active `mode`. */
