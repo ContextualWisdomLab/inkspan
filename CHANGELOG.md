@@ -4,6 +4,28 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.11] — 2026-08-04
+
+### Added
+- Deep-frozen `documentJson` on every `CwlEditorDocumentSnapshot`, preserving the complete TipTap/ProseMirror node, mark, and attribute structure from the same current editor revision
+- Lossless structural persistence guidance for standalone, collaborative, autosave, indexing, and CWL/naruon integration paths
+
+### Changed
+- Package version **0.5.11**
+- `CwlEditorHandle.getSnapshot()` and `onDocumentChange` now return active-mode output, HTML, normalized Markdown, minimized plain text, lossless document JSON, and emptiness state together
+- Snapshot JSON is recursively frozen after `Editor.getJSON()` so nested arrays, nodes, marks, and attributes cannot be accidentally mutated by host workflows
+- Before editor creation, the structural representation is explicitly `documentJson: null`
+
+### Security
+- Structural JSON is documented as the full client-controlled document body and can contain hyperlinks, inline image payloads, alternative text, and extension attributes; it is not a sanitized analytics or AI projection
+- CWL and naruon hosts retain authorization, schema/version migration, validation, tenant isolation, encryption, retention, request-size, logging, and model-use policy
+
+### Tests
+- Empty, Markdown, and HTML snapshots cover structural JSON identity, nested object/array freezing, primitive and null attributes, and the repository-wide 100% TypeScript coverage gate
+
+### Documentation
+- Expanded `docs/document-snapshots.md` with JSON-versus-HTML/Markdown/plain-text selection guidance, schema-coupled migration requirements, security boundaries, performance costs, collaboration ownership, descriptive identifiers, and primary TipTap/ProseMirror references
+
 ## [0.5.10] — 2026-08-04
 
 ### Added
