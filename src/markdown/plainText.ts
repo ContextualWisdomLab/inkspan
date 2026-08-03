@@ -37,6 +37,10 @@ interface PlainTextTableToken extends PlainTextToken {
   rows: PlainTextTableCell[][];
 }
 
+interface PlainTextCodeToken extends PlainTextToken {
+  text: string;
+}
+
 interface PlainTextImageToken extends PlainTextToken {
   text: string;
 }
@@ -113,7 +117,7 @@ function renderToken(
   state: PlainTextRenderState,
 ): PlainTextSegment[] {
   if (token.type === 'code' || token.type === 'codespan') {
-    return [{ kind: 'code', value: token.text ?? '' }];
+    return [{ kind: 'code', value: (token as PlainTextCodeToken).text }];
   }
   if (token.type === 'image') {
     return [
