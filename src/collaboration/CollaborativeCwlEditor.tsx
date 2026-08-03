@@ -20,6 +20,7 @@ import {
   countRemoteCollaborators,
   createScopedCollaborationProvider,
   renderCollaborationCursor,
+  renderCollaborationSelection,
   serializeCollaborationUser,
 } from './awareness.js';
 import type { CollaborativeCwlEditorProps } from './types.js';
@@ -114,6 +115,7 @@ export const CollaborativeCwlEditor = forwardRef<
                   provider: scopedProvider,
                   user: cursorUser,
                   render: renderCollaborationCursor,
+                  selectionRender: renderCollaborationSelection,
                 }),
               ]
             : []),
