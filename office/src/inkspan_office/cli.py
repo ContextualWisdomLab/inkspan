@@ -7,7 +7,7 @@ import json
 from collections.abc import Sequence
 from pathlib import Path
 
-from .renderer import OfficeDocumentError, load_schema, write_office_document
+from .safe_renderer import OfficeDocumentError, load_schema, write_office_document
 
 
 def _parser() -> argparse.ArgumentParser:
