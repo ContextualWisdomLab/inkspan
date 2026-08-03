@@ -7,6 +7,7 @@ import type { CwlEditorHandle } from '../types.js';
 import { CollaborativeCwlEditor } from './CollaborativeCwlEditor.js';
 import type {
   CollaborationAwareness,
+  CollaborationAwarenessEvent,
   CollaborationProviderLike,
   CollaborationUser,
   CollaborativeCwlEditorProps,
@@ -16,9 +17,15 @@ afterEach(cleanup);
 
 class FakeAwareness implements CollaborationAwareness {
   readonly clientID: number;
+  readonly states = new Map<number, Record<string, unknown>>();
   private localState: Record<string, unknown> | null = null;
-  private readonly states = new Map<number, Record<string, unknown>>();
-  private readonly listeners = new Set<(...args: unknown[]) => void>();
+  private readonly listeners: Record<
+    CollaborationAwarenessEvent,
+    Set<(...args: unknown[]) => void>
+  > = {
+    change: new Set(),
+    update: new Set(),
+  };
 
   constructor(clientID = 1) {
     this.clientID = clientID;
@@ -35,33 +42,42 @@ class FakeAwareness implements CollaborationAwareness {
   setLocalStateField(field: string, value: unknown): void {
     this.localState = { ...(this.localState ?? {}), [field]: value };
     this.states.set(this.clientID, this.localState);
-    this.emit();
+    this.emit('change');
+    this.emit('update');
   }
 
-  on(_event: 'change', listener: (...args: unknown[]) => void): void {
-    this.listeners.add(listener);
+  on(
+    event: CollaborationAwarenessEvent,
+    listener: (...args: unknown[]) => void,
+  ): void {
+    this.listeners[event].add(listener);
   }
 
-  off(_event: 'change', listener: (...args: unknown[]) => void): void {
-    this.listeners.delete(listener);
+  off(
+    event: CollaborationAwarenessEvent,
+    listener: (...args: unknown[]) => void,
+  ): void {
+    this.listeners[event].delete(listener);
   }
 
   setRemoteState(clientID: number, state: Record<string, unknown>): void {
     this.states.set(clientID, state);
-    this.emit();
+    this.emit('change');
+    this.emit('update');
   }
 
   removeRemoteState(clientID: number): void {
     this.states.delete(clientID);
-    this.emit();
+    this.emit('change');
+    this.emit('update');
   }
 
   listenerCount(): number {
-    return this.listeners.size;
+    return this.listeners.change.size + this.listeners.update.size;
   }
 
-  private emit(): void {
-    for (const listener of this.listeners) listener({}, 'test');
+  private emit(event: CollaborationAwarenessEvent): void {
+    for (const listener of this.listeners[event]) listener({}, 'test');
   }
 }
 
@@ -90,8 +106,13 @@ const ALICE: CollaborationUser = {
   cursorColor: '#2563eb',
 };
 
-function expectRenderFailure(props: Record<string, unknown>, message: RegExp): void {
-  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+function expectRenderFailure(
+  props: Record<string, unknown>,
+  message: RegExp,
+): void {
+  const consoleError = vi
+    .spyOn(console, 'error')
+    .mockImplementation(() => undefined);
   expect(() =>
     render(
       <CollaborativeCwlEditor
@@ -119,10 +140,7 @@ describe('CollaborativeCwlEditor contract', () => {
       { document: new Y.Doc(), field: ' ' },
       /field must not be empty/,
     );
-    expectRenderFailure(
-      { document: {} },
-      /must be a Y.Doc/,
-    );
+    expectRenderFailure({ document: {} }, /must be a Y.Doc/);
   });
 
   it('mounts without a provider and replaces StarterKit history with CRDT history', async () => {
@@ -152,12 +170,13 @@ describe('CollaborativeCwlEditor contract', () => {
   });
 
   it('publishes allowlisted awareness, updates identity without recreating the editor, and announces presence', async () => {
+    const collaborationDocument = new Y.Doc();
     const awareness = new FakeAwareness(10);
     const provider = providerWith(awareness);
     const onReady = vi.fn();
     const { rerender, unmount } = render(
       <CollaborativeCwlEditor
-        document={new Y.Doc()}
+        document={collaborationDocument}
         provider={provider}
         user={ALICE}
         connectionStatus="connected"
@@ -187,9 +206,7 @@ describe('CollaborativeCwlEditor contract', () => {
 
     rerender(
       <CollaborativeCwlEditor
-        document={initialEditor.extensionManager.extensions.find(
-          (extension: { name: string }) => extension.name === 'collaboration',
-        )!.options.document as Y.Doc}
+        document={collaborationDocument}
         provider={provider}
         user={{
           userId: 'editor-alice',
@@ -237,10 +254,9 @@ describe('CollaborativeCwlEditor contract', () => {
 
     await waitFor(() => expect(editorRef.current?.getEditor()).toBeTruthy());
     expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: 'Shared report' })).toHaveAttribute(
-      'contenteditable',
-      'false',
-    );
+    expect(
+      screen.getByRole('textbox', { name: 'Shared report' }),
+    ).toHaveAttribute('contenteditable', 'false');
     expect(screen.getByRole('status')).toHaveTextContent('Offline');
   });
 });
