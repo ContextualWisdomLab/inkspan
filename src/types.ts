@@ -95,6 +95,18 @@ export interface CwlEditorProps {
   /** Escape hatch: receive the underlying TipTap editor instance. */
   onReady?: (editor: Editor) => void;
   /**
+   * Native form field name. When supplied, Inkspan renders a hidden input whose
+   * live value is the current document serialized in `mode`.
+   */
+  formFieldName?: string;
+  /**
+   * ID of an external form to associate with the hidden serialization field.
+   * Omit this when the editor is already rendered inside the target form.
+   */
+  formId?: string;
+  /** Exclude the hidden serialization field from native form submission. */
+  formFieldDisabled?: boolean;
+  /**
    * BCP 47 language tag for the authored document, such as `ko`, `en-US`, or
    * `ar-EG`. Blank values are omitted from the editable surface.
    */
