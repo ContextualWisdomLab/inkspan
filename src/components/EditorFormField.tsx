@@ -22,7 +22,7 @@ export interface EditorFormFieldProps {
  * higher-level TipTap update event. Reset-only unnamed fields skip document
  * serialization entirely. When configured, the field also observes the
  * associated form's cancelable reset event and notifies the editor in the next
- * task, after native dispatch and the form reset algorithm have completed.
+ * microtask, after native dispatch and the form reset algorithm have completed.
  */
 export function EditorFormField({
   editor,
@@ -69,24 +69,21 @@ export function EditorFormField({
     /* v8 ignore next -- the effect runs only after the rendered field mounts. */
     if (!field) return;
     const eventRoot = field.getRootNode();
-    const pendingResetTimers = new Set<ReturnType<typeof setTimeout>>();
+    let observingReset = true;
 
     const handleReset = (event: Event) => {
       if (event.target !== field.form) return;
-      const resetTimer = setTimeout(() => {
-        pendingResetTimers.delete(resetTimer);
-        if (event.defaultPrevented) return;
+      queueMicrotask(() => {
+        if (!observingReset || event.defaultPrevented) return;
         if (name !== undefined) field.value = serializedValueRef.current;
         onFormReset(event);
-      }, 0);
-      pendingResetTimers.add(resetTimer);
+      });
     };
 
     eventRoot.addEventListener('reset', handleReset);
     return () => {
+      observingReset = false;
       eventRoot.removeEventListener('reset', handleReset);
-      for (const resetTimer of pendingResetTimers) clearTimeout(resetTimer);
-      pendingResetTimers.clear();
     };
   }, [formId, name, onFormReset]);
 
