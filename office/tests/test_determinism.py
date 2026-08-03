@@ -45,7 +45,7 @@ def test_rejects_codepoints_above_the_xml_1_0_character_range() -> None:
         "blocks": [{"type": "paragraph", "text": "bad\U000F0000text"}],
     }
 
-    with pytest.raises(OfficeDocumentError, match="U\+F0000"):
+    with pytest.raises(OfficeDocumentError, match=r"U\+F0000"):
         render_office_document(payload)
 
 
