@@ -5,11 +5,11 @@
 > `@contextualwisdomlab/cwl-editor`.
 
 Inkspan is a modular, commercial-grade authoring surface for applications and
-AI systems. It combines a React Markdown/HTML WYSIWYG editor, self-contained
-base64 images, strict hyperlink validation, provider-neutral Yjs collaboration,
-offline multilingual fonts, email-ready serialization, a framework-independent
-data-URI converter, and a deterministic Office Open XML renderer for DOCX,
-XLSX, and PPTX.
+AI systems. It combines a React Markdown/HTML WYSIWYG editor, SSR-safe client
+hydration, self-contained base64 images, strict hyperlink validation,
+provider-neutral Yjs collaboration, offline multilingual fonts, email-ready
+serialization, a framework-independent data-URI converter, and a deterministic
+Office Open XML renderer for DOCX, XLSX, and PPTX.
 
 ## Product capabilities
 
@@ -29,6 +29,9 @@ XLSX, and PPTX.
 - **Host-grade control** — controlled/uncontrolled modes, an imperative ref API,
   AI insertion at the current selection, read-only mode, image-error reporting,
   and access to the underlying TipTap instance.
+- **SSR-safe hydration** — standalone and collaborative components emit a stable
+  server shell and create the TipTap/ProseMirror view only after client
+  hydration, supporting Next.js and traditional React SSR integrations.
 - **Provider-neutral collaboration** — opt-in Yjs/TipTap real-time editing with
   host-owned transport, persistence, authorization, and lifecycle boundaries.
 - **Email output** — Markdown-to-email HTML conversion preserves accepted inline
@@ -102,6 +105,16 @@ export function Example() {
 
 Set `mode="html"` when `value` and `onChange` should exchange HTML. Both modes
 embed accepted images as inline data URIs.
+
+### Server rendering
+
+`CwlEditor` and `CollaborativeCwlEditor` are safe to include in server-rendered
+React trees. Inkspan emits a deterministic shell on the server and initializes
+TipTap after client hydration. Next.js App Router hosts should expose Inkspan
+through a small `'use client'` boundary and create browser providers and Yjs
+state inside that boundary. See
+[`docs/server-rendering.md`](docs/server-rendering.md) for the full hydration,
+provider-lifecycle, and CWL/naruon integration contract.
 
 ### Imperative host API
 
