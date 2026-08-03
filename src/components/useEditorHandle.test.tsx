@@ -36,6 +36,7 @@ describe('useEditorHandle', () => {
       html: '',
       markdown: '',
       plainText: '',
+      documentJson: null,
       isEmpty: true,
     });
     expect(Object.isFrozen(handle.getSnapshot())).toBe(true);
