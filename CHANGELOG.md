@@ -124,7 +124,7 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 - **Strict inline raster image boundary** — initial HTML/Markdown, controlled and imperative APIs, direct ProseMirror transactions, collaborative updates, and serialization now enforce one source policy
 - External, protocol-relative, `blob:`, `file:`, JavaScript, SVG/active-vector, unsupported-MIME, malformed, empty, and oversized image sources are rejected before decoder use, editor-state entry, or emission of a network-capable `<img>`
 - Rejected source diagnostics are categorized and redacted so URL secrets and base64 payload bytes are not retained in host telemetry
-- Removed temporary branch-patching workflows that were inadvertently retained by the preceding merge
+- Removed temporary branch-patching workflows that were inadvertently retained after the previous image-policy merge
 
 ### Changed
 - Package version **0.3.2**
