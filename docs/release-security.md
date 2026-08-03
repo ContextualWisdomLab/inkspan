@@ -46,23 +46,26 @@ No release draft is created or modified unless every build gate succeeds on the 
 
 ## Immutable publication
 
-Immutable releases must be enabled for the canonical repository before a release tag is pushed. The publish job checks the GitHub repository setting through the current REST API and fails closed when the setting is disabled or cannot be verified.
+Immutable releases must be enabled for the canonical repository before a release tag is pushed. Reading or changing that repository setting requires Administration permission, which the release workflow intentionally does not receive. Instead, the workflow verifies the immutable state of the published release through the ordinary release API available to its narrowly scoped contents token.
 
 Publication follows GitHub's immutable-release sequence:
 
 1. reject an existing published release rather than replacing its assets;
 2. create or resume a draft release;
 3. attach the complete attested artifact set while the release is still mutable;
-4. publish the draft, making the release assets and associated tag immutable;
-5. verify the release attestation and every uploaded asset through GitHub CLI.
+4. publish the draft;
+5. require GitHub to report `isImmutable: true` for the published release;
+6. verify the release attestation and every uploaded asset through GitHub CLI.
 
-A failed rerun may repair an existing draft with `--clobber`, but it can never overwrite a published release. A new release identity therefore requires a new reviewed version and tag.
+If GitHub reports that the newly published release is mutable, the workflow immediately deletes that release and fails. This rollback leaves the tag available for a retry after an administrator enables release immutability; it does not treat a mutable publication as a successful product release. If rollback itself fails, the workflow emits an explicit high-severity error and remains failed for operator intervention.
 
-Enabling immutable releases is an administrative repository control. Repository owners can enable it in GitHub settings or with the `PUT /repos/ContextualWisdomLab/inkspan/immutable-releases` endpoint using a credential with repository Administration write permission. The release workflow itself intentionally lacks that permission and cannot weaken or silently enable the policy.
+A failed rerun may repair an existing draft with `--clobber`, but it can never overwrite a published release. A new successful release identity therefore requires a new reviewed version and tag unless the previous attempt ended only as a deleted mutable release or an unpublished draft.
+
+Enabling immutable releases is an administrative repository control. Repository owners can enable it in GitHub settings or with the `PUT /repos/ContextualWisdomLab/inkspan/immutable-releases` endpoint using a credential with repository Administration write permission. The release workflow cannot weaken or silently enable the policy.
 
 ## Published artifacts
 
-Each GitHub release contains:
+Each successful GitHub release contains:
 
 - the exact npm tarball produced by `npm pack`;
 - the `inkspan-office` wheel built from `office/`;
@@ -77,9 +80,9 @@ The isolated publish job requests a short-lived OpenID Connect identity and uses
 Consumers should verify release-level and file-level provenance as well as checksums:
 
 ```bash
-gh release verify v0.4.1 --repo ContextualWisdomLab/inkspan
+gh release verify v0.4.2 --repo ContextualWisdomLab/inkspan
 
-gh release verify-asset v0.4.1 contextualwisdomlab-cwl-editor-0.4.1.tgz \
+gh release verify-asset v0.4.2 contextualwisdomlab-cwl-editor-0.4.2.tgz \
   --repo ContextualWisdomLab/inkspan
 
 gh attestation verify inkspan_office-0.1.0-py3-none-any.whl \
@@ -96,8 +99,8 @@ Use the actual version and filenames from the selected release. A successful att
 - The default and build-job workflow tokens are read-only.
 - Write, OpenID Connect, and attestation permissions exist only in the source-free publish job.
 - Release tags must identify a commit already merged into `main`.
-- Immutable-release enforcement is verified before any release draft is created or modified.
-- Published assets are never refreshed, replaced, or deleted by the workflow.
+- The published release must report an immutable state; a mutable outcome is deleted and rejected.
+- Existing published assets are never refreshed, replaced, or deleted by a successful workflow path.
 - No issue, pull-request body, comment, branch name, or other untrusted free text is interpolated into executable release commands.
 - Publication is restricted to the canonical repository and tag-push event.
 - The workflow uses no long-lived npm, PyPI, cloud, or signing secret.
@@ -116,7 +119,8 @@ The release pipeline does not add runtime coupling. The npm package remains a ho
 ## Primary references
 
 - GitHub immutable releases and draft-first publication: <https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository>
-- GitHub immutable-release repository API: <https://docs.github.com/en/rest/repos/repos?apiVersion=2026-03-10#check-if-immutable-releases-are-enabled-for-a-repository>
+- GitHub immutable-release repository API and required permissions: <https://docs.github.com/en/rest/repos/repos?apiVersion=2026-03-10#check-if-immutable-releases-are-enabled-for-a-repository>
+- GitHub release object and immutable state: <https://docs.github.com/en/rest/releases/releases?apiVersion=2026-03-10>
 - GitHub release attestation verification: <https://cli.github.com/manual/gh_release_verify>
 - GitHub artifact attestations: <https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations>
 - GitHub artifact-attestation concepts: <https://docs.github.com/en/actions/concepts/security/artifact-attestations>
