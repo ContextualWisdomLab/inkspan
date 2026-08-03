@@ -1,5 +1,13 @@
 import type { Editor } from '@tiptap/react';
-import { useCallback, useEffect, useReducer, useRef } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useReducer,
+  useRef,
+  type ChangeEvent,
+  type FocusEvent,
+  type KeyboardEvent,
+} from 'react';
 import { imageFileToInlineDataUri } from '../extensions/Base64Image.js';
 import type { ImageConfig } from '../types.js';
 
@@ -18,17 +26,38 @@ interface ButtonProps {
   label: string;
 }
 
+const TOOLBAR_ITEM_SELECTOR = 'button[data-cwl-toolbar-item="true"]';
+
+/** Return every toolbar button in visual and DOM navigation order. */
+function getToolbarButtons(toolbar: HTMLDivElement): HTMLButtonElement[] {
+  return Array.from(
+    toolbar.querySelectorAll<HTMLButtonElement>(TOOLBAR_ITEM_SELECTOR),
+  );
+}
+
+/** Keep exactly one enabled toolbar button in the document tab sequence. */
+function setRovingTabStop(
+  toolbar: HTMLDivElement,
+  target: HTMLButtonElement,
+): void {
+  for (const button of getToolbarButtons(toolbar)) {
+    button.tabIndex = button === target ? 0 : -1;
+  }
+}
+
 function ToolbarButton({ onClick, active, disabled, title, label }: ButtonProps) {
   return (
     <button
       type="button"
       className={`cwl-tb-btn${active ? ' is-active' : ''}`}
-      onMouseDown={(e) => e.preventDefault()}
+      data-cwl-toolbar-item="true"
+      tabIndex={-1}
+      onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
       disabled={disabled}
       title={title}
       aria-label={title}
-      aria-pressed={active ? 'true' : 'false'}
+      aria-pressed={active === undefined ? undefined : active}
     >
       {label}
     </button>
@@ -39,10 +68,16 @@ function ToolbarButton({ onClick, active, disabled, title, label }: ButtonProps)
  * Commercial-grade toolbar covering the common rich-text affordances:
  * marks, headings, lists, code, quote, link, horizontal rule, table insert +
  * edit, inline-base64 image upload, and image alternative-text authoring.
- * Uses `onMouseDown preventDefault` so clicks never steal the editor selection.
+ *
+ * The toolbar follows the WAI-ARIA composite-toolbar keyboard model: it is one
+ * tab stop, Left/Right arrows move between enabled controls with wrapping, and
+ * Home/End move to the first/last enabled control. `onMouseDown` preserves the
+ * editor selection when pointer users invoke a formatting action.
  */
 export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const toolbarRef = useRef<HTMLDivElement | null>(null);
+  const lastFocusedButtonRef = useRef<HTMLButtonElement | null>(null);
   // Re-render on every transaction so active/disabled states (marks, image and
   // table selection, undo/redo) stay in sync without host re-renders.
   const [, bump] = useReducer((n: number) => n + 1, 0);
@@ -55,6 +90,65 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
       editor.off('selectionUpdate', onUpdate);
     };
   }, [editor]);
+
+  useEffect(() => {
+    const toolbar = toolbarRef.current;
+    /* v8 ignore next -- the effect only runs after the toolbar div mounts. */
+    if (!toolbar) return;
+    const buttons = getToolbarButtons(toolbar);
+    const remembered = lastFocusedButtonRef.current;
+    const target =
+      remembered && !remembered.disabled
+        ? remembered
+        : buttons.find((button) => !button.disabled)!;
+    setRovingTabStop(toolbar, target);
+  });
+
+  const onToolbarFocus = useCallback((event: FocusEvent<HTMLDivElement>) => {
+    const target = event.target;
+    if (!(target instanceof HTMLButtonElement)) return;
+    lastFocusedButtonRef.current = target;
+    setRovingTabStop(event.currentTarget, target);
+  }, []);
+
+  const onToolbarKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      const target = event.target;
+      if (!(target instanceof HTMLButtonElement)) return;
+
+      const buttons = getToolbarButtons(event.currentTarget).filter(
+        (button) => !button.disabled,
+      );
+      const currentIndex = buttons.indexOf(target);
+      /* v8 ignore next -- native disabled buttons cannot receive keyboard focus. */
+      if (currentIndex < 0) return;
+
+      let nextIndex: number;
+      switch (event.key) {
+        case 'ArrowRight':
+          nextIndex = (currentIndex + 1) % buttons.length;
+          break;
+        case 'ArrowLeft':
+          nextIndex = (currentIndex - 1 + buttons.length) % buttons.length;
+          break;
+        case 'Home':
+          nextIndex = 0;
+          break;
+        case 'End':
+          nextIndex = buttons.length - 1;
+          break;
+        default:
+          return;
+      }
+
+      event.preventDefault();
+      const nextButton = buttons[nextIndex]!;
+      lastFocusedButtonRef.current = nextButton;
+      setRovingTabStop(event.currentTarget, nextButton);
+      nextButton.focus();
+    },
+    [],
+  );
 
   const inTable = editor.isActive('table');
   const imageSelected = editor.isActive('image');
@@ -92,7 +186,7 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
   }, [editor]);
 
   const onPickImage = useCallback(
-    async (event: React.ChangeEvent<HTMLInputElement>) => {
+    async (event: ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       event.target.value = '';
       if (!file) return;
@@ -111,7 +205,15 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
   );
 
   return (
-    <div className="cwl-toolbar" role="toolbar" aria-label="Formatting">
+    <div
+      ref={toolbarRef}
+      className="cwl-toolbar"
+      role="toolbar"
+      aria-label="Formatting"
+      aria-orientation="horizontal"
+      onFocusCapture={onToolbarFocus}
+      onKeyDown={onToolbarKeyDown}
+    >
       <div className="cwl-tb-group">
         <ToolbarButton
           title="Bold (Ctrl/Cmd+B)"

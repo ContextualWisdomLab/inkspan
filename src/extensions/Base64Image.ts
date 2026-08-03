@@ -1,12 +1,11 @@
 /**
  * Base64Image — a TipTap/ProseMirror extension that guarantees images live
- * **inline as base64 data URIs** inside the document.
+ * **inline as base64 raster data URIs** inside the document.
  *
- * Whenever an image is pasted, dropped, or inserted, its bytes are read,
- * optionally downscaled, and embedded as a `data:` URI on the node's `src`.
- * Local files always become base64 so the content is fully self-contained,
- * works offline / air-gapped, and is directly consumable by an LLM. By design
- * the extension never fetches remote URLs — nothing leaves the document.
+ * Every ingress path uses the same source policy: initial HTML/Markdown,
+ * controlled and imperative content, paste/drop/upload, direct ProseMirror
+ * transactions, collaboration, and serialization. The extension never fetches
+ * a remote source and never renders an unsafe source as an `<img>`.
  */
 import Image from '@tiptap/extension-image';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
@@ -16,14 +15,69 @@ import {
   Base64SizeError,
 } from '../converter/base64.js';
 
+const INLINE_RASTER_SOURCE_PATTERN =
+  /^data:image\/(?:png|jpe?g|gif|webp|avif|apng|bmp|x-icon|vnd\.microsoft\.icon);base64,(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)$/i;
+
+/** Return a bounded, payload-free category for an untrusted image source. */
+function redactImageSource(source: unknown): string {
+  if (typeof source !== 'string') return `<${typeof source}>`;
+  if (source.length === 0) return '<empty>';
+  if (source.startsWith('//')) return '//<redacted>';
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(source)?.[1];
+  if (scheme) return `${scheme.toLowerCase()}:<redacted>`;
+  return '<unrecognized>';
+}
+
+/** Error thrown when an image source violates Inkspan's inline raster policy. */
+export class Base64ImageSourceError extends Error {
+  /** Redacted source category safe for logs and host telemetry. */
+  readonly sourcePreview: string;
+
+  constructor(source: unknown) {
+    const sourcePreview = redactImageSource(source);
+    super(
+      `Image source must be a strict inline base64 raster data URI (${sourcePreview}).`,
+    );
+    this.name = 'Base64ImageSourceError';
+    this.sourcePreview = sourcePreview;
+  }
+}
+
+/**
+ * Validate an untrusted image source without trimming or normalizing it.
+ *
+ * Accepted MIME types are PNG, JPEG/JPG, GIF, WebP, AVIF, APNG, BMP, and ICO.
+ * SVG and every non-data source are rejected. A positive byte limit is applied
+ * to the decoded payload; `0` disables only the size limit, not validation.
+ */
+export function validateInlineImageSource(
+  source: unknown,
+  maxSizeBytes: number,
+): string {
+  if (
+    typeof source !== 'string' ||
+    source.length === 0 ||
+    !INLINE_RASTER_SOURCE_PATTERN.test(source)
+  ) {
+    throw new Base64ImageSourceError(source);
+  }
+  if (maxSizeBytes > 0) {
+    const bytes = dataUriByteLength(source);
+    if (bytes > maxSizeBytes) {
+      throw new Base64SizeError(bytes, maxSizeBytes);
+    }
+  }
+  return source;
+}
+
 export interface Base64ImageOptions {
   /** Passed through to the underlying TipTap Image extension. */
   inline: boolean;
   allowBase64: boolean;
   HTMLAttributes: Record<string, unknown>;
   /**
-   * Reject source files larger than this many bytes (before downscaling).
-   * Default 10 MB. Set to 0 to disable.
+   * Reject source files and existing inline images larger than this many bytes.
+   * Default 10 MB. Set to 0 to disable the size limit.
    */
   maxSizeBytes: number;
   /**
@@ -34,8 +88,8 @@ export interface Base64ImageOptions {
   /** JPEG/WebP quality (0..1) used when re-encoding during downscale. */
   quality: number;
   /**
-   * Called when an image is rejected (too large, decode failure, etc.). Lets
-   * host apps surface a toast without the extension owning any UI.
+   * Called when an image is rejected. Lets host apps surface a safe message
+   * without the extension owning presentation or telemetry.
    */
   onError?: (error: Error) => void;
 }
@@ -77,7 +131,7 @@ export async function downscaleDataUri(
         return;
       }
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const mime = dataUri.startsWith('data:image/png')
+      const mime = dataUri.toLowerCase().startsWith('data:image/png')
         ? 'image/png'
         : 'image/jpeg';
       resolve(canvas.toDataURL(mime, quality));
@@ -88,8 +142,9 @@ export async function downscaleDataUri(
 }
 
 /**
- * Convert a File/Blob to an inline base64 data URI honoring the size guard and
- * optional downscaling. Exported for reuse and unit testing.
+ * Convert a File/Blob to an allowed inline base64 data URI, honoring the size
+ * guard and optional downscaling. Unsupported or active-vector MIME types are
+ * rejected before the browser image decoder is invoked.
  */
 export async function imageFileToInlineDataUri(
   file: Blob,
@@ -98,24 +153,22 @@ export async function imageFileToInlineDataUri(
   const dataUri = await blobToDataUri(file, {
     maxBytes: options.maxSizeBytes > 0 ? options.maxSizeBytes : undefined,
   });
+  validateInlineImageSource(dataUri, options.maxSizeBytes);
   if (options.maxDimension && options.maxDimension > 0) {
     const scaled = await downscaleDataUri(
       dataUri,
       options.maxDimension,
       options.quality,
     );
-    // Re-apply the size guard to the re-encoded output: canvas re-encoding can
-    // change (and occasionally inflate) the byte length, so the guard must hold
-    // for what actually lands in the document, not just the source file.
-    if (options.maxSizeBytes > 0) {
-      const scaledBytes = dataUriByteLength(scaled);
-      if (scaledBytes > options.maxSizeBytes) {
-        throw new Base64SizeError(scaledBytes, options.maxSizeBytes);
-      }
-    }
-    return scaled;
+    return validateInlineImageSource(scaled, options.maxSizeBytes);
   }
   return dataUri;
+}
+
+/** Normalize a caught value to the Error contract exposed to hosts. */
+function normalizeImageError(error: unknown): Error {
+  /* v8 ignore next -- all shipped validation and conversion paths throw Error. */
+  return error instanceof Error ? error : new Error('Image processing failed.');
 }
 
 export const Base64Image = Image.extend<Base64ImageOptions>({
@@ -134,12 +187,60 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
     };
   },
 
+  parseHTML() {
+    return [
+      {
+        tag: 'img[src]',
+        getAttrs: (element) => {
+          /* v8 ignore next -- a tag parse rule receives an HTMLElement. */
+          if (!(element instanceof HTMLElement)) return false;
+          try {
+            const src = validateInlineImageSource(
+              element.getAttribute('src'),
+              this.options.maxSizeBytes,
+            );
+            return {
+              src,
+              alt: element.getAttribute('alt'),
+              title: element.getAttribute('title'),
+            };
+          } catch (error) {
+            this.options.onError?.(normalizeImageError(error));
+            return false;
+          }
+        },
+      },
+    ];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    try {
+      const src = validateInlineImageSource(
+        HTMLAttributes.src,
+        this.options.maxSizeBytes,
+      );
+      return [
+        'img',
+        {
+          ...this.options.HTMLAttributes,
+          ...HTMLAttributes,
+          src,
+        },
+      ];
+    } catch {
+      return [
+        this.options.inline ? 'span' : 'div',
+        { 'data-cwl-rejected-image': 'true' },
+      ];
+    }
+  },
+
   addProseMirrorPlugins() {
     const options = this.options;
     const editor = this.editor;
 
     const insertFiles = (files: File[], at?: number) => {
-      const images = files.filter((f) => f.type.startsWith('image/'));
+      const images = files.filter((file) => file.type.startsWith('image/'));
       if (images.length === 0) return false;
       for (const file of images) {
         imageFileToInlineDataUri(file, options)
@@ -150,16 +251,11 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
             const node = editor.schema.nodes.image.create({ src, alt: '' });
             const pos =
               typeof at === 'number' ? at : editor.state.selection.from;
-            const tr = editor.state.tr.insert(pos, node);
-            editor.view.dispatch(tr);
+            const transaction = editor.state.tr.insert(pos, node);
+            editor.view.dispatch(transaction);
           })
-          .catch((err: unknown) => {
-            options.onError?.(
-              // Conversion only ever rejects with an Error; the String() branch
-              // is a defensive normalization that does not run in practice.
-              /* v8 ignore next */
-              err instanceof Error ? err : new Error(String(err)),
-            );
+          .catch((error: unknown) => {
+            options.onError?.(normalizeImageError(error));
           });
       }
       return true;
@@ -168,6 +264,27 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
     return [
       new Plugin({
         key: base64ImagePluginKey,
+        filterTransaction: (transaction) => {
+          if (!transaction.docChanged) return true;
+          let rejection: Error | undefined;
+          transaction.doc.descendants((node) => {
+            if (rejection) return false;
+            if (node.type.name !== 'image') return true;
+            try {
+              validateInlineImageSource(
+                node.attrs.src,
+                options.maxSizeBytes,
+              );
+              return true;
+            } catch (error) {
+              rejection = normalizeImageError(error);
+              return false;
+            }
+          });
+          if (!rejection) return true;
+          options.onError?.(rejection);
+          return false;
+        },
         props: {
           handlePaste: (_view, event) => {
             const items = event.clipboardData?.items;
@@ -185,14 +302,16 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
             return handled;
           },
           handleDrop: (view, event) => {
-            const dt = (event as DragEvent).dataTransfer;
-            const files = dt?.files ? Array.from(dt.files) : [];
+            const dataTransfer = (event as DragEvent).dataTransfer;
+            const files = dataTransfer?.files
+              ? Array.from(dataTransfer.files)
+              : [];
             if (files.length === 0) return false;
-            const coords = view.posAtCoords({
+            const coordinates = view.posAtCoords({
               left: (event as DragEvent).clientX,
               top: (event as DragEvent).clientY,
             });
-            const handled = insertFiles(files, coords?.pos);
+            const handled = insertFiles(files, coordinates?.pos);
             if (handled) event.preventDefault();
             return handled;
           },
