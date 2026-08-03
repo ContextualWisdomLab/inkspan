@@ -1,0 +1,96 @@
+name: Patch image source policy tests
+
+on:
+  push:
+    branches: [fix/enforce-inline-image-sources]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: patch-image-source-tests
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: fix/enforce-inline-image-sources
+      - name: Align tests with the raster-only source policy
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/extensions/Base64ImageSourcePolicy.test.tsx')
+          text = path.read_text()
+          old = '''  it.each([
+            VALID_IMAGE,
+            'DATA:IMAGE/JPEG;BASE64,QUJDRA==',
+            'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=',
+          ])('accepts strict inline base64 image source %s', (source) => {
+          '''
+          new = '''  it.each([
+            VALID_IMAGE,
+            'DATA:IMAGE/JPEG;BASE64,QUJDRA==',
+            'data:image/jpg;base64,QUJDRA==',
+            'data:image/gif;base64,QUJDRA==',
+            'data:image/webp;base64,QUJDRA==',
+            'data:image/avif;base64,QUJDRA==',
+            'data:image/apng;base64,QUJDRA==',
+            'data:image/bmp;base64,QUJDRA==',
+            'data:image/x-icon;base64,QUJDRA==',
+            'data:image/vnd.microsoft.icon;base64,QUJDRA==',
+          ])('accepts strict inline base64 image source %s', (source) => {
+          '''
+          if old not in text:
+              raise SystemExit('missing accepted-source table anchor')
+          text = text.replace(old, new, 1)
+
+          old = "    'data:text/html;base64,AAAA',\n"
+          new = "    'data:text/html;base64,AAAA',\n    'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=',\n"
+          if old not in text:
+              raise SystemExit('missing rejected MIME anchor')
+          text = text.replace(old, new, 1)
+
+          old = '''  it('exposes only a bounded source preview for diagnostics', () => {
+            const numeric = new Base64ImageSourceError(42);
+            const long = new Base64ImageSourceError('x'.repeat(100));
+
+            expect(numeric.name).toBe('Base64ImageSourceError');
+            expect(numeric.sourcePreview).toBe('42');
+            expect(long.sourcePreview).toHaveLength(80);
+            expect(long.sourcePreview).toBe(`${'x'.repeat(77)}...`);
+          });
+          '''
+          new = '''  it('exposes only redacted source categories for diagnostics', () => {
+            const numeric = new Base64ImageSourceError(42);
+            const empty = new Base64ImageSourceError('');
+            const protocolRelative = new Base64ImageSourceError('//secret.example/token');
+            const data = new Base64ImageSourceError('data:image/png;base64,SECRET');
+            const https = new Base64ImageSourceError('https://secret.example/token');
+            const unrecognized = new Base64ImageSourceError('x'.repeat(100));
+
+            expect(numeric.name).toBe('Base64ImageSourceError');
+            expect(numeric.sourcePreview).toBe('<number>');
+            expect(empty.sourcePreview).toBe('<empty>');
+            expect(protocolRelative.sourcePreview).toBe('//<redacted>');
+            expect(data.sourcePreview).toBe('data:<redacted>');
+            expect(https.sourcePreview).toBe('https:<redacted>');
+            expect(unrecognized.sourcePreview).toBe('<unrecognized>');
+          });
+          '''
+          if old not in text:
+              raise SystemExit('missing diagnostic-preview test anchor')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Commit tests and remove bootstrap workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/extensions/Base64ImageSourcePolicy.test.tsx
+          git rm .github/workflows/patch-image-source-tests.yml
+          git commit -m "test: cover raster MIME and redacted diagnostics"
+          git push origin HEAD:fix/enforce-inline-image-sources
