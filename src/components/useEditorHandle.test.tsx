@@ -30,6 +30,15 @@ describe('useEditorHandle', () => {
     expect(handle.getValue()).toBe('');
     expect(handle.getHTML()).toBe('');
     expect(handle.getMarkdown()).toBe('');
+    expect(handle.getSnapshot()).toEqual({
+      mode: 'markdown',
+      value: '',
+      html: '',
+      markdown: '',
+      plainText: '',
+      isEmpty: true,
+    });
+    expect(Object.isFrozen(handle.getSnapshot())).toBe(true);
     expect(() => handle.setValue('ignored')).not.toThrow();
     expect(() => handle.insertValue('ignored')).not.toThrow();
     expect(() => handle.clear()).not.toThrow();
