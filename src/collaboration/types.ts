@@ -11,17 +11,27 @@ export interface CollaborationUser {
   cursorColor: string;
 }
 
+/** Awareness event names consumed by TipTap and Inkspan. */
+export type CollaborationAwarenessEvent = 'change' | 'update';
+
 /**
  * Minimal Yjs awareness surface required by TipTap collaboration cursors and
  * Inkspan's accessible collaborator count.
  */
 export interface CollaborationAwareness {
   readonly clientID: number;
+  readonly states: Map<number, Record<string, unknown>>;
   getLocalState(): Record<string, unknown> | null;
   getStates(): Map<number, Record<string, unknown>>;
   setLocalStateField(field: string, value: unknown): void;
-  on(event: 'change', listener: (...args: unknown[]) => void): void;
-  off(event: 'change', listener: (...args: unknown[]) => void): void;
+  on(
+    event: CollaborationAwarenessEvent,
+    listener: (...args: unknown[]) => void,
+  ): void;
+  off(
+    event: CollaborationAwarenessEvent,
+    listener: (...args: unknown[]) => void,
+  ): void;
 }
 
 /** Provider-neutral collaboration transport boundary owned by the host. */
