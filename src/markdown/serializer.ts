@@ -206,7 +206,9 @@ function createTurndown(): TurndownService {
     linkStyle: 'inlined',
   });
   service.use(gfm);
-  service.remove(Array.from(REMOVED_HTML_ELEMENTS));
+  service.remove(
+    Array.from(REMOVED_HTML_ELEMENTS) as Array<keyof HTMLElementTagNameMap>,
+  );
   service.addRule('safeLink', {
     filter: 'a',
     replacement: (content, node) => {
