@@ -48,8 +48,15 @@ describe('inline image source validation', () => {
   it.each([
     VALID_IMAGE,
     'DATA:IMAGE/JPEG;BASE64,QUJDRA==',
-    'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=',
-  ])('accepts strict inline base64 image source %s', (source) => {
+    'data:image/jpg;base64,QUJDRA==',
+    'data:image/gif;base64,QUJDRA==',
+    'data:image/webp;base64,QUJDRA==',
+    'data:image/avif;base64,QUJDRA==',
+    'data:image/apng;base64,QUJDRA==',
+    'data:image/bmp;base64,QUJDRA==',
+    'data:image/x-icon;base64,QUJDRA==',
+    'data:image/vnd.microsoft.icon;base64,QUJDRA==',
+  ])('accepts strict inline base64 raster source %s', (source) => {
     expect(validateInlineImageSource(source, 0)).toBe(source);
   });
 
@@ -67,6 +74,7 @@ describe('inline image source validation', () => {
     'file:///tmp/image.png',
     'javascript:alert(1)',
     'data:text/html;base64,AAAA',
+    'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=',
     'data:image/png,AAAA',
     'data:image/png;base64,',
     'data:image/png;base64,AAA',
@@ -85,14 +93,21 @@ describe('inline image source validation', () => {
     expect(validateInlineImageSource(LARGE_IMAGE, 4)).toBe(LARGE_IMAGE);
   });
 
-  it('exposes only a bounded source preview for diagnostics', () => {
+  it('exposes only redacted source categories for diagnostics', () => {
     const numeric = new Base64ImageSourceError(42);
-    const long = new Base64ImageSourceError('x'.repeat(100));
+    const empty = new Base64ImageSourceError('');
+    const protocolRelative = new Base64ImageSourceError('//secret.example/token');
+    const data = new Base64ImageSourceError('data:image/png;base64,SECRET');
+    const https = new Base64ImageSourceError('https://secret.example/token');
+    const unrecognized = new Base64ImageSourceError('x'.repeat(100));
 
     expect(numeric.name).toBe('Base64ImageSourceError');
-    expect(numeric.sourcePreview).toBe('42');
-    expect(long.sourcePreview).toHaveLength(80);
-    expect(long.sourcePreview).toBe(`${'x'.repeat(77)}...`);
+    expect(numeric.sourcePreview).toBe('<number>');
+    expect(empty.sourcePreview).toBe('<empty>');
+    expect(protocolRelative.sourcePreview).toBe('//<redacted>');
+    expect(data.sourcePreview).toBe('data:<redacted>');
+    expect(https.sourcePreview).toBe('https:<redacted>');
+    expect(unrecognized.sourcePreview).toBe('<unrecognized>');
   });
 });
 
