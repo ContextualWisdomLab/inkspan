@@ -13,7 +13,6 @@ import math
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from importlib import resources  # nosemgrep: python.lang.compatibility.python37.python37-compatibility-importlib2
 from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -62,9 +61,7 @@ _MISSING = object()
 def load_schema() -> dict[str, Any]:
     """Load the bundled JSON Schema used for structured LLM output."""
 
-    text = resources.files("inkspan_office").joinpath("schema.json").read_text(
-        encoding="utf-8"
-    )
+    text = Path(__file__).with_name("schema.json").read_text(encoding="utf-8")
     return json.loads(text)
 
 
@@ -122,6 +119,8 @@ def write_office_document(
 
 
 def _render_docx(request: Mapping[str, Any]) -> bytes:
+    """Render a validated DOCX request to an in-memory OOXML package."""
+
     _reject_unknown(request, {"format", "title", "author", "subject", "blocks"}, "payload")
     document = Document()
     title = _optional_string(request.get("title", _MISSING), "title")
@@ -186,6 +185,8 @@ def _render_docx(request: Mapping[str, Any]) -> bytes:
 
 
 def _add_docx_table(document: Document, block: Mapping[str, Any], path: str) -> None:
+    """Append a validated, rectangular table block to a Word document."""
+
     headers = _array(block.get("headers", []), f"{path}.headers")
     rows = _array(_require(block, "rows", path), f"{path}.rows")
     normalized_headers = [
@@ -216,6 +217,8 @@ def _add_docx_table(document: Document, block: Mapping[str, Any], path: str) -> 
 
 
 def _render_xlsx(request: Mapping[str, Any]) -> bytes:
+    """Render a validated workbook request to an in-memory OOXML package."""
+
     _reject_unknown(request, {"format", "title", "author", "sheets"}, "payload")
     sheets = _array(_require(request, "sheets", "payload"), "sheets")
     if not sheets:
@@ -279,6 +282,8 @@ def _render_xlsx(request: Mapping[str, Any]) -> bytes:
 
 
 def _validate_sheet_name(name: str, path: str, seen_names: set[str]) -> None:
+    """Reject worksheet names that Excel cannot address unambiguously."""
+
     if len(name) > 31 or _INVALID_SHEET_NAME.search(name):
         raise OfficeDocumentError(f"{path}.name is invalid for Excel: {name!r}")
     if name.casefold() in seen_names:
@@ -286,6 +291,8 @@ def _validate_sheet_name(name: str, path: str, seen_names: set[str]) -> None:
 
 
 def _size_columns(worksheet: Any, rows: list[list[Any]]) -> None:
+    """Apply bounded content-derived widths to populated worksheet columns."""
+
     width = max((len(row) for row in rows), default=0)
     for column_index in range(1, width + 1):
         longest = max(
@@ -298,6 +305,8 @@ def _size_columns(worksheet: Any, rows: list[list[Any]]) -> None:
 
 
 def _render_pptx(request: Mapping[str, Any]) -> bytes:
+    """Render a validated slide-deck request to an in-memory OOXML package."""
+
     _reject_unknown(request, {"format", "title", "author", "slides"}, "payload")
     slides = _array(_require(request, "slides", "payload"), "slides")
     if not slides:
@@ -347,6 +356,8 @@ def _render_pptx(request: Mapping[str, Any]) -> bytes:
 
 
 def _normalize_bullet(value: Any, path: str) -> tuple[str, int]:
+    """Normalize one string-or-object bullet into text and nesting level."""
+
     if isinstance(value, str):
         return value, 0
     if isinstance(value, Mapping):
@@ -360,6 +371,8 @@ def _normalize_bullet(value: Any, path: str) -> tuple[str, int]:
 
 
 def _require(mapping: Mapping[str, Any], key: str, path: str) -> Any:
+    """Return a required mapping field or raise a path-qualified error."""
+
     if key not in mapping:
         raise OfficeDocumentError(f"{path}.{key} is required")
     return mapping[key]
@@ -368,6 +381,8 @@ def _require(mapping: Mapping[str, Any], key: str, path: str) -> Any:
 def _reject_unknown(
     mapping: Mapping[str, Any], allowed: set[str], path: str
 ) -> None:
+    """Reject undeclared fields so generated requests cannot be ambiguous."""
+
     unexpected = sorted(set(mapping) - allowed)
     if unexpected:
         label = "field" if len(unexpected) == 1 else "fields"
@@ -377,6 +392,8 @@ def _reject_unknown(
 
 
 def _mapping(value: Any, path: str) -> Mapping[str, Any]:
+    """Validate and return a string-keyed mapping value."""
+
     if not isinstance(value, Mapping):
         raise OfficeDocumentError(f"{path} must be an object")
     if any(not isinstance(key, str) for key in value):
@@ -385,12 +402,16 @@ def _mapping(value: Any, path: str) -> Mapping[str, Any]:
 
 
 def _array(value: Any, path: str) -> list[Any]:
+    """Validate and materialize a non-string sequence as a list."""
+
     if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)):
         raise OfficeDocumentError(f"{path} must be an array")
     return list(value)
 
 
 def _string(value: Any, path: str, *, allow_empty: bool = False) -> str:
+    """Validate a string, optionally permitting empty or whitespace-only text."""
+
     if not isinstance(value, str):
         raise OfficeDocumentError(f"{path} must be a string")
     if not allow_empty and not value.strip():
@@ -399,18 +420,24 @@ def _string(value: Any, path: str, *, allow_empty: bool = False) -> str:
 
 
 def _optional_string(value: Any, path: str) -> str | None:
+    """Return an absent optional string as ``None`` and validate present values."""
+
     if value is _MISSING:
         return None
     return _string(value, path)
 
 
 def _boolean(value: Any, path: str) -> bool:
+    """Validate and return a strict JSON boolean."""
+
     if not isinstance(value, bool):
         raise OfficeDocumentError(f"{path} must be a boolean")
     return value
 
 
 def _integer(value: Any, path: str, *, minimum: int, maximum: int) -> int:
+    """Validate a non-boolean integer inside an inclusive range."""
+
     if not isinstance(value, int) or isinstance(value, bool):
         raise OfficeDocumentError(f"{path} must be an integer")
     if value < minimum or value > maximum:
@@ -419,6 +446,8 @@ def _integer(value: Any, path: str, *, minimum: int, maximum: int) -> int:
 
 
 def _scalar(value: Any, path: str) -> str | int | float | bool | None:
+    """Validate a finite JSON scalar suitable for an Office cell or table."""
+
     if isinstance(value, float) and not math.isfinite(value):
         raise OfficeDocumentError(f"{path} must be a finite JSON number")
     if value is None or isinstance(value, (str, int, float, bool)):
@@ -427,6 +456,8 @@ def _scalar(value: Any, path: str) -> str | int | float | bool | None:
 
 
 def _normalize_rows(rows: list[Any], path: str) -> list[list[Any]]:
+    """Validate nested row arrays and normalize every cell to a JSON scalar."""
+
     normalized: list[list[Any]] = []
     for row_index, raw_row in enumerate(rows):
         row = _array(raw_row, f"{path}[{row_index}]")
@@ -437,4 +468,6 @@ def _normalize_rows(rows: list[Any], path: str) -> list[list[Any]]:
 
 
 def _display(value: Any) -> str:
+    """Convert an Office table value to display text without spelling ``None``."""
+
     return "" if value is None else str(value)
