@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { EditorFrame } from '../components/EditorFrame.js';
 import { buildEditorAccessibilityAttributes } from '../components/editorAccessibility.js';
+import { applyEditorFormReset } from '../components/editorFormReset.js';
 import { editorHtmlToValue } from '../components/editorSerialization.js';
 import { useEditorHandle } from '../components/useEditorHandle.js';
 import { useLatestRef } from '../components/useLatestRef.js';
@@ -65,6 +66,8 @@ export const CollaborativeCwlEditor = forwardRef<
     formFieldName,
     formId,
     formFieldDisabled,
+    formResetValue,
+    onFormReset,
     languageTag,
     textDirection,
     ariaLabel,
@@ -108,6 +111,8 @@ export const CollaborativeCwlEditor = forwardRef<
   const onFocusRef = useLatestRef(onFocus);
   const onBlurRef = useLatestRef(onBlur);
   const onImageErrorRef = useLatestRef(onImageError);
+  const formResetValueRef = useLatestRef(formResetValue);
+  const onFormResetRef = useLatestRef(onFormReset);
   const reportImageError = useCallback((error: Error) => {
     onImageErrorRef.current?.(error);
   }, [onImageErrorRef]);
@@ -244,6 +249,22 @@ export const CollaborativeCwlEditor = forwardRef<
     </div>
   );
 
+  const handleFormReset = useCallback(
+    (event: Event) => {
+      applyEditorFormReset({
+        /* v8 ignore next -- the handler is passed only while editor exists. */
+        editor: editor!,
+        mode: modeRef.current,
+        resetValue: formResetValueRef.current,
+        event,
+        onFormReset: onFormResetRef.current,
+      });
+    },
+    [editor, formResetValueRef, modeRef, onFormResetRef],
+  );
+  const observesFormReset =
+    formResetValue !== undefined || onFormReset !== undefined;
+
   return (
     <EditorFrame
       editor={editor}
@@ -256,6 +277,7 @@ export const CollaborativeCwlEditor = forwardRef<
       formFieldName={formFieldName}
       formId={formId}
       formFieldDisabled={formFieldDisabled}
+      onFormReset={editor && observesFormReset ? handleFormReset : undefined}
       status={status}
     />
   );
