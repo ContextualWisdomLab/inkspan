@@ -14,6 +14,29 @@ export interface ImageConfig {
 }
 
 /**
+ * Immutable snapshot of the current ProseMirror selection for host-owned AI,
+ * command, and audit workflows.
+ */
+export interface EditorSelectionSnapshot {
+  /** Selection anchor in the current ProseMirror document. */
+  anchor: number;
+  /** Selection head in the current ProseMirror document. */
+  head: number;
+  /** Lower normalized selection boundary. */
+  from: number;
+  /** Upper normalized selection boundary. */
+  to: number;
+  /** Whether the selection is a cursor rather than a range. */
+  empty: boolean;
+  /**
+   * Selected plain text in document order. Block boundaries become blank lines;
+   * non-text leaf nodes, image payloads, attributes, and link destinations are
+   * omitted.
+   */
+  text: string;
+}
+
+/**
  * Imperative handle for host apps that need programmatic control (form submit,
  * focus management, AI insert, email send). Prefer this over scraping the DOM.
  */
@@ -30,6 +53,11 @@ export interface CwlEditorHandle {
   getHTML(): string;
   /** Always Markdown (HTML → Markdown via the shipped serializer). */
   getMarkdown(): string;
+  /**
+   * Read a point-in-time selection snapshot without scraping DOM Selection.
+   * Coordinates are valid only for the current editor state.
+   */
+  getSelection(): EditorSelectionSnapshot;
   /** Replace the whole document from a string in the active `mode`. */
   setValue(value: string): void;
   /**
