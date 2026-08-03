@@ -33,7 +33,7 @@ describe('native form serialization', () => {
     ).toBe('');
   });
 
-  it('omits the hidden field when no form field name is configured', async () => {
+  it('omits the hidden field when no form integration is configured', async () => {
     const { container } = render(
       <CwlEditor defaultValue="Draft" hideToolbar />,
     );
@@ -214,6 +214,52 @@ describe('native form serialization', () => {
 
     expect(editorRef.current!.getValue()).toBe('Changed');
     expect(onFormReset).not.toHaveBeenCalled();
+  });
+
+  it('observes reset-only form ownership and ignores unrelated forms', async () => {
+    const editorRef = createRef<CwlEditorHandle>();
+    const onFormReset = vi.fn();
+    const { container } = render(
+      <>
+        <form id="reset_target" />
+        <form id="unrelated_form" />
+        <CwlEditor
+          ref={editorRef}
+          defaultValue="Draft"
+          hideToolbar
+          formId="reset_target"
+          formResetValue="Reset baseline"
+          onFormReset={onFormReset}
+        />
+      </>,
+    );
+    const resetTarget = container.querySelector(
+      '#reset_target',
+    ) as HTMLFormElement;
+    const unrelatedForm = container.querySelector(
+      '#unrelated_form',
+    ) as HTMLFormElement;
+
+    await waitFor(() => expect(editorRef.current).toBeTruthy());
+    act(() => {
+      editorRef.current!.setValue('Changed');
+    });
+
+    await act(async () => {
+      unrelatedForm.reset();
+      await Promise.resolve();
+    });
+    expect(editorRef.current!.getValue()).toBe('Changed');
+    expect(onFormReset).not.toHaveBeenCalled();
+    expect(new FormData(resetTarget).size).toBe(0);
+
+    act(() => {
+      resetTarget.reset();
+    });
+    await waitFor(() => {
+      expect(editorRef.current!.getValue()).toBe('Reset baseline');
+      expect(onFormReset).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('notifies an externally associated host without forcing a reset value', async () => {
