@@ -3,7 +3,6 @@
  * Kept separate from React so hosts may reuse it in headless workflows.
  */
 import StarterKit from '@tiptap/starter-kit';
-import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
@@ -11,6 +10,7 @@ import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
 import type { Extensions } from '@tiptap/react';
 import { Base64Image } from './Base64Image.js';
+import { SafeLink, isSafeLinkHref } from './SafeLink.js';
 import type { ImageConfig } from '../types.js';
 
 /** Options for constructing the shared Inkspan extension collection. */
@@ -44,10 +44,11 @@ export function buildExtensions(
       },
       ...historyConfiguration,
     }),
-    Link.configure({
+    SafeLink.configure({
       openOnClick: false,
       autolink: true,
       linkOnPaste: true,
+      isAllowedUri: (href) => isSafeLinkHref(href),
       HTMLAttributes: { rel: 'noopener noreferrer nofollow' },
     }),
     Placeholder.configure({
