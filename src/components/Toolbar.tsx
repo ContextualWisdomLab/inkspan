@@ -38,13 +38,13 @@ function ToolbarButton({ onClick, active, disabled, title, label }: ButtonProps)
 /**
  * Commercial-grade toolbar covering the common rich-text affordances:
  * marks, headings, lists, code, quote, link, horizontal rule, table insert +
- * edit (add/delete row/column, delete table), and inline-base64 image upload.
+ * edit, inline-base64 image upload, and image alternative-text authoring.
  * Uses `onMouseDown preventDefault` so clicks never steal the editor selection.
  */
 export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  // Re-render on every transaction so active/disabled states (marks, table
-  // cursor, undo/redo) stay in sync without host re-renders.
+  // Re-render on every transaction so active/disabled states (marks, image and
+  // table selection, undo/redo) stay in sync without host re-renders.
   const [, bump] = useReducer((n: number) => n + 1, 0);
   useEffect(() => {
     const onUpdate = () => bump();
@@ -57,6 +57,7 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
   }, [editor]);
 
   const inTable = editor.isActive('table');
+  const imageSelected = editor.isActive('image');
 
   const setLink = useCallback(() => {
     const previous = editor.getAttributes('link').href as string | undefined;
@@ -74,6 +75,22 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
       .run();
   }, [editor]);
 
+  const setImageAlternativeText = useCallback(() => {
+    if (!editor.isActive('image')) return;
+    const attributes = editor.getAttributes('image');
+    const previous = typeof attributes.alt === 'string' ? attributes.alt : '';
+    const alternativeText = window.prompt(
+      'Image alternative text. Leave empty for a decorative image.',
+      previous,
+    );
+    if (alternativeText === null) return;
+    editor
+      .chain()
+      .focus()
+      .updateAttributes('image', { alt: alternativeText })
+      .run();
+  }, [editor]);
+
   const onPickImage = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
@@ -85,7 +102,7 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
           maxDimension: image?.maxDimension ?? 1600,
           quality: image?.quality ?? 0.85,
         });
-        editor.chain().focus().setImage({ src }).run();
+        editor.chain().focus().setImage({ src, alt: '' }).run();
       } catch (err) {
         onImageError?.(err);
       }
@@ -227,6 +244,12 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
           title="Insert inline (base64) image"
           label="🖼"
           onClick={() => fileInputRef.current?.click()}
+        />
+        <ToolbarButton
+          title="Edit image alternative text"
+          label="Alt"
+          disabled={!imageSelected}
+          onClick={setImageAlternativeText}
         />
         <input
           ref={fileInputRef}
