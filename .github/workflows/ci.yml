@@ -33,6 +33,8 @@ jobs:
         run: pnpm coverage
       - name: Build library
         run: pnpm build
+      - name: Verify packed package consumers
+        run: pnpm verify:package
       - name: Build demo
         run: pnpm build:demo
 

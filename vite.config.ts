@@ -33,6 +33,12 @@ export default defineConfig({
         /^@tiptap\//,
         /^prosemirror-/,
       ],
+      output: {
+        // TipTap packages expose transpiler-shaped CommonJS default exports.
+        // `auto` preserves native CJS modules while unwrapping those defaults
+        // for Inkspan's documented `require()` entrypoint.
+        interop: 'auto',
+      },
     },
   },
 });
