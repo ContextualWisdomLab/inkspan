@@ -50,12 +50,65 @@ describe('markdown <-> html basics', () => {
   });
 });
 
+describe('safe hyperlink serialization', () => {
+  it('renders safe absolute and relative links with defensive rel attributes', () => {
+    const html = markdownToHtml(
+      '[external](https://example.com/path) and [internal](/docs/start)',
+    );
+    expect(html).toContain(
+      '<a href="https://example.com/path" rel="noopener noreferrer nofollow">external</a>',
+    );
+    expect(html).toContain(
+      '<a href="/docs/start" rel="noopener noreferrer nofollow">internal</a>',
+    );
+  });
+
+  it('escapes safe link attributes and preserves a title', () => {
+    const html = markdownToHtml(
+      '[reference](https://example.com/?a=1&b=2 "A <reference>")',
+    );
+    expect(html).toContain('href="https://example.com/?a=1&amp;b=2"');
+    expect(html).toContain('title="A &lt;reference&gt;"');
+  });
+
+  it.each([
+    '[run](javascript:alert(1))',
+    '[payload](data:text/html;base64,PHNjcmlwdD4=)',
+    '[local](file:///etc/passwd)',
+    '[network](//attacker.example/path)',
+    '[credentials](https://user:secret@example.com/path)',
+  ])('renders unsafe target as ordinary text: %s', (markdown) => {
+    const html = markdownToHtml(markdown);
+    expect(html).not.toContain('<a ');
+    expect(html).not.toContain('href=');
+    expect(html).toMatch(/<p>[^<]+<\/p>/);
+  });
+});
+
 describe('base64 image round-trip', () => {
   it('markdown image with data URI -> html keeps the data URI intact', () => {
     const md = `![diagram](${PNG_DATA_URI})`;
     const html = markdownToHtml(md);
     expect(html).toContain(`src="${PNG_DATA_URI}"`);
     expect(html).toContain('alt="diagram"');
+  });
+
+  it('escapes image alternative text and preserves a title', () => {
+    const md = `![A <diagram>](${PNG_DATA_URI} "A & B")`;
+    const html = markdownToHtml(md);
+    expect(html).toContain('alt="A &lt;diagram&gt;"');
+    expect(html).toContain('title="A &amp; B"');
+  });
+
+  it.each([
+    '![external](https://example.com/tracker.png)',
+    '![active](data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=)',
+    '![local](file:///tmp/image.png)',
+  ])('renders rejected image source as an inert marker: %s', (markdown) => {
+    const html = markdownToHtml(markdown);
+    expect(html).toContain('data-cwl-rejected-image="true"');
+    expect(html).not.toContain('<img');
+    expect(html).not.toContain('src=');
   });
 
   it('html <img> with data URI -> markdown keeps the data URI intact', () => {
@@ -81,12 +134,24 @@ describe('base64 image round-trip', () => {
 });
 
 describe('markdownToEmailHtml (compose → send)', () => {
-  it('returns a body fragment that preserves base64 images', () => {
-    const md = `# Hello\n\n![fig](${PNG_DATA_URI})`;
+  it('returns a body fragment that preserves base64 images and safe links', () => {
+    const md = `# Hello\n\n![fig](${PNG_DATA_URI})\n\n[Read more](https://example.com)`;
     const html = markdownToEmailHtml(md);
     expect(html).toContain('<h1>Hello</h1>');
     expect(html).toContain(`src="${PNG_DATA_URI}"`);
+    expect(html).toContain('href="https://example.com"');
     expect(html).not.toContain('<!DOCTYPE');
+  });
+
+  it('does not emit active links or external image fetches', () => {
+    const html = markdownToEmailHtml(
+      '[run](javascript:alert(1)) ![tracker](https://example.com/t.png)',
+    );
+    expect(html).not.toContain('<a ');
+    expect(html).not.toContain('<img');
+    expect(html).not.toContain('href=');
+    expect(html).not.toContain('src=');
+    expect(html).toContain('data-cwl-rejected-image="true"');
   });
 
   it('wraps a full document with charset and escaped title when requested', () => {
