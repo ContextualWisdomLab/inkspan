@@ -14,9 +14,10 @@ and a deterministic Office Open XML renderer for DOCX, XLSX, and PPTX.
 
 - **Markdown and HTML editing** — one TipTap/ProseMirror editor, toolbar,
   keyboard behavior, tables, links, code blocks, lists, and horizontal rules.
-- **Self-contained images** — paste, drop, or upload images as inline base64
-  data URIs. Configurable size limits and downscaling keep the document portable
-  and directly readable by downstream LLMs.
+- **Self-contained, accessible images** — paste, drop, or upload images as
+  inline base64 data URIs, then author meaningful alternative text or explicitly
+  mark decorative images. Configurable limits keep documents portable and
+  directly readable by downstream LLMs.
 - **Host-grade control** — controlled/uncontrolled modes, an imperative ref API,
   AI insertion at the current selection, read-only mode, image-error reporting,
   and access to the underlying TipTap instance.
@@ -145,6 +146,10 @@ normal `onChange` path without wiping the document.
 are 10 MB, 1600 px, and 0.85. Set `maxDimension: 0` to disable downscaling.
 
 The table toolbar supports add/delete row, add/delete column, and delete table.
+When an image is selected, the **Alt** action prefills its current replacement
+text. Enter a meaningful description for informative images, or leave the value
+empty to produce an explicit `alt=""` for decorative images. Upload, paste, and
+drop start with that explicit decorative default instead of omitting `alt`.
 Toolbar active and disabled states follow editor transactions and selection
 updates.
 
@@ -180,9 +185,10 @@ const emailDocument = markdownToEmailHtml(markdown, {
 });
 ```
 
-The GFM/CommonMark pipeline preserves inline image data URIs through Markdown ⇄
-HTML conversion. `markdownToEmailHtml` creates an email body, not a complete
-MIME multipart message.
+The GFM/CommonMark pipeline preserves inline image data URIs and image
+alternative text through Markdown ⇄ HTML conversion.
+`markdownToEmailHtml` creates an email body, not a complete MIME multipart
+message.
 
 ## Standalone base64 converter
 

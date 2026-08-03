@@ -145,7 +145,9 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
         imageFileToInlineDataUri(file, options)
           .then((src) => {
             if (editor.isDestroyed) return;
-            const node = editor.schema.nodes.image.create({ src });
+            // New images are explicitly decorative until an author supplies
+            // meaningful replacement text through the toolbar.
+            const node = editor.schema.nodes.image.create({ src, alt: '' });
             const pos =
               typeof at === 'number' ? at : editor.state.selection.from;
             const tr = editor.state.tr.insert(pos, node);
