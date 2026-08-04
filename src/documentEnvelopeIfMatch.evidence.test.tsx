@@ -1,6 +1,6 @@
 import { act, render, waitFor } from '@testing-library/react';
 import { createRef } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { CwlEditor } from './components/CwlEditor.js';
 import {
   createDocumentEnvelope,
@@ -17,18 +17,22 @@ import {
 } from './documentEnvelopeIfMatch.js';
 import type { CwlEditorHandle } from './types.js';
 
+function createDeterministicDigest(source: BufferSource): ArrayBuffer {
+  const bytes = ArrayBuffer.isView(source)
+    ? new Uint8Array(source.buffer, source.byteOffset, source.byteLength)
+    : new Uint8Array(source);
+  const digest = new Uint8Array(32);
+  for (let index = 0; index < bytes.length; index += 1) {
+    const digestIndex = index % digest.length;
+    digest[digestIndex] =
+      (digest[digestIndex] + bytes[index] + index) % 256;
+  }
+  return digest.buffer;
+}
+
 const DIGEST_PROVIDER: DocumentEnvelopeDigestProvider = {
   async digest(_algorithm, source) {
-    const bytes = ArrayBuffer.isView(source)
-      ? new Uint8Array(source.buffer, source.byteOffset, source.byteLength)
-      : new Uint8Array(source);
-    const digest = new Uint8Array(32);
-    for (let index = 0; index < bytes.length; index += 1) {
-      const digestIndex = index % digest.length;
-      digest[digestIndex] =
-        (digest[digestIndex] + bytes[index] + index) % 256;
-    }
-    return digest.buffer;
+    return createDeterministicDigest(source);
   },
 };
 
@@ -110,7 +114,7 @@ describe('atomic revision-envelope conflict evidence', () => {
     expect(handle.getMarkdown()).toBe('Conflict evidence document');
   });
 
-  it('returns the exact previous envelope paired with the successful guard revision', async () => {
+  it('returns exact previous and resulting revision-envelope evidence after restore', async () => {
     const handle = await renderEvidenceEditor();
     const editor = handle.getEditor()!;
     const previousEnvelope = handle.getDocumentEnvelope()!;
@@ -120,6 +124,11 @@ describe('atomic revision-envelope conflict evidence', () => {
       DIGEST_PROVIDER,
     );
     const incomingEnvelope = createParagraphEnvelope('Applied next revision');
+    const revision = await createDocumentEnvelopeRevision(
+      incomingEnvelope,
+      undefined,
+      DIGEST_PROVIDER,
+    );
     let result!: CwlEditorIfMatchRestoreResult;
 
     await act(async () => {
@@ -136,16 +145,69 @@ describe('atomic revision-envelope conflict evidence', () => {
       status: 'restored',
       previousRevision,
       previousEnvelope,
+      revision,
       envelope: incomingEnvelope,
     });
     expect(Object.isFrozen(result)).toBe(true);
     if (result.status !== 'restored') {
-      throw new Error('Expected a restored result with previous evidence');
+      throw new Error('Expected a restored result with transition evidence');
     }
     await expectMatchingEvidence(
       result.previousEnvelope,
       result.previousRevision,
     );
+    await expectMatchingEvidence(result.envelope, result.revision);
     expect(handle.getMarkdown()).toBe('Applied next revision');
+  });
+
+  it('does not apply a prepared envelope when the editor moves while its revision hashes', async () => {
+    const handle = await renderEvidenceEditor();
+    const editor = handle.getEditor()!;
+    const previousEnvelope = handle.getDocumentEnvelope()!;
+    const previousRevision = await createDocumentEnvelopeRevision(
+      previousEnvelope,
+      undefined,
+      DIGEST_PROVIDER,
+    );
+    const incomingEnvelope = createParagraphEnvelope('Must remain unapplied');
+    let announceNextDigest!: () => void;
+    const nextDigestStarted = new Promise<void>((resolve) => {
+      announceNextDigest = resolve;
+    });
+    let releaseNextDigest!: () => void;
+    const nextDigestRelease = new Promise<void>((resolve) => {
+      releaseNextDigest = resolve;
+    });
+    let digestCallCount = 0;
+    const digestProvider: DocumentEnvelopeDigestProvider = {
+      digest: vi.fn(async (_algorithm, source) => {
+        digestCallCount += 1;
+        if (digestCallCount === 1) return createDeterministicDigest(source);
+        announceNextDigest();
+        await nextDigestRelease;
+        return createDeterministicDigest(source);
+      }),
+    };
+
+    const pending = restoreDocumentEnvelopeIfMatch(
+      editor,
+      previousRevision.strongEntityTag,
+      incomingEnvelope,
+      undefined,
+      digestProvider,
+    );
+    await nextDigestStarted;
+    act(() => {
+      editor.commands.setContent('<p>Newer local document</p>', false);
+    });
+    releaseNextDigest();
+
+    await expect(pending).resolves.toEqual({
+      status: 'conflict',
+      currentRevision: null,
+      currentEnvelope: null,
+    });
+    expect(digestProvider.digest).toHaveBeenCalledTimes(2);
+    expect(handle.getMarkdown()).toBe('Newer local document');
   });
 });
