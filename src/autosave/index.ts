@@ -144,9 +144,12 @@ export interface DocumentAutosaveQueue {
   /**
    * Queue one immutable revision for the host-owned save operation.
    *
-   * Matching active or pending revisions share one promise. A newer different
-   * revision replaces only not-yet-started work; it never cancels or overlaps an
-   * active host call. Invalid evidence fails synchronously before it is stored.
+   * Matching active or pending revisions share one promise. Re-enqueueing the
+   * active revision supersedes a different pending revision because the active
+   * callback will finish after the latest request. Any other newer revision
+   * replaces only not-yet-started work; it never cancels or overlaps an active
+   * host call. Invalid or unsupported-schema evidence fails synchronously before
+   * it is stored.
    *
    * @param evidence - Frozen evidence returned by Inkspan revision APIs.
    * @returns A promise for the saved, unchanged, superseded, conflict, or closed outcome.
@@ -583,6 +586,17 @@ export function createDocumentAutosaveQueue(
       );
     }
     if (activeRequest?.strongEntityTag === strongEntityTag) {
+      if (pendingRequest !== null) {
+        const supersededRequest = pendingRequest;
+        pendingRequest = null;
+        resolveRequest(
+          supersededRequest,
+          createSupersededOutcome(
+            supersededRequest.strongEntityTag,
+            strongEntityTag,
+          ),
+        );
+      }
       return activeRequest.promise;
     }
     if (pendingRequest?.strongEntityTag === strongEntityTag) {
