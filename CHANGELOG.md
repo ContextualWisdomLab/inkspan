@@ -4,6 +4,28 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.18] — 2026-08-04
+
+### Added
+- `parseDocumentEnvelopeBytes()` for the strict, resource-bounded inverse of canonical `encodeDocumentEnvelope()` output
+- `maxUtf8Bytes` in `DocumentEnvelopeLimits` and the frozen commercial defaults
+
+### Changed
+- Package version **0.5.18**
+- Accepted byte views are detached before parsing and flow through the same duplicate-name, schema/version, value-count, string, and nesting validation as JSON text
+
+### Security
+- UTF-8 decoding uses fatal error handling so malformed sequences cannot become replacement characters
+- Leading UTF-8 byte-order marks fail closed instead of being silently discarded in the canonical persistence path
+- Byte length is checked before copy and decode; CWL and naruon hosts retain compressed-body, transport, timeout, rate/concurrency, authorization, tenant, and migration controls
+
+### Tests
+- Added canonical byte round trips, exact byte ceilings, typed-array subclasses, invalid input, BOM, malformed UTF-8, empty JSON, hostile views, packaged ESM/CommonJS, and 100% coverage verification
+
+### Documentation
+- Expanded `docs/document-envelope.md` with byte-storage examples, Encoding Standard behavior, RFC 8259 UTF-8/BOM guidance, and decompression/transport boundaries
+
+
 ## [0.5.17] — 2026-08-04
 
 ### Added
