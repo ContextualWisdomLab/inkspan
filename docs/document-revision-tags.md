@@ -1,11 +1,49 @@
 # Document revision tags and optimistic concurrency
 
-Inkspan 0.5.22 adds deterministic SHA-256 revision validators for versioned
-document envelopes. The validator closes the client-side portion of an
-optimistic-concurrency workflow without moving persistence, authorization, or
-transport ownership into the editor package.
+Inkspan 0.5.25 provides deterministic SHA-256 revision validators for versioned
+document envelopes and one-call revision evidence that pairs each validator with
+the exact frozen envelope whose canonical bytes were hashed. The boundary closes
+the client-side portion of an optimistic-concurrency workflow without moving
+persistence, authorization, or transport ownership into the editor package.
 
-## Create a revision validator
+## Capture paired revision evidence
+
+Use paired evidence when an autosave, delayed AI operation, template expansion,
+review, compare, merge, fork, or audit workflow needs both the document and its
+validator:
+
+```ts
+import {
+  createDocumentEnvelopeRevisionEvidence,
+  createDocumentEnvelopeRevisionEvidenceBytes,
+} from '@contextualwisdomlab/cwl-editor';
+
+const objectEvidence =
+  await createDocumentEnvelopeRevisionEvidence(envelope);
+const byteEvidence =
+  await createDocumentEnvelopeRevisionEvidenceBytes(storedBytes);
+
+await saveDocument({
+  envelope: objectEvidence.envelope,
+  expectedStrongEntityTag: objectEvidence.revision.strongEntityTag,
+});
+```
+
+Each result is frozen. Its `envelope` is the deeply frozen, validated payload and
+its `revision` is derived from that envelope's RFC 8785 canonical UTF-8 bytes.
+The object/JSON and strict UTF-8 paths parse once, retain the parsed envelope,
+and hash it once. They do not require a second source parse, document clone,
+canonicalization, digest, or provider call to return the pair.
+
+Noncanonical but otherwise valid JSON bytes are normalized before hashing.
+Object-property ordering and insignificant JSON whitespace therefore do not
+change the revision. A changed schema identifier, schema version, node, mark,
+attribute, or text value does.
+
+## Create only a compact validator
+
+Existing revision-only APIs remain available when the host already owns the
+payload and needs only a compact validator:
 
 ```ts
 import {
@@ -20,26 +58,30 @@ console.log(objectRevision.digestHex);
 console.log(objectRevision.strongEntityTag);
 ```
 
-Both functions parse through the normal fail-closed envelope boundary and hash
-the RFC 8785 canonical UTF-8 representation. Object-property ordering and
-insignificant JSON whitespace therefore do not change the revision. A changed
-schema identifier, schema version, node, mark, attribute, or text value does.
+These functions use the same paired implementation and return only its
+`revision` property. They retain the existing frozen result and typed, redacted
+failure contract.
 
-Inkspan also applies verified RFC 8785 erratum 7920 and rejects negative zero
-before canonical serialization. ECMAScript serializes both `-0` and `0` as `0`;
+Inkspan applies verified RFC 8785 erratum 7920 and rejects negative zero before
+canonical serialization. ECMAScript serializes both `-0` and `0` as `0`;
 accepting both would allow distinct pre-canonical values to receive the same
 canonical bytes and revision validator.
 
-`CwlEditorHandle.getDocumentEnvelopeRevision()` captures one current editor
-revision, canonicalizes it, and returns the same frozen result. Before client
-hydration or after editor destruction it resolves to `null`.
+`CwlEditorHandle.getDocumentEnvelopeRevisionEvidence()` captures one current
+TipTap/ProseMirror document, creates one frozen envelope, and returns the
+matching revision. This avoids the race created by separately calling
+`getDocumentEnvelope()` and `getDocumentEnvelopeRevision()` around a user or Yjs
+edit. `getDocumentEnvelopeRevision()` remains available for validator-only
+workflows. Both methods resolve to `null` before client hydration or after
+editor destruction.
 
 ## HTTP lost-update protection
 
-A host may return `strongEntityTag` as the `ETag` for the exact canonical
-envelope representation and require it in `If-Match` for a later state-changing
-request. RFC 9110 requires strong comparison for `If-Match` and requires the
-origin server not to perform the method when the precondition is false.
+A host may return `revision.strongEntityTag` as the `ETag` for the exact
+canonical envelope representation and require it in `If-Match` for a later
+state-changing request. RFC 9110 requires strong comparison for `If-Match` and
+requires the origin server not to perform the method when the precondition is
+false.
 
 ```http
 ETag: "sha256-8e..."
@@ -88,6 +130,15 @@ authorization decision. A party able to replace both document and digest can
 replace both consistently. Use authenticated transport and server-side access
 control, and use signatures or MACs when authenticity is required.
 
+A `CwlEditorDocumentRevisionEvidence` envelope contains the complete document,
+including text, accepted links, inline image payloads, alternative text, and
+extension attributes. Do not write the evidence object to ordinary logs,
+metrics labels, analytics events, exception messages, public URLs, or compact
+revision metadata. Apply the same authorization, tenant isolation, encryption,
+redaction, retention, regional-residency, and audit controls used for the
+persisted document. Send or store only `revision.strongEntityTag` where a compact
+validator is sufficient.
+
 Revision tags can reveal that two tenants or records contain the same document.
 Do not expose cross-tenant lookup endpoints, use a revision tag as a public
 document identifier, or place full tags in broad telemetry without a documented
@@ -95,15 +146,18 @@ need and retention policy. Persist descriptive nonnumeric document, tenant,
 user, and revision identifiers as host metadata rather than adding ad hoc fields
 to Inkspan's strict envelope.
 
-Inkspan owns canonicalization and local digest generation. CWL and naruon hosts
-own document routes, expected-revision storage, atomic compare-and-swap,
-conflict UX, authorization, tenant isolation, encryption, signatures, audit,
-retention, and retry policy.
+Inkspan owns envelope validation, canonicalization, local digest generation, and
+atomic revision-envelope pairing. CWL and naruon hosts own document routes,
+expected-revision storage, authenticated atomic compare-and-swap, conflict UX,
+authorization, tenant isolation, encryption, signatures, audit, retention, and
+retry policy.
 
 ## Primary references
 
 - [RFC 8785: JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785)
 - [Verified RFC 8785 erratum 7920: reject negative zero](https://www.rfc-editor.org/errata/eid7920)
+- [RFC 9110 §8.8: validators](https://www.rfc-editor.org/rfc/rfc9110#section-8.8)
 - [RFC 9110 §13.1.1: `If-Match`](https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1)
-- [W3C Web Cryptography API Recommendation](https://www.w3.org/TR/2017/REC-WebCryptoAPI-20170126/)
+- [W3C Web Cryptography Level 2](https://www.w3.org/TR/webcrypto-2/)
 - [FIPS PUB 180-4: Secure Hash Standard](https://csrc.nist.gov/pubs/fips/180-4/upd1/final)
+- [TipTap editor API: `getJSON()`](https://tiptap.dev/docs/editor/api/editor#getjson)
