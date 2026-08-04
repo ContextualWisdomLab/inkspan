@@ -11,6 +11,10 @@
  * ```
  */
 
+// Register editor-only imperative-handle type augmentation without coupling the
+// framework-independent revision-evidence subpath to the interactive graph.
+import './documentRevisionEvidenceHandle.js';
+
 // React component surface.
 export { CwlEditor, default as Editor } from './components/CwlEditor.js';
 export { Toolbar } from './components/Toolbar.js';
@@ -29,6 +33,7 @@ export type {
   EditorTextDirection,
   ImageConfig,
 } from './types.js';
+export type { CwlEditorDocumentRevisionEvidenceCapture } from './documentRevisionEvidenceHandle.js';
 
 // Versioned, lossless persistence boundary.
 export {
@@ -62,6 +67,10 @@ export type {
   CwlEditorDocumentRevision,
   DocumentEnvelopeDigestProvider,
 } from './documentEnvelopeRevision.js';
+export {
+  createDocumentEnvelopeRevisionEvidence,
+  createDocumentEnvelopeRevisionEvidenceBytes,
+} from './documentRevisionEvidence.js';
 export type { CwlEditorDocumentRevisionEvidence } from './documentRevisionEvidence.js';
 export {
   DocumentEnvelopeRestoreError,
@@ -116,4 +125,7 @@ export type { PlainTextOptions } from './markdown/plainText.js';
 
 // Standalone, framework-agnostic base64 / data-URI converter.
 export * from './converter/index.js';
-export { Base64ImageSourceError, validateInlineImageSource } from './extensions/Base64Image.js';
+export {
+  Base64ImageSourceError,
+  validateInlineImageSource,
+} from './extensions/Base64Image.js';

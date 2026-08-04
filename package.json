@@ -1,7 +1,7 @@
 {
   "name": "@contextualwisdomlab/cwl-editor",
-  "version": "0.5.25",
-  "description": "Inkspan — commercial-grade Markdown + HTML WYSIWYG editor module (TipTap/ProseMirror, MIT) with SSR-safe client hydration, native form integration, lossless document snapshots, preparse-resource-bounded duplicate-name-safe versioned persistence envelopes, canonical JSON plus strict UTF-8 byte round trips, SHA-256 strong revision validators, atomic revision-envelope capture, local If-Match restore guards, and atomic conflict evidence for optimistic concurrency, one-call imperative envelope export and atomic active-schema restore, host-owned lifecycle callbacks, strict link and image policies, accessible editing controls, provider-neutral Yjs collaboration, a standalone base64 converter, and bundled offline multilingual Noto Sans fonts.",
+  "version": "0.5.26",
+  "description": "Inkspan — commercial-grade Markdown + HTML WYSIWYG editor module (TipTap/ProseMirror, MIT) with SSR-safe client hydration, native form integration, lossless document snapshots, preparse-resource-bounded duplicate-name-safe versioned persistence envelopes, canonical JSON plus strict UTF-8 byte round trips, SHA-256 strong revision validators, framework-independent pure and imperative atomic revision-envelope evidence, local If-Match restore guards, and atomic conflict evidence for optimistic concurrency, one-call imperative envelope export and atomic active-schema restore, host-owned lifecycle callbacks, strict link and image policies, accessible editing controls, provider-neutral Yjs collaboration, a standalone base64 converter, and bundled offline multilingual Noto Sans fonts.",
   "license": "MIT",
   "author": "ContextualWisdomLab",
   "type": "module",
@@ -57,6 +57,11 @@
       "import": "./dist/cwl-converter.js",
       "require": "./dist/cwl-converter.cjs"
     },
+    "./revision-evidence": {
+      "types": "./dist/revision-evidence/index.d.ts",
+      "import": "./dist/cwl-revision-evidence.js",
+      "require": "./dist/cwl-revision-evidence.cjs"
+    },
     "./styles.css": "./dist/cwl-editor.css",
     "./fonts.css": "./src/fonts/fonts.css",
     "./fonts-latin.css": "./src/fonts/fonts-latin.css",
@@ -71,7 +76,7 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && vite build --config vite.collaboration.config.ts && vite build --config vite.converter.config.ts && node ./scripts/copy-styles.mjs",
+    "build": "tsc --noEmit && vite build && vite build --config vite.collaboration.config.ts && vite build --config vite.converter.config.ts && vite build --config vite.revision-evidence.config.ts && node ./scripts/copy-styles.mjs",
     "build:demo": "vite build --config vite.demo.config.ts",
     "fonts": "node ./scripts/fetch-fonts.mjs",
     "preview": "vite preview",
@@ -79,7 +84,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
-    "verify:package": "node ./scripts/verify-package.mjs && node ./scripts/verify-canonical-envelope-package.mjs && node ./scripts/verify-revision-evidence-package.mjs"
+    "test:package-config": "node --test ./scripts/revision-evidence-consumer-config.test.mjs",
+    "verify:package": "pnpm run test:package-config && node ./scripts/verify-package.mjs && node ./scripts/verify-canonical-envelope-package.mjs && node ./scripts/verify-revision-evidence-package.mjs && node ./scripts/verify-framework-free-revision-evidence-package.mjs"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",

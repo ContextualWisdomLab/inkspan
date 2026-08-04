@@ -17,11 +17,8 @@ import {
   restoreDocumentEnvelopeBytesIfMatch,
   restoreDocumentEnvelopeIfMatch,
 } from '../documentEnvelopeIfMatch.js';
-import {
-  createValidatedDocumentEnvelopeRevision,
-  type DocumentEnvelopeDigestProvider,
-} from '../documentEnvelopeRevision.js';
-import type { CwlEditorDocumentRevisionEvidence } from '../documentRevisionEvidence.js';
+import { createValidatedDocumentEnvelopeRevision } from '../documentEnvelopeRevision.js';
+import { createValidatedDocumentEnvelopeRevisionEvidence } from '../documentRevisionEvidence.js';
 import {
   restoreDocumentEnvelope,
   restoreDocumentEnvelopeBytes,
@@ -42,26 +39,6 @@ function createCurrentDocumentEnvelope(
   limits?: DocumentEnvelopeLimits,
 ): CwlEditorDocumentEnvelope {
   return createDocumentEnvelope(editor.getJSON(), limits);
-}
-
-/**
- * Capture one envelope and derive its revision without rereading the editor.
- *
- * The returned object and both nested values are frozen. A document change while
- * hashing does not alter the evidence pair; hosts can safely use it as the base
- * for delayed autosave, AI, template, or review operations.
- */
-async function createCurrentDocumentRevisionEvidence(
-  editor: Editor,
-  limits?: DocumentEnvelopeLimits,
-  digestProvider?: DocumentEnvelopeDigestProvider | null,
-): Promise<CwlEditorDocumentRevisionEvidence> {
-  const envelope = createCurrentDocumentEnvelope(editor, limits);
-  const revision = await createValidatedDocumentEnvelopeRevision(
-    envelope,
-    digestProvider,
-  );
-  return Object.freeze({ envelope, revision });
 }
 
 /** Expose the stable host-control contract shared by editor surfaces. */
@@ -114,9 +91,8 @@ export function useEditorHandle(
           : Promise.resolve(null),
       getDocumentEnvelopeRevisionEvidence: (limits, digestProvider) =>
         editor
-          ? createCurrentDocumentRevisionEvidence(
-              editor,
-              limits,
+          ? createValidatedDocumentEnvelopeRevisionEvidence(
+              createCurrentDocumentEnvelope(editor, limits),
               digestProvider,
             )
           : Promise.resolve(null),
