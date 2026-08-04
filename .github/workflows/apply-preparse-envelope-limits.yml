@@ -1,0 +1,103 @@
+name: Apply preparse envelope limits once
+
+on:
+  push:
+    branches: [security/preparse-envelope-limits]
+    paths:
+      - .github/workflows/apply-preparse-envelope-limits.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-preparse-envelope-limits
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.repository == 'ContextualWisdomLab/inkspan'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: security/preparse-envelope-limits
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Patch parser integration and validate focused contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/documentEnvelope.ts')
+          source = path.read_text(encoding='utf-8')
+          old_import = "import { containsDuplicateJsonObjectNames } from './jsonObjectNameScanner.js';"
+          new_import = "import { inspectJsonText } from './jsonObjectNameScanner.js';"
+          old_block = """    if (containsDuplicateJsonObjectNames(source)) {
+              throw new DocumentEnvelopeError(
+                'Document envelope JSON must not contain duplicate object names',
+              );
+            }
+            try {
+          """
+          new_block = """    const inspection = inspectJsonText(source, {
+              maxValues: Math.min(
+                Number.MAX_SAFE_INTEGER,
+                resolvedLimits.maxJsonValues + 3,
+              ),
+              maxDepth: Math.min(
+                Number.MAX_SAFE_INTEGER,
+                resolvedLimits.maxNestingDepth + 1,
+              ),
+            });
+            if (inspection === 'duplicate-object-name') {
+              throw new DocumentEnvelopeError(
+                'Document envelope JSON must not contain duplicate object names',
+              );
+            }
+            if (inspection === 'value-count-limit') {
+              throw new DocumentEnvelopeError(
+                'Document envelope exceeds the supported JSON value count',
+              );
+            }
+            if (inspection === 'nesting-depth-limit') {
+              throw new DocumentEnvelopeError(
+                'Document envelope exceeds the supported document nesting depth',
+              );
+            }
+            try {
+          """
+          if old_import not in source or old_block not in source:
+              raise SystemExit('Expected document-envelope integration markers are missing')
+          source = source.replace(old_import, new_import, 1)
+          source = source.replace(old_block, new_block, 1)
+          path.write_text(source, encoding='utf-8')
+
+          test_path = Path('src/jsonObjectNameScanner.test.ts')
+          tests = test_path.read_text(encoding='utf-8')
+          exact = "inspectJsonText(source, { maxValues: 6, maxDepth: 3 })"
+          if exact not in tests:
+              raise SystemExit('Expected exact-limit test marker is missing')
+          test_path.write_text(
+              tests.replace(
+                  exact,
+                  "inspectJsonText(source, { maxValues: 5, maxDepth: 3 })",
+                  1,
+              ),
+              encoding='utf-8',
+          )
+          PY
+          pnpm install --frozen-lockfile
+          pnpm typecheck
+          pnpm vitest run src/jsonObjectNameScanner.test.ts src/documentEnvelopeLimits.test.ts src/documentEnvelopeDuplicateNames.test.ts
+          rm .github/workflows/apply-preparse-envelope-limits.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/documentEnvelope.ts src/jsonObjectNameScanner.test.ts .github/workflows/apply-preparse-envelope-limits.yml
+          git diff --cached --check
+          git commit -m "security: enforce envelope limits before JSON parsing"
+          git push origin HEAD:security/preparse-envelope-limits
