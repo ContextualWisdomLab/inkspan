@@ -13,7 +13,7 @@ import {
   encodeValidatedDocumentEnvelope,
   serializeValidatedDocumentEnvelope,
 } from '../documentEnvelopeCanonical.js';
-import { createDocumentEnvelopeRevision } from '../documentEnvelopeRevision.js';
+import { createValidatedDocumentEnvelopeRevision } from '../documentEnvelopeRevision.js';
 import {
   restoreDocumentEnvelope,
   restoreDocumentEnvelopeBytes,
@@ -79,9 +79,8 @@ export function useEditorHandle(
           : new Uint8Array(),
       getDocumentEnvelopeRevision: (limits, digestProvider) =>
         editor
-          ? createDocumentEnvelopeRevision(
-              editor.getJSON(),
-              limits,
+          ? createValidatedDocumentEnvelopeRevision(
+              createCurrentDocumentEnvelope(editor, limits),
               digestProvider,
             )
           : Promise.resolve(null),
