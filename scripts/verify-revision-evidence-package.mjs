@@ -28,6 +28,13 @@ const externalDependencyNames = Object.freeze([
 const consumerTypeDependencyNames = Object.freeze([
   '@types/react',
   '@types/react-dom',
+  'typescript',
+]);
+const independentlyInstalledDependencyNames = Object.freeze([
+  ...new Set([
+    ...externalDependencyNames,
+    ...consumerTypeDependencyNames,
+  ]),
 ]);
 
 /** Execute a package-consumer command from the repository root. */
@@ -98,7 +105,8 @@ function packArtifact() {
  * Exact versions come from the already hash-locked repository installation, and
  * `--offline` prevents this verification step from fetching an unreviewed
  * package. Because the consumer lives under the operating-system temporary
- * directory, Node and TypeScript cannot fall through to repository `node_modules`.
+ * directory, Node, TypeScript, and declarations cannot fall through to
+ * repository `node_modules`.
  */
 function installIndependentConsumer(tarballFileName) {
   const exactRuntimeDependencies = Object.fromEntries(
@@ -157,7 +165,7 @@ function installIndependentConsumer(tarballFileName) {
     installedPackageDirectory,
     'packed package directory',
   );
-  for (const dependencyName of externalDependencyNames) {
+  for (const dependencyName of independentlyInstalledDependencyNames) {
     const dependencyDirectory = join(
       verificationDirectory,
       'node_modules',
@@ -165,7 +173,7 @@ function installIndependentConsumer(tarballFileName) {
     );
     assert.ok(
       existsSync(join(dependencyDirectory, 'package.json')),
-      `independent consumer is missing declared dependency: ${dependencyName}`,
+      `independent consumer is missing dependency: ${dependencyName}`,
     );
     assertPathInsideConsumer(
       realpathSync(dependencyDirectory),
@@ -221,6 +229,8 @@ void [objectEvidence, byteEvidence, inspected];
   );
 
   run('pnpm', [
+    '--dir',
+    verificationDirectory,
     'exec',
     'tsc',
     '--noEmit',
