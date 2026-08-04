@@ -204,6 +204,9 @@ interface AutosaveRequest {
 type QueueLifecycle = 'open' | 'closing' | 'closed';
 type ExactDataRecord = Record<string, unknown>;
 
+const SUPPORTED_DOCUMENT_ENVELOPE_SCHEMA_ID =
+  'https://inkspan.io/schemas/document-envelope/v1';
+const SUPPORTED_DOCUMENT_ENVELOPE_SCHEMA_VERSION = 1;
 const LOWERCASE_SHA256_DIGEST = /^[0-9a-f]{64}$/u;
 
 /** Create a redacted invalid-options error. */
@@ -309,11 +312,9 @@ function readStrongEntityTag(
   );
   if (
     envelopeRecord === null ||
-    typeof envelopeRecord.schemaId !== 'string' ||
-    envelopeRecord.schemaId.length === 0 ||
-    typeof envelopeRecord.schemaVersion !== 'number' ||
-    !Number.isSafeInteger(envelopeRecord.schemaVersion) ||
-    envelopeRecord.schemaVersion < 1 ||
+    envelopeRecord.schemaId !== SUPPORTED_DOCUMENT_ENVELOPE_SCHEMA_ID ||
+    envelopeRecord.schemaVersion !==
+      SUPPORTED_DOCUMENT_ENVELOPE_SCHEMA_VERSION ||
     typeof envelopeRecord.documentJson !== 'object' ||
     envelopeRecord.documentJson === null ||
     !Object.isFrozen(envelopeRecord.documentJson)
