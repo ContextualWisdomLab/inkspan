@@ -7,7 +7,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 ## [Unreleased]
 
 
-## [0.5.28] — 2026-08-04
+## [0.5.28] — 2026-08-05
 
 ### Added
 - Framework-independent `@contextualwisdomlab/cwl-editor/autosave` ESM, CommonJS, and TypeScript package subpath
@@ -23,7 +23,8 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ### Reliability
 - Exactly one host save callback can be active; a newer revision can replace only not-yet-started work and never cancels or overlaps an active durable write
-- Same-revision active and pending callers share one outcome, and a revision already reported durably saved resolves as unchanged without duplicate transport
+- Same-revision active and pending callers share one outcome; an already durable revision is `unchanged` only while no active or pending write can replace it
+- A previously durable revision is retained for another save when a different active or pending write, or an ambiguous callback failure, can make the durable state uncertain or supersede it
 - Conflict, callback failure, and invalid callback results pause automatic progression until an explicit host recovery decision
 - `flush()` resolves at idle, blocked, or closed state rather than hanging for an external conflict decision; `close()` rejects new work while allowing active host transport to finish
 - Queue memory is bounded to one active request, one pending request, and one shared pending flush promise
@@ -39,7 +40,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Matching active or pending revisions and concurrent flush callers avoid duplicate callback or promise allocation
 
 ### Tests
-- Added deterministic single-flight, re-entrant enqueue, pending supersession, same-revision coalescing, unchanged, conflict pause/resume, callback failure recovery, invalid result, shutdown, frozen-value, hostile-reflection, bounded-flush-waiter, and repository-wide 100% production statement/branch coverage verification
+- Added deterministic single-flight, re-entrant enqueue, pending supersession, same-revision coalescing, quiescent unchanged, last-saved ordering, blocked durable requeue, conflict pause/resume, callback failure recovery, invalid result, shutdown, frozen-value, hostile-reflection, bounded-flush-waiter, and repository-wide 100% production statement/branch coverage verification
 - Added exact packed-artifact ESM, CommonJS, and strict TypeScript consumers in an isolated temporary package tree without React, React DOM, TipTap, ProseMirror, or Yjs installed
 
 ### Documentation
