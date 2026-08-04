@@ -11,6 +11,10 @@
  * ```
  */
 
+// Register editor-only imperative-handle type augmentation without coupling the
+// framework-independent revision-evidence subpath to the interactive graph.
+import './documentRevisionEvidenceHandle.js';
+
 // React component surface.
 export { CwlEditor, default as Editor } from './components/CwlEditor.js';
 export { Toolbar } from './components/Toolbar.js';
