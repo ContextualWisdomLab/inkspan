@@ -1,7 +1,7 @@
 # Doctoring record: Provider-neutral document autosave queue
 
 **Date:** 2026-08-04  
-**Target release:** Inkspan 0.5.26  
+**Target release:** Inkspan 0.5.28  
 **Decision owner:** ContextualWisdomLab  
 **Scope:** Framework-independent, single-flight autosave coordination for versioned document revision evidence.
 
