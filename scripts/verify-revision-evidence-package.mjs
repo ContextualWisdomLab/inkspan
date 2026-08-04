@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -15,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import {
   createIndependentConsumerManifest,
   createTypeScriptVerificationArguments,
+  stageLockedNodeModules,
 } from './revision-evidence-consumer-config.mjs';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -105,14 +108,16 @@ function packArtifact() {
 }
 
 /**
- * Install the tarball and its declared dependency closure outside the repository.
+ * Stage the packed artifact and exact frozen-lockfile dependency closure.
  *
- * Exact versions come from the already hash-locked repository installation, and
- * `--offline` prevents this verification step from fetching an unreviewed
- * package. Because the consumer lives under the operating-system temporary
- * directory, Node and TypeScript cannot fall through to repository `node_modules`.
+ * The repository installation has already passed `pnpm install
+ * --frozen-lockfile`. Copying that complete pnpm tree avoids a second resolver
+ * pass that could select a newer transitive package missing from the offline
+ * store. The packed tarball then replaces only Inkspan's package directory, so
+ * ESM, CommonJS, and declarations execute the publishable artifact while every
+ * external dependency remains physically isolated below the temporary consumer.
  */
-function installIndependentConsumer(tarballFileName) {
+function stageIndependentConsumer(tarballFileName) {
   const exactRuntimeDependencies = Object.fromEntries(
     externalDependencyNames.map((packageName) => [
       packageName,
@@ -140,24 +145,32 @@ function installIndependentConsumer(tarballFileName) {
     'utf8',
   );
 
-  run('pnpm', [
-    '--dir',
-    verificationDirectory,
-    'install',
-    '--offline',
-    '--ignore-scripts',
-    '--frozen-lockfile=false',
-    '--strict-peer-dependencies',
+  const targetNodeModules = join(verificationDirectory, 'node_modules');
+  stageLockedNodeModules(
+    join(repositoryRoot, 'node_modules'),
+    targetNodeModules,
+  );
+
+  const extractionDirectory = join(verificationDirectory, 'packed-artifact');
+  mkdirSync(extractionDirectory, { recursive: true });
+  run('tar', [
+    '-xzf',
+    join(verificationDirectory, tarballFileName),
+    '-C',
+    extractionDirectory,
   ]);
 
   const packageDirectory = join(
-    verificationDirectory,
-    'node_modules',
+    targetNodeModules,
     ...packageJson.name.split('/'),
   );
+  mkdirSync(dirname(packageDirectory), { recursive: true });
+  rmSync(packageDirectory, { recursive: true, force: true });
+  renameSync(join(extractionDirectory, 'package'), packageDirectory);
+
   assert.ok(
     existsSync(join(packageDirectory, 'package.json')),
-    'packed package was not installed into the independent consumer tree',
+    'packed package was not staged into the independent consumer tree',
   );
   const installedPackageDirectory = realpathSync(packageDirectory);
   assertPathInsideConsumer(
@@ -166,8 +179,7 @@ function installIndependentConsumer(tarballFileName) {
   );
   for (const dependencyName of installedConsumerDependencyNames) {
     const dependencyDirectory = join(
-      verificationDirectory,
-      'node_modules',
+      targetNodeModules,
       ...dependencyName.split('/'),
     );
     assert.ok(
@@ -368,12 +380,12 @@ void (async () => {
 
 try {
   const tarballFileName = packArtifact();
-  const installedPackageDirectory = installIndependentConsumer(tarballFileName);
+  const installedPackageDirectory = stageIndependentConsumer(tarballFileName);
   verifyRevisionEvidenceDeclarations();
   verifyRevisionEvidenceEsmRuntime(installedPackageDirectory);
   verifyRevisionEvidenceCommonJsRuntime(installedPackageDirectory);
   console.log(
-    `Verified independently installed ${packageJson.name}@${packageJson.version} pure and imperative revision-evidence consumers.`,
+    `Verified independently staged ${packageJson.name}@${packageJson.version} pure and imperative revision-evidence consumers.`,
   );
 } finally {
   rmSync(verificationDirectory, { recursive: true, force: true });
