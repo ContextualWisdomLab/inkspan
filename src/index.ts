@@ -62,6 +62,10 @@ export type {
   CwlEditorDocumentRevision,
   DocumentEnvelopeDigestProvider,
 } from './documentEnvelopeRevision.js';
+export {
+  createDocumentEnvelopeRevisionEvidence,
+  createDocumentEnvelopeRevisionEvidenceBytes,
+} from './documentRevisionEvidence.js';
 export type { CwlEditorDocumentRevisionEvidence } from './documentRevisionEvidence.js';
 export {
   DocumentEnvelopeRestoreError,
@@ -116,4 +120,7 @@ export type { PlainTextOptions } from './markdown/plainText.js';
 
 // Standalone, framework-agnostic base64 / data-URI converter.
 export * from './converter/index.js';
-export { Base64ImageSourceError, validateInlineImageSource } from './extensions/Base64Image.js';
+export {
+  Base64ImageSourceError,
+  validateInlineImageSource,
+} from './extensions/Base64Image.js';
