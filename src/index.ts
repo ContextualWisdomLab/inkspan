@@ -57,9 +57,12 @@ export {
   DocumentEnvelopeRevisionError,
   createDocumentEnvelopeRevision,
   createDocumentEnvelopeRevisionBytes,
+  createDocumentEnvelopeRevisionEvidence,
+  createDocumentEnvelopeRevisionEvidenceBytes,
 } from './documentEnvelopeRevision.js';
 export type {
   CwlEditorDocumentRevision,
+  CwlEditorDocumentRevisionEvidence,
   DocumentEnvelopeDigestProvider,
 } from './documentEnvelopeRevision.js';
 export {
