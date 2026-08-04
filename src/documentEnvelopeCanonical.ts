@@ -3,6 +3,10 @@ import {
   parseDocumentEnvelope,
 } from './documentEnvelope.js';
 
+interface CanonicalJsonObject {
+  readonly [key: string]: CanonicalJsonValue;
+}
+
 type CanonicalJsonValue =
   | null
   | boolean
@@ -10,8 +14,6 @@ type CanonicalJsonValue =
   | string
   | readonly CanonicalJsonValue[]
   | CanonicalJsonObject;
-
-type CanonicalJsonObject = Readonly<Record<string, CanonicalJsonValue>>;
 
 const INVALID_UNICODE_MESSAGE =
   'Document envelope must contain valid Unicode scalar strings';
