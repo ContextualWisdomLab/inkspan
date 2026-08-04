@@ -47,10 +47,11 @@ describe('document envelope revision tags', () => {
   it('hashes canonical envelope bytes and returns a frozen strong validator', async () => {
     const envelope = createDocumentEnvelope(DOCUMENT_JSON);
     const expectedBytes = encodeDocumentEnvelope(envelope);
+    let receivedBytes: Uint8Array | undefined;
     const digestProvider: DocumentEnvelopeDigestProvider = {
       digest: vi.fn(async (algorithm, source) => {
         expect(algorithm).toBe('SHA-256');
-        expect(toBytes(source)).toEqual(expectedBytes);
+        receivedBytes = new Uint8Array(toBytes(source));
         return createIndexedDigestBuffer();
       }),
     };
@@ -61,6 +62,7 @@ describe('document envelope revision tags', () => {
       digestProvider,
     );
 
+    expect(receivedBytes).toEqual(expectedBytes);
     const digestHex =
       '000102030405060708090a0b0c0d0e0f' +
       '101112131415161718191a1b1c1d1e1f';
@@ -87,9 +89,10 @@ describe('document envelope revision tags', () => {
         2,
       ),
     );
+    let receivedBytes: Uint8Array | undefined;
     const digestProvider: DocumentEnvelopeDigestProvider = {
       digest: vi.fn(async (_algorithm, source) => {
-        expect(toBytes(source)).toEqual(canonicalBytes);
+        receivedBytes = new Uint8Array(toBytes(source));
         return createDigestBuffer(0xab);
       }),
     };
@@ -100,6 +103,7 @@ describe('document envelope revision tags', () => {
       digestProvider,
     );
 
+    expect(receivedBytes).toEqual(canonicalBytes);
     expect(revision.digestHex).toBe('ab'.repeat(32));
   });
 
