@@ -4,6 +4,29 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.15] — 2026-08-04
+
+### Added
+- `serializeDocumentEnvelope()` for deterministic canonical JSON text suitable for host-owned comparison, hashing, signing, deduplication, and optimistic-concurrency inputs
+- `encodeDocumentEnvelope()` for the same canonical representation encoded as UTF-8 bytes without a byte-order mark
+- A canonical-envelope integration contract covering I-JSON, duplicate-name handling, schema validation, migration, authorization, and CWL/naruon MSA ownership
+
+### Changed
+- Package version **0.5.15**
+- Envelope object properties are sorted recursively by raw UTF-16 code units while array order and Unicode content remain unchanged
+- Literal, string, and finite-number output follows ECMAScript JSON serialization and emits no insignificant whitespace
+
+### Security
+- Lone UTF-16 surrogates fail closed instead of being replaced during UTF-8 encoding, preventing unstable digest or signature inputs
+- Canonicalization always reapplies the strict envelope parser before serialization and does not expose source content in errors
+- Canonical bytes do not authorize writes or replace active-schema validation, tenant isolation, migration, retention, encryption, or signing-key policy
+
+### Tests
+- Canonical property order, equivalent insertion orders, ECMAScript number formatting, the RFC 8785 UTF-16 sorting vector, UTF-8 encoding, lone-surrogate rejection, incompatible-envelope failure, and root-package exports are covered under the repository-wide 100% TypeScript coverage gate
+
+### Documentation
+- Added `docs/canonical-document-envelope.md` with deterministic persistence examples, standards basis, duplicate-key limitations of native `JSON.parse()`, and host integration boundaries
+
 ## [0.5.14] — 2026-08-04
 
 ### Added
@@ -291,7 +314,7 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 - Focus callback props are read through live refs so hosts can add or replace handlers after mount without recreating editor state or Yjs bindings
 
 ### Tests
-- Standalone and collaborative tests cover absent callbacks, handlers added after mount, stable editor identity, and native focus/blur event types under the repository-wide 100% coverage gate
+- Standalone and collaborative tests cover absent callbacks, handlers added after mount, stable editor identity, and native focus/blur event types under the repository-wide 100% TypeScript coverage gate
 
 ### Documentation
 - Added the host focus lifecycle, validation, persistence, telemetry, accessibility, and CWL/naruon interoperability contract
