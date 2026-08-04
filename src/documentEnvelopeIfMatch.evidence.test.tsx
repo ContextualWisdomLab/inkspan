@@ -1,6 +1,6 @@
 import { act, render, waitFor } from '@testing-library/react';
 import { createRef } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { CwlEditor } from './components/CwlEditor.js';
 import {
   createDocumentEnvelope,
@@ -11,24 +11,22 @@ import {
   type CwlEditorDocumentRevision,
   type DocumentEnvelopeDigestProvider,
 } from './documentEnvelopeRevision.js';
-import {
-  restoreDocumentEnvelopeIfMatch,
-  type CwlEditorIfMatchRestoreResult,
-} from './documentEnvelopeIfMatch.js';
+import { restoreDocumentEnvelopeIfMatch } from './documentEnvelopeIfMatch.js';
 import type { CwlEditorHandle } from './types.js';
 
-const ZERO_DIGEST_PROVIDER: DocumentEnvelopeDigestProvider = {
-  async digest() {
-    return new ArrayBuffer(32);
+const DIGEST_PROVIDER: DocumentEnvelopeDigestProvider = {
+  async digest(_algorithm, source) {
+    const bytes = ArrayBuffer.isView(source)
+      ? new Uint8Array(source.buffer, source.byteOffset, source.byteLength)
+      : new Uint8Array(source);
+    const digest = new Uint8Array(32);
+    for (let index = 0; index < bytes.length; index += 1) {
+      const digestIndex = index % digest.length;
+      digest[digestIndex] =
+        (digest[digestIndex] + bytes[index] + index) % 256;
+    }
+    return digest.buffer;
   },
-};
-
-type ConflictEvidenceResult = CwlEditorIfMatchRestoreResult & {
-  readonly currentEnvelope: CwlEditorDocumentEnvelope | null;
-};
-
-type RestoredEvidenceResult = CwlEditorIfMatchRestoreResult & {
-  readonly previousEnvelope: CwlEditorDocumentEnvelope;
 };
 
 async function renderEvidenceEditor(): Promise<CwlEditorHandle> {
@@ -62,11 +60,7 @@ async function expectMatchingEvidence(
 ): Promise<void> {
   expect(Object.isFrozen(envelope)).toBe(true);
   await expect(
-    createDocumentEnvelopeRevision(
-      envelope,
-      undefined,
-      ZERO_DIGEST_PROVIDER,
-    ),
+    createDocumentEnvelopeRevision(envelope, undefined, DIGEST_PROVIDER),
   ).resolves.toEqual(revision);
 }
 
@@ -78,7 +72,12 @@ describe('atomic revision-envelope conflict evidence', () => {
     const currentRevision = await createDocumentEnvelopeRevision(
       currentEnvelope,
       undefined,
-      ZERO_DIGEST_PROVIDER,
+      DIGEST_PROVIDER,
+    );
+    const differentRevision = await createDocumentEnvelopeRevision(
+      createParagraphEnvelope('Different expected revision'),
+      undefined,
+      DIGEST_PROVIDER,
     );
     const hostileSource = Object.defineProperty({}, 'schemaId', {
       enumerable: true,
@@ -87,13 +86,13 @@ describe('atomic revision-envelope conflict evidence', () => {
       },
     });
 
-    const result = (await restoreDocumentEnvelopeIfMatch(
+    const result = await restoreDocumentEnvelopeIfMatch(
       editor,
-      `"sha256-${'ff'.repeat(32)}"`,
+      differentRevision.strongEntityTag,
       hostileSource,
       undefined,
-      ZERO_DIGEST_PROVIDER,
-    )) as ConflictEvidenceResult;
+      DIGEST_PROVIDER,
+    );
 
     expect(result).toEqual({
       status: 'conflict',
@@ -101,7 +100,10 @@ describe('atomic revision-envelope conflict evidence', () => {
       currentEnvelope,
     });
     expect(Object.isFrozen(result)).toBe(true);
-    await expectMatchingEvidence(result.currentEnvelope!, currentRevision);
+    if (result.status !== 'conflict' || result.currentRevision === null) {
+      throw new Error('Expected a stable conflict with revision evidence');
+    }
+    await expectMatchingEvidence(result.currentEnvelope, result.currentRevision);
     expect(handle.getMarkdown()).toBe('Conflict evidence document');
   });
 
@@ -112,19 +114,25 @@ describe('atomic revision-envelope conflict evidence', () => {
     const previousRevision = await createDocumentEnvelopeRevision(
       previousEnvelope,
       undefined,
-      ZERO_DIGEST_PROVIDER,
+      DIGEST_PROVIDER,
     );
     const incomingEnvelope = createParagraphEnvelope('Applied next revision');
-    let result!: RestoredEvidenceResult;
+    let result = await restoreDocumentEnvelopeIfMatch(
+      editor,
+      previousRevision.strongEntityTag,
+      previousEnvelope,
+      undefined,
+      DIGEST_PROVIDER,
+    );
 
     await act(async () => {
-      result = (await restoreDocumentEnvelopeIfMatch(
+      result = await restoreDocumentEnvelopeIfMatch(
         editor,
         previousRevision.strongEntityTag,
         incomingEnvelope,
         undefined,
-        ZERO_DIGEST_PROVIDER,
-      )) as RestoredEvidenceResult;
+        DIGEST_PROVIDER,
+      );
     });
 
     expect(result).toEqual({
@@ -134,7 +142,13 @@ describe('atomic revision-envelope conflict evidence', () => {
       envelope: incomingEnvelope,
     });
     expect(Object.isFrozen(result)).toBe(true);
-    await expectMatchingEvidence(result.previousEnvelope, previousRevision);
+    if (result.status !== 'restored') {
+      throw new Error('Expected a restored result with previous evidence');
+    }
+    await expectMatchingEvidence(
+      result.previousEnvelope,
+      result.previousRevision,
+    );
     expect(handle.getMarkdown()).toBe('Applied next revision');
   });
 });
