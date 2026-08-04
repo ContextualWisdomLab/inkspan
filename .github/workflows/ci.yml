@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -18,6 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      # pnpm version comes from the package.json "packageManager" field
+      # (pnpm 10+), which is required to read `overrides` from
+      # pnpm-workspace.yaml consistently with the committed lockfile.
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -34,55 +37,6 @@ jobs:
         run: pnpm verify:package
       - name: Build demo
         run: pnpm build:demo
-      - name: Finalize the validated 0.5.20 changelog entry
-        if: github.event_name == 'pull_request' && github.head_ref == 'feat/atomic-envelope-restore-20260804'
-        run: |
-          git fetch origin feat/atomic-envelope-restore-20260804
-          git checkout feat/atomic-envelope-restore-20260804
-          python - <<'PY'
-          from pathlib import Path
-          path = Path("CHANGELOG.md")
-          text = path.read_text(encoding="utf-8")
-          marker = "## [0.5.20] — 2026-08-04"
-          if marker in text:
-              raise SystemExit(0)
-          lines = [
-              "## [0.5.20] — 2026-08-04",
-              "",
-              "### Added",
-              "- `restoreDocumentEnvelope()` and `restoreDocumentEnvelopeBytes()` for one-call fail-closed restoration of validated versioned envelopes into an active TipTap/ProseMirror editor",
-              "- `validateDocumentEnvelopeForEditor()` and `validateDocumentEnvelopeBytesForEditor()` for non-mutating import and migration preflight",
-              "",
-              "### Changed",
-              "- Package version **0.5.20**",
-              "- Object, JSON-text, and canonical UTF-8 byte paths now compose preparse envelope limits and complete active-schema validation before the first editor mutation",
-              "",
-              "### Reliability",
-              "- Successful restore performs one `setContent(..., false)` load and returns the exact detached frozen envelope that was accepted",
-              "- Envelope or schema failures leave the current editor document unchanged and retain typed redacted error categories",
-              "",
-              "### Security",
-              "- Collaborative restore remains explicitly host-authorized and does not grant tenant or document write permission",
-              "- CWL and naruon hosts retain transport, concurrency, migration, signing, encryption, retention, revision, and audit controls",
-              "",
-              "### Tests",
-              "- Added object and canonical-byte validation, successful atomic restore, callback suppression, malformed-envelope rejection, incompatible-schema rejection, and unchanged-document coverage",
-              "",
-              "### Documentation",
-              "- Added `docs/atomic-envelope-restore.md` with atomicity, validation, typed failures, collaboration authorization, migration, resource ownership, and standards references",
-              "",
-              "",
-          ]
-          anchor = "## [Unreleased]\n\n"
-          if anchor not in text:
-              raise SystemExit("CHANGELOG Unreleased anchor is missing")
-          path.write_text(text.replace(anchor, anchor + "\n".join(lines), 1), encoding="utf-8")
-          PY
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.md
-          git commit -m "chore: finalize version 0.5.20 changelog"
-          git push origin HEAD:feat/atomic-envelope-restore-20260804
 
   office:
     name: Office / Python ${{ matrix.python-version }}
@@ -120,6 +74,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           from zipfile import ZipFile
+
           wheel = next(Path("dist").glob("*.whl"))
           with ZipFile(wheel) as archive:
               names = set(archive.namelist())
