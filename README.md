@@ -29,6 +29,9 @@ Office Open XML renderer for DOCX, XLSX, and PPTX.
 - **Host-grade control** — controlled/uncontrolled modes, an imperative ref API,
   AI insertion at the current selection, read-only mode, image-error reporting,
   and access to the underlying TipTap instance.
+- **Atomic revision evidence** — one-call frozen document-envelope and SHA-256
+  validator pairs for autosave, delayed AI, compare/merge/fork, audit, and
+  RFC 9110 `If-Match` workflows without a second editor read.
 - **SSR-safe hydration** — standalone and collaborative components emit a stable
   server shell and create the TipTap/ProseMirror view only after client
   hydration, supporting Next.js and traditional React SSR integrations.
@@ -147,6 +150,37 @@ editorRef.current?.focus();
 `insertValue` is mode-aware, inserts at the current selection, and triggers the
 normal `onChange` path without wiping the document.
 
+### Atomic document and revision capture
+
+Autosave, delayed AI, template, review, compare, merge, fork, and audit workflows
+can capture the active document and its exact strong validator in one call:
+
+```tsx
+const evidence =
+  await editorRef.current?.getDocumentEnvelopeRevisionEvidence();
+
+if (evidence) {
+  await saveDocument({
+    envelope: evidence.envelope,
+    expectedStrongEntityTag: evidence.revision.strongEntityTag,
+  });
+}
+```
+
+The frozen `evidence.envelope` is the exact validated payload whose RFC 8785
+canonical UTF-8 bytes produced `evidence.revision`. Inkspan performs one editor
+read, one envelope creation, one canonicalization, and one SHA-256 digest. Do not
+combine separate `getDocumentEnvelope()` and `getDocumentEnvelopeRevision()`
+calls when the host needs an atomic pair because a user or Yjs edit can occur
+between calls.
+
+The evidence envelope contains the complete client-controlled document,
+including text and accepted inline image payloads. Protect it as document
+content and keep it out of ordinary logs, metrics labels, analytics events,
+exception messages, public URLs, and compact revision metadata. See
+[`docs/document-revision-tags.md`](docs/document-revision-tags.md) and
+[`docs/imperative-envelope-persistence.md`](docs/imperative-envelope-persistence.md).
+
 ### Revision-guarded restore
 
 Delayed autosave, AI, template, and review results can be applied under the
@@ -160,7 +194,7 @@ const result = await editorRef.current?.restoreDocumentEnvelopeIfMatch(
 
 if (result?.status === 'conflict') {
   if (result.currentRevision === null) {
-    // The editor moved or was destroyed. Capture a fresh revision.
+    // The editor moved or was destroyed. Capture fresh paired evidence.
   } else {
     // currentRevision and currentEnvelope describe the same frozen
     // document and can enter the host's compare/merge/fork workflow.
