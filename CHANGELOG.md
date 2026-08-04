@@ -5,6 +5,35 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 ## [Unreleased]
 
 
+## [0.5.27] — 2026-08-04
+
+### Added
+- `revision` on successful `CwlEditorIfMatchRestoreResult` values, paired with the exact active-schema-normalized `envelope` applied to the editor
+
+### Changed
+- Package version **0.5.27**
+- Successful guarded restores now reconstruct the incoming source through the active ProseMirror schema, serialize the prepared node to normalized document JSON, hash that envelope before mutation, and return complete before-and-after revision-envelope transition evidence
+
+### Reliability
+- Hosts can continue autosave, compare, merge, fork, audit, and retry workflows from the returned resulting revision without a second editor read or a separately scheduled hash that could race with a newer edit
+- Source properties ignored by ProseMirror and schema-materialized attributes cannot make the returned validator diverge from the document subsequently exported by the editor
+- Document movement, editor destruction, or resulting-digest failure leaves the prepared incoming document unapplied
+
+### Performance
+- A stable mismatch invokes SHA-256 once and does not inspect the incoming source
+- A successful transition invokes SHA-256 twice and, after one source parse plus one schema reconstruction, adds one ProseMirror `toJSON()` traversal and one resource-bounded envelope normalization/freeze without a second source parse, schema reconstruction, or post-mutation editor read
+
+### Security
+- Resulting revisions remain equality validators rather than signatures, authorization, tenant membership, or proof of durable persistence; CWL and naruon hosts retain authenticated atomic RFC 9110 `If-Match`, tenant isolation, transport, persistence, retention, encryption, redaction, and audit policy
+- Returned envelopes contain complete client-controlled document content and must not be copied into ordinary logs, metric labels, analytics events, exception messages, public URLs, or compact revision metadata
+
+### Tests
+- Added exact before-and-after evidence pairing, active-schema normalization, resulting-digest failure, incoming-digest movement, object and strict UTF-8 paths, imperative-handle, provider-neutral Yjs, packed declaration-consumer, and repository-wide 100% production coverage verification
+
+### Documentation
+- Expanded the revision-guarded restore contract with resulting evidence, active-schema normalization, digest-count, lifecycle, privacy, server compare-and-swap, and APA 7th-style normative references
+
+
 ## [0.5.26] — 2026-08-04
 
 ### Added
@@ -89,6 +118,7 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ### Documentation
 - Expanded README and persistence guidance with compile-time evidence pairing, null-evidence retry behavior, no-extra-copy performance guarantees, privacy boundaries, and durable server compare-and-swap ownership
+
 ## [0.5.23] — 2026-08-04
 
 ### Added

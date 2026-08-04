@@ -69,6 +69,7 @@ describe('collaborative revision-guarded envelope restore', () => {
       status: 'restored',
       previousRevision: revision,
       previousEnvelope,
+      revision,
       envelope,
     });
     expect(handle.getMarkdown()).toBe('Collaborative restored content');
