@@ -1,0 +1,81 @@
+name: Finalize atomic envelope restore once
+
+on:
+  push:
+    branches: [feat/atomic-envelope-restore]
+    paths:
+      - .github/workflows/finalize-atomic-envelope-restore.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: finalize-atomic-envelope-restore
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    if: github.repository == 'ContextualWisdomLab/inkspan'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: feat/atomic-envelope-restore
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Add release notes and verify the complete package
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('CHANGELOG.md')
+          text = path.read_text(encoding='utf-8')
+          marker = '## [Unreleased]\n'
+          release = '''## [0.5.20] — 2026-08-04
+
+          ### Added
+          - `restoreDocumentEnvelope()` and `restoreDocumentEnvelopeBytes()` for one-call, fail-closed restoration of validated versioned envelopes into an active TipTap/ProseMirror editor
+          - `validateDocumentEnvelopeForEditor()` and `validateDocumentEnvelopeBytesForEditor()` for non-mutating import, migration, and UI preflight
+
+          ### Changed
+          - Package version **0.5.20**
+          - Object, JSON-text, and canonical UTF-8 byte persistence paths now compose resource-bounded envelope parsing and complete active-schema reconstruction before the first editor mutation
+
+          ### Reliability
+          - Successful restore performs one `setContent(..., false)` load and returns the exact detached frozen envelope accepted by the editor
+          - Envelope and schema failures leave the current document unchanged and retain typed, redacted error categories
+
+          ### Security
+          - Collaborative restore remains explicitly host-authorized; Inkspan does not grant write permission, select a tenant, or replace revision and optimistic-concurrency policy
+          - CWL and naruon hosts retain transport, compressed-body, timeout, rate/concurrency, migration, signing, encryption, retention, and audit controls
+
+          ### Tests
+          - Added object and canonical-byte validation, successful atomic restore, callback suppression, malformed-envelope rejection, incompatible-schema rejection, unchanged-document, public-export, and repository-wide 100% coverage verification
+
+          ### Documentation
+          - Added `docs/atomic-envelope-restore.md` with atomicity, validation, typed failures, collaboration authorization, migration, resource ownership, and primary standards references
+
+          '''
+          if '## [0.5.20]' not in text:
+              if marker not in text:
+                  raise SystemExit('CHANGELOG Unreleased marker is missing')
+              path.write_text(text.replace(marker, marker + '\n' + release, 1), encoding='utf-8')
+          PY
+          pnpm install --frozen-lockfile
+          pnpm typecheck
+          pnpm coverage
+          pnpm build
+          pnpm verify:package
+          pnpm build:demo
+          rm .github/workflows/finalize-atomic-envelope-restore.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git diff --cached --check
+          git commit -m "docs: record atomic envelope restore"
+          git push origin HEAD:feat/atomic-envelope-restore
