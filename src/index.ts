@@ -49,6 +49,11 @@ export {
   serializeDocumentEnvelope,
 } from './documentEnvelopeCanonical.js';
 export {
+  restoreDocumentEnvelopeBytesIfMatch,
+  restoreDocumentEnvelopeIfMatch,
+} from './documentEnvelopeIfMatch.js';
+export type { CwlEditorIfMatchRestoreResult } from './documentEnvelopeIfMatch.js';
+export {
   DocumentEnvelopeRevisionError,
   createDocumentEnvelopeRevision,
   createDocumentEnvelopeRevisionBytes,
