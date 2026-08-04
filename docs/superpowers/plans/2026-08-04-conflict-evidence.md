@@ -64,7 +64,7 @@ expect(result).toEqual({
 expect(result.previousEnvelope).toBe(previousEnvelope);
 ```
 
-The exact object reference assertion proves the implementation reuses the already-created envelope instead of cloning it again.
+The equality assertion proves the evidence describes the same document; implementation review and provider-call coverage enforce reuse without a second digest.
 
 - [ ] **Step 3: Tighten null-evidence lifecycle assertions**
 
@@ -129,7 +129,7 @@ readonly previousEnvelope: CwlEditorDocumentEnvelope;
 and the conflict branch includes:
 
 ```ts
-readonly currentEnvelope: CwlEditorDocumentEnvelope | null;
+readonly currentEnvelope: CwlEditorDocumentEnvelope;
 ```
 
 Document that each non-null revision and envelope describe the same captured editor document.
