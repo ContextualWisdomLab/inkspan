@@ -172,27 +172,43 @@ describe('document envelope revision tags', () => {
     }
   });
 
-  it('rejects invalid provider result types and lengths', async () => {
+  it('rejects invalid and hostile provider results without leaking details', async () => {
     const invalidTypeProvider: DocumentEnvelopeDigestProvider = {
       digest: async () => 'not-an-array-buffer' as unknown as ArrayBuffer,
     };
     const invalidLengthProvider: DocumentEnvelopeDigestProvider = {
       digest: async () => new ArrayBuffer(31),
     };
+    const hostileResult = {
+      get [Symbol.toStringTag]() {
+        throw new Error('provider-secret-value');
+      },
+    } as unknown as ArrayBuffer;
+    const hostileProvider: DocumentEnvelopeDigestProvider = {
+      digest: async () => hostileResult,
+    };
 
-    await expect(
-      createDocumentEnvelopeRevision(
+    for (const provider of [
+      invalidTypeProvider,
+      invalidLengthProvider,
+      hostileProvider,
+    ]) {
+      await expect(
+        createDocumentEnvelopeRevision(
+          createDocumentEnvelope(DOCUMENT_JSON),
+          undefined,
+          provider,
+        ),
+      ).rejects.toThrow('32-byte SHA-256 digest');
+    }
+    try {
+      await createDocumentEnvelopeRevision(
         createDocumentEnvelope(DOCUMENT_JSON),
         undefined,
-        invalidTypeProvider,
-      ),
-    ).rejects.toThrow('32-byte SHA-256 digest');
-    await expect(
-      createDocumentEnvelopeRevision(
-        createDocumentEnvelope(DOCUMENT_JSON),
-        undefined,
-        invalidLengthProvider,
-      ),
-    ).rejects.toThrow('32-byte SHA-256 digest');
+        hostileProvider,
+      );
+    } catch (error) {
+      expect(String(error)).not.toContain('provider-secret-value');
+    }
   });
 });
