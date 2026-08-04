@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: feat/document-revision-tags
+          ref: ${{ github.sha }}
           fetch-depth: 1
           persist-credentials: false
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
@@ -50,8 +50,8 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: feat/document-revision-tags
-          fetch-depth: 0
+          ref: ${{ github.sha }}
+          fetch-depth: 1
       - name: Add the 0.5.22 changelog entry
         shell: python
         run: |
@@ -99,8 +99,13 @@ jobs:
       - name: Commit validated changelog and remove bootstrap workflow
         env:
           EXPECTED_BRANCH: feat/document-revision-tags
+          EXPECTED_SHA: ${{ github.sha }}
         run: |
           test "${GITHUB_REF_NAME}" = "${EXPECTED_BRANCH}"
+          test "$(git rev-parse HEAD)" = "${EXPECTED_SHA}"
+          git fetch --no-tags --depth=1 origin \
+            "refs/heads/${EXPECTED_BRANCH}:refs/remotes/origin/${EXPECTED_BRANCH}"
+          test "$(git rev-parse refs/remotes/origin/${EXPECTED_BRANCH})" = "${EXPECTED_SHA}"
           git rm --ignore-unmatch .github/workflows/finalize-document-revision-tags.yml
           git add CHANGELOG.md
           git config user.name 'github-actions[bot]'
@@ -109,4 +114,4 @@ jobs:
             exit 0
           fi
           git commit -m 'docs: finalize Inkspan 0.5.22 revision tags'
-          git push origin HEAD:${EXPECTED_BRANCH}
+          git push origin "HEAD:refs/heads/${EXPECTED_BRANCH}"
