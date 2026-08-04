@@ -28,14 +28,29 @@ export function validateDocumentJson(
   }
 }
 
-/** Parse and recursively check structural JSON before a document replacement. */
+/** Parse and recursively check untrusted structural JSON before replacement. */
 export function parseDocumentJsonForEditor(
   editor: Editor,
   documentJson: JSONContent,
 ): ProseMirrorNode {
   try {
     const detachedDocument = createDocumentEnvelope(documentJson).documentJson;
-    const documentNode = editor.schema.nodeFromJSON(detachedDocument);
+    return parseValidatedDocumentJsonForEditor(editor, detachedDocument);
+  } catch {
+    throw new DocumentSchemaError();
+  }
+}
+
+/**
+ * Reconstruct and recursively check JSON already accepted by the envelope
+ * boundary without applying a second resource-limit profile.
+ */
+export function parseValidatedDocumentJsonForEditor(
+  editor: Editor,
+  documentJson: Readonly<JSONContent>,
+): ProseMirrorNode {
+  try {
+    const documentNode = editor.schema.nodeFromJSON(documentJson);
     documentNode.check();
     return documentNode;
   } catch {
