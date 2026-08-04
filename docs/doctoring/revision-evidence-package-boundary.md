@@ -19,6 +19,13 @@ the root package worked, but it did not prove the buyer-facing claim that a
 server or worker could use the pure API without loading the editor framework.
 The packaging boundary therefore contradicted the implementation boundary.
 
+A later packaging review found a second isolation gap in the full-package
+consumer. It copied the repository's complete pnpm `node_modules` tree into the
+temporary consumer and verified required package paths, but left undeclared
+repository-only development packages visible at the consumer's top level. A
+publishable tarball with an accidental undeclared import could therefore pass by
+resolving a package that the consumer manifest did not declare.
+
 ## Selected design
 
 Inkspan now publishes `@contextualwisdomlab/cwl-editor/revision-evidence` as a
@@ -42,6 +49,15 @@ release is that evaluating `/revision-evidence` loads no framework module. A
 separately published package would be required for dependency-graph isolation,
 independent procurement, or a smaller installed software bill of materials.
 
+The full-package consumer now uses one composed staging operation. It copies the
+frozen-lockfile-verified pnpm virtual store, then removes every undeclared
+consumer-level package link before inserting the exact packed Inkspan artifact.
+Only dependencies named by the temporary consumer manifest remain directly
+resolvable; pnpm's hidden virtual store remains available solely for their exact
+transitive closure. The composition prevents future verifier code from copying
+the repository dependency tree while accidentally omitting the fail-closed
+pruning step.
+
 ## Verification evidence
 
 The release gate builds the dedicated bundle and packs the exact npm artifact.
@@ -62,6 +78,14 @@ fail. The ordinary full-package consumer verification remains in place for the
 interactive editor, collaboration, and converter surfaces. The dependency-free
 extraction is deliberately stricter than normal package installation and proves
 the loaded subpath graph, not the package manager's installation graph.
+
+A deterministic Node test builds a synthetic pnpm-style dependency tree with one
+declared and one undeclared top-level package. The composed staging helper must
+retain the declared package and hidden virtual store while removing the
+undeclared package. The production verifier calls that same helper with the
+exact direct dependencies recorded in its generated consumer manifest, then
+asserts that each permitted dependency resolves inside the operating-system
+temporary consumer tree.
 
 ## MSA and security boundary
 
@@ -97,6 +121,14 @@ Rejected because it would preserve module-evaluation coupling and contradict the
 server/worker runtime claim. Processes that never render an editor should not
 execute its framework graph.
 
+### Keep every repository package visible in the temporary full-package consumer
+
+Rejected because path-containment checks alone do not prove dependency
+declaration completeness. Repository-only development dependencies can resolve
+inside the temporary tree and conceal an import that a buyer's clean install
+cannot satisfy. Exact transitive storage may remain, but undeclared top-level
+links must be pruned.
+
 ### Split revision evidence into a separate npm package immediately
 
 Deferred rather than rejected permanently. A verified subpath provides the
@@ -110,20 +142,21 @@ or procurement isolation becomes a buyer requirement.
 
 Inkspan 0.5.26 may merge only when the exact head contains the dedicated
 subpath, the dependency-free extracted-tarball ESM/CommonJS/TypeScript runtime
-gate, updated package exports and build configuration, complete documentation,
-100% production coverage and docstrings, Office Python gates, SAST, Security
-Scan, CodeRabbit, and no unresolved review finding.
+gate, the declared-dependency-only full-package consumer, updated package
+exports and build configuration, complete documentation, 100% production
+coverage and docstrings, Office Python gates, SAST, Security Scan, CodeRabbit,
+and no unresolved review finding.
 
 ## References (APA 7th edition)
+
+Fielding, R., Nottingham, M., & Reschke, J. (2022). *HTTP semantics* (RFC
+9110). RFC Editor. https://doi.org/10.17487/RFC9110
 
 OpenJS Foundation. (n.d.). *Packages: Package entry points*. Node.js. Retrieved
 August 4, 2026, from https://nodejs.org/api/packages.html#package-entry-points
 
 Rundgren, A., Jordan, B., & Erdtman, S. (2020). *JSON Canonicalization Scheme
 (JCS)* (RFC 8785). RFC Editor. https://doi.org/10.17487/RFC8785
-
-Fielding, R., Nottingham, M., & Reschke, J. (2022). *HTTP semantics* (RFC
-9110). RFC Editor. https://doi.org/10.17487/RFC9110
 
 World Wide Web Consortium. (2017). *Web Cryptography API* (W3C
 Recommendation). https://www.w3.org/TR/2017/REC-WebCryptoAPI-20170126/
