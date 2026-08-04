@@ -5,6 +5,8 @@ import {
   DocumentEnvelopeRevisionError,
   createDocumentEnvelopeRevision,
   createDocumentEnvelopeRevisionBytes,
+  createDocumentEnvelopeRevisionEvidence,
+  createDocumentEnvelopeRevisionEvidenceBytes,
   type DocumentEnvelopeDigestProvider,
 } from './documentEnvelopeRevision.js';
 
@@ -44,6 +46,76 @@ function createIndexedDigestBuffer(): ArrayBuffer {
 }
 
 describe('document envelope revision tags', () => {
+  it('returns frozen object evidence paired with the exact hashed envelope', async () => {
+    const envelope = createDocumentEnvelope(DOCUMENT_JSON);
+    let receivedBytes: Uint8Array | undefined;
+    const digestProvider: DocumentEnvelopeDigestProvider = {
+      digest: vi.fn(async (_algorithm, source) => {
+        receivedBytes = new Uint8Array(toBytes(source));
+        return createIndexedDigestBuffer();
+      }),
+    };
+
+    const evidence = await createDocumentEnvelopeRevisionEvidence(
+      envelope,
+      undefined,
+      digestProvider,
+    );
+
+    expect(evidence.envelope).toEqual(envelope);
+    expect(Object.isFrozen(evidence)).toBe(true);
+    expect(Object.isFrozen(evidence.envelope)).toBe(true);
+    expect(Object.isFrozen(evidence.envelope.documentJson)).toBe(true);
+    expect(Object.isFrozen(evidence.revision)).toBe(true);
+    expect(Array.from(receivedBytes ?? [])).toEqual(
+      Array.from(encodeDocumentEnvelope(evidence.envelope)),
+    );
+    expect(evidence.revision.digestHex).toBe(
+      '000102030405060708090a0b0c0d0e0f' +
+        '101112131415161718191a1b1c1d1e1f',
+    );
+    expect(digestProvider.digest).toHaveBeenCalledOnce();
+  });
+
+  it('returns normalized frozen evidence from noncanonical strict UTF-8 bytes', async () => {
+    const envelope = createDocumentEnvelope(DOCUMENT_JSON);
+    const canonicalBytes = encodeDocumentEnvelope(envelope);
+    const noncanonicalBytes = new TextEncoder().encode(
+      JSON.stringify(
+        {
+          schemaVersion: envelope.schemaVersion,
+          documentJson: envelope.documentJson,
+          schemaId: envelope.schemaId,
+        },
+        null,
+        2,
+      ),
+    );
+    let receivedBytes: Uint8Array | undefined;
+    const digestProvider: DocumentEnvelopeDigestProvider = {
+      digest: vi.fn(async (_algorithm, source) => {
+        receivedBytes = new Uint8Array(toBytes(source));
+        return createDigestBuffer(0xcd);
+      }),
+    };
+
+    const evidence = await createDocumentEnvelopeRevisionEvidenceBytes(
+      noncanonicalBytes,
+      undefined,
+      digestProvider,
+    );
+
+    expect(evidence.envelope).toEqual(envelope);
+    expect(Object.isFrozen(evidence)).toBe(true);
+    expect(Object.isFrozen(evidence.envelope)).toBe(true);
+    expect(Object.isFrozen(evidence.revision)).toBe(true);
+    expect(Array.from(receivedBytes ?? [])).toEqual(
+      Array.from(canonicalBytes),
+    );
+    expect(evidence.revision.digestHex).toBe('cd'.repeat(32));
+    expect(digestProvider.digest).toHaveBeenCalledOnce();
+  });
+
   it('hashes canonical envelope bytes and returns a frozen strong validator', async () => {
     const envelope = createDocumentEnvelope(DOCUMENT_JSON);
     const expectedBytes = encodeDocumentEnvelope(envelope);
