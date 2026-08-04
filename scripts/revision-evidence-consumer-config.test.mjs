@@ -15,6 +15,7 @@ import test from 'node:test';
 import {
   createIndependentConsumerManifest,
   createTypeScriptVerificationArguments,
+  pruneTopLevelConsumerDependencies,
   stageLockedNodeModules,
 } from './revision-evidence-consumer-config.mjs';
 
@@ -87,6 +88,63 @@ test('copies the locked pnpm dependency tree into the independent consumer', () 
     );
     const stagedPackage = realpathSync(join(targetNodeModules, 'example'));
     assert.equal(relative(targetNodeModules, stagedPackage).startsWith('..'), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('exposes only declared direct dependencies from the staged lockfile tree', () => {
+  const root = mkdtempSync(join(tmpdir(), 'inkspan-node-modules-prune-'));
+  try {
+    const sourceNodeModules = join(root, 'source', 'node_modules');
+    const targetNodeModules = join(root, 'consumer', 'node_modules');
+    const createLinkedPackage = (packageName, virtualStoreName) => {
+      const packageSegments = packageName.split('/');
+      const packageRoot = join(
+        sourceNodeModules,
+        '.pnpm',
+        virtualStoreName,
+        'node_modules',
+        ...packageSegments,
+      );
+      mkdirSync(packageRoot, { recursive: true });
+      writeFileSync(
+        join(packageRoot, 'package.json'),
+        `${JSON.stringify({ name: packageName, version: '1.0.0' })}\n`,
+        'utf8',
+      );
+      const topLevelPackage = join(sourceNodeModules, ...packageSegments);
+      mkdirSync(join(topLevelPackage, '..'), { recursive: true });
+      const linkTarget = relative(
+        join(topLevelPackage, '..'),
+        packageRoot,
+      );
+      symlinkSync(linkTarget, topLevelPackage);
+    };
+
+    createLinkedPackage('example', 'example@1.0.0');
+    createLinkedPackage('vitest', 'vitest@3.2.7');
+    createLinkedPackage('@types/react', '@types+react@18.3.31');
+    createLinkedPackage(
+      '@testing-library/react',
+      '@testing-library+react@16.3.2',
+    );
+    mkdirSync(join(sourceNodeModules, '.bin'), { recursive: true });
+    writeFileSync(join(sourceNodeModules, '.modules.yaml'), 'layoutVersion: 5\n');
+
+    stageLockedNodeModules(sourceNodeModules, targetNodeModules);
+    pruneTopLevelConsumerDependencies(targetNodeModules, [
+      'example',
+      '@types/react',
+    ]);
+
+    assert.equal(existsSync(join(targetNodeModules, 'example')), true);
+    assert.equal(existsSync(join(targetNodeModules, '@types', 'react')), true);
+    assert.equal(existsSync(join(targetNodeModules, 'vitest')), false);
+    assert.equal(existsSync(join(targetNodeModules, '@testing-library')), false);
+    assert.equal(existsSync(join(targetNodeModules, '.pnpm')), true);
+    assert.equal(existsSync(join(targetNodeModules, '.bin')), true);
+    assert.equal(existsSync(join(targetNodeModules, '.modules.yaml')), true);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
