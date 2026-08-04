@@ -271,7 +271,7 @@ function readExactDataRecord(
       if (
         descriptor === undefined ||
         !descriptor.enumerable ||
-        !Object.hasOwn(descriptor, 'value')
+        !Object.prototype.hasOwnProperty.call(descriptor, 'value')
       ) {
         return null;
       }
