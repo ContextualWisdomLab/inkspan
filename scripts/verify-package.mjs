@@ -130,6 +130,7 @@ function verifyConsumerTypes() {
     consumerTypePath,
     `import {
   createDocumentEnvelopeRevision,
+  DocumentEnvelopeRestoreError,
   markdownToHtml,
   restoreDocumentEnvelopeBytesIfMatch,
   restoreDocumentEnvelopeIfMatch,
@@ -159,6 +160,7 @@ const safeHref: string = validateSafeLinkHref('/documents/current');
 const collaborationGuard = assertCollaborationConfiguration;
 const conditionalObjectRestore = restoreDocumentEnvelopeIfMatch;
 const conditionalByteRestore = restoreDocumentEnvelopeBytesIfMatch;
+const restoreError: Error = new DocumentEnvelopeRestoreError();
 const encodeOptions: EncodeOptions = { mimeType: 'application/octet-stream' };
 const dataUri: string = bytesToDataUri(new Uint8Array([1]), encodeOptions);
 type EditorDestroyCallback = NonNullable<CwlEditorProps['onDestroy']>;
@@ -214,6 +216,7 @@ void [
   collaborationGuard,
   conditionalObjectRestore,
   conditionalByteRestore,
+  restoreError,
   dataUri,
   editorHandle,
   documentChangeEvent,
@@ -277,6 +280,7 @@ assert.equal(typeof editor.markdownToHtml, 'function');
 assert.equal(editor.validateSafeLinkHref('/documents/current'), '/documents/current');
 assert.equal(typeof editor.restoreDocumentEnvelopeIfMatch, 'function');
 assert.equal(typeof editor.restoreDocumentEnvelopeBytesIfMatch, 'function');
+assert.equal(typeof editor.DocumentEnvelopeRestoreError, 'function');
 assert.ok(editor.CwlEditor);
 assert.equal(typeof collaboration.assertCollaborationConfiguration, 'function');
 assert.ok(collaboration.CollaborativeCwlEditor);
@@ -299,6 +303,7 @@ assert.equal(typeof editor.markdownToHtml, 'function');
 assert.equal(editor.validateSafeLinkHref('/documents/current'), '/documents/current');
 assert.equal(typeof editor.restoreDocumentEnvelopeIfMatch, 'function');
 assert.equal(typeof editor.restoreDocumentEnvelopeBytesIfMatch, 'function');
+assert.equal(typeof editor.DocumentEnvelopeRestoreError, 'function');
 assert.ok(editor.CwlEditor);
 assert.equal(typeof collaboration.assertCollaborationConfiguration, 'function');
 assert.ok(collaboration.CollaborativeCwlEditor);
