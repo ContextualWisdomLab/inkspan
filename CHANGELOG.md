@@ -4,6 +4,31 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.20] — 2026-08-04
+
+### Added
+- `restoreDocumentEnvelope()` and `restoreDocumentEnvelopeBytes()` for one-call, fail-closed restoration of validated versioned envelopes into an active TipTap/ProseMirror editor
+- `validateDocumentEnvelopeForEditor()` and `validateDocumentEnvelopeBytesForEditor()` for non-mutating import, migration, and UI preflight
+
+### Changed
+- Package version **0.5.20**
+- Object, JSON-text, and canonical UTF-8 byte persistence paths now compose resource-bounded envelope parsing and complete active-schema reconstruction before the first editor mutation
+
+### Reliability
+- Successful restore performs one `setContent(..., false)` load and returns the exact detached frozen envelope accepted by the editor
+- Envelope and schema failures leave the current document unchanged and retain typed, redacted error categories
+
+### Security
+- Collaborative restore remains explicitly host-authorized; Inkspan does not grant write permission, select a tenant, or replace revision and optimistic-concurrency policy
+- CWL and naruon hosts retain transport, compressed-body, timeout, rate/concurrency, migration, signing, encryption, retention, and audit controls
+
+### Tests
+- Added object and canonical-byte validation, successful atomic restore, callback suppression, malformed-envelope rejection, incompatible-schema rejection, unchanged-document, public-export, and repository-wide 100% coverage verification
+
+### Documentation
+- Added `docs/atomic-envelope-restore.md` with atomicity, validation, typed failures, collaboration authorization, migration, resource ownership, and primary standards references
+
+
 ## [0.5.19] — 2026-08-04
 
 ### Changed
