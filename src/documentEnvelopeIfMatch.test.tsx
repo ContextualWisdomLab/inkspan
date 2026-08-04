@@ -116,6 +116,7 @@ describe('revision-guarded document-envelope restore', () => {
     expect(objectResult).toEqual({
       status: 'restored',
       previousRevision: currentRevision,
+      previousEnvelope: currentEnvelope,
       envelope: objectEnvelope,
     });
     expect(Object.isFrozen(objectResult)).toBe(true);
@@ -144,6 +145,7 @@ describe('revision-guarded document-envelope restore', () => {
     expect(byteResult.status).toBe('restored');
     expect(byteResult).toMatchObject({
       previousRevision: restoredRevision,
+      previousEnvelope: objectEnvelope,
       envelope: byteEnvelope,
     });
     expect(editorRef.current!.getMarkdown()).toBe('## Restored from bytes');
@@ -183,6 +185,7 @@ describe('revision-guarded document-envelope restore', () => {
     expect(result).toEqual({
       status: 'conflict',
       currentRevision,
+      currentEnvelope,
     });
     expect(Object.isFrozen(result)).toBe(true);
     expect(editorRef.current!.getMarkdown()).toBe('Original document');
@@ -215,6 +218,7 @@ describe('revision-guarded document-envelope restore', () => {
     await expect(pending).resolves.toEqual({
       status: 'conflict',
       currentRevision: null,
+      currentEnvelope: null,
     });
     expect(editorRef.current!.getMarkdown()).toBe('Newer local document');
   });
@@ -224,6 +228,7 @@ describe('revision-guarded document-envelope restore', () => {
     const editor = editorRef.current!.getEditor()!;
     const deferred = createDeferredDigestProvider();
     const expectedStrongEntityTag = `"sha256-${'00'.repeat(32)}"`;
+    const previousEnvelope = editorRef.current!.getDocumentEnvelope()!;
     const envelope = incomingEnvelope('Selection-safe restore');
 
     const pending = restoreDocumentEnvelopeIfMatch(
@@ -242,7 +247,10 @@ describe('revision-guarded document-envelope restore', () => {
       result = await pending;
     });
 
-    expect(result).toMatchObject({ status: 'restored' });
+    expect(result).toMatchObject({
+      status: 'restored',
+      previousEnvelope,
+    });
     expect(editorRef.current!.getMarkdown()).toBe('## Selection-safe restore');
   });
 
