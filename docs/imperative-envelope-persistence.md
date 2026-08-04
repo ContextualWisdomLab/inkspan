@@ -24,7 +24,7 @@ ceilings during export.
 Before client hydration or after editor destruction, object export returns
 `null`, JSON export returns `''`, and byte export returns an empty
 `Uint8Array`. These values are lifecycle fallbacks, not valid persisted
-documents.
+documents. A host must not store them as a document revision.
 
 ## Validate and restore
 
@@ -76,8 +76,8 @@ in host metadata rather than extending the strict envelope with ad hoc fields.
 
 ## Primary references
 
-- RFC 8785, JSON Canonicalization Scheme
-- RFC 8259, The JavaScript Object Notation Data Interchange Format
-- WHATWG Encoding Standard, UTF-8 decoding
-- TipTap editor commands and persistence guidance
-- ProseMirror `Node.fromJSON` schema reconstruction
+- [RFC 8785: JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785)
+- [RFC 8259: The JavaScript Object Notation Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259)
+- [WHATWG Encoding Standard: UTF-8](https://encoding.spec.whatwg.org/#utf-8)
+- [TipTap persistence guidance](https://tiptap.dev/docs/editor/core-concepts/persistence)
+- [ProseMirror `Node.fromJSON`](https://prosemirror.net/docs/ref/#model.Node^fromJSON)
