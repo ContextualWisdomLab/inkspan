@@ -74,8 +74,8 @@ export interface CwlEditorDocumentEnvelope {
   readonly documentJson: CwlEditorDocumentJson;
 }
 
-/** Portable byte source accepted by the injected digest-provider boundary. */
-export type DocumentEnvelopeDigestSource = ArrayBuffer | ArrayBufferView;
+/** Exact canonical byte view supplied to an injected digest provider. */
+export type DocumentEnvelopeDigestSource = Uint8Array;
 
 /** SHA-256 provider compatible with Web Crypto and Node.js crypto adapters. */
 export interface DocumentEnvelopeDigestProvider {
@@ -119,7 +119,9 @@ export function createDocumentEnvelopeRevisionEvidence(
   return createRevisionEvidenceInternal(
     source,
     limits,
-    digestProvider,
+    digestProvider as unknown as Parameters<
+      typeof createRevisionEvidenceInternal
+    >[2],
   ) as unknown as Promise<CwlEditorDocumentRevisionEvidence>;
 }
 
@@ -138,6 +140,8 @@ export function createDocumentEnvelopeRevisionEvidenceBytes(
   return createRevisionEvidenceBytesInternal(
     source,
     limits,
-    digestProvider,
+    digestProvider as unknown as Parameters<
+      typeof createRevisionEvidenceBytesInternal
+    >[2],
   ) as unknown as Promise<CwlEditorDocumentRevisionEvidence>;
 }
