@@ -1,6 +1,7 @@
 import {
   DocumentEnvelopeError,
   parseDocumentEnvelope,
+  type CwlEditorDocumentEnvelope,
 } from './documentEnvelope.js';
 
 interface CanonicalJsonObject {
@@ -26,15 +27,35 @@ const INVALID_UNICODE_MESSAGE =
  * insignificant whitespace is emitted. Lone UTF-16 surrogates fail closed.
  */
 export function serializeDocumentEnvelope(source: unknown): string {
-  const envelope = parseDocumentEnvelope(source);
+  return serializeValidatedDocumentEnvelope(parseDocumentEnvelope(source));
+}
+
+/** Encode a canonical Inkspan envelope as UTF-8 bytes without a BOM. */
+export function encodeDocumentEnvelope(source: unknown): Uint8Array {
+  return encodeValidatedDocumentEnvelope(parseDocumentEnvelope(source));
+}
+
+/**
+ * Serialize an envelope already returned by the strict parser.
+ *
+ * This internal package helper avoids cloning the complete document a second
+ * time when a caller has just completed the fail-closed parse boundary.
+ */
+export function serializeValidatedDocumentEnvelope(
+  envelope: CwlEditorDocumentEnvelope,
+): string {
   return serializeCanonicalValue(
     envelope as unknown as CanonicalJsonObject,
   );
 }
 
-/** Encode a canonical Inkspan envelope as UTF-8 bytes without a BOM. */
-export function encodeDocumentEnvelope(source: unknown): Uint8Array {
-  return new TextEncoder().encode(serializeDocumentEnvelope(source));
+/** Encode an already-validated envelope without repeating graph validation. */
+export function encodeValidatedDocumentEnvelope(
+  envelope: CwlEditorDocumentEnvelope,
+): Uint8Array {
+  return new TextEncoder().encode(
+    serializeValidatedDocumentEnvelope(envelope),
+  );
 }
 
 function serializeCanonicalValue(value: CanonicalJsonValue): string {
