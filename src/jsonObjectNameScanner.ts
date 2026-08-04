@@ -8,12 +8,14 @@ type ArrayFrameState = 'value-or-end' | 'value' | 'comma-or-end';
 
 interface ObjectFrame {
   readonly kind: 'object';
+  readonly depth: number;
   state: ObjectFrameState;
   readonly names: Set<string>;
 }
 
 interface ArrayFrame {
   readonly kind: 'array';
+  readonly depth: number;
   state: ArrayFrameState;
 }
 
@@ -29,6 +31,22 @@ interface JsonValueStart {
   readonly frame?: ContainerFrame;
 }
 
+/** Bounds applied while scanning JSON text before native parsing. */
+export interface JsonTextInspectionLimits {
+  /** Maximum total number of scalar and container values. */
+  readonly maxValues: number;
+  /** Maximum value depth, with the root value at depth zero. */
+  readonly maxDepth: number;
+}
+
+/** Result of bounded duplicate-name and structure inspection. */
+export type JsonTextInspectionResult =
+  | 'valid'
+  | 'malformed'
+  | 'duplicate-object-name'
+  | 'value-count-limit'
+  | 'nesting-depth-limit';
+
 const JSON_WHITESPACE = new Set([' ', '\t', '\n', '\r']);
 const JSON_VALUE_DELIMITERS = new Set([
   ...JSON_WHITESPACE,
@@ -36,29 +54,49 @@ const JSON_VALUE_DELIMITERS = new Set([
   ']',
   '}',
 ]);
+const UNBOUNDED_INSPECTION_LIMITS = Object.freeze({
+  maxValues: Number.MAX_SAFE_INTEGER,
+  maxDepth: Number.MAX_SAFE_INTEGER,
+}) satisfies JsonTextInspectionLimits;
 
 /**
- * Detect duplicate object names in JSON text without recursively parsing it.
+ * Inspect duplicate names and structural resource use before `JSON.parse()`.
  *
- * Invalid JSON returns `false` and remains the responsibility of the canonical
- * `JSON.parse()` call. Valid JSON is scanned with an explicit container stack,
- * and escaped-equivalent names such as `"name"` and `"\u006eame"` compare as
- * the same decoded property name.
+ * Syntax-invalid input returns `malformed` and remains the responsibility of
+ * the canonical parser. Valid-looking values are counted with an explicit
+ * stack so callers can reject pathological value counts and nesting before a
+ * native parser materializes an attacker-controlled object graph.
  */
-export function containsDuplicateJsonObjectNames(source: string): boolean {
+export function inspectJsonText(
+  source: string,
+  limits: JsonTextInspectionLimits,
+): JsonTextInspectionResult {
   const stack: ContainerFrame[] = [];
   let index = 0;
   let rootComplete = false;
+  let valueCount = 0;
+
+  const beginValue = (
+    startIndex: number,
+    depth: number,
+  ): JsonValueStart | JsonTextInspectionResult => {
+    const valueStart = readJsonValueStart(source, startIndex, depth);
+    if (valueStart === null) return 'malformed';
+    valueCount += 1;
+    if (valueCount > limits.maxValues) return 'value-count-limit';
+    if (depth > limits.maxDepth) return 'nesting-depth-limit';
+    return valueStart;
+  };
 
   while (true) {
     index = skipJsonWhitespace(source, index);
-    if (index >= source.length) return false;
-    if (rootComplete) return false;
+    if (index >= source.length) return rootComplete ? 'valid' : 'malformed';
+    if (rootComplete) return 'malformed';
 
     const frame = stack.at(-1);
     if (frame === undefined) {
-      const valueStart = readJsonValueStart(source, index);
-      if (valueStart === null) return false;
+      const valueStart = beginValue(index, 0);
+      if (typeof valueStart === 'string') return valueStart;
       index = valueStart.endIndex;
       if (valueStart.frame === undefined) {
         rootComplete = true;
@@ -77,22 +115,24 @@ export function containsDuplicateJsonObjectNames(source: string): boolean {
       }
       if (frame.state === 'key-or-end' || frame.state === 'key') {
         const keyToken = readJsonString(source, index, true);
-        if (keyToken?.decodedValue === undefined) return false;
-        if (frame.names.has(keyToken.decodedValue)) return true;
+        if (keyToken?.decodedValue === undefined) return 'malformed';
+        if (frame.names.has(keyToken.decodedValue)) {
+          return 'duplicate-object-name';
+        }
         frame.names.add(keyToken.decodedValue);
         frame.state = 'colon';
         index = keyToken.endIndex;
         continue;
       }
       if (frame.state === 'colon') {
-        if (source[index] !== ':') return false;
+        if (source[index] !== ':') return 'malformed';
         frame.state = 'value';
         index += 1;
         continue;
       }
       if (frame.state === 'value') {
-        const valueStart = readJsonValueStart(source, index);
-        if (valueStart === null) return false;
+        const valueStart = beginValue(index, frame.depth + 1);
+        if (typeof valueStart === 'string') return valueStart;
         index = valueStart.endIndex;
         if (valueStart.frame === undefined) {
           frame.state = 'comma-or-end';
@@ -106,7 +146,7 @@ export function containsDuplicateJsonObjectNames(source: string): boolean {
         index += 1;
         continue;
       }
-      if (source[index] !== '}') return false;
+      if (source[index] !== '}') return 'malformed';
       index += 1;
       stack.pop();
       rootComplete = completeParentValue(stack);
@@ -120,8 +160,8 @@ export function containsDuplicateJsonObjectNames(source: string): boolean {
       continue;
     }
     if (frame.state === 'value-or-end' || frame.state === 'value') {
-      const valueStart = readJsonValueStart(source, index);
-      if (valueStart === null) return false;
+      const valueStart = beginValue(index, frame.depth + 1);
+      if (typeof valueStart === 'string') return valueStart;
       index = valueStart.endIndex;
       if (valueStart.frame === undefined) {
         frame.state = 'comma-or-end';
@@ -135,11 +175,25 @@ export function containsDuplicateJsonObjectNames(source: string): boolean {
       index += 1;
       continue;
     }
-    if (source[index] !== ']') return false;
+    if (source[index] !== ']') return 'malformed';
     index += 1;
     stack.pop();
     rootComplete = completeParentValue(stack);
   }
+}
+
+/**
+ * Detect duplicate object names in JSON text without recursively parsing it.
+ *
+ * Invalid JSON returns `false` and remains the responsibility of the canonical
+ * `JSON.parse()` call. Escaped-equivalent names such as `"name"` and
+ * `"\u006eame"` compare as the same decoded property name.
+ */
+export function containsDuplicateJsonObjectNames(source: string): boolean {
+  return (
+    inspectJsonText(source, UNBOUNDED_INSPECTION_LIMITS) ===
+    'duplicate-object-name'
+  );
 }
 
 function completeParentValue(stack: ContainerFrame[]): boolean {
@@ -152,18 +206,24 @@ function completeParentValue(stack: ContainerFrame[]): boolean {
 function readJsonValueStart(
   source: string,
   startIndex: number,
+  depth: number,
 ): JsonValueStart | null {
   const firstCharacter = source[startIndex];
   if (firstCharacter === '{') {
     return {
       endIndex: startIndex + 1,
-      frame: { kind: 'object', state: 'key-or-end', names: new Set() },
+      frame: {
+        kind: 'object',
+        depth,
+        state: 'key-or-end',
+        names: new Set(),
+      },
     };
   }
   if (firstCharacter === '[') {
     return {
       endIndex: startIndex + 1,
-      frame: { kind: 'array', state: 'value-or-end' },
+      frame: { kind: 'array', depth, state: 'value-or-end' },
     };
   }
   if (firstCharacter === '"') {
