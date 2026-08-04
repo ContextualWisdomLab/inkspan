@@ -9,8 +9,19 @@ const commonJsPackage = require(packageName);
 /** Verify one published module-system surface of the canonical envelope API. */
 function verifyModuleSurface(moduleSurface) {
   assert.equal(typeof moduleSurface.createDocumentEnvelope, 'function');
+  assert.equal(typeof moduleSurface.parseDocumentEnvelope, 'function');
   assert.equal(typeof moduleSurface.serializeDocumentEnvelope, 'function');
   assert.equal(typeof moduleSurface.encodeDocumentEnvelope, 'function');
+  assert.deepEqual(moduleSurface.DEFAULT_DOCUMENT_ENVELOPE_LIMITS, {
+    maxJsonTextCodeUnits: 64 * 1024 * 1024,
+    maxJsonValues: 1_000_000,
+    maxStringCodeUnits: 32 * 1024 * 1024,
+    maxNestingDepth: 128,
+  });
+  assert.equal(
+    Object.isFrozen(moduleSurface.DEFAULT_DOCUMENT_ENVELOPE_LIMITS),
+    true,
+  );
 
   const envelope = moduleSurface.createDocumentEnvelope({
     type: 'doc',
@@ -24,6 +35,19 @@ function verifyModuleSurface(moduleSurface) {
   assert.deepEqual(
     [...moduleSurface.encodeDocumentEnvelope(envelope)],
     [...new TextEncoder().encode(canonicalJson)],
+  );
+  assert.deepEqual(
+    moduleSurface.parseDocumentEnvelope(canonicalJson, {
+      maxJsonTextCodeUnits: canonicalJson.length,
+    }),
+    envelope,
+  );
+  assert.throws(
+    () =>
+      moduleSurface.parseDocumentEnvelope(canonicalJson, {
+        maxJsonTextCodeUnits: canonicalJson.length - 1,
+      }),
+    /JSON text exceeds/u,
   );
 }
 
