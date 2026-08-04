@@ -5,12 +5,35 @@ import {
   type MutableRefObject,
 } from 'react';
 import {
+  createDocumentEnvelope,
+  type CwlEditorDocumentEnvelope,
+  type DocumentEnvelopeLimits,
+} from '../documentEnvelope.js';
+import {
+  encodeDocumentEnvelope,
+  serializeDocumentEnvelope,
+} from '../documentEnvelopeCanonical.js';
+import {
+  restoreDocumentEnvelope,
+  restoreDocumentEnvelopeBytes,
+  validateDocumentEnvelopeBytesForEditor,
+  validateDocumentEnvelopeForEditor,
+} from '../documentEnvelopeRestore.js';
+import {
   parseDocumentJsonForEditor,
   validateDocumentJson,
 } from '../documentSchema.js';
 import type { CwlEditorHandle, EditorMode } from '../types.js';
 import { createEditorDocumentSnapshot } from './editorDocumentSnapshot.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
+
+/** Create a validated portable envelope from one active editor revision. */
+function createCurrentDocumentEnvelope(
+  editor: Editor,
+  limits?: DocumentEnvelopeLimits,
+): CwlEditorDocumentEnvelope {
+  return createDocumentEnvelope(editor.getJSON(), limits);
+}
 
 /** Expose the stable host-control contract shared by editor surfaces. */
 export function useEditorHandle(
@@ -39,6 +62,20 @@ export function useEditorHandle(
       },
       getSnapshot: () =>
         createEditorDocumentSnapshot(editor, modeRef.current),
+      getDocumentEnvelope: (limits) =>
+        editor ? createCurrentDocumentEnvelope(editor, limits) : null,
+      getDocumentEnvelopeJson: (limits) =>
+        editor
+          ? serializeDocumentEnvelope(
+              createCurrentDocumentEnvelope(editor, limits),
+            )
+          : '',
+      getDocumentEnvelopeBytes: (limits) =>
+        editor
+          ? encodeDocumentEnvelope(
+              createCurrentDocumentEnvelope(editor, limits),
+            )
+          : new Uint8Array(),
       setValue: (next: string) => {
         if (!editor) return;
         editor.commands.setContent(
@@ -46,6 +83,18 @@ export function useEditorHandle(
           false,
         );
       },
+      validateDocumentEnvelope: (source, limits) =>
+        editor
+          ? validateDocumentEnvelopeForEditor(editor, source, limits)
+          : false,
+      validateDocumentEnvelopeBytes: (source, limits) =>
+        editor
+          ? validateDocumentEnvelopeBytesForEditor(editor, source, limits)
+          : false,
+      restoreDocumentEnvelope: (source, limits) =>
+        editor ? restoreDocumentEnvelope(editor, source, limits) : null,
+      restoreDocumentEnvelopeBytes: (source, limits) =>
+        editor ? restoreDocumentEnvelopeBytes(editor, source, limits) : null,
       validateDocumentJson: (documentJson) =>
         editor ? validateDocumentJson(editor, documentJson) : false,
       setDocumentJson: (documentJson) => {
