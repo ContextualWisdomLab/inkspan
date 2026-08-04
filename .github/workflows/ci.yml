@@ -83,10 +83,7 @@ jobs:
           PY
 
   finalize-revision-evidence:
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.head_ref == 'feat/revision-evidence-capture' &&
-      github.repository == 'ContextualWisdomLab/inkspan'
+    if: ${{ github.event_name == 'pull_request' && github.head_ref == 'feat/revision-evidence-capture' && github.repository == 'ContextualWisdomLab/inkspan' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -110,35 +107,38 @@ jobs:
               raise SystemExit('CHANGELOG Unreleased marker is missing')
           release_heading = '## [0.5.25] — 2026-08-04'
           if release_heading not in changelog_text:
-              release_section = '''
-
-## [0.5.25] — 2026-08-04
-
-### Added
-- `CwlEditorHandle.getDocumentEnvelopeRevisionEvidence()` for capturing one frozen versioned envelope together with the exact SHA-256 revision derived from that same capture
-- Public `CwlEditorDocumentRevisionEvidence` contract for standalone and provider-neutral collaborative editor surfaces
-
-### Changed
-- Package version **0.5.25**
-- Imperative persistence guidance now directs autosave, AI, template, and review workflows to capture revision-envelope evidence in one call
-
-### Reliability
-- Asynchronous hashing can no longer cause a host to pair a separately captured envelope with a revision from a different editor state
-- A document change while hashing leaves the returned evidence pair stable and internally consistent without rereading the editor
-
-### Performance
-- Evidence capture creates one frozen envelope and hashes its canonical bytes; it adds no second editor read, document traversal, clone, parser pass, schema reconstruction, or provider call
-
-### Security
-- Captured envelopes contain the full client-controlled document and inherit host authorization, encryption, redaction, retention, residency, and audit requirements
-- Revision evidence remains an equality validator rather than authorization, tenant membership, cryptographic authenticity, or proof of durable persistence; hosts retain authenticated atomic RFC 9110 `If-Match`
-
-### Tests
-- Added lifecycle fallback, asynchronous editor-movement, exact pairing, freezing, strict packed TypeScript declaration, and repository-wide coverage verification
-
-### Documentation
-- Expanded imperative persistence guidance with an atomic autosave base example, local race semantics, privacy handling, and CWL/naruon ownership boundaries
-'''
+              release_lines = [
+                  '',
+                  '',
+                  release_heading,
+                  '',
+                  '### Added',
+                  '- `CwlEditorHandle.getDocumentEnvelopeRevisionEvidence()` for capturing one frozen versioned envelope together with the exact SHA-256 revision derived from that same capture',
+                  '- Public `CwlEditorDocumentRevisionEvidence` contract for standalone and provider-neutral collaborative editor surfaces',
+                  '',
+                  '### Changed',
+                  '- Package version **0.5.25**',
+                  '- Imperative persistence guidance now directs autosave, AI, template, and review workflows to capture revision-envelope evidence in one call',
+                  '',
+                  '### Reliability',
+                  '- Asynchronous hashing can no longer cause a host to pair a separately captured envelope with a revision from a different editor state',
+                  '- A document change while hashing leaves the returned evidence pair stable and internally consistent without rereading the editor',
+                  '',
+                  '### Performance',
+                  '- Evidence capture creates one frozen envelope and hashes its canonical bytes; it adds no second editor read, document traversal, clone, parser pass, schema reconstruction, or provider call',
+                  '',
+                  '### Security',
+                  '- Captured envelopes contain the full client-controlled document and inherit host authorization, encryption, redaction, retention, residency, and audit requirements',
+                  '- Revision evidence remains an equality validator rather than authorization, tenant membership, cryptographic authenticity, or proof of durable persistence; hosts retain authenticated atomic RFC 9110 `If-Match`',
+                  '',
+                  '### Tests',
+                  '- Added lifecycle fallback, asynchronous editor-movement, exact pairing, freezing, strict packed TypeScript declaration, and repository-wide coverage verification',
+                  '',
+                  '### Documentation',
+                  '- Expanded imperative persistence guidance with an atomic autosave base example, local race semantics, privacy handling, and CWL/naruon ownership boundaries',
+                  '',
+              ]
+              release_section = '\n'.join(release_lines)
               changelog.write_text(
                   changelog_text.replace(marker, marker + release_section, 1),
                   encoding='utf-8',
@@ -151,32 +151,35 @@ jobs:
               raise SystemExit('README revision-guarded restore marker is missing')
           capture_heading = '### Atomic revision-envelope capture'
           if capture_heading not in readme_text:
-              capture_section = '''### Atomic revision-envelope capture
-
-Autosave, AI, template, and review operations should capture their document and
-strong revision in one call so asynchronous SHA-256 hashing cannot pair values
-from different editor states:
-
-```tsx
-const captured =
-  await editorRef.current?.getDocumentEnvelopeRevisionEvidence();
-
-if (captured) {
-  startOperation({
-    envelope: captured.envelope,
-    expectedStrongEntityTag: captured.revision.strongEntityTag,
-  });
-}
-```
-
-The returned `CwlEditorDocumentRevisionEvidence` is frozen and derived from one
-frozen envelope without a second editor read. It is local equality evidence, not
-a signature, authorization decision, tenant identifier, or durable commit.
-Hosts retain authenticated atomic RFC 9110 `If-Match`, persistence, encryption,
-retention, redaction, and audit policy. See
-[`docs/imperative-envelope-persistence.md`](docs/imperative-envelope-persistence.md).
-
-'''
+              capture_lines = [
+                  capture_heading,
+                  '',
+                  'Autosave, AI, template, and review operations should capture their document and',
+                  'strong revision in one call so asynchronous SHA-256 hashing cannot pair values',
+                  'from different editor states:',
+                  '',
+                  '```tsx',
+                  'const captured =',
+                  '  await editorRef.current?.getDocumentEnvelopeRevisionEvidence();',
+                  '',
+                  'if (captured) {',
+                  '  startOperation({',
+                  '    envelope: captured.envelope,',
+                  '    expectedStrongEntityTag: captured.revision.strongEntityTag,',
+                  '  });',
+                  '}',
+                  '```',
+                  '',
+                  'The returned `CwlEditorDocumentRevisionEvidence` is frozen and derived from one',
+                  'frozen envelope without a second editor read. It is local equality evidence, not',
+                  'a signature, authorization decision, tenant identifier, or durable commit.',
+                  'Hosts retain authenticated atomic RFC 9110 `If-Match`, persistence, encryption,',
+                  'retention, redaction, and audit policy. See',
+                  '[`docs/imperative-envelope-persistence.md`](docs/imperative-envelope-persistence.md).',
+                  '',
+                  '',
+              ]
+              capture_section = '\n'.join(capture_lines)
               readme.write_text(
                   readme_text.replace(
                       readme_marker,
@@ -187,10 +190,9 @@ retention, redaction, and audit policy. See
               )
           PY
           git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
-          rm -f .github/workflows/prepare-revision-evidence.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add CHANGELOG.md README.md .github/workflows/ci.yml .github/workflows/prepare-revision-evidence.yml
+          git add CHANGELOG.md README.md .github/workflows/ci.yml
           git diff --cached --check
           git commit -m 'docs: finalize atomic revision evidence release'
           git push origin HEAD:feat/revision-evidence-capture
