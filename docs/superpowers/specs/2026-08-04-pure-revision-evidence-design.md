@@ -7,9 +7,11 @@
 
 Inkspan 0.5.25 can atomically capture a current editor envelope and its matching SHA-256 revision through `CwlEditorHandle`. Framework-independent persistence, migration, server, worker, and queue consumers still have to parse an object/JSON or strict UTF-8 source separately from revision generation when they need to retain the exact normalized payload that was hashed.
 
-Add pure functions that return the existing frozen `CwlEditorDocumentRevisionEvidence` contract from object/JSON and strict UTF-8 inputs. This completes one provider-neutral evidence surface across React editors, Node/server code, workers, storage adapters, migration jobs, CWL infrastructure, and naruon modules.
+Add pure functions that return a frozen revision-envelope evidence contract from object/JSON and strict UTF-8 inputs. Publish those functions through an explicit framework-free package subpath while preserving the root exports for compatibility. This completes one provider-neutral evidence capability across React editors, Node/server code, workers, storage adapters, migration jobs, CWL infrastructure, and naruon modules without making non-editor consumers evaluate the editor dependency graph.
 
 ## Public API
+
+Root compatibility surface:
 
 ```ts
 export function createDocumentEnvelopeRevisionEvidence(
@@ -25,19 +27,38 @@ export function createDocumentEnvelopeRevisionEvidenceBytes(
 ): Promise<CwlEditorDocumentRevisionEvidence>;
 ```
 
-The existing `CwlEditorDocumentRevisionEvidence` type remains the shared contract. Existing revision-only and imperative APIs remain source-compatible.
+Preferred pure-consumer surface:
+
+```ts
+import {
+  createDocumentEnvelopeRevisionEvidence,
+  createDocumentEnvelopeRevisionEvidenceBytes,
+} from '@contextualwisdomlab/cwl-editor/revision-evidence';
+```
+
+The dedicated subpath exposes Inkspan-owned recursive JSON, envelope, limit,
+digest-provider, revision, evidence, and redacted error contracts. Existing
+revision-only and imperative APIs remain source-compatible.
 
 ## Architecture
 
-Implement pure evidence creation in `documentRevisionEvidence.ts`, beside the public evidence contract and imperative handle augmentation:
+Implement pure evidence creation in `documentRevisionEvidence.ts` and reuse it
+from both the root editor surface and a dedicated `revision-evidence` facade:
 
 1. Parse object/JSON through `parseDocumentEnvelope()` or bytes through `parseDocumentEnvelopeBytes()`.
 2. Retain the exact deeply frozen normalized envelope returned by that boundary.
 3. Derive its revision through the existing package-internal `createValidatedDocumentEnvelopeRevision()` helper.
 4. Freeze and return `{ envelope, revision }`.
 5. Expose a package-internal validated-envelope helper so the imperative handle uses the same pairing implementation and no longer carries a local duplicate helper.
+6. Add `src/revision-evidence/index.ts` with explicit provider-neutral declarations and wrappers around the shared runtime implementation.
+7. Bundle that entry as ESM and CommonJS without externalizing React, TipTap, ProseMirror, Yjs, or host libraries. The pure internal type-only TipTap reference is erased before bundling.
+8. Publish `./revision-evidence` through package exports while retaining root exports for compatibility.
 
-This avoids circular imports: revision generation remains in `documentEnvelopeRevision.ts`; evidence creation depends on it, not vice versa.
+The facade uses explicit local public signatures, so declaration emission does
+not pull the root editor's React or TipTap types into server and worker projects.
+Runtime error constructors are aliased with explicit standalone constructor
+contracts, preserving exact `instanceof` identity across the root and pure
+entrypoints without leaking framework declarations.
 
 ## Invariants
 
@@ -48,13 +69,19 @@ This avoids circular imports: revision generation remains in `documentEnvelopeRe
 - One digest-provider call is made per evidence operation.
 - Existing duplicate-name, strict UTF-8, resource-limit, canonicalization, provider-brand, and redacted-error guarantees remain authoritative.
 - The imperative path continues to read the editor once and uses the shared validated-envelope helper.
-- No React, TipTap, transport, persistence, database, credential, or environment-variable dependency is added to pure consumers.
+- The `revision-evidence` runtime and declarations load with only the packed package present; no React, TipTap, ProseMirror, Yjs, transport, persistence, database, credential, or environment-variable dependency is required.
+- The root package remains the editor surface; the new subpath is the preferred MSA/server/worker boundary.
 
 ## Security and privacy
 
 Evidence envelopes contain complete client-controlled documents, including text, accepted links, inline image payloads, alternative text, and extension attributes. They must not be placed in ordinary logs, metric labels, analytics events, exception messages, public URLs, or compact revision metadata.
 
 The revision is an equality validator, not a signature, authorization token, tenant identifier, or durable-commit receipt. CWL and naruon hosts retain authenticated atomic RFC 9110 `If-Match`, tenant isolation, encryption, signing, retention, regional residency, redaction, audit, and retry policy.
+
+The standalone build is not a privilege boundary. It removes unnecessary editor
+runtime coupling and accidental browser initialization from service code, but
+hosts still own authorization, credentials, tenancy, persistence, migration,
+retention, and model-use policy.
 
 ## Standards basis
 
@@ -70,7 +97,10 @@ Web Cryptography Level 2 was a First Public Working Draft as of 2026-08-04. It i
 - A fixed canonical-envelope vector is checked against a real SHA-256 implementation and a precomputed digest.
 - Invalid source, byte, resource, canonicalization, and provider paths retain existing typed redacted failures through composition.
 - Imperative evidence continues to pass asynchronous movement and lifecycle tests through the shared helper.
-- Packed ESM, CommonJS, and strict TypeScript consumers expose both pure functions and the evidence type.
+- The package manifest contains ESM, CommonJS, and declaration targets for `./revision-evidence`.
+- The exact npm tarball is extracted under an operating-system temporary consumer outside the repository, with no dependency installation and no repository-ancestor module fallback.
+- Packed ESM and CommonJS consumers execute real object and byte evidence calls while React and TipTap are absent.
+- A strict TypeScript consumer compiles against the packed standalone declarations without React, TipTap, or editor declaration packages.
 - TypeScript production coverage remains 100%; Office Python 3.11/3.14 branch and shipped-symbol docstring coverage remain 100%.
 - SAST, Security Scan, CodeRabbit, exact-head, and unresolved-review-thread gates pass.
 
