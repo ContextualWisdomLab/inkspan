@@ -149,6 +149,20 @@ describe('document envelope revision tags', () => {
       createDocumentEnvelopeRevision(createDocumentEnvelope(DOCUMENT_JSON)),
     ).rejects.toThrow('digest provider is unavailable');
 
+    vi.stubGlobal('crypto', {
+      get subtle() {
+        throw new Error('platform-secret-value');
+      },
+    });
+    await expect(
+      createDocumentEnvelopeRevision(createDocumentEnvelope(DOCUMENT_JSON)),
+    ).rejects.toThrow('digest provider is unavailable');
+    try {
+      await createDocumentEnvelopeRevision(createDocumentEnvelope(DOCUMENT_JSON));
+    } catch (error) {
+      expect(String(error)).not.toContain('platform-secret-value');
+    }
+
     const rejectedProvider: DocumentEnvelopeDigestProvider = {
       digest: async () => {
         throw new Error('tenant-secret-value');
