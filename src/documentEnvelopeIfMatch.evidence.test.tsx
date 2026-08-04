@@ -211,6 +211,58 @@ describe('atomic revision-envelope conflict evidence', () => {
     expect(handle.getDocumentEnvelope()).toEqual(appliedEnvelope);
   });
 
+  it('stops before the resulting digest when source preparation changes the editor', async () => {
+    const handle = await renderEvidenceEditor();
+    const editor = handle.getEditor()!;
+    const previousEnvelope = handle.getDocumentEnvelope()!;
+    const previousRevision = await createDocumentEnvelopeRevision(
+      previousEnvelope,
+      undefined,
+      DIGEST_PROVIDER,
+    );
+    const incomingEnvelope = createParagraphEnvelope('Must remain unapplied');
+    let sourceTrapInvoked = false;
+    const reentrantSource = new Proxy(incomingEnvelope, {
+      ownKeys(target) {
+        if (!sourceTrapInvoked) {
+          sourceTrapInvoked = true;
+          editor.commands.setContent(
+            '<p>Newer document from source preparation</p>',
+            false,
+          );
+        }
+        return Reflect.ownKeys(target);
+      },
+    });
+    const digestProvider: DocumentEnvelopeDigestProvider = {
+      digest: vi.fn(async (_algorithm, source) =>
+        createDeterministicDigest(source),
+      ),
+    };
+    let result!: CwlEditorIfMatchRestoreResult;
+
+    await act(async () => {
+      result = await restoreDocumentEnvelopeIfMatch(
+        editor,
+        previousRevision.strongEntityTag,
+        reentrantSource,
+        undefined,
+        digestProvider,
+      );
+    });
+
+    expect(result).toEqual({
+      status: 'conflict',
+      currentRevision: null,
+      currentEnvelope: null,
+    });
+    expect(sourceTrapInvoked).toBe(true);
+    expect(digestProvider.digest).toHaveBeenCalledTimes(1);
+    expect(handle.getMarkdown()).toBe(
+      'Newer document from source preparation',
+    );
+  });
+
   it('does not apply a prepared envelope when the editor moves while its revision hashes', async () => {
     const handle = await renderEvidenceEditor();
     const editor = handle.getEditor()!;
