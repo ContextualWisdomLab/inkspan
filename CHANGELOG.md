@@ -4,6 +4,30 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.21] — 2026-08-04
+
+### Added
+- `CwlEditorHandle.getDocumentEnvelope()`, `getDocumentEnvelopeJson()`, and `getDocumentEnvelopeBytes()` for one-call lossless export from the current active editor revision
+- `CwlEditorHandle.validateDocumentEnvelope()`, `validateDocumentEnvelopeBytes()`, `restoreDocumentEnvelope()`, and `restoreDocumentEnvelopeBytes()` for host-friendly non-mutating preflight and atomic import
+
+### Changed
+- Package version **0.5.21**
+- Standalone and provider-neutral collaborative editor refs now expose the complete object, canonical JSON, and strict UTF-8 persistence round trip without requiring hosts to reach through `getEditor()` or manually compose lower-level functions
+
+### Reliability
+- Pre-hydration and post-destruction handles return deterministic empty fallbacks and never attempt document mutation
+- Valid restore still performs exactly one callback-suppressed editor replacement only after envelope resource checks and complete active-schema reconstruction succeed
+
+### Security
+- Imperative convenience methods preserve the existing redacted typed failures, duplicate-name rejection, resource ceilings, strict UTF-8 decoding, and hostile-object defenses
+- CWL and naruon hosts retain authorization, tenant isolation, migration, optimistic concurrency, transport, signing, encryption, retention, and audit policy
+
+### Tests
+- Added active-editor object/JSON/byte export, valid preflight, callback-suppressed restore, incompatible-schema atomicity, byte restore, custom-limit, and empty-handle coverage under the repository-wide 100% TypeScript coverage gate
+
+### Documentation
+- Added `docs/imperative-envelope-persistence.md` with complete host integration examples, lifecycle behavior, collaboration authorization, and modular MSA boundaries
+
 ## [0.5.20] — 2026-08-04
 
 ### Added

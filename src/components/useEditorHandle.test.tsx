@@ -40,6 +40,13 @@ describe('useEditorHandle', () => {
       isEmpty: true,
     });
     expect(Object.isFrozen(handle.getSnapshot())).toBe(true);
+    expect(handle.getDocumentEnvelope()).toBeNull();
+    expect(handle.getDocumentEnvelopeJson()).toBe('');
+    expect(handle.getDocumentEnvelopeBytes()).toEqual(new Uint8Array());
+    expect(handle.validateDocumentEnvelope({})).toBe(false);
+    expect(handle.validateDocumentEnvelopeBytes(new Uint8Array())).toBe(false);
+    expect(handle.restoreDocumentEnvelope({})).toBeNull();
+    expect(handle.restoreDocumentEnvelopeBytes(new Uint8Array())).toBeNull();
     expect(() => handle.setValue('ignored')).not.toThrow();
     expect(
       handle.validateDocumentJson({ type: 'doc', content: [] }),
