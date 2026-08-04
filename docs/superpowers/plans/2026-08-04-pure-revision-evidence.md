@@ -4,7 +4,7 @@
 
 **Goal:** Add framework-independent object/JSON and strict UTF-8 functions that return one frozen normalized document envelope together with the SHA-256 revision derived from that exact payload.
 
-**Architecture:** Extend `documentRevisionEvidence.ts` with object, byte, and validated-envelope evidence helpers. Reuse the validated helper from the shared imperative editor handle. Export the pure functions from the root package and verify the real packed npm artifact through isolated ESM, CommonJS, and strict TypeScript consumers.
+**Architecture:** Extend `documentRevisionEvidence.ts` with object, byte, and validated-envelope evidence helpers. Reuse the validated helper from the shared imperative editor handle. Preserve root exports for compatibility and publish an explicit standalone `revision-evidence` ESM/CommonJS/declaration subpath for server, worker, migration, queue, storage, CWL, and naruon consumers. Verify the real packed npm artifact outside the repository with no React or TipTap dependency installation.
 
 **Tech Stack:** TypeScript 5.7, RFC 8785 canonical JSON, Web Cryptography-compatible SHA-256, Vitest 3, React 18/19, TipTap v2/ProseMirror.
 
@@ -44,20 +44,43 @@
 - [x] Confirm one editor read, stable asynchronous evidence, frozen results, and lifecycle `null` behavior remain covered.
 - [x] Run focused imperative tests.
 
-### Task 3: Complete commercial packaging and release metadata
+### Task 3: Publish a genuinely standalone pure-consumer boundary
 
 **Files:**
+- Create: `src/revision-evidence/index.ts`
+- Create: `src/revision-evidence/index.test.ts`
+- Create: `vite.revision-evidence.config.ts`
+- Modify: `package.json`
+- Modify: `tsconfig.json`
+
+- [x] Record the valid review finding that root-only exports force pure consumers through the React/TipTap editor entry graph.
+- [x] Add provider-neutral recursive JSON, envelope, limit, digest, revision, evidence, and redacted error declarations.
+- [x] Preserve exact runtime error constructor identity without leaking editor declarations.
+- [x] Wrap the shared object and byte evidence implementation without duplicating parsing, canonicalization, or digest arithmetic.
+- [x] Add focused object, byte, freeze, single-provider-call, constant, and error-identity tests.
+- [x] Build dedicated bundled ESM and CommonJS artifacts with no framework externals.
+- [x] Publish `./revision-evidence` with a standalone declaration target.
+- [x] Keep root exports source-compatible for existing editor consumers.
+
+### Task 4: Complete commercial packaging and release metadata
+
+**Files:**
+- Modify: `scripts/verify-package.mjs`
 - Modify: `scripts/verify-revision-evidence-package.mjs`
 - Modify: `docs/document-revision-tags.md`
+- Modify: `docs/package-distribution.md`
+- Modify: `docs/doctoring/pure-revision-evidence.md`
 - Modify: `docs/superpowers/specs/2026-08-04-pure-revision-evidence-design.md`
 - Modify: `package.json`
 - Modify: `CHANGELOG.md`
 
-- [x] Create the exact npm tarball and install it with its exact declared dependency closure in an operating-system temporary consumer outside the repository tree.
-- [x] Verify ESM and CommonJS resolution points into the independently installed tarball artifact rather than the working-tree self-reference.
-- [x] Execute real object and byte evidence calls through packed ESM and CommonJS entrypoints.
-- [x] Compile a strict TypeScript consumer against the independently installed packed declarations without repository-ancestor dependency fallback.
-- [x] Document server, worker, migration, autosave, AI, compare/merge/fork, privacy, standards, and CWL/naruon boundaries.
+- [x] Require the standalone ESM, CommonJS, and declaration files in the npm manifest gate.
+- [x] Create the exact npm tarball and extract only that package in an operating-system temporary consumer outside the repository tree.
+- [x] Leave React, TipTap, and repository ancestor dependencies unavailable so accidental imports fail closed.
+- [x] Verify ESM and CommonJS resolution points into the extracted tarball artifact rather than the working-tree self-reference.
+- [x] Execute real object and byte evidence calls through the packed standalone subpath.
+- [x] Compile a strict TypeScript consumer against the packed standalone declarations without framework types or repository-ancestor fallback.
+- [x] Document server, worker, migration, autosave, AI, compare/merge/fork, privacy, standards, package isolation, and CWL/naruon boundaries.
 - [x] Distinguish the stable 2017 Web Cryptography Recommendation from draft Level 2 work.
 - [x] Bump version and add the 0.5.26 CHANGELOG entry.
 - [ ] Run complete CI, package, demo, Office, SAST, Security Scan, CodeRabbit, exact-head, and unresolved-thread gates.
