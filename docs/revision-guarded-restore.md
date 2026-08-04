@@ -1,13 +1,17 @@
 # Revision-guarded document restore
 
-Inkspan 0.5.23 adds a local optimistic-concurrency boundary for delayed
-autosave, AI, template, and review operations. A validated versioned envelope
-can replace the active editor document only when the editor still matches an
-expected Inkspan SHA-256 strong entity tag.
+Inkspan 0.5.24 adds atomic revision-envelope evidence to the local
+optimistic-concurrency boundary introduced in 0.5.23 for delayed autosave, AI,
+template, and review operations. A validated versioned envelope can replace the
+active editor document only when the editor still matches an expected Inkspan
+SHA-256 strong entity tag.
 
 The feature prevents a stale asynchronous result from silently replacing newer
-standalone or Yjs-backed content. It complements—but does not replace—the
-server-side atomic `If-Match` compare-and-swap required for durable persistence.
+standalone or Yjs-backed content. Every non-null revision returned by a guarded
+restore is now paired with the exact frozen envelope from which that revision
+was derived, so hosts do not need a second editor read that could race with a
+later edit. It complements—but does not replace—the server-side atomic
+`If-Match` compare-and-swap required for durable persistence.
 
 ## Pure API
 
@@ -26,7 +30,8 @@ const result: CwlEditorIfMatchRestoreResult =
 
 if (result.status === 'conflict') {
   // Do not discard either version. Ask the host conflict workflow to reload,
-  // compare, merge, fork, or retry from a fresh revision.
+  // compare, merge, fork, or retry from the returned atomic evidence or a
+  // fresh read when the evidence is null.
 }
 ```
 
@@ -46,26 +51,39 @@ provider is invoked.
 
 ## Result states
 
-A successful result is frozen and contains the stable previous revision and the
-validated envelope that was applied:
+A successful result is frozen and contains the stable previous revision, the
+exact frozen envelope from which that revision was computed, and the validated
+envelope that was applied:
 
 ```ts
 {
   status: 'restored',
   previousRevision,
+  previousEnvelope,
   envelope,
 }
 ```
 
-A stable mismatch is also a frozen value and includes the active revision that
-did not satisfy the precondition:
+`previousRevision` and `previousEnvelope` describe one captured editor document.
+Inkspan reuses the envelope already captured for hashing; it does not perform a
+second document clone, canonical serialization, digest, schema reconstruction,
+or editor read.
+
+A stable mismatch is also a frozen value and includes the active revision and
+its exact frozen source envelope:
 
 ```ts
 {
   status: 'conflict',
   currentRevision,
+  currentEnvelope,
 }
 ```
+
+`currentRevision` and `currentEnvelope` are atomic evidence for one stable
+captured document. A host can compare, merge, fork, audit, or prepare a retry
+without calling `getDocumentEnvelope()` afterward and accidentally pairing the
+revision with a newer document.
 
 When the document changes while asynchronous SHA-256 or synchronous untrusted-
 source preparation is in progress, or when the captured editor is destroyed,
@@ -75,15 +93,16 @@ Inkspan returns:
 {
   status: 'conflict',
   currentRevision: null,
+  currentEnvelope: null,
 }
 ```
 
-The captured validator is intentionally withheld because it is no longer the
-active document's validator. A destroyed editor is likewise no longer a valid
-mutation target. Inkspan does not parse the incoming source after detecting
-destruction, and an already-destroyed editor returns the null-revision conflict
-before hashing. The host can acquire the current editor instance and a fresh
-revision before retrying.
+Both fields are null in lockstep because no captured version can still be
+reported as the active editor document. A destroyed editor is likewise no
+longer a valid mutation target. Inkspan does not parse the incoming source after
+detecting destruction, and an already-destroyed editor returns the null-evidence
+conflict before hashing. The host must acquire the current editor instance and a
+fresh revision-envelope pair before retrying.
 
 Conflict is a normal result rather than an exception; malformed inputs,
 provider failures, resource violations, active-schema incompatibility, and
@@ -98,10 +117,12 @@ is raised.
 ## Race, lifecycle, and reentrancy boundary
 
 Inkspan captures the immutable ProseMirror `editor.state.doc` reference and
-hashes the versioned canonical envelope derived from that exact node. After the
-digest resolves, it verifies that the editor remains alive and the active
-document reference is unchanged. If the editor was destroyed or the document
-moved, the incoming source is not parsed and no mutation occurs.
+creates one detached, deeply frozen versioned envelope from that exact node. It
+hashes that envelope's canonical bytes and retains the same envelope object as
+result evidence. After the digest resolves, it verifies that the editor remains
+alive and the active document reference is unchanged. If the editor was
+destroyed or the document moved, the incoming source is not parsed and no
+mutation occurs.
 
 When the stable revision matches, Inkspan completes envelope parsing, resource
 checks, version routing, hostile-value detachment, and complete active-schema
@@ -109,7 +130,7 @@ reconstruction synchronously. Reflection over untrusted objects can invoke
 Proxy traps even though ordinary accessor properties are rejected without
 execution, so Inkspan checks editor lifecycle and active document identity again
 after source preparation. If reentrant code changed or destroyed the editor,
-the prepared source is discarded and a null-revision conflict is returned.
+the prepared source is discarded and a null-evidence conflict is returned.
 
 Only after both checks does Inkspan apply one
 `setContent(documentNode, false)` replacement without another asynchronous
@@ -141,13 +162,27 @@ const result = await editorRef.current?.restoreDocumentEnvelopeIfMatch(
 Use `restoreDocumentEnvelopeBytesIfMatch()` for strict UTF-8 bytes. Before
 client hydration, handle methods resolve to `null` without reading the source or
 invoking the digest provider. A conditional restore that was started on a live
-editor but outlives that editor resolves to a null-revision conflict rather than
+editor but outlives that editor resolves to a null-evidence conflict rather than
 mutating a destroyed instance or reporting stale success.
 
 Successful restore suppresses normal change callbacks, matching the existing
 atomic restore contract. The host should update its saved revision and dirty
 state after success rather than treating the loaded persistence record as a new
 user edit.
+
+## Conflict evidence privacy
+
+`previousEnvelope` and `currentEnvelope` contain the complete versioned document,
+including author text and accepted inline base64 images. They are returned for
+local conflict handling, not for indiscriminate telemetry. Hosts must apply the
+same tenant authorization, purpose limitation, retention, redaction, encryption,
+and audit controls used for the underlying document. Do not place envelopes in
+ordinary logs, analytics events, exception messages, revision identifiers, or
+public URLs.
+
+The paired revision remains an equality validator, not a signature,
+authorization token, tenant identifier, or proof that a durable write was
+committed.
 
 ## Collaboration and authorization
 
