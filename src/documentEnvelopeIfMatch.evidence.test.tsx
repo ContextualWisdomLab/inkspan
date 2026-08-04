@@ -8,6 +8,7 @@ import {
 } from './documentEnvelope.js';
 import {
   createDocumentEnvelopeRevision,
+  DocumentEnvelopeRevisionError,
   type CwlEditorDocumentRevision,
   type DocumentEnvelopeDigestProvider,
 } from './documentEnvelopeRevision.js';
@@ -157,7 +158,54 @@ describe('atomic revision-envelope conflict evidence', () => {
       result.previousRevision,
     );
     await expectMatchingEvidence(result.envelope, result.revision);
+    expect(handle.getDocumentEnvelope()).toEqual(result.envelope);
     expect(handle.getMarkdown()).toBe('Applied next revision');
+  });
+
+  it('derives resulting evidence from the active-schema document rather than ignored source fields', async () => {
+    const handle = await renderEvidenceEditor();
+    const editor = handle.getEditor()!;
+    const previousEnvelope = handle.getDocumentEnvelope()!;
+    const previousRevision = await createDocumentEnvelopeRevision(
+      previousEnvelope,
+      undefined,
+      DIGEST_PROVIDER,
+    );
+    const incomingEnvelope = createDocumentEnvelope({
+      type: 'doc',
+      ignoredRootField: 'not part of the editor document',
+      content: [
+        {
+          type: 'paragraph',
+          ignoredNodeField: 'not part of the editor node',
+          content: [{ type: 'text', text: 'Schema-normalized result' }],
+        },
+      ],
+    });
+    const appliedEnvelope = createParagraphEnvelope('Schema-normalized result');
+    const revision = await createDocumentEnvelopeRevision(
+      appliedEnvelope,
+      undefined,
+      DIGEST_PROVIDER,
+    );
+
+    const result = await restoreDocumentEnvelopeIfMatch(
+      editor,
+      previousRevision.strongEntityTag,
+      incomingEnvelope,
+      undefined,
+      DIGEST_PROVIDER,
+    );
+
+    expect(result).toEqual({
+      status: 'restored',
+      previousRevision,
+      previousEnvelope,
+      revision,
+      envelope: appliedEnvelope,
+    });
+    expect(result).not.toMatchObject({ envelope: incomingEnvelope });
+    expect(handle.getDocumentEnvelope()).toEqual(appliedEnvelope);
   });
 
   it('does not apply a prepared envelope when the editor moves while its revision hashes', async () => {
@@ -209,5 +257,37 @@ describe('atomic revision-envelope conflict evidence', () => {
     });
     expect(digestProvider.digest).toHaveBeenCalledTimes(2);
     expect(handle.getMarkdown()).toBe('Newer local document');
+  });
+
+  it('preserves the current document when the resulting digest fails', async () => {
+    const handle = await renderEvidenceEditor();
+    const editor = handle.getEditor()!;
+    const previousEnvelope = handle.getDocumentEnvelope()!;
+    const previousRevision = await createDocumentEnvelopeRevision(
+      previousEnvelope,
+      undefined,
+      DIGEST_PROVIDER,
+    );
+    let digestCallCount = 0;
+    const digestProvider: DocumentEnvelopeDigestProvider = {
+      digest: vi.fn(async (_algorithm, source) => {
+        digestCallCount += 1;
+        if (digestCallCount === 1) return createDeterministicDigest(source);
+        throw new Error('resulting-digest-failed');
+      }),
+    };
+
+    await expect(
+      restoreDocumentEnvelopeIfMatch(
+        editor,
+        previousRevision.strongEntityTag,
+        createParagraphEnvelope('Must not be applied after digest failure'),
+        undefined,
+        digestProvider,
+      ),
+    ).rejects.toThrow(DocumentEnvelopeRevisionError);
+    expect(digestProvider.digest).toHaveBeenCalledTimes(2);
+    expect(handle.getDocumentEnvelope()).toEqual(previousEnvelope);
+    expect(handle.getMarkdown()).toBe('Conflict evidence document');
   });
 });
