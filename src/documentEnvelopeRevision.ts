@@ -121,7 +121,14 @@ function resolveDigestProvider(
   }
   if (digestProvider !== undefined) return digestProvider;
 
-  const platformProvider = globalThis.crypto?.subtle;
+  let platformProvider: SubtleCrypto | undefined;
+  try {
+    platformProvider = globalThis.crypto?.subtle;
+  } catch {
+    throw new DocumentEnvelopeRevisionError(
+      'A SHA-256 digest provider is unavailable',
+    );
+  }
   if (platformProvider === undefined) {
     throw new DocumentEnvelopeRevisionError(
       'A SHA-256 digest provider is unavailable',
