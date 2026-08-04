@@ -53,10 +53,10 @@
 - Modify: `package.json`
 - Modify: `CHANGELOG.md`
 
-- [x] Create the exact npm tarball and extract it into an independent consumer package scope.
-- [x] Verify ESM and CommonJS resolution points into the extracted artifact rather than the working-tree self-reference.
+- [x] Create the exact npm tarball and install it with its exact declared dependency closure in an operating-system temporary consumer outside the repository tree.
+- [x] Verify ESM and CommonJS resolution points into the independently installed tarball artifact rather than the working-tree self-reference.
 - [x] Execute real object and byte evidence calls through packed ESM and CommonJS entrypoints.
-- [x] Compile strict TypeScript consumers against the packed declarations.
+- [x] Compile a strict TypeScript consumer against the independently installed packed declarations without repository-ancestor dependency fallback.
 - [x] Document server, worker, migration, autosave, AI, compare/merge/fork, privacy, standards, and CWL/naruon boundaries.
 - [x] Distinguish the stable 2017 Web Cryptography Recommendation from draft Level 2 work.
 - [x] Bump version and add the 0.5.26 CHANGELOG entry.
