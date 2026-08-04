@@ -34,19 +34,20 @@ export type CwlEditorIfMatchRestoreResult =
       readonly envelope: CwlEditorDocumentEnvelope;
     }
   | {
-      /** The current editor document no longer satisfies the precondition. */
+      /** A stable current document did not satisfy the precondition. */
       readonly status: 'conflict';
-      /**
-       * Stable observed revision, or `null` when the document moved while the
-       * digest or untrusted-source preparation was in progress, or when the
-       * editor was destroyed, and no captured tag is still current.
-       */
-      readonly currentRevision: CwlEditorDocumentRevision | null;
-      /**
-       * Exact frozen envelope paired with `currentRevision`, or `null` whenever
-       * no captured revision can still be reported as the active document.
-       */
-      readonly currentEnvelope: CwlEditorDocumentEnvelope | null;
+      /** Stable observed revision that did not match the expected validator. */
+      readonly currentRevision: CwlEditorDocumentRevision;
+      /** Exact frozen envelope from which `currentRevision` was derived. */
+      readonly currentEnvelope: CwlEditorDocumentEnvelope;
+    }
+  | {
+      /** No captured version can still be reported as the active document. */
+      readonly status: 'conflict';
+      /** Null because the editor moved or was destroyed during the operation. */
+      readonly currentRevision: null;
+      /** Null in lockstep with `currentRevision`; the host must read afresh. */
+      readonly currentEnvelope: null;
     };
 
 type DocumentEnvelopePreparation = (
