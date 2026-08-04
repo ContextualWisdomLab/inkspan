@@ -28,6 +28,8 @@ export type CwlEditorIfMatchRestoreResult =
       readonly status: 'restored';
       /** Stable revision that guarded the replacement. */
       readonly previousRevision: CwlEditorDocumentRevision;
+      /** Exact frozen envelope from which `previousRevision` was derived. */
+      readonly previousEnvelope: CwlEditorDocumentEnvelope;
       /** Detached validated envelope applied to the editor. */
       readonly envelope: CwlEditorDocumentEnvelope;
     }
@@ -40,6 +42,11 @@ export type CwlEditorIfMatchRestoreResult =
        * editor was destroyed, and no captured tag is still current.
        */
       readonly currentRevision: CwlEditorDocumentRevision | null;
+      /**
+       * Exact frozen envelope paired with `currentRevision`, or `null` whenever
+       * no captured revision can still be reported as the active document.
+       */
+      readonly currentEnvelope: CwlEditorDocumentEnvelope | null;
     };
 
 type DocumentEnvelopePreparation = (
@@ -121,6 +128,7 @@ async function restoreIfMatch(
     return Object.freeze({
       status: 'conflict',
       currentRevision,
+      currentEnvelope,
     });
   }
 
@@ -133,6 +141,7 @@ async function restoreIfMatch(
   return Object.freeze({
     status: 'restored',
     previousRevision: currentRevision,
+    previousEnvelope: currentEnvelope,
     envelope,
   });
 }
@@ -148,6 +157,7 @@ function createMovedDocumentConflict(): CwlEditorIfMatchRestoreResult {
   return Object.freeze({
     status: 'conflict',
     currentRevision: null,
+    currentEnvelope: null,
   });
 }
 
