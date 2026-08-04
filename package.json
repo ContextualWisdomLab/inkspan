@@ -48,7 +48,7 @@
       "require": "./dist/cwl-editor.cjs"
     },
     "./autosave": {
-      "types": "./dist/autosave/index.d.ts",
+      "types": "./dist/autosave/package.d.ts",
       "import": "./dist/cwl-autosave.js",
       "require": "./dist/cwl-autosave.cjs"
     },
