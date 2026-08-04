@@ -16,6 +16,7 @@ import {
   createIndependentConsumerManifest,
   createTypeScriptVerificationArguments,
   pruneTopLevelConsumerDependencies,
+  stageLockedConsumerDependencies,
   stageLockedNodeModules,
 } from './revision-evidence-consumer-config.mjs';
 
@@ -88,6 +89,54 @@ test('copies the locked pnpm dependency tree into the independent consumer', () 
     );
     const stagedPackage = realpathSync(join(targetNodeModules, 'example'));
     assert.equal(relative(targetNodeModules, stagedPackage).startsWith('..'), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('stages only the declared direct dependency closure', () => {
+  const root = mkdtempSync(join(tmpdir(), 'inkspan-node-modules-isolated-'));
+  try {
+    const sourceNodeModules = join(root, 'source', 'node_modules');
+    const targetNodeModules = join(root, 'consumer', 'node_modules');
+    const createLinkedPackage = (packageName, virtualStoreName) => {
+      const packageSegments = packageName.split('/');
+      const packageRoot = join(
+        sourceNodeModules,
+        '.pnpm',
+        virtualStoreName,
+        'node_modules',
+        ...packageSegments,
+      );
+      mkdirSync(packageRoot, { recursive: true });
+      writeFileSync(
+        join(packageRoot, 'package.json'),
+        `${JSON.stringify({ name: packageName, version: '1.0.0' })}\n`,
+        'utf8',
+      );
+      const topLevelPackage = join(sourceNodeModules, ...packageSegments);
+      mkdirSync(join(topLevelPackage, '..'), { recursive: true });
+      symlinkSync(
+        relative(join(topLevelPackage, '..'), packageRoot),
+        topLevelPackage,
+      );
+    };
+
+    createLinkedPackage('example', 'example@1.0.0');
+    createLinkedPackage('undeclared-package', 'undeclared-package@1.0.0');
+
+    stageLockedConsumerDependencies(
+      sourceNodeModules,
+      targetNodeModules,
+      ['example'],
+    );
+
+    assert.equal(existsSync(join(targetNodeModules, 'example')), true);
+    assert.equal(
+      existsSync(join(targetNodeModules, 'undeclared-package')),
+      false,
+    );
+    assert.equal(existsSync(join(targetNodeModules, '.pnpm')), true);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
