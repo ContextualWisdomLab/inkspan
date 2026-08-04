@@ -17,6 +17,7 @@ import {
 } from './documentEnvelopeRestore.js';
 
 const STRONG_DOCUMENT_ENTITY_TAG = /^"sha256-[0-9a-f]{64}"$/u;
+const STRONG_DOCUMENT_ENTITY_TAG_LENGTH = 73;
 
 /** Result of applying an envelope under a local strong-revision precondition. */
 export type CwlEditorIfMatchRestoreResult =
@@ -131,6 +132,7 @@ async function restoreIfMatch(
 function assertExpectedStrongEntityTag(value: unknown): asserts value is string {
   if (
     typeof value !== 'string' ||
+    value.length !== STRONG_DOCUMENT_ENTITY_TAG_LENGTH ||
     !STRONG_DOCUMENT_ENTITY_TAG.test(value)
   ) {
     throw new DocumentEnvelopeRevisionError(
