@@ -46,7 +46,7 @@ export async function createDocumentEnvelopeRevision(
   digestProvider?: DocumentEnvelopeDigestProvider | null,
 ): Promise<CwlEditorDocumentRevision> {
   const envelope = parseDocumentEnvelope(source, limits);
-  return digestCanonicalEnvelope(envelope, digestProvider);
+  return createValidatedDocumentEnvelopeRevision(envelope, digestProvider);
 }
 
 /**
@@ -63,12 +63,19 @@ export async function createDocumentEnvelopeRevisionBytes(
   digestProvider?: DocumentEnvelopeDigestProvider | null,
 ): Promise<CwlEditorDocumentRevision> {
   const envelope = parseDocumentEnvelopeBytes(source, limits);
-  return digestCanonicalEnvelope(envelope, digestProvider);
+  return createValidatedDocumentEnvelopeRevision(envelope, digestProvider);
 }
 
-async function digestCanonicalEnvelope(
+/**
+ * Hash an envelope already returned by Inkspan's strict envelope boundary.
+ *
+ * This package-internal integration helper prevents imperative editor exports
+ * from attempting to parse bare ProseMirror JSON as an envelope or cloning an
+ * already validated document a second time.
+ */
+export async function createValidatedDocumentEnvelopeRevision(
   envelope: CwlEditorDocumentEnvelope,
-  digestProvider: DocumentEnvelopeDigestProvider | null | undefined,
+  digestProvider?: DocumentEnvelopeDigestProvider | null,
 ): Promise<CwlEditorDocumentRevision> {
   const provider = resolveDigestProvider(digestProvider);
   const canonicalBytes = encodeValidatedDocumentEnvelope(envelope);
