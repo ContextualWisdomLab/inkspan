@@ -11,9 +11,10 @@ Inkspan already creates immutable document-envelope revision evidence and expose
 conflict-aware restore primitives, but every host still has to rebuild the same
 concurrency machinery around them. A naïve host can start overlapping writes,
 allow an older response to arrive after a newer one, retry a precondition
-failure indefinitely, or retain superseded document bodies in an unbounded
-queue. Those failure modes make autosave integration expensive to review and
-hard to defend during enterprise acquisition diligence.
+failure indefinitely, retain superseded document bodies in an unbounded queue,
+or accumulate one internal waiter for every repeated flush request. Those
+failure modes make autosave integration expensive to review and hard to defend
+during enterprise acquisition diligence.
 
 ## Selected boundary
 
@@ -22,16 +23,17 @@ Inkspan will publish a framework-independent
 single-flight queue. The queue accepts immutable
 `CwlEditorDocumentRevisionEvidence` values and delegates each durable write to a
 host callback. Inkspan owns deterministic local ordering, coalescing,
-deduplication, redacted failure handling, and lifecycle state. Hosts continue to
-own change detection and debounce policy, transport, authorization, tenant
-isolation, persistence, atomic RFC 9110 `If-Match` enforcement, credentials,
-migration, retention, audit storage, retry budgets, and conflict-resolution UX.
+deduplication, bounded active/pending/flush-waiter retention, redacted failure
+handling, and lifecycle state. Hosts continue to own change detection and
+debounce policy, transport, authorization, tenant isolation, persistence,
+atomic RFC 9110 `If-Match` enforcement, credentials, migration, retention,
+audit storage, retry budgets, and conflict-resolution UX.
 
 The queue intentionally contains no timer, network client, storage adapter,
 credential, tenant identifier, model call, editor component, React hook, TipTap,
-ProseMirror, or Yjs import. A timer-free contract is deterministic in SSR,
-workers, tests, and embedded hosts while still allowing each product to choose
-its own accessibility and interaction timing.
+ProseMirror, or Yjs runtime import. A timer-free contract is deterministic in
+SSR, workers, Node.js, tests, and embedded hosts while still allowing each
+product to choose its own accessibility and interaction timing.
 
 ## State and outcome contract
 
@@ -55,13 +57,15 @@ Each enqueue request resolves as `saved`, `unchanged`, `superseded`, `conflict`,
 or `closed`. Requests for the active or pending strong entity tag share the same
 outcome. A newly queued different revision supersedes only the not-yet-started
 pending revision. It never cancels or overlaps the active host write. At most one
-pending revision is retained, which bounds document-memory growth independently
-of edit frequency.
+active revision and one pending revision are retained, which bounds
+library-owned document-memory growth independently of edit frequency.
 
-`flush()` resolves when the queue is idle, blocked, or closed; it does not hang
-waiting for an explicit conflict decision. `close()` rejects new work, resolves
-not-yet-started work as closed, and allows an already-active host callback to
-finish. The queue never silently aborts host transport.
+Concurrent nonterminal `flush()` calls share one pending promise rather than
+appending one internal closure per call. That promise resolves when the queue is
+idle, blocked, or closed; it does not hang waiting for an explicit conflict
+decision. `close()` rejects new work, resolves not-yet-started work as closed,
+and allows an already-active host callback to finish. The queue never silently
+aborts host transport.
 
 ## Concurrency invariants
 
@@ -71,8 +75,11 @@ finish. The queue never silently aborts host transport.
 4. Same-revision callers observe one shared callback result.
 5. No save starts while conflict or failure state is blocked.
 6. No save starts after closing begins.
-7. Snapshot and request metadata contain no document body.
-8. Every public result and snapshot is frozen before crossing the library boundary.
+7. At most one active request, one pending request, and one internal pending
+   flush promise are retained.
+8. Snapshot and request metadata contain no document body.
+9. Every public result and snapshot is frozen before crossing the library
+   boundary.
 
 These invariants provide a linearizable local coordination surface without
 claiming distributed transaction semantics. Durable lost-update prevention
@@ -87,10 +94,12 @@ canonical documents and therefore remain tenant-confidential metadata. Hosts
 must not place revision tags, document bodies, callback exceptions, credentials,
 or conflict payloads in public URLs, metrics labels, or unauthenticated logs.
 
-The queue validates the evidence revision contract and host callback outcome
-fail-closed. It does not recompute the document digest because evidence creation
-already performs canonicalization and hashing; callers must enqueue evidence
-returned by Inkspan rather than constructing look-alike objects.
+The queue validates the public evidence and host callback-result shapes
+fail-closed without evaluating ordinary accessor properties. It does not
+recompute the document digest because evidence creation already performs
+canonicalization and hashing. Callers must enqueue evidence returned by Inkspan
+or evidence validated under an equivalent private boundary; a structurally
+similar object is not cryptographic proof of document integrity.
 
 No database object is introduced. Any host persistence object must use at least
 two descriptive words and `snake_case` by default, or valid CamelCase/PascalCase
@@ -98,18 +107,19 @@ where an ecosystem requires it.
 
 ## Verification plan
 
-The production module will have 100% statement and branch coverage. Deterministic
-unit and concurrency tests will cover same-revision coalescing, pending
-supersession, single-flight ordering, re-entrant enqueue, conflict pause and
-resume, callback failure and recovery, invalid outcomes, unchanged revisions,
-flush behavior, close during idle/saving/blocked states, frozen public values,
-invalid evidence, and bounded pending retention.
+The production module must retain 100% statement, branch, function, and line
+coverage. Deterministic unit and concurrency tests cover same-revision
+coalescing, pending supersession, single-flight ordering, re-entrant enqueue,
+conflict pause and resume, callback failure and recovery, invalid outcomes,
+unchanged revisions, shared flush promises, close during idle/saving/blocked
+states, frozen public values, invalid evidence, and bounded active/pending
+retention.
 
-A packed-artifact consumer will execute ESM and CommonJS imports and compile a
+A packed-artifact consumer executes ESM and CommonJS imports and compiles a
 strict TypeScript consumer from an operating-system temporary package tree. The
-consumer will contain the packed Inkspan artifact without React, React DOM,
-TipTap, ProseMirror, or Yjs, so any framework import from the autosave subpath
-fails before merge.
+consumer contains the packed Inkspan artifact without React, React DOM, TipTap,
+ProseMirror, or Yjs installed, so any framework runtime dependency from the
+autosave subpath fails before merge.
 
 ## References (APA 7th edition)
 
