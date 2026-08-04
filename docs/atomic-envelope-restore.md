@@ -36,7 +36,7 @@ The restore functions return the validated, detached, frozen envelope that was a
 
 The validation helpers run the same parsing and active-schema checks without mutating the editor. They return `false` for malformed, oversized, incompatible, or unsupported input instead of exposing source data through an error message. Use them for file-picker feedback, migration routing, import previews, and disabled/enabled UI state.
 
-Preflight is advisory rather than an authorization token: restore repeats the complete validation path against the supplied artifact immediately before mutation.
+Preflight is advisory rather than an authorization token: restore repeats the complete validation path against the supplied artifact immediately before mutation. The restore call, not an earlier boolean result, is the authoritative acceptance point.
 
 Restore functions preserve typed failure categories:
 
