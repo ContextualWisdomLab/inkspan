@@ -6,6 +6,9 @@ import {
   type DocumentEnvelopeLimits,
 } from './documentEnvelope.js';
 import {
+  createValidatedDocumentEnvelopeRevisionEvidence,
+} from './documentRevisionEvidence.js';
+import {
   createValidatedDocumentEnvelopeRevision,
   DocumentEnvelopeRevisionError,
   type CwlEditorDocumentRevision,
@@ -30,6 +33,8 @@ export type CwlEditorIfMatchRestoreResult =
       readonly previousRevision: CwlEditorDocumentRevision;
       /** Exact frozen envelope from which `previousRevision` was derived. */
       readonly previousEnvelope: CwlEditorDocumentEnvelope;
+      /** SHA-256 strong validator derived from the applied `envelope`. */
+      readonly revision: CwlEditorDocumentRevision;
       /** Detached validated envelope applied to the editor. */
       readonly envelope: CwlEditorDocumentEnvelope;
     }
@@ -108,8 +113,9 @@ export function restoreDocumentEnvelopeBytesIfMatch(
  * Execute one guarded restore using a caller-selected envelope preparation path.
  *
  * The function captures and hashes one current envelope, returns that same
- * frozen envelope beside every non-null revision, and performs no source
- * inspection when the expected validator already conflicts.
+ * frozen envelope beside every non-null revision, prepares and hashes the exact
+ * incoming envelope before mutation, and performs no source inspection when the
+ * expected validator already conflicts.
  */
 async function restoreIfMatch(
   editor: Editor,
@@ -146,16 +152,22 @@ async function restoreIfMatch(
   }
 
   const prepared = prepare(editor, source, limits);
+  const nextEvidence =
+    await createValidatedDocumentEnvelopeRevisionEvidence(
+      prepared.envelope,
+      digestProvider,
+    );
   if (hasEditorMoved(editor, capturedDocument)) {
     return createMovedDocumentConflict();
   }
 
-  const envelope = applyPreparedDocumentEnvelope(editor, prepared);
+  applyPreparedDocumentEnvelope(editor, prepared);
   return Object.freeze({
     status: 'restored',
     previousRevision: currentRevision,
     previousEnvelope: currentEnvelope,
-    envelope,
+    revision: nextEvidence.revision,
+    envelope: nextEvidence.envelope,
   });
 }
 
