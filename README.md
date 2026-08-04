@@ -147,6 +147,28 @@ editorRef.current?.focus();
 `insertValue` is mode-aware, inserts at the current selection, and triggers the
 normal `onChange` path without wiping the document.
 
+### Revision-guarded restore
+
+Delayed autosave, AI, template, and review results can be applied under the
+strong revision from which they started:
+
+```tsx
+const result = await editorRef.current?.restoreDocumentEnvelopeIfMatch(
+  expectedRevision.strongEntityTag,
+  incomingEnvelope,
+);
+
+if (result?.status === 'conflict') {
+  // Reload, compare, merge, fork, or retry from a fresh host-owned revision.
+}
+```
+
+Use `restoreDocumentEnvelopeBytesIfMatch()` for strict UTF-8 envelope bytes.
+Stable mismatch and document movement during asynchronous hashing never replace
+newer content. Durable services must still enforce authenticated, atomic RFC
+9110 `If-Match` within the write transaction. See
+[`docs/revision-guarded-restore.md`](docs/revision-guarded-restore.md).
+
 ### Main props
 
 | Prop | Type | Default | Notes |
