@@ -48,6 +48,12 @@ export {
   encodeDocumentEnvelope,
   serializeDocumentEnvelope,
 } from './documentEnvelopeCanonical.js';
+export {
+  restoreDocumentEnvelope,
+  restoreDocumentEnvelopeBytes,
+  validateDocumentEnvelopeBytesForEditor,
+  validateDocumentEnvelopeForEditor,
+} from './documentEnvelopeRestore.js';
 
 // Active-schema validation for atomic structural restore.
 export {
