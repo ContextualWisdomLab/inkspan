@@ -68,10 +68,16 @@ export interface CwlEditorDocumentEnvelope {
   readonly documentJson: CwlEditorDocumentJson;
 }
 
-/** SHA-256 provider compatible with the Web Cryptography `SubtleCrypto` API. */
+/** Portable byte source accepted by the injected digest-provider boundary. */
+export type DocumentEnvelopeDigestSource = ArrayBuffer | ArrayBufferView;
+
+/** SHA-256 provider compatible with Web Crypto and Node.js crypto adapters. */
 export interface DocumentEnvelopeDigestProvider {
   /** Produce a SHA-256 digest for one complete canonical byte sequence. */
-  digest(algorithm: 'SHA-256', source: BufferSource): Promise<ArrayBuffer>;
+  digest(
+    algorithm: 'SHA-256',
+    source: DocumentEnvelopeDigestSource,
+  ): Promise<ArrayBuffer>;
 }
 
 /** Portable strong validator derived from one canonical document envelope. */
@@ -108,7 +114,7 @@ export function createDocumentEnvelopeRevisionEvidence(
     source,
     limits,
     digestProvider,
-  ) as Promise<CwlEditorDocumentRevisionEvidence>;
+  ) as unknown as Promise<CwlEditorDocumentRevisionEvidence>;
 }
 
 /**
@@ -127,5 +133,5 @@ export function createDocumentEnvelopeRevisionEvidenceBytes(
     source,
     limits,
     digestProvider,
-  ) as Promise<CwlEditorDocumentRevisionEvidence>;
+  ) as unknown as Promise<CwlEditorDocumentRevisionEvidence>;
 }
