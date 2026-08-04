@@ -5,10 +5,10 @@ import {
 
 /** Opaque frozen envelope shape required by the framework-free autosave API. */
 export interface DocumentAutosaveEnvelope {
-  /** Stable schema identifier selected by the host and Inkspan envelope APIs. */
-  readonly schemaId: string;
-  /** Positive safe-integer version of the persisted envelope schema. */
-  readonly schemaVersion: number;
+  /** Exact active Inkspan document-envelope schema identifier. */
+  readonly schemaId: 'https://inkspan.io/schemas/document-envelope/v1';
+  /** Exact active Inkspan document-envelope schema version. */
+  readonly schemaVersion: 1;
   /** Frozen opaque document tree proposed for durable persistence. */
   readonly documentJson: Readonly<object>;
 }
@@ -32,7 +32,7 @@ export interface DocumentAutosaveRevision {
  * declaration graph.
  */
 export interface DocumentAutosaveRevisionEvidence {
-  /** Frozen versioned document envelope proposed for durable persistence. */
+  /** Frozen active-schema document envelope proposed for durable persistence. */
   readonly envelope: Readonly<DocumentAutosaveEnvelope>;
   /** Frozen strong revision metadata for the proposed envelope. */
   readonly revision: Readonly<DocumentAutosaveRevision>;
@@ -192,6 +192,9 @@ export interface DocumentAutosaveQueue {
   resume(): boolean;
   /**
    * Wait until the queue becomes idle, blocked, or closed.
+   *
+   * Concurrent nonterminal calls share one pending promise, bounding queue-owned
+   * waiter retention independently of host polling frequency.
    *
    * @returns The first terminal-for-flush immutable snapshot.
    */
