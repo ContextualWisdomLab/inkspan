@@ -9,7 +9,7 @@ import dts from 'vite-plugin-dts';
 export default defineConfig({
   plugins: [
     dts({
-      include: ['src/autosave/package.ts'],
+      include: ['src/autosave/package.ts', 'src/autosave/index.ts'],
       exclude: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'src/**/*.spec.ts'],
       rollupTypes: false,
       entryRoot: 'src',
