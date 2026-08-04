@@ -19,7 +19,7 @@ const EmptyEditorHandle = forwardRef<CwlEditorHandle>(function EmptyEditorHandle
 });
 
 describe('useEditorHandle', () => {
-  it('provides safe no-op and empty fallbacks before an editor exists', () => {
+  it('provides safe no-op and empty fallbacks before an editor exists', async () => {
     const editorRef = createRef<CwlEditorHandle>();
     render(<EmptyEditorHandle ref={editorRef} />);
     const handle = editorRef.current!;
@@ -43,6 +43,7 @@ describe('useEditorHandle', () => {
     expect(handle.getDocumentEnvelope()).toBeNull();
     expect(handle.getDocumentEnvelopeJson()).toBe('');
     expect(handle.getDocumentEnvelopeBytes()).toEqual(new Uint8Array());
+    await expect(handle.getDocumentEnvelopeRevision()).resolves.toBeNull();
     expect(handle.validateDocumentEnvelope({})).toBe(false);
     expect(handle.validateDocumentEnvelopeBytes(new Uint8Array())).toBe(false);
     expect(handle.restoreDocumentEnvelope({})).toBeNull();
