@@ -1,10 +1,11 @@
 # Imperative document-envelope persistence
 
-Inkspan 0.5.24 exposes the complete versioned persistence round trip, strong
-revision validation, revision-guarded restore, and atomic revision-envelope
-conflict evidence on `CwlEditorHandle`. Hosts do not need to reach through
-`getEditor()` or manually compose envelope, canonicalization, schema-validation,
-revision-digest, and restore functions for ordinary autosave and load workflows.
+Inkspan 0.5.25 exposes the complete versioned persistence round trip, strong
+revision validation, atomic revision-envelope capture, revision-guarded restore,
+and atomic revision-envelope conflict evidence on `CwlEditorHandle`. Hosts do
+not need to reach through `getEditor()` or manually compose envelope,
+canonicalization, schema-validation, revision-digest, and restore functions for
+ordinary autosave and load workflows.
 
 ## Export the current revision
 
@@ -17,7 +18,7 @@ const canonicalBytes = editorRef.current?.getDocumentEnvelopeBytes();
 const revision = await editorRef.current?.getDocumentEnvelopeRevision();
 ```
 
-All four methods read one current TipTap/ProseMirror document revision. The
+These methods read the active TipTap/ProseMirror document when invoked. The
 object envelope is detached and deeply frozen. JSON follows Inkspan's
 deterministic RFC 8785 representation, bytes are strict UTF-8 without a
 byte-order mark, and the revision contains a lowercase SHA-256 digest plus a
@@ -33,6 +34,47 @@ Before client hydration or after editor destruction, object export and revision
 export return `null`, JSON export returns `''`, and byte export returns an empty
 `Uint8Array`. These values are lifecycle fallbacks, not valid persisted
 documents. A host must not store them as a document revision.
+
+## Capture an autosave or operation base atomically
+
+Do not call `getDocumentEnvelope()` and `getDocumentEnvelopeRevision()`
+separately when the two values must describe the same editor state. Hashing is
+asynchronous, so the document can change between independent calls. Capture one
+atomic evidence pair instead:
+
+```tsx
+const captured =
+  await editorRef.current?.getDocumentEnvelopeRevisionEvidence(
+    limits,
+    digestProvider,
+  );
+
+if (captured) {
+  const { envelope, revision } = captured;
+  startAutosave({
+    body: envelope,
+    ifMatch: revision.strongEntityTag,
+  });
+}
+```
+
+Inkspan creates and deeply freezes one envelope, hashes the canonical bytes of
+that exact envelope, and returns a frozen `CwlEditorDocumentRevisionEvidence`.
+It does not reread the editor after the digest begins. A local edit that occurs
+while hashing therefore cannot pair an old revision with a newer envelope or a
+new revision with an older envelope.
+
+The pair is a client-side capture, not proof that the editor is still unchanged
+when the promise resolves and not proof of durable persistence. Delayed local
+application should use revision-guarded restore, while durable host writes must
+perform authenticated atomic `If-Match` comparison in the storage transaction.
+
+The envelope can contain the complete document, accepted links, inline image
+payloads, alternative text, and extension attributes. Apply the host's document
+and tenant authorization, encryption, redaction, retention, residency, and
+audit policy. Do not copy the envelope into ordinary telemetry or use the
+revision as a signature, bearer credential, tenant identifier, or authorization
+decision.
 
 ## Validate and restore
 
@@ -154,8 +196,9 @@ provider persistence, awareness, audit, and conflict UX.
 The convenience methods preserve all lower-level guarantees: redacted typed
 errors, duplicate-name rejection, configurable resource ceilings, strict UTF-8
 decoding, canonical serialization, active-schema validation, strong SHA-256
-revision generation, local revision preconditions, atomic revision-envelope
-evidence, and unchanged-document failure behavior.
+revision generation, atomic initial revision-envelope capture, local revision
+preconditions, atomic conflict evidence, and unchanged-document failure
+behavior.
 
 They do not replace gateway byte limits, decompression limits, timeouts,
 rate/concurrency controls, migration routing, tenant isolation, encryption,

@@ -30,6 +30,15 @@ function createParagraphDocument(text: string) {
   };
 }
 
+function createDeterministicDigest(source: BufferSource): ArrayBuffer {
+  const bytes = source as Uint8Array;
+  const digest = new Uint8Array(32);
+  for (let index = 0; index < bytes.byteLength; index += 1) {
+    digest[index % digest.byteLength] ^= bytes[index]!;
+  }
+  return digest.buffer;
+}
+
 describe('CwlEditor imperative envelope persistence', () => {
   it('exports the current revision as object, canonical JSON, bytes, and a strong validator', async () => {
     const editorRef = createRef<CwlEditorHandle>();
@@ -81,6 +90,67 @@ describe('CwlEditor imperative envelope persistence', () => {
     expect(revision?.strongEntityTag).toBe(
       `"sha256-${revision?.digestHex}"`,
     );
+  });
+
+  it('captures one frozen revision-envelope pair across asynchronous hashing', async () => {
+    const editorRef = createRef<CwlEditorHandle>();
+    render(
+      <CwlEditor
+        ref={editorRef}
+        mode="markdown"
+        defaultValue="Captured before hashing"
+      />,
+    );
+    await waitFor(() =>
+      expect(editorRef.current?.getEditor()).not.toBeNull(),
+    );
+
+    const handle = editorRef.current!;
+    let announceDigestStarted!: () => void;
+    const digestStarted = new Promise<void>((resolve) => {
+      announceDigestStarted = resolve;
+    });
+    let releaseDigest!: () => void;
+    const digestRelease = new Promise<void>((resolve) => {
+      releaseDigest = resolve;
+    });
+    const digestProvider: DocumentEnvelopeDigestProvider = {
+      digest: vi.fn(async (_algorithm, source) => {
+        announceDigestStarted();
+        await digestRelease;
+        return createDeterministicDigest(source);
+      }),
+    };
+
+    const evidencePromise = handle.getDocumentEnvelopeRevisionEvidence(
+      { maxJsonValues: 32 },
+      digestProvider,
+    );
+    await digestStarted;
+    act(() => {
+      handle.setValue('Newer document while hashing');
+    });
+    releaseDigest();
+
+    const evidence = await evidencePromise;
+    expect(evidence).not.toBeNull();
+    expect(Object.isFrozen(evidence)).toBe(true);
+    expect(Object.isFrozen(evidence!.envelope)).toBe(true);
+    expect(JSON.stringify(evidence!.envelope.documentJson)).toContain(
+      'Captured before hashing',
+    );
+    expect(JSON.stringify(handle.getDocumentEnvelope()!.documentJson)).toContain(
+      'Newer document while hashing',
+    );
+    const expectedRevision = await createDocumentEnvelopeRevision(
+      evidence!.envelope,
+      { maxJsonValues: 32 },
+      {
+        digest: async (_algorithm, source) =>
+          createDeterministicDigest(source),
+      },
+    );
+    expect(evidence!.revision).toEqual(expectedRevision);
   });
 
   it('preflights and atomically restores object and byte envelopes', async () => {

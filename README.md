@@ -147,6 +147,31 @@ editorRef.current?.focus();
 `insertValue` is mode-aware, inserts at the current selection, and triggers the
 normal `onChange` path without wiping the document.
 
+### Atomic revision-envelope capture
+
+Autosave, AI, template, and review operations should capture their document and
+strong revision in one call so asynchronous SHA-256 hashing cannot pair values
+from different editor states:
+
+```tsx
+const captured =
+  await editorRef.current?.getDocumentEnvelopeRevisionEvidence();
+
+if (captured) {
+  startOperation({
+    envelope: captured.envelope,
+    expectedStrongEntityTag: captured.revision.strongEntityTag,
+  });
+}
+```
+
+The returned `CwlEditorDocumentRevisionEvidence` is frozen and derived from one
+frozen envelope without a second editor read. It is local equality evidence, not
+a signature, authorization decision, tenant identifier, or durable commit.
+Hosts retain authenticated atomic RFC 9110 `If-Match`, persistence, encryption,
+retention, redaction, and audit policy. See
+[`docs/imperative-envelope-persistence.md`](docs/imperative-envelope-persistence.md).
+
 ### Revision-guarded restore
 
 Delayed autosave, AI, template, and review results can be applied under the
