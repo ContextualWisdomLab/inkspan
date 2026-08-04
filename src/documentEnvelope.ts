@@ -8,7 +8,42 @@ export const DOCUMENT_ENVELOPE_SCHEMA_ID =
 /** Current document-envelope schema version. */
 export const DOCUMENT_ENVELOPE_SCHEMA_VERSION = 1 as const;
 
-const MAX_DOCUMENT_NESTING_DEPTH = 128;
+/** Optional resource ceilings applied while inspecting an envelope. */
+export interface DocumentEnvelopeLimits {
+  /** Maximum raw JSON-text length measured in JavaScript UTF-16 code units. */
+  readonly maxJsonTextCodeUnits?: number;
+  /** Maximum total number of scalar and container values in `documentJson`. */
+  readonly maxJsonValues?: number;
+  /** Maximum length of any decoded string value or object name. */
+  readonly maxStringCodeUnits?: number;
+  /** Maximum nested object/array depth below the document root. */
+  readonly maxNestingDepth?: number;
+}
+
+interface ResolvedDocumentEnvelopeLimits {
+  readonly maxJsonTextCodeUnits: number;
+  readonly maxJsonValues: number;
+  readonly maxStringCodeUnits: number;
+  readonly maxNestingDepth: number;
+}
+
+/**
+ * Generous fail-closed defaults that bound pathological client input while
+ * preserving large, image-bearing commercial documents.
+ */
+export const DEFAULT_DOCUMENT_ENVELOPE_LIMITS = Object.freeze({
+  maxJsonTextCodeUnits: 64 * 1024 * 1024,
+  maxJsonValues: 1_000_000,
+  maxStringCodeUnits: 32 * 1024 * 1024,
+  maxNestingDepth: 128,
+}) satisfies Readonly<ResolvedDocumentEnvelopeLimits>;
+
+const DOCUMENT_ENVELOPE_LIMIT_FIELDS = new Set([
+  'maxJsonTextCodeUnits',
+  'maxJsonValues',
+  'maxStringCodeUnits',
+  'maxNestingDepth',
+]);
 const REDACTED_INSPECTION_ERROR =
   'Document envelope could not be inspected safely';
 
@@ -35,41 +70,42 @@ export class DocumentEnvelopeError extends TypeError {
  * Create a detached, deeply frozen, versioned persistence envelope.
  *
  * Input is treated as untrusted JSON-like data. Values that JSON cannot
- * represent losslessly, cycles, accessors, and pathological nesting are
- * rejected without exposing source values in public errors.
+ * represent losslessly, cycles, accessors, resource-limit violations, and
+ * pathological nesting are rejected without exposing source values in public
+ * errors.
  */
 export function createDocumentEnvelope(
   documentJson: unknown,
+  limits?: DocumentEnvelopeLimits,
 ): CwlEditorDocumentEnvelope {
-  return withRedactedInspectionErrors(() => {
-    const cloned = cloneJsonValue(
+  return withRedactedInspectionErrors(() =>
+    createDocumentEnvelopeWithLimits(
       documentJson,
-      0,
-      new WeakSet<object>(),
-    );
-    assertDocumentRoot(cloned);
-
-    return Object.freeze({
-      schemaId: DOCUMENT_ENVELOPE_SCHEMA_ID,
-      schemaVersion: DOCUMENT_ENVELOPE_SCHEMA_VERSION,
-      documentJson: cloned as Readonly<JSONContent>,
-    });
-  });
+      resolveDocumentEnvelopeLimits(limits),
+    ),
+  );
 }
 
 /**
  * Parse and validate an Inkspan document envelope from JSON text or a value.
  *
- * Unknown fields, duplicate JSON object names, and unsupported schema
- * identifiers or versions fail closed so hosts can route older envelopes
- * through an explicit migration layer.
+ * Unknown fields, duplicate JSON object names, unsupported schema identifiers
+ * or versions, and configured resource-limit violations fail closed so hosts
+ * can route older envelopes through an explicit migration layer.
  */
 export function parseDocumentEnvelope(
-  source: string | unknown,
+  source: unknown,
+  limits?: DocumentEnvelopeLimits,
 ): CwlEditorDocumentEnvelope {
   return withRedactedInspectionErrors(() => {
+    const resolvedLimits = resolveDocumentEnvelopeLimits(limits);
     let value: unknown = source;
     if (typeof source === 'string') {
+      if (source.length > resolvedLimits.maxJsonTextCodeUnits) {
+        throw new DocumentEnvelopeError(
+          'Document envelope JSON text exceeds the supported length',
+        );
+      }
       if (containsDuplicateJsonObjectNames(source)) {
         throw new DocumentEnvelopeError(
           'Document envelope JSON must not contain duplicate object names',
@@ -88,7 +124,12 @@ export function parseDocumentEnvelope(
       throw new DocumentEnvelopeError('Document envelope must be an object');
     }
 
-    const fields = readJsonObjectEntries(value);
+    const fields = readJsonObjectEntries(
+      value,
+      3,
+      resolvedLimits.maxStringCodeUnits,
+      'Document envelope fields do not match the supported schema',
+    );
     const fieldMap = new Map(fields);
     if (
       fields.length !== 3 ||
@@ -114,8 +155,95 @@ export function parseDocumentEnvelope(
       );
     }
 
-    return createDocumentEnvelope(fieldMap.get('documentJson'));
+    return createDocumentEnvelopeWithLimits(
+      fieldMap.get('documentJson'),
+      resolvedLimits,
+    );
   });
+}
+
+function createDocumentEnvelopeWithLimits(
+  documentJson: unknown,
+  limits: ResolvedDocumentEnvelopeLimits,
+): CwlEditorDocumentEnvelope {
+  const cloneState = { valueCount: 0, limits };
+  const cloned = cloneJsonValue(
+    documentJson,
+    0,
+    new WeakSet<object>(),
+    cloneState,
+  );
+  assertDocumentRoot(cloned);
+
+  return Object.freeze({
+    schemaId: DOCUMENT_ENVELOPE_SCHEMA_ID,
+    schemaVersion: DOCUMENT_ENVELOPE_SCHEMA_VERSION,
+    documentJson: cloned as Readonly<JSONContent>,
+  });
+}
+
+function resolveDocumentEnvelopeLimits(
+  overrides: DocumentEnvelopeLimits | undefined,
+): ResolvedDocumentEnvelopeLimits {
+  if (overrides === undefined) return DEFAULT_DOCUMENT_ENVELOPE_LIMITS;
+  if (!isPlainObject(overrides)) {
+    throw new DocumentEnvelopeError(
+      'Document envelope limits must be a plain configuration object',
+    );
+  }
+
+  const entries = readJsonObjectEntries(
+    overrides,
+    DOCUMENT_ENVELOPE_LIMIT_FIELDS.size,
+    Number.MAX_SAFE_INTEGER,
+    'Document envelope limits contain unsupported fields',
+  );
+  const values = new Map(entries);
+  for (const [field] of entries) {
+    if (!DOCUMENT_ENVELOPE_LIMIT_FIELDS.has(field)) {
+      throw new DocumentEnvelopeError(
+        'Document envelope limits contain unsupported fields',
+      );
+    }
+  }
+
+  return Object.freeze({
+    maxJsonTextCodeUnits: readPositiveSafeIntegerLimit(
+      values,
+      'maxJsonTextCodeUnits',
+      DEFAULT_DOCUMENT_ENVELOPE_LIMITS.maxJsonTextCodeUnits,
+    ),
+    maxJsonValues: readPositiveSafeIntegerLimit(
+      values,
+      'maxJsonValues',
+      DEFAULT_DOCUMENT_ENVELOPE_LIMITS.maxJsonValues,
+    ),
+    maxStringCodeUnits: readPositiveSafeIntegerLimit(
+      values,
+      'maxStringCodeUnits',
+      DEFAULT_DOCUMENT_ENVELOPE_LIMITS.maxStringCodeUnits,
+    ),
+    maxNestingDepth: readPositiveSafeIntegerLimit(
+      values,
+      'maxNestingDepth',
+      DEFAULT_DOCUMENT_ENVELOPE_LIMITS.maxNestingDepth,
+    ),
+  });
+}
+
+function readPositiveSafeIntegerLimit(
+  values: Map<string, unknown>,
+  field: string,
+  fallback: number,
+): number {
+  if (!values.has(field) || values.get(field) === undefined) return fallback;
+  const value = values.get(field);
+  if (!Number.isSafeInteger(value) || (value as number) < 1) {
+    throw new DocumentEnvelopeError(
+      'Document envelope limits must be positive safe integers',
+    );
+  }
+  return value as number;
 }
 
 function assertDocumentRoot(value: unknown): asserts value is JSONContent {
@@ -126,21 +254,31 @@ function assertDocumentRoot(value: unknown): asserts value is JSONContent {
   }
 }
 
+interface CloneState {
+  valueCount: number;
+  readonly limits: ResolvedDocumentEnvelopeLimits;
+}
+
 function cloneJsonValue(
   value: unknown,
   depth: number,
   active: WeakSet<object>,
+  state: CloneState,
 ): unknown {
-  if (depth > MAX_DOCUMENT_NESTING_DEPTH) {
+  state.valueCount += 1;
+  if (state.valueCount > state.limits.maxJsonValues) {
+    throw new DocumentEnvelopeError(
+      'Document envelope exceeds the supported JSON value count',
+    );
+  }
+  if (depth > state.limits.maxNestingDepth) {
     throw new DocumentEnvelopeError(
       'Document envelope exceeds the supported document nesting depth',
     );
   }
-  if (
-    value === null ||
-    typeof value === 'string' ||
-    typeof value === 'boolean'
-  ) {
+  if (value === null || typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    assertStringWithinLimit(value, state.limits.maxStringCodeUnits);
     return value;
   }
   if (typeof value === 'number') {
@@ -165,7 +303,7 @@ function cloneJsonValue(
   active.add(value);
   try {
     if (Array.isArray(value)) {
-      return cloneJsonArray(value, depth, active);
+      return cloneJsonArray(value, depth, active, state);
     }
     if (!isPlainObject(value)) {
       throw new DocumentEnvelopeError(
@@ -173,10 +311,17 @@ function cloneJsonValue(
       );
     }
 
+    const remainingValues = state.limits.maxJsonValues - state.valueCount;
+    const entries = readJsonObjectEntries(
+      value,
+      remainingValues,
+      state.limits.maxStringCodeUnits,
+      'Document envelope exceeds the supported JSON value count',
+    );
     const clone: Record<string, unknown> = {};
-    for (const [key, child] of readJsonObjectEntries(value)) {
+    for (const [key, child] of entries) {
       Object.defineProperty(clone, key, {
-        value: cloneJsonValue(child, depth + 1, active),
+        value: cloneJsonValue(child, depth + 1, active, state),
         enumerable: true,
         configurable: false,
         writable: false,
@@ -192,13 +337,27 @@ function cloneJsonArray(
   value: unknown[],
   depth: number,
   active: WeakSet<object>,
+  state: CloneState,
 ): readonly unknown[] {
-  const descriptors = Object.getOwnPropertyDescriptors(value) as unknown as Record<
-    PropertyKey,
-    PropertyDescriptor
-  >;
-  const length = descriptors.length.value as number;
-  if (Reflect.ownKeys(descriptors).length !== length + 1) {
+  const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+  if (
+    lengthDescriptor === undefined ||
+    !('value' in lengthDescriptor) ||
+    typeof lengthDescriptor.value !== 'number'
+  ) {
+    throw new DocumentEnvelopeError(
+      'Document envelope arrays must contain only dense JSON elements',
+    );
+  }
+  const length = lengthDescriptor.value;
+  if (length > state.limits.maxJsonValues - state.valueCount) {
+    throw new DocumentEnvelopeError(
+      'Document envelope exceeds the supported JSON value count',
+    );
+  }
+
+  const keys = Reflect.ownKeys(value);
+  if (keys.length !== length + 1) {
     throw new DocumentEnvelopeError(
       'Document envelope arrays must contain only dense JSON elements',
     );
@@ -206,7 +365,7 @@ function cloneJsonArray(
 
   const clone: unknown[] = [];
   for (let index = 0; index < length; index += 1) {
-    const descriptor = descriptors[String(index)];
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
     if (
       descriptor === undefined ||
       !descriptor.enumerable ||
@@ -216,24 +375,30 @@ function cloneJsonArray(
         'Document envelope arrays must contain only dense JSON elements',
       );
     }
-    clone.push(cloneJsonValue(descriptor.value, depth + 1, active));
+    clone.push(
+      cloneJsonValue(descriptor.value, depth + 1, active, state),
+    );
   }
   return Object.freeze(clone);
 }
 
 function readJsonObjectEntries(
   value: Record<string, unknown>,
+  maximumEntries: number,
+  maximumStringCodeUnits: number,
+  limitErrorMessage: string,
 ): Array<[string, unknown]> {
-  const descriptors = Object.getOwnPropertyDescriptors(value) as unknown as Record<
-    PropertyKey,
-    PropertyDescriptor
-  >;
-  const entries: Array<[string, unknown]> = [];
+  const keys = Reflect.ownKeys(value);
+  if (keys.length > maximumEntries) {
+    throw new DocumentEnvelopeError(limitErrorMessage);
+  }
 
-  for (const key of Reflect.ownKeys(descriptors)) {
-    const descriptor = descriptors[key];
+  const entries: Array<[string, unknown]> = [];
+  for (const key of keys) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (
       typeof key !== 'string' ||
+      descriptor === undefined ||
       !descriptor.enumerable ||
       !('value' in descriptor)
     ) {
@@ -241,10 +406,22 @@ function readJsonObjectEntries(
         'Document envelope objects must contain enumerable JSON data fields',
       );
     }
+    assertStringWithinLimit(key, maximumStringCodeUnits);
     entries.push([key, descriptor.value]);
   }
 
   return entries;
+}
+
+function assertStringWithinLimit(
+  value: string,
+  maximumStringCodeUnits: number,
+): void {
+  if (value.length > maximumStringCodeUnits) {
+    throw new DocumentEnvelopeError(
+      'Document envelope strings exceed the supported length',
+    );
+  }
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
