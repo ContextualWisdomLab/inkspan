@@ -38,6 +38,20 @@ describe('document envelope resource limits', () => {
     ).toEqual(envelope);
   });
 
+  it('keeps raw envelope wrapper values outside document ceilings', () => {
+    const envelope = createDocumentEnvelope(
+      { type: 'doc' },
+      { maxJsonValues: 2, maxNestingDepth: 1 },
+    );
+
+    expect(
+      parseDocumentEnvelope(JSON.stringify(envelope), {
+        maxJsonValues: 2,
+        maxNestingDepth: 1,
+      }),
+    ).toEqual(envelope);
+  });
+
   it('uses defaults for omitted and explicitly undefined overrides', () => {
     expect(
       createDocumentEnvelope(
@@ -66,22 +80,22 @@ describe('document envelope resource limits', () => {
   });
 
   it('enforces structural ceilings before materializing raw JSON text', () => {
-  const source = JSON.stringify({
-    schemaId: DOCUMENT_ENVELOPE_SCHEMA_ID,
-    schemaVersion: DOCUMENT_ENVELOPE_SCHEMA_VERSION,
-    documentJson: {
-      type: 'doc',
-      content: [{ type: 'paragraph' }],
-    },
-  });
+    const source = JSON.stringify({
+      schemaId: DOCUMENT_ENVELOPE_SCHEMA_ID,
+      schemaVersion: DOCUMENT_ENVELOPE_SCHEMA_VERSION,
+      documentJson: {
+        type: 'doc',
+        content: [{ type: 'paragraph' }],
+      },
+    });
 
-  expect(() =>
-    parseDocumentEnvelope(source, { maxJsonValues: 2 }),
-  ).toThrow('JSON value count');
-  expect(() =>
-    parseDocumentEnvelope(source, { maxNestingDepth: 1 }),
-  ).toThrow('nesting depth');
-});
+    expect(() =>
+      parseDocumentEnvelope(source, { maxJsonValues: 2 }),
+    ).toThrow('JSON value count');
+    expect(() =>
+      parseDocumentEnvelope(source, { maxNestingDepth: 1 }),
+    ).toThrow('nesting depth');
+  });
 
   it('rejects object and array expansion past the JSON-value ceiling', () => {
     expect(() =>
