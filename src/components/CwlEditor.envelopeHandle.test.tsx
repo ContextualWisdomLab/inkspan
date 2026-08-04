@@ -11,6 +11,7 @@ import {
   createDocumentEnvelopeRevision,
   type DocumentEnvelopeDigestProvider,
 } from '../documentEnvelopeRevision.js';
+import type { CwlEditorIfMatchRestoreResult } from '../documentEnvelopeIfMatch.js';
 import { DocumentSchemaError } from '../documentSchema.js';
 import type { CwlEditorHandle } from '../types.js';
 import { CwlEditor } from './CwlEditor.js';
@@ -168,15 +169,16 @@ describe('CwlEditor imperative envelope persistence', () => {
     const objectEnvelope = createDocumentEnvelope(
       createParagraphDocument('Conditional object'),
     );
+    let objectResult!: CwlEditorIfMatchRestoreResult | null;
 
-    const objectResult = await act(async () =>
-      handle.restoreDocumentEnvelopeIfMatch(
+    await act(async () => {
+      objectResult = await handle.restoreDocumentEnvelopeIfMatch(
         revision!.strongEntityTag,
         objectEnvelope,
         { maxJsonValues: 32 },
         digestProvider,
-      ),
-    );
+      );
+    });
 
     expect(objectResult).toEqual({
       status: 'restored',
@@ -202,14 +204,15 @@ describe('CwlEditor imperative envelope persistence', () => {
     const byteEnvelope = createDocumentEnvelope(
       createParagraphDocument('Conditional bytes'),
     );
-    const byteResult = await act(async () =>
-      handle.restoreDocumentEnvelopeBytesIfMatch(
+    let byteResult!: CwlEditorIfMatchRestoreResult | null;
+    await act(async () => {
+      byteResult = await handle.restoreDocumentEnvelopeBytesIfMatch(
         revision!.strongEntityTag,
         encodeDocumentEnvelope(byteEnvelope),
         undefined,
         digestProvider,
-      ),
-    );
+      );
+    });
     expect(byteResult).toMatchObject({
       status: 'restored',
       previousRevision: revision,
