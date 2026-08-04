@@ -1,3 +1,4 @@
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Editor } from '@tiptap/react';
 import {
   createDocumentEnvelope,
@@ -35,8 +36,8 @@ export type CwlEditorIfMatchRestoreResult =
       readonly status: 'conflict';
       /**
        * Stable observed revision, or `null` when the document moved while the
-       * digest or untrusted-source preparation was in progress and no captured
-       * tag is still current.
+       * digest or untrusted-source preparation was in progress, or when the
+       * editor was destroyed, and no captured tag is still current.
        */
       readonly currentRevision: CwlEditorDocumentRevision | null;
     };
@@ -50,9 +51,10 @@ type DocumentEnvelopePreparation = (
 /**
  * Restore an object or JSON-text envelope only when the current tag matches.
  *
- * Revision mismatch and document movement are normal conflict results. Invalid
- * tags, digest failures, envelope violations, schema incompatibility, and editor
- * policy rejection retain typed, redacted exceptions and never report success.
+ * Revision mismatch, document movement, and editor destruction are normal
+ * conflict results. Invalid tags, digest failures, envelope violations, schema
+ * incompatibility, and editor policy rejection retain typed, redacted
+ * exceptions and never report success.
  */
 export function restoreDocumentEnvelopeIfMatch(
   editor: Editor,
@@ -98,6 +100,9 @@ async function restoreIfMatch(
   prepare: DocumentEnvelopePreparation,
 ): Promise<CwlEditorIfMatchRestoreResult> {
   assertExpectedStrongEntityTag(expectedStrongEntityTag);
+  if (editor.isDestroyed) {
+    return createMovedDocumentConflict();
+  }
 
   const capturedDocument = editor.state.doc;
   const currentEnvelope = createDocumentEnvelope(
@@ -109,7 +114,7 @@ async function restoreIfMatch(
     digestProvider,
   );
 
-  if (editor.state.doc !== capturedDocument) {
+  if (hasEditorMoved(editor, capturedDocument)) {
     return createMovedDocumentConflict();
   }
   if (currentRevision.strongEntityTag !== expectedStrongEntityTag) {
@@ -120,7 +125,7 @@ async function restoreIfMatch(
   }
 
   const prepared = prepare(editor, source, limits);
-  if (editor.state.doc !== capturedDocument) {
+  if (hasEditorMoved(editor, capturedDocument)) {
     return createMovedDocumentConflict();
   }
 
@@ -130,6 +135,13 @@ async function restoreIfMatch(
     previousRevision: currentRevision,
     envelope,
   });
+}
+
+function hasEditorMoved(
+  editor: Editor,
+  capturedDocument: ProseMirrorNode,
+): boolean {
+  return editor.isDestroyed || editor.state.doc !== capturedDocument;
 }
 
 function createMovedDocumentConflict(): CwlEditorIfMatchRestoreResult {
