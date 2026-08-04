@@ -4,6 +4,24 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.16] — 2026-08-04
+
+### Changed
+- Package version **0.5.16**
+- Raw JSON envelope parsing now scans object structure before `JSON.parse()` and rejects duplicate names at every nesting depth
+- Escaped-equivalent names such as `name` and `\u006eame` compare as the same decoded property name
+
+### Security
+- Ambiguous signed, hashed, audited, or migrated JSON cannot silently retain only the final duplicate value
+- The scanner is iterative, keeps name sets scoped per object, and reports a bounded error without exposing names or values
+- Standard JSON syntax validation remains authoritative, while CWL and naruon hosts retain request-byte limits, authorization, tenant isolation, migration, active-schema validation, and cryptographic policy
+
+### Tests
+- Root and nested duplicates, escaped-equivalent names, independent object scopes, arrays, every JSON value form, malformed-input delegation, redacted errors, and valid JSON diagnostics are covered under the repository-wide 100% TypeScript coverage gate
+
+### Documentation
+- Updated `docs/canonical-document-envelope.md` with I-JSON uniqueness, scanner behavior, malformed-input handling, and host request-size responsibilities
+
 ## [0.5.15] — 2026-08-04
 
 ### Added
