@@ -10,6 +10,8 @@ export const DOCUMENT_ENVELOPE_SCHEMA_VERSION = 1 as const;
 
 /** Optional resource ceilings applied while inspecting an envelope. */
 export interface DocumentEnvelopeLimits {
+  /** Maximum raw UTF-8 byte length before decoding. */
+  readonly maxUtf8Bytes?: number;
   /** Maximum raw JSON-text length measured in JavaScript UTF-16 code units. */
   readonly maxJsonTextCodeUnits?: number;
   /** Maximum total number of scalar and container values in `documentJson`. */
@@ -21,6 +23,7 @@ export interface DocumentEnvelopeLimits {
 }
 
 interface ResolvedDocumentEnvelopeLimits {
+  readonly maxUtf8Bytes: number;
   readonly maxJsonTextCodeUnits: number;
   readonly maxJsonValues: number;
   readonly maxStringCodeUnits: number;
@@ -32,6 +35,7 @@ interface ResolvedDocumentEnvelopeLimits {
  * preserving large, image-bearing commercial documents.
  */
 export const DEFAULT_DOCUMENT_ENVELOPE_LIMITS = Object.freeze({
+  maxUtf8Bytes: 64 * 1024 * 1024,
   maxJsonTextCodeUnits: 64 * 1024 * 1024,
   maxJsonValues: 1_000_000,
   maxStringCodeUnits: 32 * 1024 * 1024,
@@ -39,11 +43,13 @@ export const DEFAULT_DOCUMENT_ENVELOPE_LIMITS = Object.freeze({
 }) satisfies Readonly<ResolvedDocumentEnvelopeLimits>;
 
 const DOCUMENT_ENVELOPE_LIMIT_FIELDS = new Set([
+  'maxUtf8Bytes',
   'maxJsonTextCodeUnits',
   'maxJsonValues',
   'maxStringCodeUnits',
   'maxNestingDepth',
 ]);
+const UTF8_BYTE_ORDER_MARK = 0xefbbbf;
 const REDACTED_INSPECTION_ERROR =
   'Document envelope could not be inspected safely';
 
@@ -97,69 +103,134 @@ export function parseDocumentEnvelope(
   source: unknown,
   limits?: DocumentEnvelopeLimits,
 ): CwlEditorDocumentEnvelope {
+  return withRedactedInspectionErrors(() =>
+    parseDocumentEnvelopeWithLimits(
+      source,
+      resolveDocumentEnvelopeLimits(limits),
+    ),
+  );
+}
+
+/**
+ * Strictly decode and parse one UTF-8 document-envelope byte sequence.
+ *
+ * The input is copied before decoding, bounded in bytes before allocation,
+ * decoded with fatal error handling, and rejected when it begins with a UTF-8
+ * byte-order mark. This is the inverse persistence boundary for
+ * {@link encodeDocumentEnvelope} without accepting replacement characters or
+ * alternate encodings.
+ */
+export function parseDocumentEnvelopeBytes(
+  source: unknown,
+  limits?: DocumentEnvelopeLimits,
+): CwlEditorDocumentEnvelope {
   return withRedactedInspectionErrors(() => {
     const resolvedLimits = resolveDocumentEnvelopeLimits(limits);
-    let value: unknown = source;
-    if (typeof source === 'string') {
-      if (source.length > resolvedLimits.maxJsonTextCodeUnits) {
-        throw new DocumentEnvelopeError(
-          'Document envelope JSON text exceeds the supported length',
-        );
-      }
-      if (containsDuplicateJsonObjectNames(source)) {
-        throw new DocumentEnvelopeError(
-          'Document envelope JSON must not contain duplicate object names',
-        );
-      }
-      try {
-        value = JSON.parse(source) as unknown;
-      } catch {
-        throw new DocumentEnvelopeError(
-          'Document envelope must contain valid JSON',
-        );
-      }
+    if (!(source instanceof Uint8Array)) {
+      throw new DocumentEnvelopeError(
+        'Document envelope bytes must be a Uint8Array',
+      );
     }
 
-    if (!isPlainObject(value)) {
-      throw new DocumentEnvelopeError('Document envelope must be an object');
+    const byteLength = source.byteLength;
+    if (byteLength > resolvedLimits.maxUtf8Bytes) {
+      throw new DocumentEnvelopeError(
+        'Document envelope UTF-8 bytes exceed the supported length',
+      );
     }
 
-    const fields = readJsonObjectEntries(
-      value,
-      3,
-      resolvedLimits.maxStringCodeUnits,
+    const bytes = new Uint8Array(byteLength);
+    bytes.set(source);
+    const prefix =
+      bytes.length < 3
+        ? -1
+        : (bytes[0] << 16) | (bytes[1] << 8) | bytes[2];
+    if (prefix === UTF8_BYTE_ORDER_MARK) {
+      throw new DocumentEnvelopeError(
+        'Document envelope UTF-8 bytes must not include a byte-order mark',
+      );
+    }
+
+    let decoded: string;
+    try {
+      decoded = new TextDecoder('utf-8', {
+        fatal: true,
+        ignoreBOM: true,
+      }).decode(bytes);
+    } catch {
+      throw new DocumentEnvelopeError(
+        'Document envelope bytes must contain valid UTF-8',
+      );
+    }
+
+    return parseDocumentEnvelopeWithLimits(decoded, resolvedLimits);
+  });
+}
+
+function parseDocumentEnvelopeWithLimits(
+  source: unknown,
+  resolvedLimits: ResolvedDocumentEnvelopeLimits,
+): CwlEditorDocumentEnvelope {
+  let value: unknown = source;
+  if (typeof source === 'string') {
+    if (source.length > resolvedLimits.maxJsonTextCodeUnits) {
+      throw new DocumentEnvelopeError(
+        'Document envelope JSON text exceeds the supported length',
+      );
+    }
+    if (containsDuplicateJsonObjectNames(source)) {
+      throw new DocumentEnvelopeError(
+        'Document envelope JSON must not contain duplicate object names',
+      );
+    }
+    try {
+      value = JSON.parse(source) as unknown;
+    } catch {
+      throw new DocumentEnvelopeError(
+        'Document envelope must contain valid JSON',
+      );
+    }
+  }
+
+  if (!isPlainObject(value)) {
+    throw new DocumentEnvelopeError('Document envelope must be an object');
+  }
+
+  const fields = readJsonObjectEntries(
+    value,
+    3,
+    resolvedLimits.maxStringCodeUnits,
+    'Document envelope fields do not match the supported schema',
+  );
+  const fieldMap = new Map(fields);
+  if (
+    fields.length !== 3 ||
+    !fieldMap.has('schemaId') ||
+    !fieldMap.has('schemaVersion') ||
+    !fieldMap.has('documentJson')
+  ) {
+    throw new DocumentEnvelopeError(
       'Document envelope fields do not match the supported schema',
     );
-    const fieldMap = new Map(fields);
-    if (
-      fields.length !== 3 ||
-      !fieldMap.has('schemaId') ||
-      !fieldMap.has('schemaVersion') ||
-      !fieldMap.has('documentJson')
-    ) {
-      throw new DocumentEnvelopeError(
-        'Document envelope fields do not match the supported schema',
-      );
-    }
+  }
 
-    if (fieldMap.get('schemaId') !== DOCUMENT_ENVELOPE_SCHEMA_ID) {
-      throw new DocumentEnvelopeError(
-        'Document envelope schema is unsupported',
-      );
-    }
-    if (
-      fieldMap.get('schemaVersion') !== DOCUMENT_ENVELOPE_SCHEMA_VERSION
-    ) {
-      throw new DocumentEnvelopeError(
-        'Document envelope version is unsupported',
-      );
-    }
-
-    return createDocumentEnvelopeWithLimits(
-      fieldMap.get('documentJson'),
-      resolvedLimits,
+  if (fieldMap.get('schemaId') !== DOCUMENT_ENVELOPE_SCHEMA_ID) {
+    throw new DocumentEnvelopeError(
+      'Document envelope schema is unsupported',
     );
-  });
+  }
+  if (
+    fieldMap.get('schemaVersion') !== DOCUMENT_ENVELOPE_SCHEMA_VERSION
+  ) {
+    throw new DocumentEnvelopeError(
+      'Document envelope version is unsupported',
+    );
+  }
+
+  return createDocumentEnvelopeWithLimits(
+    fieldMap.get('documentJson'),
+    resolvedLimits,
+  );
 }
 
 function createDocumentEnvelopeWithLimits(
@@ -208,6 +279,11 @@ function resolveDocumentEnvelopeLimits(
   }
 
   return Object.freeze({
+    maxUtf8Bytes: readPositiveSafeIntegerLimit(
+      values,
+      'maxUtf8Bytes',
+      DEFAULT_DOCUMENT_ENVELOPE_LIMITS.maxUtf8Bytes,
+    ),
     maxJsonTextCodeUnits: readPositiveSafeIntegerLimit(
       values,
       'maxJsonTextCodeUnits',
