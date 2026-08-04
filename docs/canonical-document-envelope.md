@@ -47,7 +47,9 @@ Canonicalization does not authorize a write and does not prove that document con
 
 ## Raw JSON input
 
-RFC 8785 requires duplicate object property names to be rejected before canonicalization. JavaScript's native `JSON.parse()` does not retain evidence of duplicate names. For signed or adversarial raw JSON protocols, hosts must use an I-JSON parser that rejects duplicate names before passing the resulting value into Inkspan. Envelopes created in memory with `createDocumentEnvelope()` cannot contain duplicate object keys.
+RFC 8785 and I-JSON require object property names to be unique. JavaScript's native `JSON.parse()` otherwise keeps only the final value and discards evidence that an ambiguous duplicate existed. Inkspan therefore scans JSON text with an explicit, non-recursive container stack before parsing and rejects duplicate names at every object depth, including escaped-equivalent spellings such as `"name"` and `"\u006eame"`.
+
+The duplicate-name scanner does not replace JSON syntax validation: malformed input still fails through the standard parser with a bounded error. Host gateways remain responsible for request-byte limits before handing large strings to the library. Envelopes created in memory with `createDocumentEnvelope()` cannot contain duplicate object keys.
 
 ## Standards basis
 
