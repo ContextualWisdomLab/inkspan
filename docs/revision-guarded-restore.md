@@ -5,7 +5,7 @@ for delayed autosave, AI, template, and review operations. A validated versioned
 envelope can replace the active editor document only when the editor still
 matches an expected Inkspan SHA-256 strong entity tag. On success, Inkspan now
 returns both the exact previous revision-envelope pair and the exact resulting
-revision-envelope pair.
+active-schema revision-envelope pair.
 
 The feature prevents a stale asynchronous result from silently replacing newer
 standalone or Yjs-backed content. It also lets a host continue with the next
@@ -72,15 +72,17 @@ evidence:
 
 `previousRevision` and `previousEnvelope` describe one stable editor document
 captured before the operation. `revision` and `envelope` describe the exact
-validated envelope accepted by the editor. Each revision is derived from the
+active-schema document accepted by the editor. Each revision is derived from the
 RFC 8785 canonical UTF-8 bytes of the adjacent envelope.
 
-Inkspan prepares the incoming envelope once, including resource checks,
-version routing, hostile-value detachment, and complete active-schema
-reconstruction. It hashes that prepared frozen envelope before mutation, checks
-that the original editor document is still current, and then applies the same
-prepared document. It does not perform a second incoming parse, clone, schema
-reconstruction, or post-restore editor read to build the resulting evidence.
+Inkspan prepares the incoming source once, including resource checks, version
+routing, hostile-value detachment, and complete active-schema reconstruction.
+ProseMirror may ignore source properties that are not part of its node model and
+may materialize schema-defined attributes. Inkspan therefore serializes the
+prepared node back to active-schema JSON, validates and freezes that normalized
+envelope, and hashes it before mutation. The returned resulting envelope is the
+same structural document the editor applies, rather than an unrecognized field
+that ProseMirror discarded.
 
 A stable mismatch is also a frozen value and includes the active revision and
 its exact frozen source envelope:
@@ -112,7 +114,7 @@ editor is destroyed, Inkspan returns:
 ```
 
 Both fields are null in lockstep because no captured version can still be
-reported as the active editor document. If movement occurs while the prepared
+reported as the active editor document. If movement occurs while the normalized
 incoming envelope is being hashed, Inkspan discards that prepared value and
 never applies it. A destroyed editor is likewise no longer a valid mutation
 target. An already-destroyed editor returns the null-evidence conflict before
@@ -121,7 +123,8 @@ fresh revision-envelope pair before retrying.
 
 Conflict is a normal result rather than an exception. Malformed inputs,
 provider failures, resource violations, active-schema incompatibility, and
-active editor-policy rejection remain typed redacted exceptions.
+active editor-policy rejection remain typed redacted exceptions. A failure of
+the resulting-envelope digest also leaves the current editor document unchanged.
 
 `DocumentEnvelopeRestoreError` means the document passed envelope and schema
 preparation but a ProseMirror transaction policy refused or transformed the
@@ -146,10 +149,12 @@ Proxy traps even though ordinary accessor properties are rejected without
 execution, so Inkspan checks editor lifecycle and active document identity
 after source preparation.
 
-Inkspan then hashes the exact prepared incoming envelope. This second
-asynchronous boundary is required to return a trustworthy resulting strong
-validator without a later host race. After the digest resolves, Inkspan checks
-editor lifecycle and active document identity again. Only then does it apply one
+Inkspan serializes that prepared ProseMirror node to active-schema JSON, wraps it
+in the same versioned and resource-bounded envelope contract, and hashes the
+normalized envelope. This second asynchronous boundary is required to return a
+trustworthy resulting strong validator without a later host race. After the
+digest resolves, Inkspan checks editor lifecycle and active document identity
+again. Only then does it apply the already prepared node with one
 `setContent(documentNode, false)` replacement without another asynchronous
 boundary or attacker-controlled property access.
 
@@ -169,14 +174,15 @@ database transaction.
 A stable mismatch invokes SHA-256 once for the current envelope, does not read
 the incoming source, and does not perform schema reconstruction. A successful
 transition invokes SHA-256 twice: once for the current envelope and once for the
-prepared incoming envelope.
+active-schema-normalized incoming envelope.
 
 The successful path intentionally pays for the second digest so the returned
-`revision` is paired with the exact applied `envelope`. It reuses the prepared
-frozen envelope and adds no second parse, document clone, canonicalization input
-construction, schema reconstruction, or editor read. Hosts that do not require
-conditional transition evidence can continue to use the synchronous ordinary
-restore APIs.
+`revision` is paired with the exact applied `envelope`. After the one source
+parse and one schema reconstruction, it performs one ProseMirror `toJSON()`
+traversal plus one resource-bounded envelope normalization and freeze. It does
+not parse the source again, reconstruct the schema again, or reread the editor
+after mutation. Hosts that do not require conditional transition evidence can
+continue to use the synchronous ordinary restore APIs.
 
 ## Imperative handle
 
