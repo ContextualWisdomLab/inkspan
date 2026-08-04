@@ -6,6 +6,9 @@ import {
   type DocumentEnvelopeLimits,
 } from './documentEnvelope.js';
 import {
+  createValidatedDocumentEnvelopeRevisionEvidence,
+} from './documentRevisionEvidence.js';
+import {
   createValidatedDocumentEnvelopeRevision,
   DocumentEnvelopeRevisionError,
   type CwlEditorDocumentRevision,
@@ -30,7 +33,9 @@ export type CwlEditorIfMatchRestoreResult =
       readonly previousRevision: CwlEditorDocumentRevision;
       /** Exact frozen envelope from which `previousRevision` was derived. */
       readonly previousEnvelope: CwlEditorDocumentEnvelope;
-      /** Detached validated envelope applied to the editor. */
+      /** SHA-256 strong validator derived from the applied `envelope`. */
+      readonly revision: CwlEditorDocumentRevision;
+      /** Exact frozen active-schema envelope applied to the editor. */
       readonly envelope: CwlEditorDocumentEnvelope;
     }
   | {
@@ -108,8 +113,10 @@ export function restoreDocumentEnvelopeBytesIfMatch(
  * Execute one guarded restore using a caller-selected envelope preparation path.
  *
  * The function captures and hashes one current envelope, returns that same
- * frozen envelope beside every non-null revision, and performs no source
- * inspection when the expected validator already conflicts.
+ * frozen envelope beside every non-null current revision, reconstructs the
+ * incoming source through the active schema, and hashes the exact normalized
+ * document that will be applied. It does not inspect the incoming source when
+ * the expected validator already conflicts.
  */
 async function restoreIfMatch(
   editor: Editor,
@@ -150,12 +157,26 @@ async function restoreIfMatch(
     return createMovedDocumentConflict();
   }
 
-  const envelope = applyPreparedDocumentEnvelope(editor, prepared);
+  const appliedEnvelope = createDocumentEnvelope(
+    prepared.documentNode.toJSON(),
+    limits,
+  );
+  const nextEvidence =
+    await createValidatedDocumentEnvelopeRevisionEvidence(
+      appliedEnvelope,
+      digestProvider,
+    );
+  if (hasEditorMoved(editor, capturedDocument)) {
+    return createMovedDocumentConflict();
+  }
+
+  applyPreparedDocumentEnvelope(editor, prepared);
   return Object.freeze({
     status: 'restored',
     previousRevision: currentRevision,
     previousEnvelope: currentEnvelope,
-    envelope,
+    revision: nextEvidence.revision,
+    envelope: nextEvidence.envelope,
   });
 }
 

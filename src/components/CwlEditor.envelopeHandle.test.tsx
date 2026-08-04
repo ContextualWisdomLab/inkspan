@@ -257,6 +257,7 @@ describe('CwlEditor imperative envelope persistence', () => {
       status: 'restored',
       previousRevision: revision,
       previousEnvelope,
+      revision,
       envelope: objectEnvelope,
     });
     expect(handle.getHTML()).toContain('Conditional object');
@@ -293,6 +294,7 @@ describe('CwlEditor imperative envelope persistence', () => {
       status: 'restored',
       previousRevision: revision,
       previousEnvelope: currentEnvelope,
+      revision,
       envelope: byteEnvelope,
     });
     expect(handle.getHTML()).toContain('Conditional bytes');

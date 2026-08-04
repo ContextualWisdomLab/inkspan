@@ -1,17 +1,18 @@
 # Revision-guarded document restore
 
-Inkspan 0.5.24 adds atomic revision-envelope evidence to the local
-optimistic-concurrency boundary introduced in 0.5.23 for delayed autosave, AI,
-template, and review operations. A validated versioned envelope can replace the
-active editor document only when the editor still matches an expected Inkspan
-SHA-256 strong entity tag.
+Inkspan 0.5.27 completes the local optimistic-concurrency transition boundary
+for delayed autosave, AI, template, and review operations. A validated versioned
+envelope can replace the active editor document only when the editor still
+matches an expected Inkspan SHA-256 strong entity tag. On success, Inkspan now
+returns both the exact previous revision-envelope pair and the exact resulting
+active-schema revision-envelope pair.
 
 The feature prevents a stale asynchronous result from silently replacing newer
-standalone or Yjs-backed content. Every non-null revision returned by a guarded
-restore is now paired with the exact frozen envelope from which that revision
-was derived, so hosts do not need a second editor read that could race with a
-later edit. It complements—but does not replace—the server-side atomic
-`If-Match` compare-and-swap required for durable persistence.
+standalone or Yjs-backed content. It also lets a host continue with the next
+save, audit, compare, merge, fork, or retry operation without rereading the
+editor or separately hashing the applied document. It complements—but does not
+replace—the server-side atomic `If-Match` compare-and-swap required for durable
+persistence.
 
 ## Pure API
 
@@ -28,7 +29,12 @@ const result: CwlEditorIfMatchRestoreResult =
     incomingEnvelope,
   );
 
-if (result.status === 'conflict') {
+if (result.status === 'restored') {
+  queueNextSave({
+    envelope: result.envelope,
+    expectedStrongEntityTag: result.revision.strongEntityTag,
+  });
+} else {
   // Do not discard either version. Ask the host conflict workflow to reload,
   // compare, merge, fork, or retry from the returned atomic evidence or a
   // fresh read when the evidence is null.
@@ -51,23 +57,32 @@ provider is invoked.
 
 ## Result states
 
-A successful result is frozen and contains the stable previous revision, the
-exact frozen envelope from which that revision was computed, and the validated
-envelope that was applied:
+A successful result is frozen and contains complete before-and-after transition
+evidence:
 
 ```ts
 {
   status: 'restored',
   previousRevision,
   previousEnvelope,
+  revision,
   envelope,
 }
 ```
 
-`previousRevision` and `previousEnvelope` describe one captured editor document.
-Inkspan reuses the envelope already captured for hashing; it does not perform a
-second document clone, canonical serialization, digest, schema reconstruction,
-or editor read.
+`previousRevision` and `previousEnvelope` describe one stable editor document
+captured before the operation. `revision` and `envelope` describe the exact
+active-schema document accepted by the editor. Each revision is derived from the
+RFC 8785 canonical UTF-8 bytes of the adjacent envelope.
+
+Inkspan prepares the incoming source once, including resource checks, version
+routing, hostile-value detachment, and complete active-schema reconstruction.
+ProseMirror may ignore source properties that are not part of its node model and
+may materialize schema-defined attributes. Inkspan therefore serializes the
+prepared node back to active-schema JSON, validates and freezes that normalized
+envelope, and hashes it before mutation. The returned resulting envelope is the
+same structural document the editor applies, rather than an unrecognized field
+that ProseMirror discarded.
 
 A stable mismatch is also a frozen value and includes the active revision and
 its exact frozen source envelope:
@@ -83,11 +98,12 @@ its exact frozen source envelope:
 `currentRevision` and `currentEnvelope` are atomic evidence for one stable
 captured document. A host can compare, merge, fork, audit, or prepare a retry
 without calling `getDocumentEnvelope()` afterward and accidentally pairing the
-revision with a newer document.
+revision with a newer document. Inkspan does not inspect or hash the incoming
+source when the expected revision already mismatches.
 
-When the document changes while asynchronous SHA-256 or synchronous untrusted-
-source preparation is in progress, or when the captured editor is destroyed,
-Inkspan returns:
+When the document changes while either asynchronous SHA-256 operation or
+synchronous untrusted-source preparation is in progress, or when the captured
+editor is destroyed, Inkspan returns:
 
 ```ts
 {
@@ -98,15 +114,17 @@ Inkspan returns:
 ```
 
 Both fields are null in lockstep because no captured version can still be
-reported as the active editor document. A destroyed editor is likewise no
-longer a valid mutation target. Inkspan does not parse the incoming source after
-detecting destruction, and an already-destroyed editor returns the null-evidence
-conflict before hashing. The host must acquire the current editor instance and a
+reported as the active editor document. If movement occurs while the normalized
+incoming envelope is being hashed, Inkspan discards that prepared value and
+never applies it. A destroyed editor is likewise no longer a valid mutation
+target. An already-destroyed editor returns the null-evidence conflict before
+hashing or parsing. The host must acquire the current editor instance and a
 fresh revision-envelope pair before retrying.
 
-Conflict is a normal result rather than an exception; malformed inputs,
+Conflict is a normal result rather than an exception. Malformed inputs,
 provider failures, resource violations, active-schema incompatibility, and
-active editor-policy rejection remain typed redacted exceptions.
+active editor-policy rejection remain typed redacted exceptions. A failure of
+the resulting-envelope digest also leaves the current editor document unchanged.
 
 `DocumentEnvelopeRestoreError` means the document passed envelope and schema
 preparation but a ProseMirror transaction policy refused or transformed the
@@ -119,32 +137,52 @@ is raised.
 Inkspan captures the immutable ProseMirror `editor.state.doc` reference and
 creates one detached, deeply frozen versioned envelope from that exact node. It
 hashes that envelope's canonical bytes and retains the same envelope object as
-result evidence. After the digest resolves, it verifies that the editor remains
-alive and the active document reference is unchanged. If the editor was
-destroyed or the document moved, the incoming source is not parsed and no
-mutation occurs.
+previous or conflict evidence. After the digest resolves, it verifies that the
+editor remains alive and the active document reference is unchanged. If the
+editor was destroyed or the document moved, the incoming source is not parsed
+and no mutation occurs.
 
 When the stable revision matches, Inkspan completes envelope parsing, resource
 checks, version routing, hostile-value detachment, and complete active-schema
 reconstruction synchronously. Reflection over untrusted objects can invoke
 Proxy traps even though ordinary accessor properties are rejected without
-execution, so Inkspan checks editor lifecycle and active document identity again
-after source preparation. If reentrant code changed or destroyed the editor,
-the prepared source is discarded and a null-evidence conflict is returned.
+execution, so Inkspan checks editor lifecycle and active document identity
+after source preparation.
 
-Only after both checks does Inkspan apply one
+Inkspan serializes that prepared ProseMirror node to active-schema JSON, wraps it
+in the same versioned and resource-bounded envelope contract, and hashes the
+normalized envelope. This second asynchronous boundary is required to return a
+trustworthy resulting strong validator without a later host race. After the
+digest resolves, Inkspan checks editor lifecycle and active document identity
+again. Only then does it apply the already prepared node with one
 `setContent(documentNode, false)` replacement without another asynchronous
-boundary or attacker-controlled property access. TipTap commands can report
-command execution before ProseMirror transaction filters decide whether the
-new document is acceptable, so Inkspan compares the resulting active document
-with the prepared node. Built-in safe-link and inline-image filters, or a
-host-supplied policy plugin, therefore cannot produce a false `restored` result.
-Selection-only transactions keep the same document reference and do not create
-false content conflicts.
+boundary or attacker-controlled property access.
+
+TipTap commands can report command execution before ProseMirror transaction
+filters decide whether the new document is acceptable, so Inkspan compares the
+resulting active document with the prepared node. Built-in safe-link and inline-
+image filters, or a host-supplied policy plugin, therefore cannot produce a
+false `restored` result. Selection-only transactions keep the same document
+reference and do not create false content conflicts.
 
 This is a local JavaScript concurrency, lifecycle, and reentrancy boundary. It
 does not make browser memory a durable system of record and cannot replace a
 database transaction.
+
+## Performance and digest count
+
+A stable mismatch invokes SHA-256 once for the current envelope, does not read
+the incoming source, and does not perform schema reconstruction. A successful
+transition invokes SHA-256 twice: once for the current envelope and once for the
+active-schema-normalized incoming envelope.
+
+The successful path intentionally pays for the second digest so the returned
+`revision` is paired with the exact applied `envelope`. After the one source
+parse and one schema reconstruction, it performs one ProseMirror `toJSON()`
+traversal plus one resource-bounded envelope normalization and freeze. It does
+not parse the source again, reconstruct the schema again, or reread the editor
+after mutation. Hosts that do not require conditional transition evidence can
+continue to use the synchronous ordinary restore APIs.
 
 ## Imperative handle
 
@@ -157,6 +195,13 @@ const result = await editorRef.current?.restoreDocumentEnvelopeIfMatch(
   limits,
   digestProvider,
 );
+
+if (result?.status === 'restored') {
+  persistLocally({
+    envelope: result.envelope,
+    revision: result.revision,
+  });
+}
 ```
 
 Use `restoreDocumentEnvelopeBytesIfMatch()` for strict UTF-8 bytes. Before
@@ -167,22 +212,21 @@ mutating a destroyed instance or reporting stale success.
 
 Successful restore suppresses normal change callbacks, matching the existing
 atomic restore contract. The host should update its saved revision and dirty
-state after success rather than treating the loaded persistence record as a new
-user edit.
+state from `result.revision` rather than treating the loaded persistence record
+as a new user edit.
 
-## Conflict evidence privacy
+## Transition-evidence privacy
 
-`previousEnvelope` and `currentEnvelope` contain the complete versioned document,
-including author text and accepted inline base64 images. They are returned for
-local conflict handling, not for indiscriminate telemetry. Hosts must apply the
-same tenant authorization, purpose limitation, retention, redaction, encryption,
-and audit controls used for the underlying document. Do not place envelopes in
-ordinary logs, analytics events, exception messages, revision identifiers, or
-public URLs.
+`previousEnvelope`, `currentEnvelope`, and successful `envelope` values contain
+the complete versioned document, including author text and accepted inline
+base64 images. They are returned for local transition and conflict handling, not
+for indiscriminate telemetry. Hosts must apply the same tenant authorization,
+purpose limitation, retention, redaction, encryption, and audit controls used
+for the underlying document. Do not place envelopes in ordinary logs, analytics
+events, exception messages, revision identifiers, or public URLs.
 
-The paired revision remains an equality validator, not a signature,
-authorization token, tenant identifier, or proof that a durable write was
-committed.
+The paired revisions remain equality validators, not signatures, authorization
+tokens, tenant identifiers, or proof that a durable write was committed.
 
 ## Collaboration and authorization
 
@@ -199,8 +243,8 @@ resolution.
 
 ## Server-side persistence remains mandatory
 
-A local match only proves what the current editor contained during one stable
-JavaScript continuation. The persistence service must independently compare the
+A local match only proves what the current editor contained during one guarded
+JavaScript operation. The persistence service must independently compare the
 expected strong validator with its current durable revision inside the same
 transaction that writes the new content. A false precondition must produce
 `412 Precondition Failed` and leave durable content unchanged.
@@ -210,13 +254,23 @@ public document identifiers, tenant membership, or proof that a prior write was
 committed. Persist descriptive nonnumeric document, tenant, user, and revision
 identifiers as host metadata.
 
-## Primary references
+## Normative references
 
-- [RFC 8785: JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785)
-- [Verified RFC 8785 erratum 7920: reject negative zero](https://www.rfc-editor.org/errata/eid7920)
-- [RFC 9110 §13.1.1: `If-Match`](https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1)
-- [W3C Web Cryptography API Recommendation](https://www.w3.org/TR/2017/REC-WebCryptoAPI-20170126/)
-- [TipTap v2 editor lifecycle and `isDestroyed`](https://v2.tiptap.dev/docs/editor/api/editor)
-- [TipTap v2 `setContent`](https://v2.tiptap.dev/docs/editor/api/commands/content/set-content)
-- [TipTap JSON persistence guidance](https://v2.tiptap.dev/docs/guides/output-json-html)
-- [ProseMirror state and immutable document model](https://prosemirror.net/docs/ref/#state.EditorState)
+- Rundgren, A., Jordan, B., & Erdtman, S. (2020). *JSON Canonicalization Scheme
+  (JCS)* (RFC 8785). Internet Engineering Task Force.
+  https://www.rfc-editor.org/rfc/rfc8785
+- Rundgren, A. (2024). *RFC 8785 verified erratum 7920: Negative zero is not
+  permitted*. RFC Editor. https://www.rfc-editor.org/errata/eid7920
+- Fielding, R., Nottingham, M., & Reschke, J. (2022). *HTTP semantics*
+  (RFC 9110, Section 13.1.1). Internet Engineering Task Force.
+  https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1
+- World Wide Web Consortium. (2017). *Web Cryptography API*.
+  https://www.w3.org/TR/2017/REC-WebCryptoAPI-20170126/
+- TipTap GmbH. (n.d.). *Editor API: Lifecycle and `isDestroyed`*.
+  https://v2.tiptap.dev/docs/editor/api/editor
+- TipTap GmbH. (n.d.). *Set content command*.
+  https://v2.tiptap.dev/docs/editor/api/commands/content/set-content
+- TipTap GmbH. (n.d.). *Output JSON and HTML*.
+  https://v2.tiptap.dev/docs/guides/output-json-html
+- ProseMirror contributors. (n.d.). *Editor state and immutable document model*.
+  https://prosemirror.net/docs/ref/#state.EditorState
