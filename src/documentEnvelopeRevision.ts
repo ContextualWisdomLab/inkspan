@@ -27,6 +27,14 @@ export interface CwlEditorDocumentRevision {
   readonly strongEntityTag: string;
 }
 
+/** Exact frozen document payload paired with its strong revision validator. */
+export interface CwlEditorDocumentRevisionEvidence {
+  /** Deeply frozen envelope whose canonical bytes were hashed. */
+  readonly envelope: CwlEditorDocumentEnvelope;
+  /** Frozen SHA-256 strong validator derived from `envelope`. */
+  readonly revision: CwlEditorDocumentRevision;
+}
+
 /** Raised when a strong document revision validator cannot be produced. */
 export class DocumentEnvelopeRevisionError extends Error {
   /** Create a redacted public revision-generation error. */
@@ -50,8 +58,31 @@ export async function createDocumentEnvelopeRevision(
   limits?: DocumentEnvelopeLimits,
   digestProvider?: DocumentEnvelopeDigestProvider | null,
 ): Promise<CwlEditorDocumentRevision> {
+  const evidence = await createDocumentEnvelopeRevisionEvidence(
+    source,
+    limits,
+    digestProvider,
+  );
+  return evidence.revision;
+}
+
+/**
+ * Create one frozen envelope and the SHA-256 revision derived from that payload.
+ *
+ * Returning the parsed envelope beside its revision prevents hosts from parsing
+ * the source again or pairing the validator with a later document read. The
+ * envelope contains full document content and must be protected accordingly.
+ */
+export async function createDocumentEnvelopeRevisionEvidence(
+  source: unknown,
+  limits?: DocumentEnvelopeLimits,
+  digestProvider?: DocumentEnvelopeDigestProvider | null,
+): Promise<CwlEditorDocumentRevisionEvidence> {
   const envelope = parseDocumentEnvelope(source, limits);
-  return createValidatedDocumentEnvelopeRevision(envelope, digestProvider);
+  return createValidatedDocumentEnvelopeRevisionEvidence(
+    envelope,
+    digestProvider,
+  );
 }
 
 /**
@@ -67,8 +98,30 @@ export async function createDocumentEnvelopeRevisionBytes(
   limits?: DocumentEnvelopeLimits,
   digestProvider?: DocumentEnvelopeDigestProvider | null,
 ): Promise<CwlEditorDocumentRevision> {
+  const evidence = await createDocumentEnvelopeRevisionEvidenceBytes(
+    source,
+    limits,
+    digestProvider,
+  );
+  return evidence.revision;
+}
+
+/**
+ * Create frozen revision evidence from strict UTF-8 envelope bytes.
+ *
+ * The returned envelope is the validated normalized payload whose RFC 8785
+ * canonical bytes produced the paired SHA-256 validator.
+ */
+export async function createDocumentEnvelopeRevisionEvidenceBytes(
+  source: unknown,
+  limits?: DocumentEnvelopeLimits,
+  digestProvider?: DocumentEnvelopeDigestProvider | null,
+): Promise<CwlEditorDocumentRevisionEvidence> {
   const envelope = parseDocumentEnvelopeBytes(source, limits);
-  return createValidatedDocumentEnvelopeRevision(envelope, digestProvider);
+  return createValidatedDocumentEnvelopeRevisionEvidence(
+    envelope,
+    digestProvider,
+  );
 }
 
 /**
@@ -82,6 +135,24 @@ export async function createValidatedDocumentEnvelopeRevision(
   envelope: CwlEditorDocumentEnvelope,
   digestProvider?: DocumentEnvelopeDigestProvider | null,
 ): Promise<CwlEditorDocumentRevision> {
+  const evidence = await createValidatedDocumentEnvelopeRevisionEvidence(
+    envelope,
+    digestProvider,
+  );
+  return evidence.revision;
+}
+
+/**
+ * Pair an already validated envelope with the revision from its canonical bytes.
+ *
+ * This integration helper retains the exact frozen envelope supplied by the
+ * caller, adding no second parse, clone, canonicalization, digest, or editor
+ * read beyond the work required to create the revision itself.
+ */
+export async function createValidatedDocumentEnvelopeRevisionEvidence(
+  envelope: CwlEditorDocumentEnvelope,
+  digestProvider?: DocumentEnvelopeDigestProvider | null,
+): Promise<CwlEditorDocumentRevisionEvidence> {
   const provider = resolveDigestProvider(digestProvider);
   const canonicalBytes = encodeValidatedDocumentEnvelope(envelope);
   let digestResult: ArrayBuffer;
@@ -106,11 +177,12 @@ export async function createValidatedDocumentEnvelopeRevision(
   }
 
   const digestHex = bytesToLowercaseHex(digestBytes);
-  return Object.freeze({
+  const revision: CwlEditorDocumentRevision = Object.freeze({
     algorithm: 'SHA-256',
     digestHex,
     strongEntityTag: `"sha256-${digestHex}"`,
   });
+  return Object.freeze({ envelope, revision });
 }
 
 function resolveDigestProvider(
