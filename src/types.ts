@@ -4,7 +4,10 @@ import type {
   CwlEditorDocumentEnvelope,
   DocumentEnvelopeLimits,
 } from './documentEnvelope.js';
-import type { CwlEditorDocumentRevision } from './documentEnvelopeRevision.js';
+import type {
+  CwlEditorDocumentRevision,
+  DocumentEnvelopeDigestProvider,
+} from './documentEnvelopeRevision.js';
 
 /** Which document surface the editor reads from and writes to. */
 export type EditorMode = 'markdown' | 'html';
@@ -130,10 +133,12 @@ export interface CwlEditorHandle {
   getDocumentEnvelopeBytes(limits?: DocumentEnvelopeLimits): Uint8Array;
   /**
    * Create a SHA-256 strong validator for the exact canonical current revision.
-   * Returns `null` before editor creation.
+   * Returns `null` before editor creation. A provider can be injected when the
+   * host runtime does not expose Web Cryptography.
    */
   getDocumentEnvelopeRevision(
     limits?: DocumentEnvelopeLimits,
+    digestProvider?: DocumentEnvelopeDigestProvider | null,
   ): Promise<CwlEditorDocumentRevision | null>;
   /** Replace the whole document from a string in the active `mode`. */
   setValue(value: string): void;
