@@ -105,6 +105,12 @@ without Web Cryptography can inject a compatible `DocumentEnvelopeDigestProvider
 Inkspan never falls back to SHA-1, a non-cryptographic checksum, or an implicit
 provider.
 
+The stable conformance basis is the W3C Web Cryptography API Recommendation
+published in 2017. Web Cryptography Level 2 was still a First Public Working
+Draft as of 2026-08-04; Inkspan tracks it as work in progress and does not claim
+Level 2 conformance. SHA-256 itself remains specified by the current final
+FIPS PUB 180-4 while NIST prepares a future revision.
+
 The complete canonical byte sequence is materialized before hashing because the
 Web Cryptography digest operation is not streaming. Existing
 `DocumentEnvelopeLimits` should therefore be selected conservatively for the
@@ -149,13 +155,29 @@ routes, expected-revision storage, authenticated atomic compare-and-swap,
 conflict UX, authorization, tenant isolation, encryption, signatures, audit,
 retention, and retry policy.
 
-## Primary references
+## References (APA 7th edition)
 
-- [RFC 8785: JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785)
-- [Verified RFC 8785 erratum 7920: reject negative zero](https://www.rfc-editor.org/errata/eid7920)
-- [RFC 8259: JSON UTF-8 interoperability](https://www.rfc-editor.org/rfc/rfc8259)
-- [RFC 9110 §8.8: validators](https://www.rfc-editor.org/rfc/rfc9110#section-8.8)
-- [RFC 9110 §13.1.1: `If-Match`](https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1)
-- [W3C Web Cryptography Level 2](https://www.w3.org/TR/webcrypto-2/)
-- [WHATWG Encoding Standard](https://encoding.spec.whatwg.org/)
-- [FIPS PUB 180-4: Secure Hash Standard](https://csrc.nist.gov/pubs/fips/180-4/upd1/final)
+Bray, T. (2017). *The JavaScript Object Notation (JSON) data interchange format*
+(RFC 8259). RFC Editor. https://doi.org/10.17487/RFC8259
+
+Fielding, R., Nottingham, M., & Reschke, J. (2022). *HTTP semantics* (RFC
+9110). RFC Editor. https://doi.org/10.17487/RFC9110
+
+National Institute of Standards and Technology. (2015). *Secure Hash Standard
+(SHS)* (FIPS PUB 180-4). U.S. Department of Commerce.
+https://doi.org/10.6028/NIST.FIPS.180-4
+
+RFC Editor. (2024). *Errata ID 7920 for RFC 8785: Reject negative zero*.
+https://www.rfc-editor.org/errata/eid7920
+
+Rundgren, A., Jordan, B., & Erdtman, S. (2020). *JSON Canonicalization Scheme
+(JCS)* (RFC 8785). RFC Editor. https://doi.org/10.17487/RFC8785
+
+WHATWG. (n.d.). *Encoding Standard*. Retrieved August 4, 2026, from
+https://encoding.spec.whatwg.org/
+
+World Wide Web Consortium. (2017). *Web Cryptography API* (W3C
+Recommendation). https://www.w3.org/TR/2017/REC-WebCryptoAPI-20170126/
+
+World Wide Web Consortium. (2025). *Web Cryptography Level 2* (First Public
+Working Draft). https://www.w3.org/TR/2025/WD-webcrypto-2-20250422/
