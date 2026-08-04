@@ -50,6 +50,10 @@ const DOCUMENT_ENVELOPE_LIMIT_FIELDS = new Set([
   'maxNestingDepth',
 ]);
 const UTF8_BYTE_ORDER_MARK = 0xefbbbf;
+const TYPED_ARRAY_TAG_GETTER = Object.getOwnPropertyDescriptor(
+  Object.getPrototypeOf(Uint8Array.prototype),
+  Symbol.toStringTag,
+)!.get!;
 const REDACTED_INSPECTION_ERROR =
   'Document envelope could not be inspected safely';
 
@@ -126,7 +130,7 @@ export function parseDocumentEnvelopeBytes(
 ): CwlEditorDocumentEnvelope {
   return withRedactedInspectionErrors(() => {
     const resolvedLimits = resolveDocumentEnvelopeLimits(limits);
-    if (!(source instanceof Uint8Array)) {
+    if (!hasUint8ArrayBrand(source)) {
       throw new DocumentEnvelopeError(
         'Document envelope bytes must be a Uint8Array',
       );
@@ -491,6 +495,10 @@ function assertStringWithinLimit(
       'Document envelope strings exceed the supported length',
     );
   }
+}
+
+function hasUint8ArrayBrand(value: unknown): value is Uint8Array {
+  return TYPED_ARRAY_TAG_GETTER.call(value) === 'Uint8Array';
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
