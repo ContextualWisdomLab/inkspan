@@ -31,7 +31,9 @@ export function serializeDocumentEnvelope(source: unknown): string {
 }
 
 /** Encode a canonical Inkspan envelope as UTF-8 bytes without a BOM. */
-export function encodeDocumentEnvelope(source: unknown): Uint8Array {
+export function encodeDocumentEnvelope(
+  source: unknown,
+): Uint8Array<ArrayBuffer> {
   return encodeValidatedDocumentEnvelope(parseDocumentEnvelope(source));
 }
 
@@ -52,7 +54,7 @@ export function serializeValidatedDocumentEnvelope(
 /** Encode an already-validated envelope without repeating graph validation. */
 export function encodeValidatedDocumentEnvelope(
   envelope: CwlEditorDocumentEnvelope,
-): Uint8Array {
+): Uint8Array<ArrayBuffer> {
   return new TextEncoder().encode(
     serializeValidatedDocumentEnvelope(envelope),
   );
