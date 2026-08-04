@@ -131,12 +131,15 @@ function verifyConsumerTypes() {
     `import {
   createDocumentEnvelopeRevision,
   markdownToHtml,
+  restoreDocumentEnvelopeBytesIfMatch,
+  restoreDocumentEnvelopeIfMatch,
   validateSafeLinkHref,
   type CwlEditorDocumentChangeEvent,
   type CwlEditorDocumentRevision,
   type CwlEditorDocumentSnapshot,
   type CwlEditorFormResetEvent,
   type CwlEditorHandle,
+  type CwlEditorIfMatchRestoreResult,
   type CwlEditorProps,
   type CwlEditorSelectionEvent,
   type CwlEditorSelectionSnapshot,
@@ -154,6 +157,8 @@ import {
 const renderMarkdown: (markdown: string) => string = markdownToHtml;
 const safeHref: string = validateSafeLinkHref('/documents/current');
 const collaborationGuard = assertCollaborationConfiguration;
+const conditionalObjectRestore = restoreDocumentEnvelopeIfMatch;
+const conditionalByteRestore = restoreDocumentEnvelopeBytesIfMatch;
 const encodeOptions: EncodeOptions = { mimeType: 'application/octet-stream' };
 const dataUri: string = bytesToDataUri(new Uint8Array([1]), encodeOptions);
 type EditorDestroyCallback = NonNullable<CwlEditorProps['onDestroy']>;
@@ -170,9 +175,29 @@ declare const destroyCallback: EditorDestroyCallback;
 declare const documentChangeCallback: EditorDocumentChangeCallback;
 declare const collaborationUser: CollaborationUser;
 declare const digestProvider: DocumentEnvelopeDigestProvider;
+const expectedStrongEntityTag = '"sha256-' + '0'.repeat(64) + '"';
 const currentSnapshot: CwlEditorDocumentSnapshot = editorHandle.getSnapshot();
 const currentRevision: Promise<CwlEditorDocumentRevision | null> =
   editorHandle.getDocumentEnvelopeRevision(undefined, digestProvider);
+const conditionalRestore: Promise<CwlEditorIfMatchRestoreResult | null> =
+  editorHandle.restoreDocumentEnvelopeIfMatch(
+    expectedStrongEntityTag,
+    {
+      schemaId: 'https://inkspan.io/schemas/document-envelope/v1',
+      schemaVersion: 1,
+      documentJson: { type: 'doc' },
+    },
+    undefined,
+    digestProvider,
+  );
+const conditionalByteRestoreResult: Promise<
+  CwlEditorIfMatchRestoreResult | null
+> = editorHandle.restoreDocumentEnvelopeBytesIfMatch(
+  expectedStrongEntityTag,
+  new Uint8Array(),
+  undefined,
+  digestProvider,
+);
 const standaloneRevision: Promise<CwlEditorDocumentRevision> =
   createDocumentEnvelopeRevision(
     {
@@ -187,12 +212,16 @@ void [
   renderMarkdown,
   safeHref,
   collaborationGuard,
+  conditionalObjectRestore,
+  conditionalByteRestore,
   dataUri,
   editorHandle,
   documentChangeEvent,
   documentSnapshot,
   currentSnapshot,
   currentRevision,
+  conditionalRestore,
+  conditionalByteRestoreResult,
   standaloneRevision,
   resetEvent,
   selectionEvent,
@@ -246,6 +275,8 @@ import * as converter from '${packageName}/converter';
 
 assert.equal(typeof editor.markdownToHtml, 'function');
 assert.equal(editor.validateSafeLinkHref('/documents/current'), '/documents/current');
+assert.equal(typeof editor.restoreDocumentEnvelopeIfMatch, 'function');
+assert.equal(typeof editor.restoreDocumentEnvelopeBytesIfMatch, 'function');
 assert.ok(editor.CwlEditor);
 assert.equal(typeof collaboration.assertCollaborationConfiguration, 'function');
 assert.ok(collaboration.CollaborativeCwlEditor);
@@ -266,6 +297,8 @@ const converter = require('${packageName}/converter');
 
 assert.equal(typeof editor.markdownToHtml, 'function');
 assert.equal(editor.validateSafeLinkHref('/documents/current'), '/documents/current');
+assert.equal(typeof editor.restoreDocumentEnvelopeIfMatch, 'function');
+assert.equal(typeof editor.restoreDocumentEnvelopeBytesIfMatch, 'function');
 assert.ok(editor.CwlEditor);
 assert.equal(typeof collaboration.assertCollaborationConfiguration, 'function');
 assert.ok(collaboration.CollaborativeCwlEditor);
