@@ -1,7 +1,7 @@
 {
   "name": "@contextualwisdomlab/cwl-editor",
-  "version": "0.5.19",
-  "description": "Inkspan — commercial-grade Markdown + HTML WYSIWYG editor module (TipTap/ProseMirror, MIT) with SSR-safe client hydration, native form integration, lossless document snapshots, preparse-resource-bounded duplicate-name-safe versioned persistence envelopes, canonical JSON plus strict UTF-8 byte round trips, schema-checked JSON restore and insertion, host-owned lifecycle callbacks, strict link and image policies, accessible editing controls, provider-neutral Yjs collaboration, a standalone base64 converter, and bundled offline multilingual Noto Sans fonts.",
+  "version": "0.5.20",
+  "description": "Inkspan — commercial-grade Markdown + HTML WYSIWYG editor module (TipTap/ProseMirror, MIT) with SSR-safe client hydration, native form integration, lossless document snapshots, preparse-resource-bounded duplicate-name-safe versioned persistence envelopes, canonical JSON plus strict UTF-8 byte round trips, atomic active-schema envelope restore, host-owned lifecycle callbacks, strict link and image policies, accessible editing controls, provider-neutral Yjs collaboration, a standalone base64 converter, and bundled offline multilingual Noto Sans fonts.",
   "license": "MIT",
   "author": "ContextualWisdomLab",
   "type": "module",
