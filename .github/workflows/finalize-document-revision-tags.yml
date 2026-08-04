@@ -10,7 +10,7 @@ permissions:
 
 concurrency:
   group: finalize-document-revision-tags
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   validate-and-finalize:
@@ -83,9 +83,12 @@ jobs:
           EXPECTED_BRANCH: feat/document-revision-tags
         run: |
           test "${GITHUB_REF_NAME}" = "${EXPECTED_BRANCH}"
-          git rm .github/workflows/finalize-document-revision-tags.yml
+          git rm --ignore-unmatch .github/workflows/finalize-document-revision-tags.yml
           git add CHANGELOG.md
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then
+            exit 0
+          fi
           git commit -m 'docs: finalize Inkspan 0.5.22 revision tags'
           git push origin HEAD:${EXPECTED_BRANCH}
