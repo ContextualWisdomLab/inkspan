@@ -89,9 +89,15 @@ describe('bounded JSON text inspection', () => {
     ).toBe('valid');
   });
 
-  it('fails before native parsing when the value count is exceeded', () => {
+  it('fails before native parsing when object or array values exceed the budget', () => {
     expect(
       inspectJsonText('{"left":true,"right":false}', {
+        maxValues: 2,
+        maxDepth: 10,
+      }),
+    ).toBe('value-count-limit');
+    expect(
+      inspectJsonText('[true,false]', {
         maxValues: 2,
         maxDepth: 10,
       }),
