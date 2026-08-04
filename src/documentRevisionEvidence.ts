@@ -81,20 +81,3 @@ export async function createValidatedDocumentEnvelopeRevisionEvidence(
   );
   return Object.freeze({ envelope, revision });
 }
-
-declare module './types.js' {
-  interface CwlEditorHandle {
-    /**
-     * Capture one frozen envelope and its matching SHA-256 strong revision.
-     *
-     * Returns `null` before editor creation. A provider can be injected when the
-     * host runtime does not expose Web Cryptography. Later editor changes do not
-     * alter or invalidate the returned evidence pair; durable writes must still
-     * enforce authenticated atomic RFC 9110 `If-Match` in host-owned storage.
-     */
-    getDocumentEnvelopeRevisionEvidence(
-      limits?: DocumentEnvelopeLimits,
-      digestProvider?: DocumentEnvelopeDigestProvider | null,
-    ): Promise<CwlEditorDocumentRevisionEvidence | null>;
-  }
-}
