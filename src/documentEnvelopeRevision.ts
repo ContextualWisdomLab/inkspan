@@ -84,10 +84,9 @@ export async function createValidatedDocumentEnvelopeRevision(
 ): Promise<CwlEditorDocumentRevision> {
   const provider = resolveDigestProvider(digestProvider);
   const canonicalBytes = encodeValidatedDocumentEnvelope(envelope);
-  const digestSource: Uint8Array<ArrayBuffer> = Uint8Array.from(canonicalBytes);
   let digestResult: ArrayBuffer;
   try {
-    digestResult = await provider.digest('SHA-256', digestSource);
+    digestResult = await provider.digest('SHA-256', canonicalBytes);
   } catch {
     throw new DocumentEnvelopeRevisionError(
       'Document envelope SHA-256 digest could not be created',
