@@ -4,6 +4,24 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.19] — 2026-08-04
+
+### Changed
+- Package version **0.5.19**
+- Raw JSON text and decoded UTF-8 envelopes now enforce configured value-count and nesting ceilings with an explicit stack before native `JSON.parse()` materializes the object graph
+- The scanner reserves the fixed envelope wrapper allowance so `maxJsonValues` and `maxNestingDepth` continue to describe `documentJson`
+
+### Security
+- Pathological wide or deep JSON fails before full native-parser allocation while post-parse cloning retains the same limits as defense in depth
+- Duplicate-name rejection, malformed-JSON handling, redacted errors, strict UTF-8 decoding, and CWL/naruon transport and tenant boundaries remain unchanged
+
+### Tests
+- Added exact-limit, raw value-count, scalar/container depth, duplicate, malformed, and parser-integration coverage under the repository-wide 100% TypeScript coverage gate
+
+### Documentation
+- Clarified preparse enforcement, fixed wrapper allowances, defense-in-depth cloning, and the distinction between syntax errors and resource-limit rejection
+
+
 ## [0.5.18] — 2026-08-04
 
 ### Added

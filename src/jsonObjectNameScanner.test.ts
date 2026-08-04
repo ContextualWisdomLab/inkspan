@@ -85,7 +85,7 @@ describe('bounded JSON text inspection', () => {
     const source = '{"document":{"content":[true,null]}}';
 
     expect(
-      inspectJsonText(source, { maxValues: 6, maxDepth: 3 }),
+      inspectJsonText(source, { maxValues: 5, maxDepth: 3 }),
     ).toBe('valid');
   });
 
