@@ -12,6 +12,11 @@ import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  createIndependentConsumerManifest,
+  createTypeScriptVerificationArguments,
+} from './revision-evidence-consumer-config.mjs';
+
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const packageJson = JSON.parse(
   readFileSync(join(repositoryRoot, 'package.json'), 'utf8'),
@@ -28,12 +33,12 @@ const externalDependencyNames = Object.freeze([
 const consumerTypeDependencyNames = Object.freeze([
   '@types/react',
   '@types/react-dom',
-  'typescript',
 ]);
-const independentlyInstalledDependencyNames = Object.freeze([
+const installedConsumerDependencyNames = Object.freeze([
   ...new Set([
     ...externalDependencyNames,
     ...consumerTypeDependencyNames,
+    'typescript',
   ]),
 ]);
 
@@ -105,8 +110,7 @@ function packArtifact() {
  * Exact versions come from the already hash-locked repository installation, and
  * `--offline` prevents this verification step from fetching an unreviewed
  * package. Because the consumer lives under the operating-system temporary
- * directory, Node, TypeScript, and declarations cannot fall through to
- * repository `node_modules`.
+ * directory, Node and TypeScript cannot fall through to repository `node_modules`.
  */
 function installIndependentConsumer(tarballFileName) {
   const exactRuntimeDependencies = Object.fromEntries(
@@ -121,23 +125,18 @@ function installIndependentConsumer(tarballFileName) {
       readInstalledDependencyVersion(packageName),
     ]),
   );
+  const exactTypeScriptVersion = readInstalledDependencyVersion('typescript');
+  const consumerManifest = createIndependentConsumerManifest({
+    packageName: packageJson.name,
+    packageManager: packageJson.packageManager,
+    tarballFileName,
+    exactRuntimeDependencies,
+    exactTypeDependencies,
+    exactTypeScriptVersion,
+  });
   writeFileSync(
     join(verificationDirectory, 'package.json'),
-    `${JSON.stringify(
-      {
-        name: 'inkspan-revision-evidence-consumer',
-        private: true,
-        type: 'module',
-        packageManager: packageJson.packageManager,
-        dependencies: {
-          [packageJson.name]: `file:./${tarballFileName}`,
-          ...exactRuntimeDependencies,
-        },
-        devDependencies: exactTypeDependencies,
-      },
-      null,
-      2,
-    )}\n`,
+    `${JSON.stringify(consumerManifest, null, 2)}\n`,
     'utf8',
   );
 
@@ -165,7 +164,7 @@ function installIndependentConsumer(tarballFileName) {
     installedPackageDirectory,
     'packed package directory',
   );
-  for (const dependencyName of independentlyInstalledDependencyNames) {
+  for (const dependencyName of installedConsumerDependencyNames) {
     const dependencyDirectory = join(
       verificationDirectory,
       'node_modules',
@@ -173,7 +172,7 @@ function installIndependentConsumer(tarballFileName) {
     );
     assert.ok(
       existsSync(join(dependencyDirectory, 'package.json')),
-      `independent consumer is missing dependency: ${dependencyName}`,
+      `independent consumer is missing required dependency: ${dependencyName}`,
     );
     assertPathInsideConsumer(
       realpathSync(dependencyDirectory),
@@ -228,25 +227,10 @@ void [objectEvidence, byteEvidence, inspected];
     'utf8',
   );
 
-  run('pnpm', [
-    '--dir',
-    verificationDirectory,
-    'exec',
-    'tsc',
-    '--noEmit',
-    '--strict',
-    '--skipLibCheck',
-    'false',
-    '--module',
-    'NodeNext',
-    '--moduleResolution',
-    'NodeNext',
-    '--target',
-    'ES2022',
-    '--lib',
-    'ES2022,DOM,DOM.Iterable',
-    consumerPath,
-  ]);
+  run(
+    'pnpm',
+    createTypeScriptVerificationArguments(verificationDirectory, consumerPath),
+  );
 }
 
 /** Execute the packed package API through ESM with real object and byte evidence. */
