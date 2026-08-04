@@ -7,6 +7,7 @@ import type {
 import type { CwlEditorIfMatchRestoreResult } from './documentEnvelopeIfMatch.js';
 import type {
   CwlEditorDocumentRevision,
+  CwlEditorDocumentRevisionEvidence,
   DocumentEnvelopeDigestProvider,
 } from './documentEnvelopeRevision.js';
 
@@ -132,6 +133,14 @@ export interface CwlEditorHandle {
    * Returns an empty byte array before editor creation.
    */
   getDocumentEnvelopeBytes(limits?: DocumentEnvelopeLimits): Uint8Array;
+  /**
+   * Capture one frozen current envelope and the SHA-256 revision derived from
+   * that exact payload. Returns `null` before editor creation.
+   */
+  getDocumentEnvelopeRevisionEvidence(
+    limits?: DocumentEnvelopeLimits,
+    digestProvider?: DocumentEnvelopeDigestProvider | null,
+  ): Promise<CwlEditorDocumentRevisionEvidence | null>;
   /**
    * Create a SHA-256 strong validator for the exact canonical current revision.
    * Returns `null` before editor creation. A provider can be injected when the
