@@ -63,6 +63,7 @@ export type {
   DocumentEnvelopeDigestProvider,
 } from './documentEnvelopeRevision.js';
 export {
+  DocumentEnvelopeRestoreError,
   restoreDocumentEnvelope,
   restoreDocumentEnvelopeBytes,
   validateDocumentEnvelopeBytesForEditor,
