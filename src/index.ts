@@ -39,6 +39,10 @@ export {
   parseDocumentEnvelope,
 } from './documentEnvelope.js';
 export type { CwlEditorDocumentEnvelope } from './documentEnvelope.js';
+export {
+  encodeDocumentEnvelope,
+  serializeDocumentEnvelope,
+} from './documentEnvelopeCanonical.js';
 
 // Active-schema validation for atomic structural restore.
 export {
