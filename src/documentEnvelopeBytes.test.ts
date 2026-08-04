@@ -9,7 +9,7 @@ import {
 import { encodeDocumentEnvelope } from './documentEnvelopeCanonical.js';
 
 describe('strict UTF-8 document envelope decoding', () => {
-  it('round-trips canonical UTF-8 bytes at the exact byte ceiling', () => {
+  it('round-trips canonical encoder bytes across runtime realms at the exact byte ceiling', () => {
     const envelope = createDocumentEnvelope({
       type: 'doc',
       content: [
