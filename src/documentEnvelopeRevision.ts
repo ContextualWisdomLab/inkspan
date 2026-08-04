@@ -6,6 +6,11 @@ import {
 } from './documentEnvelope.js';
 import { encodeValidatedDocumentEnvelope } from './documentEnvelopeCanonical.js';
 
+const ARRAY_BUFFER_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
+  ArrayBuffer.prototype,
+  'byteLength',
+)!.get!;
+
 /** SHA-256 provider compatible with the Web Cryptography `SubtleCrypto` API. */
 export interface DocumentEnvelopeDigestProvider {
   /** Produce a SHA-256 digest for one complete canonical byte sequence. */
@@ -90,10 +95,7 @@ export async function createValidatedDocumentEnvelopeRevision(
 
   let digestBytes: Uint8Array;
   try {
-    if (
-      Object.prototype.toString.call(digestResult) !== '[object ArrayBuffer]' ||
-      digestResult.byteLength !== 32
-    ) {
+    if (ARRAY_BUFFER_BYTE_LENGTH_GETTER.call(digestResult) !== 32) {
       throw new TypeError('invalid digest result');
     }
     digestBytes = new Uint8Array(digestResult);
