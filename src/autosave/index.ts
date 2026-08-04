@@ -77,11 +77,11 @@ export interface DocumentAutosaveSavedOutcome {
   readonly strongEntityTag: string;
 }
 
-/** Outcome for a revision that was already the last durable queue revision. */
+/** Outcome for a revision that is still known to be the durable queue revision. */
 export interface DocumentAutosaveUnchangedOutcome {
   /** Indicates that no duplicate host callback was necessary. */
   readonly status: 'unchanged';
-  /** Strong equality validator already recorded as durably saved. */
+  /** Strong equality validator still known to be durably current. */
   readonly strongEntityTag: string;
 }
 
@@ -425,6 +425,7 @@ export function createDocumentAutosaveQueue(
   let activeRequest: AutosaveRequest | null = null;
   let pendingRequest: AutosaveRequest | null = null;
   let lastSavedStrongEntityTag: string | null = null;
+  let lastSavedShortcutValid = false;
   let pumpRunning = false;
   let flushPromise: Promise<DocumentAutosaveQueueSnapshot> | null = null;
   let resolveFlushPromise:
@@ -498,6 +499,7 @@ export function createDocumentAutosaveQueue(
     error: DocumentAutosaveQueueError,
   ): void {
     activeRequest = null;
+    lastSavedShortcutValid = false;
     rejectRequest(request, error);
     if (lifecycle === 'open') blockedReason = 'failure';
   }
@@ -531,11 +533,13 @@ export function createDocumentAutosaveQueue(
         activeRequest = null;
         if (saveStatus === 'saved') {
           lastSavedStrongEntityTag = request.strongEntityTag;
+          lastSavedShortcutValid = true;
           resolveRequest(
             request,
             createSimpleOutcome('saved', request.strongEntityTag),
           );
         } else {
+          lastSavedShortcutValid = false;
           resolveRequest(
             request,
             createSimpleOutcome('conflict', request.strongEntityTag),
@@ -584,6 +588,7 @@ export function createDocumentAutosaveQueue(
       return pendingRequest.promise;
     }
     if (
+      lastSavedShortcutValid &&
       blockedReason === null &&
       activeRequest === null &&
       pendingRequest === null &&
