@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { createDocumentEnvelope } from './documentEnvelope.js';
 import { encodeDocumentEnvelope } from './documentEnvelopeCanonical.js';
@@ -27,6 +28,20 @@ function createDigestBuffer(fill: number): ArrayBuffer {
   const buffer = new ArrayBuffer(32);
   new Uint8Array(buffer).fill(fill);
   return buffer;
+}
+
+function createNativeSha256Provider(): DocumentEnvelopeDigestProvider {
+  return {
+    async digest(algorithm, source) {
+      if (algorithm !== 'SHA-256') {
+        throw new Error('unexpected digest algorithm');
+      }
+      const digest = createHash('sha256').update(toBytes(source)).digest();
+      const result = new Uint8Array(32);
+      result.set(digest);
+      return result.buffer;
+    },
+  };
 }
 
 describe('pure document revision evidence', () => {
@@ -99,5 +114,22 @@ describe('pure document revision evidence', () => {
     );
     expect(evidence.revision.digestHex).toBe('cd'.repeat(32));
     expect(digestProvider.digest).toHaveBeenCalledOnce();
+  });
+
+  it('matches a fixed SHA-256 known answer for canonical envelope bytes', async () => {
+    const evidence = await createDocumentEnvelopeRevisionEvidence(
+      createDocumentEnvelope(DOCUMENT_JSON),
+      undefined,
+      createNativeSha256Provider(),
+    );
+    const expectedDigest =
+      '9db32af22b9d3d8408e70454e4398b8c' +
+      '7eab99e1c2cff58ec6f5737ba4a5b970';
+
+    expect(evidence.revision).toEqual({
+      algorithm: 'SHA-256',
+      digestHex: expectedDigest,
+      strongEntityTag: `"sha256-${expectedDigest}"`,
+    });
   });
 });
