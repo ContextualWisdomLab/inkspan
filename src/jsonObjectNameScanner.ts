@@ -29,6 +29,14 @@ interface JsonValueStart {
   readonly frame?: ContainerFrame;
 }
 
+const JSON_WHITESPACE = new Set([' ', '\t', '\n', '\r']);
+const JSON_VALUE_DELIMITERS = new Set([
+  ...JSON_WHITESPACE,
+  ',',
+  ']',
+  '}',
+]);
+
 /**
  * Detect duplicate object names in JSON text without recursively parsing it.
  *
@@ -171,19 +179,12 @@ function readJsonValueStart(
     }
   }
 
-  if (
-    firstCharacter !== '-' &&
-    (firstCharacter === undefined ||
-      firstCharacter < '0' ||
-      firstCharacter > '9')
-  ) {
-    return null;
-  }
+  if (!/[-0-9]/u.test(firstCharacter)) return null;
 
   let endIndex = startIndex + 1;
   while (
     endIndex < source.length &&
-    !isJsonValueDelimiter(source[endIndex])
+    !JSON_VALUE_DELIMITERS.has(source[endIndex])
   ) {
     endIndex += 1;
   }
@@ -204,12 +205,12 @@ function readJsonString(
       const endIndex = index + 1;
       if (!decode) return { endIndex };
       try {
-        const decodedValue = JSON.parse(
-          source.slice(startIndex, endIndex),
-        ) as unknown;
-        return typeof decodedValue === 'string'
-          ? { endIndex, decodedValue }
-          : null;
+        return {
+          endIndex,
+          decodedValue: JSON.parse(
+            source.slice(startIndex, endIndex),
+          ) as string,
+        };
       } catch {
         return null;
       }
@@ -223,24 +224,9 @@ function skipJsonWhitespace(source: string, startIndex: number): number {
   let index = startIndex;
   while (
     index < source.length &&
-    (source[index] === ' ' ||
-      source[index] === '\t' ||
-      source[index] === '\n' ||
-      source[index] === '\r')
+    JSON_WHITESPACE.has(source[index])
   ) {
     index += 1;
   }
   return index;
-}
-
-function isJsonValueDelimiter(character: string): boolean {
-  return (
-    character === ' ' ||
-    character === '\t' ||
-    character === '\n' ||
-    character === '\r' ||
-    character === ',' ||
-    character === ']' ||
-    character === '}'
-  );
 }
