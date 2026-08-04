@@ -77,6 +77,21 @@ describe('canonical document envelope serialization', () => {
     expect(offsets).toEqual([...offsets].sort((left, right) => left - right));
   });
 
+  it('rejects negative zero under the verified RFC 8785 errata', () => {
+    const envelope = createDocumentEnvelope({
+      type: 'doc',
+      attrs: { unsafeNumericValue: -0 },
+    });
+
+    expect(() => serializeDocumentEnvelope(envelope)).toThrow(
+      DocumentEnvelopeError,
+    );
+    expect(() => serializeDocumentEnvelope(envelope)).toThrow(
+      'negative zero',
+    );
+    expect(() => encodeDocumentEnvelope(envelope)).toThrow('negative zero');
+  });
+
   it('encodes canonical JSON as UTF-8 without a byte-order mark', () => {
     const envelope = createDocumentEnvelope({
       type: 'doc',
