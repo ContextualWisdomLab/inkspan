@@ -17,7 +17,10 @@ import {
   restoreDocumentEnvelopeBytesIfMatch,
   restoreDocumentEnvelopeIfMatch,
 } from '../documentEnvelopeIfMatch.js';
-import { createValidatedDocumentEnvelopeRevision } from '../documentEnvelopeRevision.js';
+import {
+  createValidatedDocumentEnvelopeRevision,
+  type DocumentEnvelopeDigestProvider,
+} from '../documentEnvelopeRevision.js';
 import {
   restoreDocumentEnvelope,
   restoreDocumentEnvelopeBytes,
@@ -28,7 +31,11 @@ import {
   parseDocumentJsonForEditor,
   validateDocumentJson,
 } from '../documentSchema.js';
-import type { CwlEditorHandle, EditorMode } from '../types.js';
+import type {
+  CwlEditorDocumentRevisionEvidence,
+  CwlEditorHandle,
+  EditorMode,
+} from '../types.js';
 import { createEditorDocumentSnapshot } from './editorDocumentSnapshot.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
 
@@ -38,6 +45,26 @@ function createCurrentDocumentEnvelope(
   limits?: DocumentEnvelopeLimits,
 ): CwlEditorDocumentEnvelope {
   return createDocumentEnvelope(editor.getJSON(), limits);
+}
+
+/**
+ * Capture one envelope and derive its revision without rereading the editor.
+ *
+ * The returned object and both nested values are frozen. A document change while
+ * hashing does not alter the evidence pair; hosts can safely use it as the base
+ * for delayed autosave, AI, template, or review operations.
+ */
+async function createCurrentDocumentRevisionEvidence(
+  editor: Editor,
+  limits?: DocumentEnvelopeLimits,
+  digestProvider?: DocumentEnvelopeDigestProvider | null,
+): Promise<CwlEditorDocumentRevisionEvidence> {
+  const envelope = createCurrentDocumentEnvelope(editor, limits);
+  const revision = await createValidatedDocumentEnvelopeRevision(
+    envelope,
+    digestProvider,
+  );
+  return Object.freeze({ envelope, revision });
 }
 
 /** Expose the stable host-control contract shared by editor surfaces. */
@@ -85,6 +112,14 @@ export function useEditorHandle(
         editor
           ? createValidatedDocumentEnvelopeRevision(
               createCurrentDocumentEnvelope(editor, limits),
+              digestProvider,
+            )
+          : Promise.resolve(null),
+      getDocumentEnvelopeRevisionEvidence: (limits, digestProvider) =>
+        editor
+          ? createCurrentDocumentRevisionEvidence(
+              editor,
+              limits,
               digestProvider,
             )
           : Promise.resolve(null),
