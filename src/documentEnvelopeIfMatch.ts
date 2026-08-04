@@ -81,7 +81,12 @@ export function restoreDocumentEnvelopeIfMatch(
   );
 }
 
-/** Restore strict UTF-8 envelope bytes only when the current tag matches. */
+/**
+ * Restore strict UTF-8 envelope bytes only when the current tag matches.
+ *
+ * The byte path applies the same lifecycle, revision, schema, policy, and
+ * revision-envelope evidence guarantees as the object and JSON-text path.
+ */
 export function restoreDocumentEnvelopeBytesIfMatch(
   editor: Editor,
   expectedStrongEntityTag: string,
@@ -99,6 +104,13 @@ export function restoreDocumentEnvelopeBytesIfMatch(
   );
 }
 
+/**
+ * Execute one guarded restore using a caller-selected envelope preparation path.
+ *
+ * The function captures and hashes one current envelope, returns that same
+ * frozen envelope beside every non-null revision, and performs no source
+ * inspection when the expected validator already conflicts.
+ */
 async function restoreIfMatch(
   editor: Editor,
   expectedStrongEntityTag: string,
@@ -147,6 +159,7 @@ async function restoreIfMatch(
   });
 }
 
+/** Check whether the captured document can no longer authorize a replacement. */
 function hasEditorMoved(
   editor: Editor,
   capturedDocument: ProseMirrorNode,
@@ -154,6 +167,7 @@ function hasEditorMoved(
   return editor.isDestroyed || editor.state.doc !== capturedDocument;
 }
 
+/** Create the frozen conflict returned when no captured evidence remains current. */
 function createMovedDocumentConflict(): CwlEditorIfMatchRestoreResult {
   return Object.freeze({
     status: 'conflict',
@@ -162,6 +176,7 @@ function createMovedDocumentConflict(): CwlEditorIfMatchRestoreResult {
   });
 }
 
+/** Reject any validator outside Inkspan's exact quoted lowercase strong-tag form. */
 function assertExpectedStrongEntityTag(value: unknown): asserts value is string {
   if (
     typeof value !== 'string' ||
