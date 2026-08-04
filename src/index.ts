@@ -40,9 +40,10 @@ export {
 } from './documentEnvelope.js';
 export type { CwlEditorDocumentEnvelope } from './documentEnvelope.js';
 
-// Active-schema validation for atomic structural restore.
+// Active-schema validation for atomic structural writes.
 export {
   DocumentSchemaError,
+  validateDocumentInsertionJson,
   validateDocumentJson,
 } from './documentSchema.js';
 
