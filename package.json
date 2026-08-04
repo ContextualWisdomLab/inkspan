@@ -79,7 +79,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
-    "verify:package": "node ./scripts/verify-package.mjs && node ./scripts/verify-canonical-envelope-package.mjs && node ./scripts/verify-revision-evidence-package.mjs"
+    "test:package-config": "node --test ./scripts/revision-evidence-consumer-config.test.mjs",
+    "verify:package": "pnpm run test:package-config && node ./scripts/verify-package.mjs && node ./scripts/verify-canonical-envelope-package.mjs && node ./scripts/verify-revision-evidence-package.mjs"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
