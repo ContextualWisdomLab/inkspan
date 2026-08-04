@@ -136,10 +136,11 @@ function verifyRevisionEvidenceEsmRuntime(packageDirectory) {
   writeFileSync(
     esmPath,
     `import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
 import * as editor from '${packageJson.name}';
 
-const resolvedPackage = fileURLToPath(import.meta.resolve('${packageJson.name}/package.json'));
-assert.ok(resolvedPackage.startsWith(${JSON.stringify(packageDirectory)}));
+const resolvedEntry = fileURLToPath(import.meta.resolve('${packageJson.name}'));
+assert.ok(resolvedEntry.startsWith(${JSON.stringify(packageDirectory)}));
 assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidence, 'function');
 assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
 const sourceEnvelope = {
@@ -191,8 +192,8 @@ function verifyRevisionEvidenceCommonJsRuntime(packageDirectory) {
 const editor = require('${packageJson.name}');
 
 void (async () => {
-  const resolvedPackage = require.resolve('${packageJson.name}/package.json');
-  assert.ok(resolvedPackage.startsWith(${JSON.stringify(packageDirectory)}));
+  const resolvedEntry = require.resolve('${packageJson.name}');
+  assert.ok(resolvedEntry.startsWith(${JSON.stringify(packageDirectory)}));
   assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidence, 'function');
   assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
   const sourceEnvelope = {
