@@ -23,6 +23,11 @@ byte-order mark, and the revision contains a lowercase SHA-256 digest plus a
 quoted strong HTTP entity tag. Optional `DocumentEnvelopeLimits` can enforce
 product-tier ceilings during export and revision generation.
 
+Canonical export and revision generation reject negative zero under verified
+RFC 8785 erratum 7920. ECMAScript otherwise serializes both `-0` and `0` as `0`,
+which would collapse distinct pre-canonical values into the same stored bytes
+and validator.
+
 Before client hydration or after editor destruction, object export and revision
 export return `null`, JSON export returns `''`, and byte export returns an empty
 `Uint8Array`. These values are lifecycle fallbacks, not valid persisted
@@ -87,9 +92,10 @@ metadata rather than extending the strict envelope with ad hoc fields.
 ## Primary references
 
 - [RFC 8785: JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785)
+- [Verified RFC 8785 erratum 7920: reject negative zero](https://www.rfc-editor.org/errata/eid7920)
 - [RFC 8259: The JavaScript Object Notation Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259)
 - [RFC 9110 §13.1.1: `If-Match`](https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1)
-- [W3C Web Cryptography Level 2](https://www.w3.org/TR/webcrypto-2/)
+- [W3C Web Cryptography API Recommendation](https://www.w3.org/TR/2017/REC-WebCryptoAPI-20170126/)
 - [WHATWG Encoding Standard: UTF-8](https://encoding.spec.whatwg.org/#utf-8)
 - [TipTap persistence guidance](https://tiptap.dev/docs/editor/core-concepts/persistence)
 - [ProseMirror `Node.fromJSON`](https://prosemirror.net/docs/ref/#model.Node^fromJSON)
