@@ -126,9 +126,17 @@ export interface CwlEditorHandle {
    */
   insertValue(value: string): void;
   /**
+   * Check whether one or more JSON nodes match the active schema without
+   * changing the document or local selection. Returns `false` before creation.
+   */
+  validateDocumentInsertionJson(
+    documentJson: JSONContent | JSONContent[],
+  ): boolean;
+  /**
    * Insert one or more TipTap/ProseMirror JSON nodes at the current selection.
-   * Fires the normal document-change callbacks and applies the same schema,
-   * safe-link, and inline-image transaction boundaries as other editor writes.
+   * The complete fragment is detached and schema-checked before one transaction
+   * is dispatched. Fires the normal document-change callbacks and applies the
+   * same safe-link and inline-image transaction boundaries as other writes.
    */
   insertDocumentJson(documentJson: JSONContent | JSONContent[]): void;
   /** Empty the document. */
