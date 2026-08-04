@@ -4,6 +4,7 @@ import type {
   CwlEditorDocumentEnvelope,
   DocumentEnvelopeLimits,
 } from './documentEnvelope.js';
+import type { CwlEditorIfMatchRestoreResult } from './documentEnvelopeIfMatch.js';
 import type {
   CwlEditorDocumentRevision,
   DocumentEnvelopeDigestProvider,
@@ -174,6 +175,28 @@ export interface CwlEditorHandle {
     source: unknown,
     limits?: DocumentEnvelopeLimits,
   ): CwlEditorDocumentEnvelope | null;
+  /**
+   * Restore an object or JSON-text envelope only when the active document still
+   * matches the expected Inkspan SHA-256 strong entity tag. Returns a frozen
+   * conflict result without mutation on mismatch, or `null` before creation.
+   */
+  restoreDocumentEnvelopeIfMatch(
+    expectedStrongEntityTag: string,
+    source: unknown,
+    limits?: DocumentEnvelopeLimits,
+    digestProvider?: DocumentEnvelopeDigestProvider | null,
+  ): Promise<CwlEditorIfMatchRestoreResult | null>;
+  /**
+   * Restore strict UTF-8 envelope bytes only when the active document still
+   * matches the expected Inkspan SHA-256 strong entity tag. Returns `null`
+   * before editor creation.
+   */
+  restoreDocumentEnvelopeBytesIfMatch(
+    expectedStrongEntityTag: string,
+    source: unknown,
+    limits?: DocumentEnvelopeLimits,
+    digestProvider?: DocumentEnvelopeDigestProvider | null,
+  ): Promise<CwlEditorIfMatchRestoreResult | null>;
   /**
    * Check whether JSON can be restored by the active TipTap/ProseMirror schema
    * without mutating the document. Returns `false` before editor creation.
