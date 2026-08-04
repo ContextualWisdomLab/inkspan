@@ -34,7 +34,8 @@ export type CwlEditorIfMatchRestoreResult =
       readonly status: 'conflict';
       /**
        * Stable observed revision, or `null` when the document moved while the
-       * asynchronous digest was pending and no captured tag is still current.
+       * digest or untrusted-source preparation was in progress and no captured
+       * tag is still current.
        */
       readonly currentRevision: CwlEditorDocumentRevision | null;
     };
@@ -50,7 +51,7 @@ type DocumentEnvelopePreparation = (
  *
  * Revision mismatch and document movement are normal conflict results. Invalid
  * tags, digest failures, envelope violations, and schema incompatibility retain
- * their existing typed, redacted exceptions and never mutate the editor.
+ * their existing typed, redacted exceptions and never overwrite newer content.
  */
 export function restoreDocumentEnvelopeIfMatch(
   editor: Editor,
@@ -108,10 +109,7 @@ async function restoreIfMatch(
   );
 
   if (editor.state.doc !== capturedDocument) {
-    return Object.freeze({
-      status: 'conflict',
-      currentRevision: null,
-    });
+    return createMovedDocumentConflict();
   }
   if (currentRevision.strongEntityTag !== expectedStrongEntityTag) {
     return Object.freeze({
@@ -121,11 +119,22 @@ async function restoreIfMatch(
   }
 
   const prepared = prepare(editor, source, limits);
+  if (editor.state.doc !== capturedDocument) {
+    return createMovedDocumentConflict();
+  }
+
   editor.commands.setContent(prepared.documentNode, false);
   return Object.freeze({
     status: 'restored',
     previousRevision: currentRevision,
     envelope: prepared.envelope,
+  });
+}
+
+function createMovedDocumentConflict(): CwlEditorIfMatchRestoreResult {
+  return Object.freeze({
+    status: 'conflict',
+    currentRevision: null,
   });
 }
 
