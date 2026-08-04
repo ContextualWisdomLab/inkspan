@@ -1,9 +1,9 @@
 # Imperative document-envelope persistence
 
-Inkspan 0.5.21 exposes the complete versioned persistence round trip on
-`CwlEditorHandle`. Hosts no longer need to reach through `getEditor()` or
-manually compose envelope, canonicalization, schema-validation, and restore
-functions for ordinary autosave and load workflows.
+Inkspan 0.5.22 exposes the complete versioned persistence round trip and strong
+revision validation on `CwlEditorHandle`. Hosts no longer need to reach through
+`getEditor()` or manually compose envelope, canonicalization, schema-validation,
+revision-digest, and restore functions for ordinary autosave and load workflows.
 
 ## Export the current revision
 
@@ -13,16 +13,18 @@ const editorRef = createRef<CwlEditorHandle>();
 const envelope = editorRef.current?.getDocumentEnvelope();
 const canonicalJson = editorRef.current?.getDocumentEnvelopeJson();
 const canonicalBytes = editorRef.current?.getDocumentEnvelopeBytes();
+const revision = await editorRef.current?.getDocumentEnvelopeRevision();
 ```
 
-All three methods read one current TipTap/ProseMirror document revision. The
+All four methods read one current TipTap/ProseMirror document revision. The
 object envelope is detached and deeply frozen. JSON follows Inkspan's
-deterministic RFC 8785 representation, and bytes are strict UTF-8 without a
-byte-order mark. Optional `DocumentEnvelopeLimits` can enforce product-tier
-ceilings during export.
+deterministic RFC 8785 representation, bytes are strict UTF-8 without a
+byte-order mark, and the revision contains a lowercase SHA-256 digest plus a
+quoted strong HTTP entity tag. Optional `DocumentEnvelopeLimits` can enforce
+product-tier ceilings during export and revision generation.
 
-Before client hydration or after editor destruction, object export returns
-`null`, JSON export returns `''`, and byte export returns an empty
+Before client hydration or after editor destruction, object export and revision
+export return `null`, JSON export returns `''`, and byte export returns an empty
 `Uint8Array`. These values are lifecycle fallbacks, not valid persisted
 documents. A host must not store them as a document revision.
 
@@ -52,6 +54,13 @@ already-persisted revision must not immediately schedule another autosave.
 Hosts should update their own saved-revision, dirty-state, and optimistic-
 concurrency records after the method returns.
 
+For an HTTP persistence service, a host can return the exact canonical
+envelope's `strongEntityTag` as `ETag` and require the saved tag through
+`If-Match` on update. The server must perform the compare-and-swap atomically and
+return `412 Precondition Failed` instead of overwriting a newer revision. See
+[document revision tags](./document-revision-tags.md) for representation,
+privacy, and authorization boundaries.
+
 ## Collaboration authorization
 
 `CollaborativeCwlEditor` exposes the same handle because both surfaces share
@@ -65,19 +74,22 @@ invoking restore and must coordinate awareness, audit, and conflict UX.
 
 The convenience methods preserve all lower-level guarantees: redacted typed
 errors, duplicate-name rejection, configurable resource ceilings, strict UTF-8
-decoding, canonical serialization, active-schema validation, and
-unchanged-document failure behavior.
+decoding, canonical serialization, active-schema validation, strong SHA-256
+revision generation, and unchanged-document failure behavior.
 
 They do not replace gateway byte limits, decompression limits, timeouts,
 rate/concurrency controls, migration routing, tenant isolation, encryption,
-signatures, key management, retention, audit, or optimistic concurrency.
-Persist descriptive nonnumeric document, tenant, user, and revision identifiers
-in host metadata rather than extending the strict envelope with ad hoc fields.
+signatures, key management, retention, audit, or server-side optimistic
+concurrency. A digest is not a signature or authorization token. Persist
+descriptive nonnumeric document, tenant, user, and revision identifiers in host
+metadata rather than extending the strict envelope with ad hoc fields.
 
 ## Primary references
 
 - [RFC 8785: JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785)
 - [RFC 8259: The JavaScript Object Notation Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259)
+- [RFC 9110 §13.1.1: `If-Match`](https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1)
+- [W3C Web Cryptography Level 2](https://www.w3.org/TR/webcrypto-2/)
 - [WHATWG Encoding Standard: UTF-8](https://encoding.spec.whatwg.org/#utf-8)
 - [TipTap persistence guidance](https://tiptap.dev/docs/editor/core-concepts/persistence)
 - [ProseMirror `Node.fromJSON`](https://prosemirror.net/docs/ref/#model.Node^fromJSON)
