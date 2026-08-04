@@ -25,6 +25,11 @@ the RFC 8785 canonical UTF-8 representation. Object-property ordering and
 insignificant JSON whitespace therefore do not change the revision. A changed
 schema identifier, schema version, node, mark, attribute, or text value does.
 
+Inkspan also applies verified RFC 8785 erratum 7920 and rejects negative zero
+before canonical serialization. ECMAScript serializes both `-0` and `0` as `0`;
+accepting both would allow distinct pre-canonical values to receive the same
+canonical bytes and revision validator.
+
 `CwlEditorHandle.getDocumentEnvelopeRevision()` captures one current editor
 revision, canonicalizes it, and returns the same frozen result. Before client
 hydration or after editor destruction it resolves to `null`.
@@ -98,6 +103,7 @@ retention, and retry policy.
 ## Primary references
 
 - [RFC 8785: JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785)
+- [Verified RFC 8785 erratum 7920: reject negative zero](https://www.rfc-editor.org/errata/eid7920)
 - [RFC 9110 §13.1.1: `If-Match`](https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1)
-- [W3C Web Cryptography Level 2: SHA digest](https://www.w3.org/TR/webcrypto-2/#sha-operations)
+- [W3C Web Cryptography API Recommendation](https://www.w3.org/TR/2017/REC-WebCryptoAPI-20170126/)
 - [FIPS PUB 180-4: Secure Hash Standard](https://csrc.nist.gov/pubs/fips/180-4/upd1/final)
