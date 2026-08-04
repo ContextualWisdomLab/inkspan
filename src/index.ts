@@ -62,6 +62,7 @@ export type {
   CwlEditorDocumentRevision,
   DocumentEnvelopeDigestProvider,
 } from './documentEnvelopeRevision.js';
+export type { CwlEditorDocumentRevisionEvidence } from './documentRevisionEvidence.js';
 export {
   DocumentEnvelopeRestoreError,
   restoreDocumentEnvelope,
