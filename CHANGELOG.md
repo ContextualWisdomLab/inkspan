@@ -4,6 +4,33 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.23] — 2026-08-04
+
+### Added
+- `restoreDocumentEnvelopeIfMatch()` and `restoreDocumentEnvelopeBytesIfMatch()` for applying validated object/JSON or strict UTF-8 envelopes only when the active editor still matches an expected Inkspan SHA-256 strong entity tag
+- Frozen `CwlEditorIfMatchRestoreResult` conflict/restored outcomes and matching shared `CwlEditorHandle` methods for standalone and provider-neutral collaborative surfaces
+
+### Changed
+- Package version **0.5.23**
+- Existing envelope preparation is reusable without mutation, keeping ordinary restore and conditional restore on one active-schema validation path
+- Pure and imperative conditional restore accept optional resource limits and digest-provider injection without adding transport or persistence coupling
+
+### Reliability
+- Stable revision mismatch leaves the editor unchanged and returns the current revision without parsing the incoming source
+- A document change while SHA-256 is pending returns a conflict with `currentRevision: null`, preventing a stale captured validator from authorizing replacement
+- Matching restore performs complete envelope and active-schema validation before one callback-suppressed `setContent(..., false)` mutation with no intervening asynchronous boundary
+- Selection-only transactions preserve the immutable ProseMirror document reference and do not create false content conflicts
+
+### Security
+- Expected validators must exactly match Inkspan's quoted lowercase `sha256` strong-tag format; weak, uppercase, unquoted, alternate-algorithm, control-containing, and extended values fail before document access or hashing
+- Local revision matching is not authorization, a signature, tenant membership, or proof of persistence; CWL and naruon hosts retain authenticated transport, server-side atomic `If-Match`, tenant isolation, persistence, audit, and conflict policy
+- Collaborative conditional restore still requires explicit host authorization because a successful replacement mutates the host-owned Yjs document
+
+### Tests
+- Added matching object/byte, stable mismatch, document-moved, selection-only, malformed-tag, schema-failure, empty-handle, imperative-handle, ESM, CommonJS, strict declaration-consumer, and repository-wide 100% coverage verification
+
+### Documentation
+- Added `docs/revision-guarded-restore.md` and expanded imperative persistence guidance with result semantics, local race boundaries, callback behavior, collaboration authorization, server compare-and-swap, and CWL/naruon ownership
 
 ## [0.5.22] — 2026-08-04
 
@@ -33,7 +60,6 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 ### Documentation
 - Added `docs/document-revision-tags.md` with RFC 9110 strong-validator usage, Web Cryptography behavior, privacy boundaries, and optimistic-concurrency ownership
 - Expanded `docs/imperative-envelope-persistence.md` with revision export and server-side compare-and-swap guidance
-
 
 ## [0.5.21] — 2026-08-04
 
@@ -83,7 +109,6 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 ### Documentation
 - Added `docs/atomic-envelope-restore.md` with atomicity, validation, typed failures, collaboration authorization, migration, resource ownership, and primary standards references
 
-
 ## [0.5.19] — 2026-08-04
 
 ### Changed
@@ -100,7 +125,6 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ### Documentation
 - Clarified preparse enforcement, fixed wrapper allowances, defense-in-depth cloning, and the distinction between syntax errors and resource-limit rejection
-
 
 ## [0.5.18] — 2026-08-04
 
@@ -123,7 +147,6 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 ### Documentation
 - Expanded `docs/document-envelope.md` with byte-storage examples, Encoding Standard behavior, RFC 8259 UTF-8/BOM guidance, and decompression/transport boundaries
 
-
 ## [0.5.17] — 2026-08-04
 
 ### Added
@@ -144,7 +167,6 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ### Documentation
 - Expanded `docs/document-envelope.md` with defaults, override examples, RFC 8259 parser-limit guidance, OWASP denial-of-service and REST guidance, and modular MSA boundaries
-
 
 ## [0.5.16] — 2026-08-04
 
