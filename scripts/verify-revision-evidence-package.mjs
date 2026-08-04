@@ -30,6 +30,31 @@ function run(command, argumentsList) {
 }
 
 /**
+ * Create an independent package scope for every generated consumer.
+ *
+ * Node package self-reference resolves an import matching the nearest package's
+ * own name before searching `node_modules`. The verification directory lives
+ * beneath the Inkspan repository, so it must declare a different package name;
+ * otherwise a consumer can silently load the working tree instead of the packed
+ * artifact that the release would publish.
+ */
+function createIndependentConsumerScope() {
+  writeFileSync(
+    join(verificationDirectory, 'package.json'),
+    `${JSON.stringify(
+      {
+        name: 'inkspan-revision-evidence-consumer',
+        private: true,
+        type: 'module',
+      },
+      null,
+      2,
+    )}\n`,
+    'utf8',
+  );
+}
+
+/**
  * Pack and install the exact npm artifact into the isolated consumer tree.
  *
  * Extraction avoids a networked npm install while ensuring package-name imports
@@ -136,11 +161,17 @@ function verifyRevisionEvidenceEsmRuntime(packageDirectory) {
   writeFileSync(
     esmPath,
     `import assert from 'node:assert/strict';
+import { isAbsolute, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as editor from '${packageJson.name}';
 
 const resolvedEntry = fileURLToPath(import.meta.resolve('${packageJson.name}'));
-assert.ok(resolvedEntry.startsWith(${JSON.stringify(packageDirectory)}));
+const resolvedRelative = relative(${JSON.stringify(packageDirectory)}, resolvedEntry);
+assert.equal(isAbsolute(resolvedRelative), false);
+assert.equal(
+  resolvedRelative === '..' || resolvedRelative.startsWith('..' + sep),
+  false,
+);
 assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidence, 'function');
 assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
 const sourceEnvelope = {
@@ -189,11 +220,17 @@ function verifyRevisionEvidenceCommonJsRuntime(packageDirectory) {
   writeFileSync(
     commonJsPath,
     `const assert = require('node:assert/strict');
+const { isAbsolute, relative, sep } = require('node:path');
 const editor = require('${packageJson.name}');
 
 void (async () => {
   const resolvedEntry = require.resolve('${packageJson.name}');
-  assert.ok(resolvedEntry.startsWith(${JSON.stringify(packageDirectory)}));
+  const resolvedRelative = relative(${JSON.stringify(packageDirectory)}, resolvedEntry);
+  assert.equal(isAbsolute(resolvedRelative), false);
+  assert.equal(
+    resolvedRelative === '..' || resolvedRelative.startsWith('..' + sep),
+    false,
+  );
   assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidence, 'function');
   assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
   const sourceEnvelope = {
@@ -241,6 +278,7 @@ void (async () => {
 }
 
 try {
+  createIndependentConsumerScope();
   const packageDirectory = installPackedArtifact();
   verifyRevisionEvidenceDeclarations();
   verifyRevisionEvidenceEsmRuntime(packageDirectory);
