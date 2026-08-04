@@ -5,6 +5,35 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 ## [Unreleased]
 
 
+## [0.5.26] — 2026-08-04
+
+### Added
+- `createDocumentEnvelopeRevisionEvidence()` for returning one normalized frozen object/JSON envelope together with the exact SHA-256 revision derived from its RFC 8785 canonical bytes
+- `createDocumentEnvelopeRevisionEvidenceBytes()` for the same evidence contract from strict UTF-8 envelope bytes
+
+### Changed
+- Package version **0.5.26**
+- Standalone and provider-neutral collaborative editor handles now share the same validated-envelope pairing implementation as pure server, worker, migration, queue, and storage consumers
+
+### Reliability
+- Framework-independent consumers no longer need separate parse and revision operations that can associate a normalized payload with the wrong validator
+- Valid noncanonical JSON bytes are normalized once before hashing, and every returned evidence pair is internally consistent and frozen
+
+### Performance
+- Each evidence operation performs one strict parse, retains the resulting frozen envelope, and invokes the digest provider exactly once without a second document clone, parse, canonicalization pass, or schema reconstruction
+
+### Security
+- Pure evidence composition preserves duplicate-name rejection, strict UTF-8 decoding, resource ceilings, negative-zero rejection, provider brand checks, and typed redacted errors
+- Evidence envelopes contain complete client-controlled document content and remain excluded from ordinary logs, metric labels, analytics events, exception messages, public URLs, and compact revision metadata
+- Revision evidence remains an equality validator rather than authorization, tenant membership, a signature, or proof of durable persistence; CWL and naruon hosts retain authenticated atomic RFC 9110 `If-Match`, tenant isolation, encryption, retention, redaction, and audit policy
+
+### Tests
+- Added object/JSON, noncanonical strict UTF-8, exact canonical-byte, deep-freeze, single-digest, imperative shared-helper, packed ESM, CommonJS, strict declaration-consumer, and repository-wide 100% production coverage verification
+
+### Documentation
+- Added Superpowers design and implementation records and expanded revision guidance with pure server/worker/migration usage, privacy, standards, and modular MSA ownership boundaries
+
+
 ## [0.5.25] — 2026-08-04
 
 ### Added
