@@ -49,6 +49,15 @@ export {
   serializeDocumentEnvelope,
 } from './documentEnvelopeCanonical.js';
 export {
+  DocumentEnvelopeRevisionError,
+  createDocumentEnvelopeRevision,
+  createDocumentEnvelopeRevisionBytes,
+} from './documentEnvelopeRevision.js';
+export type {
+  CwlEditorDocumentRevision,
+  DocumentEnvelopeDigestProvider,
+} from './documentEnvelopeRevision.js';
+export {
   restoreDocumentEnvelope,
   restoreDocumentEnvelopeBytes,
   validateDocumentEnvelopeBytesForEditor,
