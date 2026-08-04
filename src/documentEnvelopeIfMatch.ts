@@ -11,6 +11,7 @@ import {
   type DocumentEnvelopeDigestProvider,
 } from './documentEnvelopeRevision.js';
 import {
+  applyPreparedDocumentEnvelope,
   prepareDocumentEnvelopeBytesForEditor,
   prepareDocumentEnvelopeForEditor,
   type PreparedDocumentEnvelope,
@@ -50,8 +51,8 @@ type DocumentEnvelopePreparation = (
  * Restore an object or JSON-text envelope only when the current tag matches.
  *
  * Revision mismatch and document movement are normal conflict results. Invalid
- * tags, digest failures, envelope violations, and schema incompatibility retain
- * their existing typed, redacted exceptions and never overwrite newer content.
+ * tags, digest failures, envelope violations, schema incompatibility, and editor
+ * policy rejection retain typed, redacted exceptions and never report success.
  */
 export function restoreDocumentEnvelopeIfMatch(
   editor: Editor,
@@ -123,11 +124,11 @@ async function restoreIfMatch(
     return createMovedDocumentConflict();
   }
 
-  editor.commands.setContent(prepared.documentNode, false);
+  const envelope = applyPreparedDocumentEnvelope(editor, prepared);
   return Object.freeze({
     status: 'restored',
     previousRevision: currentRevision,
-    envelope: prepared.envelope,
+    envelope,
   });
 }
 
