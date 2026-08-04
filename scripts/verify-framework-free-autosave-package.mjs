@@ -191,12 +191,10 @@ function verifyDeclarationConsumer() {
     `import {
   createDocumentAutosaveQueue,
   type DocumentAutosaveRequestOutcome,
+  type DocumentAutosaveRevisionEvidence,
 } from '${packageJson.name}/autosave';
-import type {
-  CwlEditorDocumentRevisionEvidence,
-} from '${packageJson.name}/revision-evidence';
 
-declare const evidence: CwlEditorDocumentRevisionEvidence;
+declare const evidence: DocumentAutosaveRevisionEvidence;
 const queue = createDocumentAutosaveQueue({
   save: async () => ({ status: 'saved' }),
 });
