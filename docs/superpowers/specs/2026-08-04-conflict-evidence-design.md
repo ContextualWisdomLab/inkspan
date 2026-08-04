@@ -11,7 +11,7 @@ Inkspan will return the already-captured, deeply frozen envelope beside its matc
 
 ## Selected approach
 
-Extend the existing additive result contract while preserving every 0.5.23 field:
+Extend the existing additive result contract while preserving every 0.5.23 field and encode the revision-envelope invariant directly in the TypeScript union:
 
 ```ts
 export type CwlEditorIfMatchRestoreResult =
@@ -23,12 +23,17 @@ export type CwlEditorIfMatchRestoreResult =
     }
   | {
       readonly status: 'conflict';
-      readonly currentRevision: CwlEditorDocumentRevision | null;
-      readonly currentEnvelope: CwlEditorDocumentEnvelope | null;
+      readonly currentRevision: CwlEditorDocumentRevision;
+      readonly currentEnvelope: CwlEditorDocumentEnvelope;
+    }
+  | {
+      readonly status: 'conflict';
+      readonly currentRevision: null;
+      readonly currentEnvelope: null;
     };
 ```
 
-The existing `status`, `previousRevision`, `envelope`, and `currentRevision` properties remain unchanged. Consumers that structurally inspect the result receive new evidence without changing invocation signatures. The pure object/JSON and strict UTF-8 functions plus the shared standalone/collaborative imperative handle all inherit the enriched result.
+The existing `status`, `previousRevision`, `envelope`, and `currentRevision` properties remain unchanged. Stable and null conflicts are separate variants, preventing a strict consumer from constructing or accepting an inconsistent non-null revision/null-envelope pair. The pure object/JSON and strict UTF-8 functions plus the shared standalone/collaborative imperative handle all inherit the enriched result.
 
 ## Alternatives considered
 
