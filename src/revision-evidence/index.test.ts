@@ -24,10 +24,7 @@ const supportedEnvelope = {
   },
 };
 
-function createDigestProvider(fillByte: number): {
-  readonly provider: DocumentEnvelopeDigestProvider;
-  readonly digest: ReturnType<typeof vi.fn>;
-} {
+function createDigestProvider(fillByte: number) {
   const digest = vi.fn(
     async (algorithm: 'SHA-256', source: ArrayBuffer | ArrayBufferView) => {
       expect(algorithm).toBe('SHA-256');
@@ -35,10 +32,8 @@ function createDigestProvider(fillByte: number): {
       return new Uint8Array(32).fill(fillByte).buffer;
     },
   );
-  return {
-    provider: { digest },
-    digest,
-  };
+  const provider: DocumentEnvelopeDigestProvider = { digest };
+  return { provider, digest };
 }
 
 describe('standalone revision-evidence entrypoint', () => {
