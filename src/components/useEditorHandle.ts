@@ -13,6 +13,10 @@ import {
   encodeValidatedDocumentEnvelope,
   serializeValidatedDocumentEnvelope,
 } from '../documentEnvelopeCanonical.js';
+import {
+  restoreDocumentEnvelopeBytesIfMatch,
+  restoreDocumentEnvelopeIfMatch,
+} from '../documentEnvelopeIfMatch.js';
 import { createValidatedDocumentEnvelopeRevision } from '../documentEnvelopeRevision.js';
 import {
   restoreDocumentEnvelope,
@@ -103,6 +107,36 @@ export function useEditorHandle(
         editor ? restoreDocumentEnvelope(editor, source, limits) : null,
       restoreDocumentEnvelopeBytes: (source, limits) =>
         editor ? restoreDocumentEnvelopeBytes(editor, source, limits) : null,
+      restoreDocumentEnvelopeIfMatch: (
+        expectedStrongEntityTag,
+        source,
+        limits,
+        digestProvider,
+      ) =>
+        editor
+          ? restoreDocumentEnvelopeIfMatch(
+              editor,
+              expectedStrongEntityTag,
+              source,
+              limits,
+              digestProvider,
+            )
+          : Promise.resolve(null),
+      restoreDocumentEnvelopeBytesIfMatch: (
+        expectedStrongEntityTag,
+        source,
+        limits,
+        digestProvider,
+      ) =>
+        editor
+          ? restoreDocumentEnvelopeBytesIfMatch(
+              editor,
+              expectedStrongEntityTag,
+              source,
+              limits,
+              digestProvider,
+            )
+          : Promise.resolve(null),
       validateDocumentJson: (documentJson) =>
         editor ? validateDocumentJson(editor, documentJson) : false,
       setDocumentJson: (documentJson) => {
