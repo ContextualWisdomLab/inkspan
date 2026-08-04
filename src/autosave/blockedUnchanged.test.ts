@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CwlEditorDocumentRevisionEvidence } from '../documentRevisionEvidence.js';
-import {
-  DocumentAutosaveQueueError,
-  createDocumentAutosaveQueue,
-} from './index.js';
+import { createDocumentAutosaveQueue } from './index.js';
 
 /** Create one deeply frozen, structurally valid revision-evidence fixture. */
 function createEvidence(fill: string): CwlEditorDocumentRevisionEvidence {
@@ -42,9 +39,7 @@ describe('document autosave blocked durable state', () => {
     await expect(queue.enqueue(firstEvidence)).resolves.toMatchObject({
       status: 'saved',
     });
-    await expect(queue.enqueue(failedEvidence)).rejects.toMatchObject<
-      Partial<DocumentAutosaveQueueError>
-    >({
+    await expect(queue.enqueue(failedEvidence)).rejects.toMatchObject({
       code: 'host_save_failed',
     });
 
