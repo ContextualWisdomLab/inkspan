@@ -261,7 +261,7 @@ function assertInsideConsumer(resolvedPath, description) {
 }
 const resolvedEntry = fileURLToPath(import.meta.resolve('${packageJson.name}'));
 assertInsideConsumer(resolvedEntry, 'packed ESM entry escaped consumer tree');
-const packageRelative = relative(${JSON.stringify(installedPackageDirectory)}, resolvedEntry);
+const packageRelative = relative(${JSON.stringify(packageDirectory)}, resolvedEntry);
 assert.equal(isAbsolute(packageRelative), false);
 assert.equal(
   packageRelative === '..' || packageRelative.startsWith('..' + sep),
@@ -326,7 +326,7 @@ const editor = require('${packageJson.name}');
 
 void (async () => {
   const resolvedEntry = require.resolve('${packageJson.name}');
-  const resolvedRelative = relative(${JSON.stringify(installedPackageDirectory)}, resolvedEntry);
+  const resolvedRelative = relative(${JSON.stringify(packageDirectory)}, resolvedEntry);
   assert.equal(isAbsolute(resolvedRelative), false);
   assert.equal(
     resolvedRelative === '..' || resolvedRelative.startsWith('..' + sep),
