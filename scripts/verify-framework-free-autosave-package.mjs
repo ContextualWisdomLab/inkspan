@@ -190,9 +190,11 @@ function verifyDeclarationConsumer() {
     sourcePath,
     `import {
   createDocumentAutosaveQueue,
-  type CwlEditorDocumentRevisionEvidence,
   type DocumentAutosaveRequestOutcome,
 } from '${packageJson.name}/autosave';
+import type {
+  CwlEditorDocumentRevisionEvidence,
+} from '${packageJson.name}/revision-evidence';
 
 declare const evidence: CwlEditorDocumentRevisionEvidence;
 const queue = createDocumentAutosaveQueue({
