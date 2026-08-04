@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -16,19 +18,10 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const packageJson = JSON.parse(
   readFileSync(join(repositoryRoot, 'package.json'), 'utf8'),
 );
+const packageSubpath = `${packageJson.name}/revision-evidence`;
 const verificationDirectory = mkdtempSync(
   join(tmpdir(), 'inkspan-revision-evidence-'),
 );
-const externalDependencyNames = Object.freeze([
-  ...new Set([
-    ...Object.keys(packageJson.dependencies ?? {}),
-    ...Object.keys(packageJson.peerDependencies ?? {}),
-  ]),
-]);
-const consumerTypeDependencyNames = Object.freeze([
-  '@types/react',
-  '@types/react-dom',
-]);
 
 /** Execute a package-consumer command from the repository root. */
 function run(command, argumentsList) {
@@ -39,39 +32,18 @@ function run(command, argumentsList) {
   });
 }
 
-/** Return the exact already-installed version of one consumer dependency. */
-function readInstalledDependencyVersion(packageName) {
-  const manifestPath = join(
-    repositoryRoot,
-    'node_modules',
-    ...packageName.split('/'),
-    'package.json',
-  );
-  assert.ok(
-    existsSync(manifestPath),
-    `repository install is missing dependency metadata: ${packageName}`,
-  );
-  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-  assert.equal(
-    typeof manifest.version,
-    'string',
-    `installed dependency has no version: ${packageName}`,
-  );
-  return manifest.version;
-}
-
-/** Assert that a resolved path cannot escape the independent consumer tree. */
-function assertPathInsideConsumer(resolvedPath, description) {
-  const relativePath = relative(verificationDirectory, resolvedPath);
+/** Assert that one canonical path remains inside a trusted parent directory. */
+function assertPathInside(resolvedPath, parentDirectory, description) {
+  const relativePath = relative(parentDirectory, resolvedPath);
   assert.equal(
     isAbsolute(relativePath),
     false,
-    `${description} resolved outside the independent consumer tree`,
+    `${description} resolved outside its independent package directory`,
   );
   assert.equal(
     relativePath === '..' || relativePath.startsWith(`..${sep}`),
     false,
-    `${description} resolved outside the independent consumer tree`,
+    `${description} resolved outside its independent package directory`,
   );
 }
 
@@ -89,30 +61,28 @@ function packArtifact() {
   assert.equal(packResult.version, packageJson.version);
   const tarballPath = join(verificationDirectory, packResult.filename);
   assert.ok(existsSync(tarballPath), 'npm pack did not create the tarball');
-  return packResult.filename;
+  return tarballPath;
 }
 
 /**
- * Install the tarball and its declared dependency closure outside the repository.
+ * Extract only the packed package into an operating-system temporary consumer.
  *
- * Exact versions come from the already hash-locked repository installation, and
- * `--offline` prevents this verification step from fetching an unreviewed
- * package. Because the consumer lives under the operating-system temporary
- * directory, Node and TypeScript cannot fall through to repository `node_modules`.
+ * No dependency manager runs in this tree. React, TipTap, collaboration, and
+ * repository ancestor modules are therefore unavailable, and any accidental
+ * runtime or declaration dependency fails closed during the following checks.
  */
-function installIndependentConsumer(tarballFileName) {
-  const exactRuntimeDependencies = Object.fromEntries(
-    externalDependencyNames.map((packageName) => [
-      packageName,
-      readInstalledDependencyVersion(packageName),
-    ]),
+function extractStandalonePackage(tarballPath) {
+  const extractionDirectory = join(verificationDirectory, 'extracted-package');
+  const packageDirectory = join(
+    verificationDirectory,
+    'node_modules',
+    ...packageJson.name.split('/'),
   );
-  const exactTypeDependencies = Object.fromEntries(
-    consumerTypeDependencyNames.map((packageName) => [
-      packageName,
-      readInstalledDependencyVersion(packageName),
-    ]),
-  );
+  mkdirSync(extractionDirectory, { recursive: true });
+  mkdirSync(dirname(packageDirectory), { recursive: true });
+  run('tar', ['-xzf', tarballPath, '-C', extractionDirectory]);
+  renameSync(join(extractionDirectory, 'package'), packageDirectory);
+
   writeFileSync(
     join(verificationDirectory, 'package.json'),
     `${JSON.stringify(
@@ -120,12 +90,6 @@ function installIndependentConsumer(tarballFileName) {
         name: 'inkspan-revision-evidence-consumer',
         private: true,
         type: 'module',
-        packageManager: packageJson.packageManager,
-        dependencies: {
-          [packageJson.name]: `file:./${tarballFileName}`,
-          ...exactRuntimeDependencies,
-        },
-        devDependencies: exactTypeDependencies,
       },
       null,
       2,
@@ -133,74 +97,55 @@ function installIndependentConsumer(tarballFileName) {
     'utf8',
   );
 
-  run('pnpm', [
-    '--dir',
-    verificationDirectory,
-    'install',
-    '--offline',
-    '--ignore-scripts',
-    '--frozen-lockfile=false',
-    '--strict-peer-dependencies',
-  ]);
-
-  const packageDirectory = join(
-    verificationDirectory,
-    'node_modules',
-    ...packageJson.name.split('/'),
-  );
-  assert.ok(
-    existsSync(join(packageDirectory, 'package.json')),
-    'packed package was not installed into the independent consumer tree',
-  );
   const installedPackageDirectory = realpathSync(packageDirectory);
-  assertPathInsideConsumer(
+  assertPathInside(
     installedPackageDirectory,
-    'packed package directory',
+    realpathSync(verificationDirectory),
+    'packed package',
   );
-  for (const dependencyName of externalDependencyNames) {
-    const dependencyDirectory = join(
-      verificationDirectory,
-      'node_modules',
-      ...dependencyName.split('/'),
-    );
-    assert.ok(
-      existsSync(join(dependencyDirectory, 'package.json')),
-      `independent consumer is missing declared dependency: ${dependencyName}`,
-    );
-    assertPathInsideConsumer(
-      realpathSync(dependencyDirectory),
-      `dependency ${dependencyName}`,
+  for (const forbiddenDependency of ['react', '@tiptap/core', '@tiptap/react']) {
+    assert.equal(
+      existsSync(
+        join(
+          verificationDirectory,
+          'node_modules',
+          ...forbiddenDependency.split('/'),
+        ),
+      ),
+      false,
+      `standalone consumer unexpectedly contains ${forbiddenDependency}`,
     );
   }
   return installedPackageDirectory;
 }
 
-/** Compile one strict consumer against every packed revision-evidence path. */
+/** Compile a strict dependency-free consumer against the packed declarations. */
 function verifyRevisionEvidenceDeclarations() {
   const consumerPath = join(verificationDirectory, 'consumer.ts');
   writeFileSync(
     consumerPath,
     `import {
+  DEFAULT_DOCUMENT_ENVELOPE_LIMITS,
+  DOCUMENT_ENVELOPE_SCHEMA_ID,
+  DOCUMENT_ENVELOPE_SCHEMA_VERSION,
+  DocumentEnvelopeError,
+  DocumentEnvelopeRevisionError,
   createDocumentEnvelopeRevisionEvidence,
   createDocumentEnvelopeRevisionEvidenceBytes,
   type CwlEditorDocumentRevisionEvidence,
-  type CwlEditorHandle,
   type DocumentEnvelopeDigestProvider,
-} from '${packageJson.name}';
+} from '${packageSubpath}';
 
-declare const editorHandle: CwlEditorHandle;
-declare const digestProvider: DocumentEnvelopeDigestProvider;
 const sourceEnvelope = {
-  schemaId: 'https://inkspan.io/schemas/document-envelope/v1',
-  schemaVersion: 1 as const,
-  documentJson: { type: 'doc' },
+  schemaId: DOCUMENT_ENVELOPE_SCHEMA_ID,
+  schemaVersion: DOCUMENT_ENVELOPE_SCHEMA_VERSION,
+  documentJson: { type: 'doc' as const },
 };
-const handleEvidence: Promise<CwlEditorDocumentRevisionEvidence | null> =
-  editorHandle.getDocumentEnvelopeRevisionEvidence(undefined, digestProvider);
+declare const digestProvider: DocumentEnvelopeDigestProvider;
 const objectEvidence: Promise<CwlEditorDocumentRevisionEvidence> =
   createDocumentEnvelopeRevisionEvidence(
     sourceEnvelope,
-    undefined,
+    DEFAULT_DOCUMENT_ENVELOPE_LIMITS,
     digestProvider,
   );
 const byteEvidence: Promise<CwlEditorDocumentRevisionEvidence> =
@@ -209,13 +154,16 @@ const byteEvidence: Promise<CwlEditorDocumentRevisionEvidence> =
     undefined,
     digestProvider,
   );
-const inspected: Promise<void> = handleEvidence.then((captured) => {
-  if (captured === null) return;
+const inspected: Promise<void> = objectEvidence.then((captured) => {
   const revisionTag: string = captured.revision.strongEntityTag;
-  const documentType: unknown = captured.envelope.documentJson.type;
+  const documentType: 'doc' = captured.envelope.documentJson.type;
   void [revisionTag, documentType];
 });
-void [objectEvidence, byteEvidence, inspected];
+const envelopeError: DocumentEnvelopeError =
+  new DocumentEnvelopeError('redacted');
+const revisionError: DocumentEnvelopeRevisionError =
+  new DocumentEnvelopeRevisionError('redacted');
+void [byteEvidence, inspected, envelopeError, revisionError];
 `,
     'utf8',
   );
@@ -239,7 +187,7 @@ void [objectEvidence, byteEvidence, inspected];
   ]);
 }
 
-/** Execute the packed package API through ESM with real object and byte evidence. */
+/** Execute the packed standalone subpath through ESM with real evidence. */
 function verifyRevisionEvidenceEsmRuntime(packageDirectory) {
   const esmPath = join(verificationDirectory, 'consumer.mjs');
   writeFileSync(
@@ -247,31 +195,22 @@ function verifyRevisionEvidenceEsmRuntime(packageDirectory) {
     `import assert from 'node:assert/strict';
 import { isAbsolute, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as editor from '${packageJson.name}';
+import * as evidenceApi from '${packageSubpath}';
 
-const consumerDirectory = ${JSON.stringify(verificationDirectory)};
-function assertInsideConsumer(resolvedPath, description) {
-  const resolvedRelative = relative(consumerDirectory, resolvedPath);
-  assert.equal(isAbsolute(resolvedRelative), false, description);
-  assert.equal(
-    resolvedRelative === '..' || resolvedRelative.startsWith('..' + sep),
-    false,
-    description,
-  );
-}
-const resolvedEntry = fileURLToPath(import.meta.resolve('${packageJson.name}'));
-assertInsideConsumer(resolvedEntry, 'packed ESM entry escaped consumer tree');
-const packageRelative = relative(${JSON.stringify(packageDirectory)}, resolvedEntry);
-assert.equal(isAbsolute(packageRelative), false);
+const resolvedEntry = fileURLToPath(import.meta.resolve('${packageSubpath}'));
+const resolvedRelative = relative(${JSON.stringify(packageDirectory)}, resolvedEntry);
+assert.equal(isAbsolute(resolvedRelative), false);
 assert.equal(
-  packageRelative === '..' || packageRelative.startsWith('..' + sep),
+  resolvedRelative === '..' || resolvedRelative.startsWith('..' + sep),
   false,
 );
-assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidence, 'function');
-assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
+assert.equal(typeof evidenceApi.createDocumentEnvelopeRevisionEvidence, 'function');
+assert.equal(typeof evidenceApi.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
+assert.equal(typeof evidenceApi.DocumentEnvelopeError, 'function');
+assert.equal(typeof evidenceApi.DocumentEnvelopeRevisionError, 'function');
 const sourceEnvelope = {
-  schemaId: 'https://inkspan.io/schemas/document-envelope/v1',
-  schemaVersion: 1,
+  schemaId: evidenceApi.DOCUMENT_ENVELOPE_SCHEMA_ID,
+  schemaVersion: evidenceApi.DOCUMENT_ENVELOPE_SCHEMA_VERSION,
   documentJson: { type: 'doc', content: [{ type: 'paragraph' }] },
 };
 let providerCalls = 0;
@@ -283,16 +222,17 @@ const provider = {
     return new Uint8Array(32).fill(0x5a).buffer;
   },
 };
-const objectEvidence = await editor.createDocumentEnvelopeRevisionEvidence(
+const objectEvidence = await evidenceApi.createDocumentEnvelopeRevisionEvidence(
   sourceEnvelope,
   undefined,
   provider,
 );
-const byteEvidence = await editor.createDocumentEnvelopeRevisionEvidenceBytes(
-  new TextEncoder().encode(JSON.stringify(sourceEnvelope)),
-  undefined,
-  provider,
-);
+const byteEvidence =
+  await evidenceApi.createDocumentEnvelopeRevisionEvidenceBytes(
+    new TextEncoder().encode(JSON.stringify(sourceEnvelope)),
+    undefined,
+    provider,
+  );
 assert.deepEqual(objectEvidence.envelope, byteEvidence.envelope);
 assert.equal(objectEvidence.revision.digestHex, '5a'.repeat(32));
 assert.equal(
@@ -301,36 +241,54 @@ assert.equal(
 );
 assert.equal(Object.isFrozen(objectEvidence), true);
 assert.equal(Object.isFrozen(objectEvidence.envelope), true);
+assert.equal(Object.isFrozen(objectEvidence.envelope.documentJson), true);
 assert.equal(Object.isFrozen(objectEvidence.revision), true);
 assert.equal(providerCalls, 2);
+await assert.rejects(
+  evidenceApi.createDocumentEnvelopeRevisionEvidence({
+    ...sourceEnvelope,
+    schemaVersion: 99,
+  }),
+  evidenceApi.DocumentEnvelopeError,
+);
+await assert.rejects(
+  evidenceApi.createDocumentEnvelopeRevisionEvidence(
+    sourceEnvelope,
+    undefined,
+    null,
+  ),
+  evidenceApi.DocumentEnvelopeRevisionError,
+);
 `,
     'utf8',
   );
   run(process.execPath, [esmPath]);
 }
 
-/** Execute the packed package API through CommonJS with real evidence. */
+/** Execute the packed standalone subpath through CommonJS with real evidence. */
 function verifyRevisionEvidenceCommonJsRuntime(packageDirectory) {
   const commonJsPath = join(verificationDirectory, 'consumer.cjs');
   writeFileSync(
     commonJsPath,
     `const assert = require('node:assert/strict');
 const { isAbsolute, relative, sep } = require('node:path');
-const editor = require('${packageJson.name}');
+const evidenceApi = require('${packageSubpath}');
 
 void (async () => {
-  const resolvedEntry = require.resolve('${packageJson.name}');
+  const resolvedEntry = require.resolve('${packageSubpath}');
   const resolvedRelative = relative(${JSON.stringify(packageDirectory)}, resolvedEntry);
   assert.equal(isAbsolute(resolvedRelative), false);
   assert.equal(
     resolvedRelative === '..' || resolvedRelative.startsWith('..' + sep),
     false,
   );
-  assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidence, 'function');
-  assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
+  assert.equal(typeof evidenceApi.createDocumentEnvelopeRevisionEvidence, 'function');
+  assert.equal(typeof evidenceApi.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
+  assert.equal(typeof evidenceApi.DocumentEnvelopeError, 'function');
+  assert.equal(typeof evidenceApi.DocumentEnvelopeRevisionError, 'function');
   const sourceEnvelope = {
-    schemaId: 'https://inkspan.io/schemas/document-envelope/v1',
-    schemaVersion: 1,
+    schemaId: evidenceApi.DOCUMENT_ENVELOPE_SCHEMA_ID,
+    schemaVersion: evidenceApi.DOCUMENT_ENVELOPE_SCHEMA_VERSION,
     documentJson: { type: 'doc', content: [{ type: 'paragraph' }] },
   };
   let providerCalls = 0;
@@ -342,16 +300,18 @@ void (async () => {
       return new Uint8Array(32).fill(0xa5).buffer;
     },
   };
-  const objectEvidence = await editor.createDocumentEnvelopeRevisionEvidence(
-    sourceEnvelope,
-    undefined,
-    provider,
-  );
-  const byteEvidence = await editor.createDocumentEnvelopeRevisionEvidenceBytes(
-    new TextEncoder().encode(JSON.stringify(sourceEnvelope)),
-    undefined,
-    provider,
-  );
+  const objectEvidence =
+    await evidenceApi.createDocumentEnvelopeRevisionEvidence(
+      sourceEnvelope,
+      undefined,
+      provider,
+    );
+  const byteEvidence =
+    await evidenceApi.createDocumentEnvelopeRevisionEvidenceBytes(
+      new TextEncoder().encode(JSON.stringify(sourceEnvelope)),
+      undefined,
+      provider,
+    );
   assert.deepEqual(objectEvidence.envelope, byteEvidence.envelope);
   assert.equal(objectEvidence.revision.digestHex, 'a5'.repeat(32));
   assert.equal(
@@ -360,6 +320,7 @@ void (async () => {
   );
   assert.equal(Object.isFrozen(objectEvidence), true);
   assert.equal(Object.isFrozen(objectEvidence.envelope), true);
+  assert.equal(Object.isFrozen(objectEvidence.envelope.documentJson), true);
   assert.equal(Object.isFrozen(objectEvidence.revision), true);
   assert.equal(providerCalls, 2);
 })().catch((error) => {
@@ -373,13 +334,13 @@ void (async () => {
 }
 
 try {
-  const tarballFileName = packArtifact();
-  const installedPackageDirectory = installIndependentConsumer(tarballFileName);
+  const tarballPath = packArtifact();
+  const installedPackageDirectory = extractStandalonePackage(tarballPath);
   verifyRevisionEvidenceDeclarations();
   verifyRevisionEvidenceEsmRuntime(installedPackageDirectory);
   verifyRevisionEvidenceCommonJsRuntime(installedPackageDirectory);
   console.log(
-    `Verified independently installed ${packageJson.name}@${packageJson.version} pure and imperative revision-evidence consumers.`,
+    `Verified extracted ${packageJson.name}@${packageJson.version} standalone revision-evidence ESM, CommonJS, declarations, and dependency isolation.`,
   );
 } finally {
   rmSync(verificationDirectory, { recursive: true, force: true });
