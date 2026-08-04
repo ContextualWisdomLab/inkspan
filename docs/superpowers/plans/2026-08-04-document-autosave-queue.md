@@ -4,7 +4,7 @@
 
 **Goal:** Add a framework-independent, bounded-memory, single-flight autosave queue that coalesces immutable document revision evidence without owning transport, authorization, persistence, tenancy, credentials, timers, migration, retention, or conflict UX.
 
-**Architecture:** Publish a dedicated `@contextualwisdomlab/cwl-editor/autosave` subpath. The queue accepts `CwlEditorDocumentRevisionEvidence`, validates its public revision contract, invokes one host-owned save callback at a time, keeps at most one not-yet-started revision, coalesces matching revisions, pauses after conflict or callback failure, and exposes frozen document-free state. Root exports remain available for interactive applications; the subpath must evaluate without React, TipTap, ProseMirror, or Yjs.
+**Architecture:** Publish a dedicated `@contextualwisdomlab/cwl-editor/autosave` subpath. The queue accepts `CwlEditorDocumentRevisionEvidence`, validates its public revision contract, invokes one host-owned save callback at a time, keeps at most one not-yet-started revision, coalesces matching revisions and concurrent flush waiters, pauses after conflict or callback failure, and exposes frozen document-free state. The subpath must evaluate without React, TipTap, ProseMirror, or Yjs.
 
 **Tech stack:** TypeScript 5.7, Node.js 22, Vite 6 library builds, Vitest 3 with 100% statement/branch/function/line coverage, npm packed-artifact ESM/CommonJS/strict declaration consumers.
 
@@ -12,13 +12,13 @@
 
 - No production code before an observed failing test.
 - No timer, network, persistence, provider SDK, credential, tenant, environment-variable, React, TipTap, ProseMirror, or Yjs dependency in the autosave source graph.
-- At most one active save and one pending evidence object.
+- At most one active save, one pending evidence object, and one shared pending flush promise.
 - Never expose document bodies in queue snapshots or request outcomes.
 - Preserve redacted errors and fail-closed validation.
 - Keep all public objects frozen and all public APIs beginner-readable through complete JSDoc.
 - Maintain repository-wide 100% production statement and branch coverage and Office 100% branch/docstring coverage.
 - Introduce no database object. Future host objects retain the two-descriptive-word naming rule and `snake_case` default.
-- Keep package and Office versions at 0.5.26 until the integrated exact head is release-ready.
+- Target package version 0.5.28 only after the integrated exact head is release-ready.
 
 ### Task 1: Specify queue behavior with a RED contract
 
@@ -47,6 +47,7 @@ Coverage scenarios:
 - strict single-flight callback ordering and re-entrant enqueue;
 - unchanged outcome after a durable save;
 - conflict pause, queued retention, `flush()`, and `resume()`;
+- one shared pending `flush()` promise under repeated calls;
 - thrown callback and invalid callback result with redacted error and recovery;
 - close while idle, saving, and blocked;
 - invalid evidence, digest/tag mismatch, invalid options, and invalid callback brand;
@@ -65,6 +66,7 @@ Coverage scenarios:
 **Files:**
 - Create: `src/autosave/index.ts`
 - Modify: `src/autosave/index.test.ts`
+- Create: `src/autosave/flushCoalescing.test.ts`
 
 **Public types:**
 
@@ -95,7 +97,7 @@ export interface DocumentAutosaveQueueSnapshot {
 - The pump removes the pending request before invoking the host callback so re-entrant enqueue can create the next pending request.
 - Saved outcomes advance `lastSavedStrongEntityTag`; conflicts block; exceptions and invalid outcomes reject active callers with one redacted `DocumentAutosaveQueueError` and block.
 - `resume()` clears blocked state and restarts the pump only when work remains.
-- `flush()` resolves on idle, blocked, or closed and after active completion during closing.
+- Concurrent nonterminal `flush()` calls return the same pending promise, which resolves on idle, blocked, or closed and after active completion during closing.
 - `close()` rejects new work, resolves pending work as closed, permits the active callback to settle, and then closes.
 - No promise or callback from older work can mutate a newer active request.
 
@@ -105,7 +107,7 @@ export interface DocumentAutosaveQueueSnapshot {
 - Create: `vite.autosave.config.ts`
 - Create: `scripts/verify-framework-free-autosave-package.mjs`
 - Modify: `package.json`
-- Modify: `src/index.ts`
+- Modify: `scripts/verify-package.mjs`
 
 **Packaging contract:**
 
@@ -113,8 +115,8 @@ export interface DocumentAutosaveQueueSnapshot {
 {
   "./autosave": {
     "types": "./dist/autosave/index.d.ts",
-    "import": "./dist/autosave/index.js",
-    "require": "./dist/autosave/index.cjs"
+    "import": "./dist/cwl-autosave.js",
+    "require": "./dist/cwl-autosave.cjs"
   }
 }
 ```
@@ -124,10 +126,11 @@ Verification must:
 - build dedicated ESM/CommonJS/declaration artifacts;
 - pack the exact npm artifact with scripts disabled;
 - extract only Inkspan into an operating-system temporary `node_modules` tree;
-- assert React, React DOM, TipTap, ProseMirror, and Yjs are absent;
+- assert React, React DOM, TipTap, ProseMirror, and Yjs are absent from the isolated consumer;
 - execute real saved/coalesced/conflict flows through ESM and CommonJS;
-- compile a strict TypeScript consumer with `types: []`;
-- assert all resolved paths remain inside the extracted package and the dedicated `dist/autosave` directory.
+- compile a strict TypeScript consumer with `types: []` and no DOM library;
+- assert all resolved paths remain inside the extracted package tree;
+- verify the general package manifest includes every autosave runtime and declaration target.
 
 ### Task 4: Complete authoritative product and operator documentation
 
@@ -142,12 +145,13 @@ Documentation must explain:
 - host debounce/change-detection and transport ownership;
 - authenticated atomic RFC 9110 `If-Match` write requirements;
 - same-revision coalescing, pending supersession, conflict/failure pause, recovery, flush, and close semantics;
+- bounded active, pending, and internal flush-waiter retention;
 - full-document privacy boundaries and revision-tag correlation risk;
 - SSR, worker, Node.js, naruon compose, and `ui.panel` integration boundaries;
 - that the queue is local coordination, not a distributed transaction or durable audit log;
 - APA 7th references to RFC 9110, RFC 8785, Herlihy and Wing (1990), and ISO/IEC 25010:2023.
 
-Keep the 0.5.26 changelog entry consolidated rather than adding a duplicate version heading.
+Add one consolidated 0.5.28 changelog section after integrating the 0.5.27 default branch.
 
 ### Task 5: Verify the exact head and integrate
 
@@ -159,7 +163,7 @@ Keep the 0.5.26 changelog entry consolidated rather than adding a duplicate vers
 4. Demo and Office Python 3.11/3.14 100% branch/docstring gates.
 5. SAST Semgrep, Security Scan, dependency review, CodeRabbit, GitHub Advanced Security, and central required workflows.
 6. No unresolved current-head human or automated review thread.
-7. Independent OpenCode and Noema approvals bound to the exact head.
+7. Every repository-required independent approval bound to the exact head.
 8. Branch protection, repository policy, and guarded squash merge.
 
-After merge, re-inspect open PRs before choosing the next bounded slice. Publish 0.5.26 only when the merged default branch also passes release acceptance, provenance, npm, PyPI, and release-evidence gates and an authorized release tag can be created without bypassing policy.
+After merge, re-inspect open PRs before choosing the next bounded slice. Publish 0.5.28 only when the merged default branch also passes release acceptance, provenance, registry, and release-evidence gates and an authorized release tag can be created without bypassing policy.
