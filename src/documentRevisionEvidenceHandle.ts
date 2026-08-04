@@ -7,6 +7,7 @@ import type {
 import type {
   CwlEditorDocumentRevisionEvidence,
 } from './documentRevisionEvidence.js';
+import type { CwlEditorHandle } from './types.js';
 
 /**
  * Attach atomic revision-evidence capture to the interactive editor handle.
@@ -32,4 +33,9 @@ declare module './types.js' {
   }
 }
 
-export {};
+/**
+ * Public method type that keeps the editor-handle augmentation reachable from
+ * the package root declaration entrypoint.
+ */
+export type CwlEditorDocumentRevisionEvidenceCapture =
+  CwlEditorHandle['getDocumentEnvelopeRevisionEvidence'];
