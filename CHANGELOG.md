@@ -5,6 +5,35 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 ## [Unreleased]
 
 
+## [0.5.25] — 2026-08-04
+
+### Added
+- `CwlEditorDocumentRevisionEvidence`, pairing one exact deeply frozen document envelope with the frozen SHA-256 strong revision derived from its RFC 8785 canonical UTF-8 bytes
+- `createDocumentEnvelopeRevisionEvidence()` and `createDocumentEnvelopeRevisionEvidenceBytes()` for object/JSON and strict UTF-8 one-call evidence creation
+- `CwlEditorHandle.getDocumentEnvelopeRevisionEvidence()` across standalone and provider-neutral Yjs editor surfaces
+
+### Changed
+- Package version **0.5.25**
+- Existing revision-only functions and the imperative revision method now share the paired evidence implementation and return only its `revision` property
+
+### Reliability
+- Autosave, delayed AI, template, review, compare, merge, fork, and audit workflows no longer need separate envelope and revision reads that can observe different editor documents
+- Object/JSON, strict UTF-8, and imperative paths return a validator and payload that are structurally guaranteed to describe the same captured document
+- Pre-hydration and post-destruction imperative evidence resolves to `null` without invoking the digest provider
+
+### Performance
+- Paired evidence reuses one validated frozen envelope and performs one canonical serialization and one SHA-256 digest; no second parse, document clone, schema reconstruction, provider call, or editor read is added
+
+### Security
+- Evidence envelopes contain complete client-controlled document content and are explicitly excluded from ordinary logs, metrics labels, analytics events, exception messages, public URLs, and compact revision metadata
+- Revision evidence remains an equality observation rather than authorization, tenant membership, a signature, or proof of durable persistence; CWL and naruon hosts retain authenticated atomic RFC 9110 `If-Match`, tenant isolation, encryption, retention, redaction, and audit policy
+
+### Tests
+- Added object/JSON, noncanonical strict UTF-8, frozen-pair, exact canonical-byte, single-digest, lifecycle, imperative-handle, ESM, CommonJS, strict declaration-consumer, and repository-wide 100% production coverage verification
+
+### Documentation
+- Added Superpowers design and implementation records and expanded README, revision-tag, and imperative-persistence guidance with atomic capture, performance, privacy, standards, and MSA ownership boundaries
+
 ## [0.5.24] — 2026-08-04
 
 ### Added
