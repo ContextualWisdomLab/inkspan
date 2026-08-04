@@ -1,9 +1,10 @@
 import {
   parseDocumentEnvelope,
   parseDocumentEnvelopeBytes,
+  type CwlEditorDocumentEnvelope,
   type DocumentEnvelopeLimits,
 } from './documentEnvelope.js';
-import { encodeDocumentEnvelope } from './documentEnvelopeCanonical.js';
+import { encodeValidatedDocumentEnvelope } from './documentEnvelopeCanonical.js';
 
 /** SHA-256 provider compatible with the Web Cryptography `SubtleCrypto` API. */
 export interface DocumentEnvelopeDigestProvider {
@@ -66,11 +67,11 @@ export async function createDocumentEnvelopeRevisionBytes(
 }
 
 async function digestCanonicalEnvelope(
-  envelope: unknown,
+  envelope: CwlEditorDocumentEnvelope,
   digestProvider: DocumentEnvelopeDigestProvider | null | undefined,
 ): Promise<CwlEditorDocumentRevision> {
   const provider = resolveDigestProvider(digestProvider);
-  const canonicalBytes = encodeDocumentEnvelope(envelope);
+  const canonicalBytes = encodeValidatedDocumentEnvelope(envelope);
   let digestResult: ArrayBuffer;
   try {
     digestResult = await provider.digest('SHA-256', canonicalBytes);
