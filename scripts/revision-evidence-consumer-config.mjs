@@ -1,5 +1,11 @@
-import { cpSync, existsSync, mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  rmSync,
+} from 'node:fs';
+import { dirname, join } from 'node:path';
 
 /**
  * Build the package manifest used by the independent revision-evidence consumer.
@@ -81,10 +87,9 @@ export function createTypeScriptVerificationArguments(
  * Copy one frozen-lockfile-verified pnpm dependency tree into a consumer.
  *
  * The complete tree, including pnpm's virtual store and relative symlink graph,
- * is copied without dereferencing links. This avoids a second dependency
- * resolution that could select newer transitive packages absent from the
- * offline store, while keeping every executable and declaration physically
- * inside the operating-system temporary consumer.
+ * is copied without dereferencing links. A later pruning step limits which
+ * direct packages are visible from the consumer while preserving the exact
+ * transitive closure selected by the repository lockfile.
  *
  * @param {string} sourceNodeModules - Repository `node_modules` directory.
  * @param {string} targetNodeModules - Consumer `node_modules` destination.
@@ -102,4 +107,75 @@ export function stageLockedNodeModules(sourceNodeModules, targetNodeModules) {
     force: false,
     verbatimSymlinks: true,
   });
+}
+
+/**
+ * Remove undeclared top-level packages from a staged pnpm dependency tree.
+ *
+ * pnpm's hidden virtual store is retained because direct package symlinks and
+ * their exact transitive dependencies point into it. Only explicitly allowed
+ * direct package links remain visible to Node.js and TypeScript from the
+ * temporary consumer. Hidden pnpm metadata and command shims are also retained;
+ * the verifier separately proves that the selected compiler and package paths
+ * resolve inside the consumer tree.
+ *
+ * @param {string} targetNodeModules - Staged consumer `node_modules` directory.
+ * @param {readonly string[]} allowedPackageNames - Exact unscoped or scoped direct package names.
+ * @returns {void}
+ */
+export function pruneTopLevelConsumerDependencies(
+  targetNodeModules,
+  allowedPackageNames,
+) {
+  if (!existsSync(targetNodeModules)) {
+    throw new Error('staged consumer node_modules directory does not exist');
+  }
+
+  const allowedUnscopedPackages = new Set();
+  const allowedScopedPackages = new Map();
+  for (const packageName of allowedPackageNames) {
+    const packageSegments = packageName.split('/');
+    if (packageName.startsWith('@')) {
+      if (packageSegments.length !== 2 || packageSegments.some((part) => !part)) {
+        throw new Error(`invalid scoped consumer dependency name: ${packageName}`);
+      }
+      const [packageScope, scopedName] = packageSegments;
+      const allowedNames = allowedScopedPackages.get(packageScope) ?? new Set();
+      allowedNames.add(scopedName);
+      allowedScopedPackages.set(packageScope, allowedNames);
+      continue;
+    }
+    if (packageSegments.length !== 1 || !packageSegments[0]) {
+      throw new Error(`invalid consumer dependency name: ${packageName}`);
+    }
+    allowedUnscopedPackages.add(packageName);
+  }
+
+  for (const topLevelEntry of readdirSync(targetNodeModules)) {
+    if (topLevelEntry.startsWith('.')) continue;
+    const topLevelPath = join(targetNodeModules, topLevelEntry);
+    if (!topLevelEntry.startsWith('@')) {
+      if (!allowedUnscopedPackages.has(topLevelEntry)) {
+        rmSync(topLevelPath, { recursive: true, force: true });
+      }
+      continue;
+    }
+
+    const allowedScopedNames = allowedScopedPackages.get(topLevelEntry);
+    if (!allowedScopedNames) {
+      rmSync(topLevelPath, { recursive: true, force: true });
+      continue;
+    }
+    for (const scopedEntry of readdirSync(topLevelPath)) {
+      if (!allowedScopedNames.has(scopedEntry)) {
+        rmSync(join(topLevelPath, scopedEntry), {
+          recursive: true,
+          force: true,
+        });
+      }
+    }
+    if (readdirSync(topLevelPath).length === 0) {
+      rmSync(topLevelPath, { recursive: true, force: true });
+    }
+  }
 }
