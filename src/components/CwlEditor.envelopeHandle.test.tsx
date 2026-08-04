@@ -162,6 +162,9 @@ describe('CwlEditor imperative envelope persistence', () => {
     const digestProvider: DocumentEnvelopeDigestProvider = {
       digest: vi.fn(async () => new Uint8Array(32).fill(0xef).buffer),
     };
+    const previousEnvelope = handle.getDocumentEnvelope({
+      maxJsonValues: 32,
+    })!;
     const revision = await handle.getDocumentEnvelopeRevision(
       { maxJsonValues: 32 },
       digestProvider,
@@ -183,12 +186,14 @@ describe('CwlEditor imperative envelope persistence', () => {
     expect(objectResult).toEqual({
       status: 'restored',
       previousRevision: revision,
+      previousEnvelope,
       envelope: objectEnvelope,
     });
     expect(handle.getHTML()).toContain('Conditional object');
     expect(onChange).not.toHaveBeenCalled();
 
     const beforeConflict = handle.getHTML();
+    const currentEnvelope = handle.getDocumentEnvelope()!;
     const conflict = await handle.restoreDocumentEnvelopeIfMatch(
       `"sha256-${'00'.repeat(32)}"`,
       createDocumentEnvelope(createParagraphDocument('Must not apply')),
@@ -198,6 +203,7 @@ describe('CwlEditor imperative envelope persistence', () => {
     expect(conflict).toEqual({
       status: 'conflict',
       currentRevision: revision,
+      currentEnvelope,
     });
     expect(handle.getHTML()).toBe(beforeConflict);
 
@@ -216,6 +222,7 @@ describe('CwlEditor imperative envelope persistence', () => {
     expect(byteResult).toMatchObject({
       status: 'restored',
       previousRevision: revision,
+      previousEnvelope: currentEnvelope,
       envelope: byteEnvelope,
     });
     expect(handle.getHTML()).toContain('Conditional bytes');
