@@ -80,9 +80,12 @@ if (result?.status === 'restored') {
   const appliedEnvelope = result.envelope;
   // previousRevision and previousEnvelope describe the same captured document.
   void [previousRevision, previousEnvelope, appliedEnvelope];
-} else if (result?.currentRevision !== null) {
-  const currentRevision = result?.currentRevision;
-  const currentEnvelope = result?.currentEnvelope;
+} else if (
+  result?.status === 'conflict' &&
+  result.currentRevision !== null
+) {
+  const currentRevision = result.currentRevision;
+  const currentEnvelope = result.currentEnvelope;
   // Stable mismatch: compare, merge, fork, audit, or retry from this pair.
   void [currentRevision, currentEnvelope];
 } else if (result?.status === 'conflict') {
