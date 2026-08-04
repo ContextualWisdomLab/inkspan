@@ -1,5 +1,9 @@
 import type { JSONContent } from '@tiptap/core';
 import type { Editor } from '@tiptap/react';
+import type {
+  CwlEditorDocumentEnvelope,
+  DocumentEnvelopeLimits,
+} from './documentEnvelope.js';
 
 /** Which document surface the editor reads from and writes to. */
 export type EditorMode = 'markdown' | 'html';
@@ -106,8 +110,57 @@ export interface CwlEditorHandle {
    * representations from one current editor revision.
    */
   getSnapshot(): CwlEditorDocumentSnapshot;
+  /**
+   * Create a detached, deeply frozen versioned envelope from the current editor
+   * revision. Returns `null` before editor creation.
+   */
+  getDocumentEnvelope(
+    limits?: DocumentEnvelopeLimits,
+  ): CwlEditorDocumentEnvelope | null;
+  /**
+   * Serialize the current editor revision as canonical RFC 8785 envelope JSON.
+   * Returns an empty string before editor creation.
+   */
+  getDocumentEnvelopeJson(limits?: DocumentEnvelopeLimits): string;
+  /**
+   * Encode the current editor revision as canonical UTF-8 envelope bytes.
+   * Returns an empty byte array before editor creation.
+   */
+  getDocumentEnvelopeBytes(limits?: DocumentEnvelopeLimits): Uint8Array;
   /** Replace the whole document from a string in the active `mode`. */
   setValue(value: string): void;
+  /**
+   * Check whether an object or JSON-text envelope can be restored atomically by
+   * the active editor. Returns `false` before editor creation.
+   */
+  validateDocumentEnvelope(
+    source: unknown,
+    limits?: DocumentEnvelopeLimits,
+  ): boolean;
+  /**
+   * Check whether strict UTF-8 envelope bytes can be restored atomically by the
+   * active editor. Returns `false` before editor creation.
+   */
+  validateDocumentEnvelopeBytes(
+    source: unknown,
+    limits?: DocumentEnvelopeLimits,
+  ): boolean;
+  /**
+   * Atomically restore an object or JSON-text envelope after resource and
+   * active-schema validation. Returns `null` before editor creation.
+   */
+  restoreDocumentEnvelope(
+    source: unknown,
+    limits?: DocumentEnvelopeLimits,
+  ): CwlEditorDocumentEnvelope | null;
+  /**
+   * Atomically restore strict UTF-8 envelope bytes after resource and
+   * active-schema validation. Returns `null` before editor creation.
+   */
+  restoreDocumentEnvelopeBytes(
+    source: unknown,
+    limits?: DocumentEnvelopeLimits,
+  ): CwlEditorDocumentEnvelope | null;
   /**
    * Check whether JSON can be restored by the active TipTap/ProseMirror schema
    * without mutating the document. Returns `false` before editor creation.
