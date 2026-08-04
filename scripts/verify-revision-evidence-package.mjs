@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import {
   createIndependentConsumerManifest,
   createTypeScriptVerificationArguments,
-  stageLockedNodeModules,
+  stageLockedConsumerDependencies,
 } from './revision-evidence-consumer-config.mjs';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -111,11 +111,13 @@ function packArtifact() {
  * Stage the packed artifact and exact frozen-lockfile dependency closure.
  *
  * The repository installation has already passed `pnpm install
- * --frozen-lockfile`. Copying that complete pnpm tree avoids a second resolver
- * pass that could select a newer transitive package missing from the offline
- * store. The packed tarball then replaces only Inkspan's package directory, so
+ * --frozen-lockfile`. Staging pnpm's virtual store while exposing only the
+ * consumer manifest's declared direct packages avoids a second resolver pass
+ * and prevents repository-only development packages from masking undeclared
+ * imports. The packed tarball then replaces only Inkspan's package directory, so
  * ESM, CommonJS, and declarations execute the publishable artifact while every
- * external dependency remains physically isolated below the temporary consumer.
+ * allowed external dependency remains physically isolated below the temporary
+ * consumer.
  */
 function stageIndependentConsumer(tarballFileName) {
   const exactRuntimeDependencies = Object.fromEntries(
@@ -146,9 +148,10 @@ function stageIndependentConsumer(tarballFileName) {
   );
 
   const targetNodeModules = join(verificationDirectory, 'node_modules');
-  stageLockedNodeModules(
+  stageLockedConsumerDependencies(
     join(repositoryRoot, 'node_modules'),
     targetNodeModules,
+    installedConsumerDependencyNames,
   );
 
   const extractionDirectory = join(verificationDirectory, 'packed-artifact');
