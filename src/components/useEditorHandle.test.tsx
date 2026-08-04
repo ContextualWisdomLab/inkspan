@@ -45,6 +45,9 @@ describe('useEditorHandle', () => {
     expect(handle.getDocumentEnvelopeJson()).toBe('');
     expect(handle.getDocumentEnvelopeBytes()).toEqual(new Uint8Array());
     await expect(handle.getDocumentEnvelopeRevision()).resolves.toBeNull();
+    await expect(
+      handle.getDocumentEnvelopeRevisionEvidence(),
+    ).resolves.toBeNull();
     expect(handle.validateDocumentEnvelope({})).toBe(false);
     expect(handle.validateDocumentEnvelopeBytes(new Uint8Array())).toBe(false);
     expect(handle.restoreDocumentEnvelope({})).toBeNull();
