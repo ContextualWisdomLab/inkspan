@@ -153,6 +153,10 @@ async function restoreIfMatch(
   }
 
   const prepared = prepare(editor, source, limits);
+  if (hasEditorMoved(editor, capturedDocument)) {
+    return createMovedDocumentConflict();
+  }
+
   const appliedEnvelope = createDocumentEnvelope(
     prepared.documentNode.toJSON(),
     limits,
