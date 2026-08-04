@@ -238,12 +238,16 @@ function readPositiveSafeIntegerLimit(
 ): number {
   if (!values.has(field) || values.get(field) === undefined) return fallback;
   const value = values.get(field);
-  if (!Number.isSafeInteger(value) || (value as number) < 1) {
+  if (
+    typeof value !== 'number' ||
+    !Number.isSafeInteger(value) ||
+    value < 1
+  ) {
     throw new DocumentEnvelopeError(
       'Document envelope limits must be positive safe integers',
     );
   }
-  return value as number;
+  return value;
 }
 
 function assertDocumentRoot(value: unknown): asserts value is JSONContent {
@@ -266,11 +270,6 @@ function cloneJsonValue(
   state: CloneState,
 ): unknown {
   state.valueCount += 1;
-  if (state.valueCount > state.limits.maxJsonValues) {
-    throw new DocumentEnvelopeError(
-      'Document envelope exceeds the supported JSON value count',
-    );
-  }
   if (depth > state.limits.maxNestingDepth) {
     throw new DocumentEnvelopeError(
       'Document envelope exceeds the supported document nesting depth',
@@ -339,17 +338,11 @@ function cloneJsonArray(
   active: WeakSet<object>,
   state: CloneState,
 ): readonly unknown[] {
-  const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
-  if (
-    lengthDescriptor === undefined ||
-    !('value' in lengthDescriptor) ||
-    typeof lengthDescriptor.value !== 'number'
-  ) {
-    throw new DocumentEnvelopeError(
-      'Document envelope arrays must contain only dense JSON elements',
-    );
-  }
-  const length = lengthDescriptor.value;
+  const lengthDescriptor = Object.getOwnPropertyDescriptor(
+    value,
+    'length',
+  ) as PropertyDescriptor;
+  const length = lengthDescriptor.value as number;
   if (length > state.limits.maxJsonValues - state.valueCount) {
     throw new DocumentEnvelopeError(
       'Document envelope exceeds the supported JSON value count',
