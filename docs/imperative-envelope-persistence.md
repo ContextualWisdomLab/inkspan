@@ -1,24 +1,60 @@
 # Imperative document-envelope persistence
 
-Inkspan 0.5.24 exposes the complete versioned persistence round trip, strong
-revision validation, revision-guarded restore, and atomic revision-envelope
-conflict evidence on `CwlEditorHandle`. Hosts do not need to reach through
-`getEditor()` or manually compose envelope, canonicalization, schema-validation,
+Inkspan 0.5.25 exposes the complete versioned persistence round trip, one-call
+revision-envelope evidence, revision-guarded restore, and atomic conflict
+evidence on `CwlEditorHandle`. Hosts do not need to reach through `getEditor()`
+or manually compose envelope, canonicalization, schema-validation,
 revision-digest, and restore functions for ordinary autosave and load workflows.
 
-## Export the current revision
+## Capture the current document and revision together
+
+Use paired evidence whenever a delayed operation, autosave request, compare,
+merge, fork, or audit record needs both the current document and its validator:
 
 ```tsx
 const editorRef = createRef<CwlEditorHandle>();
 
+const evidence =
+  await editorRef.current?.getDocumentEnvelopeRevisionEvidence();
+
+if (evidence) {
+  await saveDocument({
+    envelope: evidence.envelope,
+    expectedStrongEntityTag: evidence.revision.strongEntityTag,
+  });
+}
+```
+
+`getDocumentEnvelopeRevisionEvidence()` captures the active TipTap/ProseMirror
+document once, creates one detached deeply frozen envelope, hashes that exact
+envelope's RFC 8785 canonical UTF-8 bytes, and returns a frozen
+`{ envelope, revision }` pair. It performs no second editor read, document clone,
+canonicalization, digest, or provider call to create the pair. This prevents a
+user or Yjs edit from occurring between independent envelope and revision reads.
+
+The evidence envelope contains the complete document and must receive the same
+authorization, tenant isolation, encryption, redaction, retention, and audit
+controls as persisted content. Only the compact `revision.strongEntityTag`
+should enter an HTTP validator field or other revision-only metadata.
+
+## Export individual current representations
+
+Individual export methods remain available when only one representation is
+needed:
+
+```tsx
 const envelope = editorRef.current?.getDocumentEnvelope();
 const canonicalJson = editorRef.current?.getDocumentEnvelopeJson();
 const canonicalBytes = editorRef.current?.getDocumentEnvelopeBytes();
 const revision = await editorRef.current?.getDocumentEnvelopeRevision();
 ```
 
-All four methods read one current TipTap/ProseMirror document revision. The
-object envelope is detached and deeply frozen. JSON follows Inkspan's
+Each method invocation reads the document that is current at that invocation.
+Do not combine separate `getDocumentEnvelope()` and
+`getDocumentEnvelopeRevision()` calls when the host requires an atomic pair; use
+`getDocumentEnvelopeRevisionEvidence()` instead.
+
+The object envelope is detached and deeply frozen. JSON follows Inkspan's
 deterministic RFC 8785 representation, bytes are strict UTF-8 without a
 byte-order mark, and the revision contains a lowercase SHA-256 digest plus a
 quoted strong HTTP entity tag. Optional `DocumentEnvelopeLimits` can enforce
@@ -29,10 +65,10 @@ RFC 8785 erratum 7920. ECMAScript otherwise serializes both `-0` and `0` as `0`,
 which would collapse distinct pre-canonical values into the same stored bytes
 and validator.
 
-Before client hydration or after editor destruction, object export and revision
-export return `null`, JSON export returns `''`, and byte export returns an empty
-`Uint8Array`. These values are lifecycle fallbacks, not valid persisted
-documents. A host must not store them as a document revision.
+Before client hydration or after editor destruction, object export, revision
+export, and paired evidence return `null`; JSON export returns `''`; and byte
+export returns an empty `Uint8Array`. These values are lifecycle fallbacks, not
+valid persisted documents. A host must not store them as a document revision.
 
 ## Validate and restore
 
@@ -124,38 +160,42 @@ successful local conditional restore does not remove this durable server-side
 requirement. See [document revision tags](./document-revision-tags.md) for
 representation, privacy, and authorization boundaries.
 
-## Conflict evidence handling
+## Evidence handling
 
-`previousEnvelope` and `currentEnvelope` contain the complete versioned document,
-including text and accepted inline base64 images. They are shareable only under
-the host's document and tenant policy. Do not write them to ordinary logs,
-metrics labels, analytics events, exception messages, public URLs, or revision
-identifier fields. Apply the same authorization, encryption, redaction,
-retention, regional-residency, and audit controls used for the persisted
-document.
+Paired export evidence, `previousEnvelope`, and `currentEnvelope` contain the
+complete versioned document, including text and accepted inline base64 images.
+They are shareable only under the host's document and tenant policy. Do not write
+them to ordinary logs, metrics labels, analytics events, exception messages,
+public URLs, or revision identifier fields. Apply the same authorization,
+encryption, redaction, retention, regional-residency, and audit controls used for
+the persisted document.
 
-A returned revision-envelope pair is useful for conflict UI and audit evidence,
-but it does not establish user authority, tenant membership, durable commit
-status, or cryptographic authenticity. The host must record actor, operation,
-resource, authorization decision, and durable transaction outcome separately.
+A returned revision-envelope pair is useful for persistence, delayed operations,
+conflict UI, and audit evidence, but it does not establish user authority,
+tenant membership, durable commit status, or cryptographic authenticity. The
+host must record actor, operation, resource, authorization decision, and durable
+transaction outcome separately.
 
 ## Collaboration authorization
 
 `CollaborativeCwlEditor` exposes the same handle because both surfaces share
-the implementation. Restoring into a collaborative editor replaces the
-Yjs-backed document and can affect other participants. Inkspan validates
-content compatibility and local revision continuity but does not grant
-permission. The CWL or naruon host must authorize the document, tenant, user,
-expected revision, and operation before invoking restore and must coordinate
-provider persistence, awareness, audit, and conflict UX.
+the implementation. Paired evidence captures one current Yjs-backed editor
+document without opening a provider connection or claiming a durable server
+revision. Restoring into a collaborative editor replaces the Yjs-backed
+document and can affect other participants.
+
+Inkspan validates content compatibility and local revision continuity but does
+not grant permission. The CWL or naruon host must authorize the document,
+tenant, user, expected revision, and operation before invoking restore and must
+coordinate provider persistence, awareness, audit, and conflict UX.
 
 ## Security and MSA boundary
 
 The convenience methods preserve all lower-level guarantees: redacted typed
 errors, duplicate-name rejection, configurable resource ceilings, strict UTF-8
 decoding, canonical serialization, active-schema validation, strong SHA-256
-revision generation, local revision preconditions, atomic revision-envelope
-evidence, and unchanged-document failure behavior.
+revision generation, atomic revision-envelope pairing, local revision
+preconditions, conflict evidence, and unchanged-document failure behavior.
 
 They do not replace gateway byte limits, decompression limits, timeouts,
 rate/concurrency controls, migration routing, tenant isolation, encryption,
@@ -169,9 +209,10 @@ metadata rather than extending the strict envelope with ad hoc fields.
 - [RFC 8785: JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785)
 - [Verified RFC 8785 erratum 7920: reject negative zero](https://www.rfc-editor.org/errata/eid7920)
 - [RFC 8259: The JavaScript Object Notation Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259)
+- [RFC 9110 §8.8: validators](https://www.rfc-editor.org/rfc/rfc9110#section-8.8)
 - [RFC 9110 §13.1.1: `If-Match`](https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1)
-- [W3C Web Cryptography API Recommendation](https://www.w3.org/TR/2017/REC-WebCryptoAPI-20170126/)
+- [W3C Web Cryptography Level 2](https://www.w3.org/TR/webcrypto-2/)
 - [WHATWG Encoding Standard: UTF-8](https://encoding.spec.whatwg.org/#utf-8)
-- [TipTap persistence guidance](https://tiptap.dev/docs/editor/core-concepts/persistence)
+- [TipTap editor API: `getJSON()`](https://tiptap.dev/docs/editor/api/editor#getjson)
 - [TipTap v2 `setContent`](https://v2.tiptap.dev/docs/editor/api/commands/content/set-content)
 - [ProseMirror `Node.fromJSON`](https://prosemirror.net/docs/ref/#model.Node^fromJSON)
