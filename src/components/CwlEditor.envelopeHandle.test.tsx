@@ -66,10 +66,13 @@ describe('CwlEditor imperative envelope persistence', () => {
     const digestProvider: DocumentEnvelopeDigestProvider = {
       digest: vi.fn(async () => new Uint8Array(32).fill(0xef).buffer),
     };
+    const getJsonSpy = vi.spyOn(handle.getEditor()!, 'getJSON');
     const evidence = await handle.getDocumentEnvelopeRevisionEvidence(
       { maxJsonValues: 32 },
       digestProvider,
     );
+    expect(getJsonSpy).toHaveBeenCalledOnce();
+    getJsonSpy.mockRestore();
     expect(evidence?.envelope).toEqual(envelope);
     expect(Object.isFrozen(evidence)).toBe(true);
     expect(Object.isFrozen(evidence?.envelope)).toBe(true);
