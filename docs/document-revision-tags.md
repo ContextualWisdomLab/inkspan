@@ -38,13 +38,15 @@ hydration or after editor destruction it resolves to `null`.
 
 Use revision evidence when a server, worker, migration job, queue consumer,
 storage adapter, autosave, delayed AI operation, review, compare, merge, fork,
-or audit flow needs both the normalized envelope and its validator:
+or audit flow needs both the normalized envelope and its validator. Non-editor
+consumers should import the dedicated package subpath rather than the React
+editor entrypoint:
 
 ```ts
 import {
   createDocumentEnvelopeRevisionEvidence,
   createDocumentEnvelopeRevisionEvidenceBytes,
-} from '@contextualwisdomlab/cwl-editor';
+} from '@contextualwisdomlab/cwl-editor/revision-evidence';
 
 const objectEvidence =
   await createDocumentEnvelopeRevisionEvidence(untrustedEnvelopeJson);
@@ -56,6 +58,14 @@ await saveDocument({
   expectedStrongEntityTag: objectEvidence.revision.strongEntityTag,
 });
 ```
+
+The `revision-evidence` subpath bundles only Inkspan's strict envelope parser,
+canonicalizer, and SHA-256 orchestration. Importing it does not evaluate React,
+TipTap, ProseMirror, Yjs, transport, credentials, or provider SDK code. Its
+public declarations use Inkspan-owned recursive JSON contracts, so strict
+server and worker TypeScript consumers do not need editor-framework types.
+The root package continues to export the same pure functions for compatibility,
+but server-side and MSA modules should prefer the explicit subpath.
 
 Each function parses its source once, retains the exact deeply frozen normalized
 envelope returned by Inkspan's versioned persistence boundary, derives the
@@ -116,14 +126,32 @@ Web Cryptography digest operation is not streaming. Existing
 `DocumentEnvelopeLimits` should therefore be selected conservatively for the
 browser, worker, desktop, or server runtime that performs the operation.
 
-A provider receives a `BufferSource`, not an Inkspan-specific byte class. Browser
-iframes, workers, test realms, and server runtimes can expose typed arrays with
-different prototype identities even when their bytes are identical. Provider
-adapters and integration tests should compare or copy the addressed byte range
-(`buffer`, `byteOffset`, and `byteLength`) rather than requiring constructor or
-prototype identity. The provider must treat the supplied bytes as read-only and
-must not retain them beyond the digest operation unless the host explicitly owns
-that additional copy and its retention policy.
+The root editor contract describes the provider input as Web Cryptography's
+`BufferSource`. The standalone subpath exposes the structurally equivalent
+`DocumentEnvelopeDigestSource` union of `ArrayBuffer` and `ArrayBufferView`,
+avoiding an editor-framework declaration dependency. Browser iframes, workers,
+test realms, and server runtimes can expose typed arrays with different prototype
+identities even when their bytes are identical. Provider adapters and integration
+tests should compare or copy the addressed byte range (`buffer`, `byteOffset`,
+and `byteLength`) rather than requiring constructor or prototype identity. The
+provider must treat supplied bytes as read-only and must not retain them beyond
+the digest operation unless the host explicitly owns that additional copy and
+its retention policy.
+
+## Package and release evidence
+
+The release gate creates the exact npm tarball and extracts only that package
+under an operating-system temporary consumer outside the repository. React,
+TipTap, and repository ancestor `node_modules` are absent. The gate then executes
+real object and byte evidence through the packed ESM and CommonJS
+`revision-evidence` exports and compiles a strict TypeScript consumer against the
+packed declarations. Any accidental framework runtime import, declaration
+reference, source-tree self-reference, or missing export therefore fails closed.
+
+This evidence proves package isolation for the tested artifact and exact commit;
+it does not prove host authorization, persistence atomicity, or production
+retention policy. Release provenance and checksums remain separate repository
+release gates.
 
 ## Security, privacy, and audit boundaries
 
@@ -150,10 +178,10 @@ user, and revision identifiers as host metadata rather than adding ad hoc fields
 to Inkspan's strict envelope.
 
 Inkspan owns strict parsing, normalization, canonicalization, local digest
-generation, and revision-envelope pairing. CWL and naruon hosts own document
-routes, expected-revision storage, authenticated atomic compare-and-swap,
-conflict UX, authorization, tenant isolation, encryption, signatures, audit,
-retention, and retry policy.
+generation, revision-envelope pairing, and deterministic package entrypoints.
+CWL and naruon hosts own document routes, expected-revision storage,
+authenticated atomic compare-and-swap, conflict UX, authorization, tenant
+isolation, encryption, signatures, audit, retention, migration, and retry policy.
 
 ## References (APA 7th edition)
 
