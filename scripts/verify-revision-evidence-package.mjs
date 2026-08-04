@@ -152,8 +152,9 @@ function installIndependentConsumer(tarballFileName) {
     existsSync(join(packageDirectory, 'package.json')),
     'packed package was not installed into the independent consumer tree',
   );
+  const installedPackageDirectory = realpathSync(packageDirectory);
   assertPathInsideConsumer(
-    realpathSync(packageDirectory),
+    installedPackageDirectory,
     'packed package directory',
   );
   for (const dependencyName of externalDependencyNames) {
@@ -171,7 +172,7 @@ function installIndependentConsumer(tarballFileName) {
       `dependency ${dependencyName}`,
     );
   }
-  return packageDirectory;
+  return installedPackageDirectory;
 }
 
 /** Compile one strict consumer against every packed revision-evidence path. */
@@ -260,7 +261,7 @@ function assertInsideConsumer(resolvedPath, description) {
 }
 const resolvedEntry = fileURLToPath(import.meta.resolve('${packageJson.name}'));
 assertInsideConsumer(resolvedEntry, 'packed ESM entry escaped consumer tree');
-const packageRelative = relative(${JSON.stringify(packageDirectory)}, resolvedEntry);
+const packageRelative = relative(${JSON.stringify(installedPackageDirectory)}, resolvedEntry);
 assert.equal(isAbsolute(packageRelative), false);
 assert.equal(
   packageRelative === '..' || packageRelative.startsWith('..' + sep),
@@ -325,7 +326,7 @@ const editor = require('${packageJson.name}');
 
 void (async () => {
   const resolvedEntry = require.resolve('${packageJson.name}');
-  const resolvedRelative = relative(${JSON.stringify(packageDirectory)}, resolvedEntry);
+  const resolvedRelative = relative(${JSON.stringify(installedPackageDirectory)}, resolvedEntry);
   assert.equal(isAbsolute(resolvedRelative), false);
   assert.equal(
     resolvedRelative === '..' || resolvedRelative.startsWith('..' + sep),
@@ -379,10 +380,10 @@ void (async () => {
 
 try {
   const tarballFileName = packArtifact();
-  const packageDirectory = installIndependentConsumer(tarballFileName);
+  const installedPackageDirectory = installIndependentConsumer(tarballFileName);
   verifyRevisionEvidenceDeclarations();
-  verifyRevisionEvidenceEsmRuntime(packageDirectory);
-  verifyRevisionEvidenceCommonJsRuntime(packageDirectory);
+  verifyRevisionEvidenceEsmRuntime(installedPackageDirectory);
+  verifyRevisionEvidenceCommonJsRuntime(installedPackageDirectory);
   console.log(
     `Verified independently installed ${packageJson.name}@${packageJson.version} pure and imperative revision-evidence consumers.`,
   );
