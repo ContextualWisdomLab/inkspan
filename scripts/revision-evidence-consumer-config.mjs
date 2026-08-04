@@ -110,6 +110,32 @@ export function stageLockedNodeModules(sourceNodeModules, targetNodeModules) {
 }
 
 /**
+ * Stage the frozen dependency tree and expose only declared direct packages.
+ *
+ * This composition is the isolated-consumer boundary. It retains pnpm's hidden
+ * virtual store for exact transitive resolution, then removes every undeclared
+ * top-level package link before the packed artifact is executed or type-checked.
+ * Calling one helper prevents a verifier from copying the repository dependency
+ * tree and accidentally forgetting the fail-closed pruning step.
+ *
+ * @param {string} sourceNodeModules - Repository `node_modules` directory.
+ * @param {string} targetNodeModules - Consumer `node_modules` destination.
+ * @param {readonly string[]} allowedPackageNames - Exact declared direct package names.
+ * @returns {void}
+ */
+export function stageLockedConsumerDependencies(
+  sourceNodeModules,
+  targetNodeModules,
+  allowedPackageNames,
+) {
+  stageLockedNodeModules(sourceNodeModules, targetNodeModules);
+  pruneTopLevelConsumerDependencies(
+    targetNodeModules,
+    allowedPackageNames,
+  );
+}
+
+/**
  * Remove undeclared top-level packages from a staged pnpm dependency tree.
  *
  * pnpm's hidden virtual store is retained because direct package symlinks and
