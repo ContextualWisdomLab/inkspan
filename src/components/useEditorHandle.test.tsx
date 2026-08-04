@@ -48,6 +48,9 @@ describe('useEditorHandle', () => {
       handle.setDocumentJson({ type: 'doc', content: [] }),
     ).not.toThrow();
     expect(() => handle.insertValue('ignored')).not.toThrow();
+    expect(
+      handle.validateDocumentInsertionJson({ type: 'paragraph' }),
+    ).toBe(false);
     expect(() =>
       handle.insertDocumentJson({ type: 'paragraph' }),
     ).not.toThrow();
