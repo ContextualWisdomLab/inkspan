@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDocumentEnvelope } from './documentEnvelope.js';
 import { encodeDocumentEnvelope } from './documentEnvelopeCanonical.js';
 import {
@@ -17,6 +17,10 @@ const DOCUMENT_JSON = {
     },
   ],
 };
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 function toBytes(source: BufferSource): Uint8Array {
   return ArrayBuffer.isView(source)
@@ -85,7 +89,14 @@ describe('document envelope revision tags', () => {
     expect(revision.digestHex).toBe('ab'.repeat(32));
   });
 
-  it('uses the platform SHA-256 provider deterministically', async () => {
+  it('uses the platform provider deterministically when none is injected', async () => {
+    const platformProvider: DocumentEnvelopeDigestProvider = {
+      digest: vi.fn(async (_algorithm, source) =>
+        new Uint8Array(32).fill(toBytes(source).byteLength % 256).buffer,
+      ),
+    };
+    vi.stubGlobal('crypto', { subtle: platformProvider });
+
     const first = await createDocumentEnvelopeRevision(
       createDocumentEnvelope(DOCUMENT_JSON),
     );
@@ -107,6 +118,7 @@ describe('document envelope revision tags', () => {
     expect(first.digestHex).toMatch(/^[0-9a-f]{64}$/u);
     expect(first).toEqual(equivalent);
     expect(changed.digestHex).not.toBe(first.digestHex);
+    expect(platformProvider.digest).toHaveBeenCalledTimes(3);
   });
 
   it('fails closed when SHA-256 is unavailable or the provider fails', async () => {
@@ -117,6 +129,11 @@ describe('document envelope revision tags', () => {
         null,
       ),
     ).rejects.toThrow(DocumentEnvelopeRevisionError);
+
+    vi.stubGlobal('crypto', undefined);
+    await expect(
+      createDocumentEnvelopeRevision(createDocumentEnvelope(DOCUMENT_JSON)),
+    ).rejects.toThrow('digest provider is unavailable');
 
     const rejectedProvider: DocumentEnvelopeDigestProvider = {
       digest: async () => {
@@ -141,8 +158,11 @@ describe('document envelope revision tags', () => {
     }
   });
 
-  it('rejects an invalid provider result length', async () => {
-    const invalidProvider: DocumentEnvelopeDigestProvider = {
+  it('rejects invalid provider result types and lengths', async () => {
+    const invalidTypeProvider: DocumentEnvelopeDigestProvider = {
+      digest: async () => 'not-an-array-buffer' as unknown as ArrayBuffer,
+    };
+    const invalidLengthProvider: DocumentEnvelopeDigestProvider = {
       digest: async () => new Uint8Array(31).buffer,
     };
 
@@ -150,7 +170,14 @@ describe('document envelope revision tags', () => {
       createDocumentEnvelopeRevision(
         createDocumentEnvelope(DOCUMENT_JSON),
         undefined,
-        invalidProvider,
+        invalidTypeProvider,
+      ),
+    ).rejects.toThrow('32-byte SHA-256 digest');
+    await expect(
+      createDocumentEnvelopeRevision(
+        createDocumentEnvelope(DOCUMENT_JSON),
+        undefined,
+        invalidLengthProvider,
       ),
     ).rejects.toThrow('32-byte SHA-256 digest');
   });
