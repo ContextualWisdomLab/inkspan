@@ -141,4 +141,81 @@ describe('CwlEditor imperative envelope persistence', () => {
     expect(handle.getHTML()).toBe(beforeFailure);
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it('applies object and byte envelopes only when the handle revision matches', async () => {
+    const editorRef = createRef<CwlEditorHandle>();
+    const onChange = vi.fn();
+    render(
+      <CwlEditor
+        ref={editorRef}
+        mode="markdown"
+        defaultValue="Conditional before"
+        onChange={onChange}
+      />,
+    );
+    await waitFor(() =>
+      expect(editorRef.current?.getEditor()).not.toBeNull(),
+    );
+    const handle = editorRef.current!;
+    onChange.mockClear();
+    const digestProvider: DocumentEnvelopeDigestProvider = {
+      digest: vi.fn(async () => new Uint8Array(32).fill(0xef).buffer),
+    };
+    const revision = await handle.getDocumentEnvelopeRevision(
+      { maxJsonValues: 32 },
+      digestProvider,
+    );
+    const objectEnvelope = createDocumentEnvelope(
+      createParagraphDocument('Conditional object'),
+    );
+
+    const objectResult = await act(async () =>
+      handle.restoreDocumentEnvelopeIfMatch(
+        revision!.strongEntityTag,
+        objectEnvelope,
+        { maxJsonValues: 32 },
+        digestProvider,
+      ),
+    );
+
+    expect(objectResult).toEqual({
+      status: 'restored',
+      previousRevision: revision,
+      envelope: objectEnvelope,
+    });
+    expect(handle.getHTML()).toContain('Conditional object');
+    expect(onChange).not.toHaveBeenCalled();
+
+    const beforeConflict = handle.getHTML();
+    const conflict = await handle.restoreDocumentEnvelopeIfMatch(
+      `"sha256-${'00'.repeat(32)}"`,
+      createDocumentEnvelope(createParagraphDocument('Must not apply')),
+      undefined,
+      digestProvider,
+    );
+    expect(conflict).toEqual({
+      status: 'conflict',
+      currentRevision: revision,
+    });
+    expect(handle.getHTML()).toBe(beforeConflict);
+
+    const byteEnvelope = createDocumentEnvelope(
+      createParagraphDocument('Conditional bytes'),
+    );
+    const byteResult = await act(async () =>
+      handle.restoreDocumentEnvelopeBytesIfMatch(
+        revision!.strongEntityTag,
+        encodeDocumentEnvelope(byteEnvelope),
+        undefined,
+        digestProvider,
+      ),
+    );
+    expect(byteResult).toMatchObject({
+      status: 'restored',
+      previousRevision: revision,
+      envelope: byteEnvelope,
+    });
+    expect(handle.getHTML()).toContain('Conditional bytes');
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });
