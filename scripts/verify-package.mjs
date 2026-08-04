@@ -196,9 +196,18 @@ const conditionalRestore: Promise<CwlEditorIfMatchRestoreResult | null> =
 const conditionalEvidence: Promise<void> = conditionalRestore.then((result) => {
   if (result === null) return;
   if (result.status === 'restored') {
+    const previousRevision: CwlEditorDocumentRevision =
+      result.previousRevision;
     const previousEnvelope: CwlEditorDocumentEnvelope =
       result.previousEnvelope;
-    void previousEnvelope.documentJson;
+    const revision: CwlEditorDocumentRevision = result.revision;
+    const envelope: CwlEditorDocumentEnvelope = result.envelope;
+    void [
+      previousRevision.strongEntityTag,
+      previousEnvelope.documentJson,
+      revision.strongEntityTag,
+      envelope.documentJson,
+    ];
     return;
   }
   if (result.currentRevision === null) {
