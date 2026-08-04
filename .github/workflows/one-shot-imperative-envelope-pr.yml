@@ -1,0 +1,56 @@
+name: One-shot imperative envelope PR
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: write
+
+concurrency:
+  group: one-shot-imperative-envelope-pr
+  cancel-in-progress: false
+
+jobs:
+  implement-and-verify:
+    if: github.event.pull_request.head.ref == 'feat/imperative-envelope-persistence'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out exact feature branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: feat/imperative-envelope-persistence
+          fetch-depth: 0
+
+      - name: Apply bounded product slice
+        run: python scripts/one-shot-imperative-envelope-persistence.py
+
+      - name: Verify TypeScript product surfaces
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.5.3 --activate
+          pnpm install --frozen-lockfile
+          pnpm typecheck
+          pnpm coverage
+          pnpm build
+          pnpm verify:package
+          pnpm build:demo
+
+      - name: Publish verified branch commit
+        shell: bash
+        run: |
+          rm .github/workflows/one-shot-imperative-envelope-persistence.yml
+          rm .github/workflows/one-shot-imperative-envelope-pr.yml
+          rm scripts/one-shot-imperative-envelope-persistence.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: complete imperative envelope persistence"
+          git push origin HEAD:feat/imperative-envelope-persistence
