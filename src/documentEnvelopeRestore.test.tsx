@@ -92,6 +92,17 @@ describe('atomic document-envelope restore', () => {
       restoreDocumentEnvelopeBytes(editor, incompatibleBytes),
     ).toThrow(DocumentSchemaError);
 
+    expect(
+      validateDocumentEnvelopeBytesForEditor(editor, incompatibleBytes, {
+        maxUtf8Bytes: incompatibleBytes.byteLength - 1,
+      }),
+    ).toBe(false);
+    expect(() =>
+      restoreDocumentEnvelopeBytes(editor, incompatibleBytes, {
+        maxUtf8Bytes: incompatibleBytes.byteLength - 1,
+      }),
+    ).toThrow(DocumentEnvelopeError);
+
     expect(editorRef.current!.getSnapshot()).toEqual(before);
   });
 });
