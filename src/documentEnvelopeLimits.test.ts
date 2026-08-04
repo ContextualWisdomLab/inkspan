@@ -12,6 +12,7 @@ import {
 describe('document envelope resource limits', () => {
   it('exports frozen commercial defaults and accepts exact custom ceilings', () => {
     expect(DEFAULT_DOCUMENT_ENVELOPE_LIMITS).toEqual({
+      maxUtf8Bytes: 64 * 1024 * 1024,
       maxJsonTextCodeUnits: 64 * 1024 * 1024,
       maxJsonValues: 1_000_000,
       maxStringCodeUnits: 32 * 1024 * 1024,
@@ -20,6 +21,7 @@ describe('document envelope resource limits', () => {
     expect(Object.isFrozen(DEFAULT_DOCUMENT_ENVELOPE_LIMITS)).toBe(true);
 
     const limits = {
+      maxUtf8Bytes: 1_000,
       maxJsonTextCodeUnits: 1_000,
       maxJsonValues: 2,
       maxStringCodeUnits: 13,
@@ -40,7 +42,11 @@ describe('document envelope resource limits', () => {
     expect(
       createDocumentEnvelope(
         { type: 'doc' },
-        { maxJsonValues: undefined, maxNestingDepth: 1 },
+        {
+          maxUtf8Bytes: undefined,
+          maxJsonValues: undefined,
+          maxNestingDepth: 1,
+        },
       ).documentJson,
     ).toEqual({ type: 'doc' });
   });

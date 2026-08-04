@@ -38,6 +38,7 @@ export {
   DocumentEnvelopeError,
   createDocumentEnvelope,
   parseDocumentEnvelope,
+  parseDocumentEnvelopeBytes,
 } from './documentEnvelope.js';
 export type {
   CwlEditorDocumentEnvelope,

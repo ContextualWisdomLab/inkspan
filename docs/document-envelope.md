@@ -38,6 +38,40 @@ Unknown fields, schema identifiers, and versions fail closed. Hosts must route
 older or newer versions through an explicit migration function rather than
 silently asking the current editor schema to interpret them.
 
+## Canonical UTF-8 byte round trip
+
+`encodeDocumentEnvelope()` creates canonical UTF-8 bytes for storage, hashes,
+signatures, audit comparisons, and optimistic-concurrency inputs.
+`parseDocumentEnvelopeBytes()` is the strict inverse boundary:
+
+```ts
+import {
+  encodeDocumentEnvelope,
+  parseDocumentEnvelopeBytes,
+} from '@contextualwisdomlab/cwl-editor';
+
+const persistedBytes = encodeDocumentEnvelope(envelope);
+await objectStore.put(documentKey, persistedBytes);
+
+const restored = parseDocumentEnvelopeBytes(
+  await objectStore.get(documentKey),
+  { maxUtf8Bytes: 2 * 1024 * 1024 },
+);
+```
+
+The byte parser accepts a `Uint8Array` (including Node.js `Buffer` subclasses),
+checks `maxUtf8Bytes` before copying or decoding, detaches the accepted bytes,
+and uses the Encoding Standard's fatal UTF-8 decoder. Malformed sequences fail
+instead of becoming replacement characters. A leading UTF-8 byte-order mark is
+rejected: RFC 8259 requires networked JSON generators not to add one, while its
+optional parser tolerance is deliberately not used for Inkspan's canonical
+persistence contract. Callers with a legacy BOM-bearing source must normalize
+and audit that migration explicitly before parsing.
+
+The byte parser does not autodetect UTF-16, legacy code pages, compression, or
+content type. Decompression and transport metadata remain host boundaries and
+must be bounded before materializing a `Uint8Array`.
+
 ## Resource ceilings
 
 RFC 8259 explicitly permits JSON implementations to limit accepted text size,
@@ -46,6 +80,7 @@ fail-closed defaults before and during envelope inspection:
 
 | Limit | Default | Scope |
 |---|---:|---|
+| `maxUtf8Bytes` | 67,108,864 | Raw `Uint8Array` before copy and strict UTF-8 decoding |
 | `maxJsonTextCodeUnits` | 67,108,864 | Raw JavaScript string before duplicate-name scanning or `JSON.parse()` |
 | `maxJsonValues` | 1,000,000 | Scalar plus object/array values inside `documentJson` |
 | `maxStringCodeUnits` | 33,554,432 | Every decoded document string and object name |
@@ -57,6 +92,7 @@ forking the parser:
 
 ```ts
 const envelope = parseDocumentEnvelope(rawEnvelopeJson, {
+  maxUtf8Bytes: 2 * 1024 * 1024,
   maxJsonTextCodeUnits: 2 * 1024 * 1024,
   maxJsonValues: 100_000,
   maxStringCodeUnits: 1 * 1024 * 1024,
@@ -66,10 +102,11 @@ const envelope = parseDocumentEnvelope(rawEnvelopeJson, {
 
 Omitted or explicitly `undefined` fields retain the default. Limit names are
 allowlisted, and configured values must be positive safe integers. The raw-text
-ceiling is measured in JavaScript UTF-16 code units because the parser receives
-a JavaScript string; gateways must additionally enforce the actual HTTP or
-message byte limit before decoding. OWASP likewise recommends total request-size
-limits and avoiding unbounded input-driven resource allocation.
+ceiling is measured in JavaScript UTF-16 code units, while the byte ceiling is
+measured before decoding. Gateways must additionally enforce the complete HTTP,
+message, compressed-body, and object-store limits before the library boundary.
+OWASP likewise recommends total request-size limits and avoiding unbounded
+input-driven resource allocation.
 
 The value and array-width checks run before recursively materializing child
 values. Object reflection reads descriptors without invoking getters. Limit
@@ -98,7 +135,7 @@ text, links, inline image data, alternative text, and extension attributes.
 CWL and naruon hosts remain responsible for:
 
 - document and tenant authorization;
-- transport-level byte limits, timeouts, rate limits, and concurrency limits;
+- transport-level byte limits, decompression limits, timeouts, rate limits, and concurrency limits;
 - selecting tighter envelope ceilings for each product tier and use case;
 - encryption, retention, audit, and backup policy;
 - schema migration before restoration;
@@ -112,7 +149,8 @@ through CWL/naruon service boundaries as an ordinary versioned data contract.
 
 ## Standards and security references
 
-- RFC 8259, sections 8–10 — JSON interoperability and implementation limits
+- RFC 8259, sections 8–10 — UTF-8 JSON interchange, BOM behavior, and implementation limits
+- WHATWG Encoding Standard — fatal UTF-8 decoding and BOM handling
 - RFC 7493 — I-JSON interoperability profile
 - RFC 8785 — deterministic JSON canonicalization
 - OWASP Denial of Service Cheat Sheet — request-size and resource-allocation limits
