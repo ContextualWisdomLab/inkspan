@@ -89,27 +89,105 @@ void [objectEvidence, byteEvidence, inspected];
   ]);
 }
 
-/** Execute ESM and CommonJS runtime import checks against the built package. */
-function verifyRevisionEvidenceRuntimeExports() {
+/** Execute one package API through ESM with real object and byte evidence. */
+function verifyRevisionEvidenceEsmRuntime() {
   const esmPath = join(verificationDirectory, 'consumer.mjs');
   writeFileSync(
     esmPath,
     `import assert from 'node:assert/strict';
 import * as editor from '${packageJson.name}';
+
 assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidence, 'function');
 assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
+const sourceEnvelope = {
+  schemaId: 'https://inkspan.io/schemas/document-envelope/v1',
+  schemaVersion: 1,
+  documentJson: { type: 'doc', content: [{ type: 'paragraph' }] },
+};
+let providerCalls = 0;
+const provider = {
+  async digest(algorithm, source) {
+    assert.equal(algorithm, 'SHA-256');
+    assert.ok(ArrayBuffer.isView(source));
+    providerCalls += 1;
+    return new Uint8Array(32).fill(0x5a).buffer;
+  },
+};
+const objectEvidence = await editor.createDocumentEnvelopeRevisionEvidence(
+  sourceEnvelope,
+  undefined,
+  provider,
+);
+const byteEvidence = await editor.createDocumentEnvelopeRevisionEvidenceBytes(
+  new TextEncoder().encode(JSON.stringify(sourceEnvelope)),
+  undefined,
+  provider,
+);
+assert.deepEqual(objectEvidence.envelope, byteEvidence.envelope);
+assert.equal(objectEvidence.revision.digestHex, '5a'.repeat(32));
+assert.equal(
+  objectEvidence.revision.strongEntityTag,
+  '"sha256-' + '5a'.repeat(32) + '"',
+);
+assert.equal(Object.isFrozen(objectEvidence), true);
+assert.equal(Object.isFrozen(objectEvidence.envelope), true);
+assert.equal(Object.isFrozen(objectEvidence.revision), true);
+assert.equal(providerCalls, 2);
 `,
     'utf8',
   );
   run(process.execPath, [esmPath]);
+}
 
+/** Execute one package API through CommonJS with real object and byte evidence. */
+function verifyRevisionEvidenceCommonJsRuntime() {
   const commonJsPath = join(verificationDirectory, 'consumer.cjs');
   writeFileSync(
     commonJsPath,
     `const assert = require('node:assert/strict');
 const editor = require('${packageJson.name}');
-assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidence, 'function');
-assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
+
+void (async () => {
+  assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidence, 'function');
+  assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
+  const sourceEnvelope = {
+    schemaId: 'https://inkspan.io/schemas/document-envelope/v1',
+    schemaVersion: 1,
+    documentJson: { type: 'doc', content: [{ type: 'paragraph' }] },
+  };
+  let providerCalls = 0;
+  const provider = {
+    async digest(algorithm, source) {
+      assert.equal(algorithm, 'SHA-256');
+      assert.ok(ArrayBuffer.isView(source));
+      providerCalls += 1;
+      return new Uint8Array(32).fill(0xa5).buffer;
+    },
+  };
+  const objectEvidence = await editor.createDocumentEnvelopeRevisionEvidence(
+    sourceEnvelope,
+    undefined,
+    provider,
+  );
+  const byteEvidence = await editor.createDocumentEnvelopeRevisionEvidenceBytes(
+    new TextEncoder().encode(JSON.stringify(sourceEnvelope)),
+    undefined,
+    provider,
+  );
+  assert.deepEqual(objectEvidence.envelope, byteEvidence.envelope);
+  assert.equal(objectEvidence.revision.digestHex, 'a5'.repeat(32));
+  assert.equal(
+    objectEvidence.revision.strongEntityTag,
+    '"sha256-' + 'a5'.repeat(32) + '"',
+  );
+  assert.equal(Object.isFrozen(objectEvidence), true);
+  assert.equal(Object.isFrozen(objectEvidence.envelope), true);
+  assert.equal(Object.isFrozen(objectEvidence.revision), true);
+  assert.equal(providerCalls, 2);
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
 `,
     'utf8',
   );
@@ -118,7 +196,8 @@ assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidenceBytes, 'functio
 
 try {
   verifyRevisionEvidenceDeclarations();
-  verifyRevisionEvidenceRuntimeExports();
+  verifyRevisionEvidenceEsmRuntime();
+  verifyRevisionEvidenceCommonJsRuntime();
   console.log(
     `Verified ${packageJson.name}@${packageJson.version} pure and imperative revision-evidence consumers.`,
   );
