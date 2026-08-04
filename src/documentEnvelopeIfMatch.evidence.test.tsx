@@ -188,14 +188,17 @@ describe('atomic revision-envelope conflict evidence', () => {
       undefined,
       DIGEST_PROVIDER,
     );
+    let result!: CwlEditorIfMatchRestoreResult;
 
-    const result = await restoreDocumentEnvelopeIfMatch(
-      editor,
-      previousRevision.strongEntityTag,
-      incomingEnvelope,
-      undefined,
-      DIGEST_PROVIDER,
-    );
+    await act(async () => {
+      result = await restoreDocumentEnvelopeIfMatch(
+        editor,
+        previousRevision.strongEntityTag,
+        incomingEnvelope,
+        undefined,
+        DIGEST_PROVIDER,
+      );
+    });
 
     expect(result).toEqual({
       status: 'restored',
