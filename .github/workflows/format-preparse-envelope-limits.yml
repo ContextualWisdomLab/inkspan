@@ -1,0 +1,95 @@
+name: Format preparse envelope limits once
+
+on:
+  pull_request:
+    types: [synchronize]
+    paths:
+      - .github/workflows/format-preparse-envelope-limits.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: format-preparse-envelope-limits
+  cancel-in-progress: false
+
+jobs:
+  format:
+    if: >-
+      github.repository == 'ContextualWisdomLab/inkspan' &&
+      github.event.pull_request.head.ref == 'security/preparse-envelope-limits'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: security/preparse-envelope-limits
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Normalize parser constants and indentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/documentEnvelope.ts')
+          source = path.read_text(encoding='utf-8')
+          constant_marker = """const REDACTED_INSPECTION_ERROR =
+          'Document envelope could not be inspected safely';
+          """
+          constant_replacement = """const REDACTED_INSPECTION_ERROR =
+          'Document envelope could not be inspected safely';
+          const DOCUMENT_ENVELOPE_WRAPPER_VALUE_ALLOWANCE = 3;
+          const DOCUMENT_ENVELOPE_WRAPPER_DEPTH_ALLOWANCE = 1;
+          """
+          start_marker = '    const inspection = inspectJsonText(source, {'
+          end_marker = '    try {'
+          start_index = source.find(start_marker)
+          end_index = source.find(end_marker, start_index)
+          if constant_marker not in source or start_index < 0 or end_index < 0:
+              raise SystemExit('Expected parser-format markers are missing')
+          block = """    const inspection = inspectJsonText(source, {
+              maxValues: Math.min(
+                Number.MAX_SAFE_INTEGER,
+                resolvedLimits.maxJsonValues +
+                  DOCUMENT_ENVELOPE_WRAPPER_VALUE_ALLOWANCE,
+              ),
+              maxDepth: Math.min(
+                Number.MAX_SAFE_INTEGER,
+                resolvedLimits.maxNestingDepth +
+                  DOCUMENT_ENVELOPE_WRAPPER_DEPTH_ALLOWANCE,
+              ),
+            });
+            if (inspection === 'duplicate-object-name') {
+              throw new DocumentEnvelopeError(
+                'Document envelope JSON must not contain duplicate object names',
+              );
+            }
+            if (inspection === 'value-count-limit') {
+              throw new DocumentEnvelopeError(
+                'Document envelope exceeds the supported JSON value count',
+              );
+            }
+            if (inspection === 'nesting-depth-limit') {
+              throw new DocumentEnvelopeError(
+                'Document envelope exceeds the supported document nesting depth',
+              );
+            }
+          """
+          source = source.replace(constant_marker, constant_replacement, 1)
+          source = source[:start_index] + block + source[end_index:]
+          path.write_text(source, encoding='utf-8')
+          PY
+          pnpm install --frozen-lockfile
+          pnpm typecheck
+          pnpm coverage
+          rm .github/workflows/format-preparse-envelope-limits.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git diff --cached --check
+          git commit -m "refactor: name envelope wrapper allowances"
+          git push origin HEAD:security/preparse-envelope-limits
