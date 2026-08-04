@@ -139,9 +139,7 @@ export interface DocumentAutosaveQueueSnapshot {
   readonly lastSavedStrongEntityTag: string | null;
 }
 
-/**
- * Provider-neutral single-flight coordinator for immutable document evidence.
- */
+/** Provider-neutral single-flight coordinator for immutable document evidence. */
 export interface DocumentAutosaveQueue {
   /**
    * Queue one immutable revision for the host-owned save operation.
@@ -170,8 +168,9 @@ export interface DocumentAutosaveQueue {
   /**
    * Wait until the queue becomes idle, blocked, or closed.
    *
-   * A conflict or failure resolves `flush()` with a blocked snapshot rather than
-   * hanging for an external recovery decision.
+   * Concurrent callers share one pending promise, so the queue retains only one
+   * internal flush waiter regardless of how often a host checks for quiescence.
+   * A conflict or failure resolves the promise with a blocked snapshot.
    *
    * @returns The first terminal-for-flush immutable snapshot.
    */
@@ -203,7 +202,6 @@ interface AutosaveRequest {
 }
 
 type QueueLifecycle = 'open' | 'closing' | 'closed';
-
 type ExactDataRecord = Record<string, unknown>;
 
 const LOWERCASE_SHA256_DIGEST = /^[0-9a-f]{64}$/u;
@@ -293,9 +291,7 @@ function readSaveFunction(
   return record.save as DocumentAutosaveSaveFunction;
 }
 
-/**
- * Validate the immutable public evidence contract without reading document text.
- */
+/** Validate immutable evidence metadata without reading document text. */
 function readStrongEntityTag(
   evidence: CwlEditorDocumentRevisionEvidence,
 ): string {
@@ -366,16 +362,10 @@ function createRequest(
       reject = promiseReject;
     },
   );
-  return {
-    evidence,
-    strongEntityTag,
-    promise,
-    resolve,
-    reject,
-  };
+  return { evidence, strongEntityTag, promise, resolve, reject };
 }
 
-/** Resolve a request. */
+/** Resolve one queued request. */
 function resolveRequest(
   request: AutosaveRequest,
   outcome: DocumentAutosaveRequestOutcome,
@@ -383,7 +373,7 @@ function resolveRequest(
   request.resolve(outcome);
 }
 
-/** Reject a request. */
+/** Reject one queued request with a redacted queue error. */
 function rejectRequest(
   request: AutosaveRequest,
   error: DocumentAutosaveQueueError,
@@ -419,6 +409,8 @@ function createSupersededOutcome(
  * The queue owns only local ordering and lifecycle coordination. It does not
  * debounce changes, perform network requests, authorize users, select tenants,
  * write storage, retain audit records, migrate schemas, or resolve conflicts.
+ * It retains at most one active request, one pending request, and one shared
+ * pending flush promise.
  *
  * @param options - Exact object containing the host-owned save callback.
  * @returns A frozen queue interface with no provider or framework dependency.
@@ -434,9 +426,10 @@ export function createDocumentAutosaveQueue(
   let pendingRequest: AutosaveRequest | null = null;
   let lastSavedStrongEntityTag: string | null = null;
   let pumpRunning = false;
-  const flushWaiters: Array<
-    (snapshot: DocumentAutosaveQueueSnapshot) => void
-  > = [];
+  let flushPromise: Promise<DocumentAutosaveQueueSnapshot> | null = null;
+  let resolveFlushPromise:
+    | ((snapshot: DocumentAutosaveQueueSnapshot) => void)
+    | null = null;
 
   /** Derive the externally visible state from private queue fields. */
   function readState(): DocumentAutosaveQueueState {
@@ -477,13 +470,15 @@ export function createDocumentAutosaveQueue(
     );
   }
 
-  /** Resolve every current flush waiter with one immutable snapshot. */
-  function settleFlushWaiters(): void {
+  /** Resolve the one shared pending flush promise when state is terminal. */
+  function settleFlushPromise(): void {
     finishClosingIfPossible();
-    if (!isFlushTerminal() || flushWaiters.length === 0) return;
+    if (!isFlushTerminal() || resolveFlushPromise === null) return;
+    const resolve = resolveFlushPromise;
     const snapshot = getSnapshot();
-    const waiters = flushWaiters.splice(0, flushWaiters.length);
-    for (const resolve of waiters) resolve(snapshot);
+    resolveFlushPromise = null;
+    flushPromise = null;
+    resolve(snapshot);
   }
 
   /** Resolve and release not-yet-started work during shutdown. */
@@ -507,9 +502,7 @@ export function createDocumentAutosaveQueue(
     if (lifecycle === 'open') blockedReason = 'failure';
   }
 
-  /**
-   * Drain retained work without ever overlapping host callback invocations.
-   */
+  /** Drain retained work without overlapping host callback invocations. */
   async function drainQueue(): Promise<void> {
     try {
       while (
@@ -555,7 +548,7 @@ export function createDocumentAutosaveQueue(
     } finally {
       pumpRunning = false;
       finishClosingIfPossible();
-      settleFlushWaiters();
+      settleFlushPromise();
     }
   }
 
@@ -567,7 +560,7 @@ export function createDocumentAutosaveQueue(
       blockedReason !== null ||
       pendingRequest === null
     ) {
-      settleFlushWaiters();
+      settleFlushPromise();
       return;
     }
     pumpRunning = true;
@@ -619,17 +612,19 @@ export function createDocumentAutosaveQueue(
     if (lifecycle !== 'open' || blockedReason === null) return false;
     blockedReason = null;
     startPump();
-    settleFlushWaiters();
+    settleFlushPromise();
     return true;
   }
 
-  /** Wait for idle, blocked, or closed local state. */
+  /** Wait for idle, blocked, or closed local state using one shared promise. */
   function flush(): Promise<DocumentAutosaveQueueSnapshot> {
     finishClosingIfPossible();
     if (isFlushTerminal()) return Promise.resolve(getSnapshot());
-    return new Promise<DocumentAutosaveQueueSnapshot>((resolve) => {
-      flushWaiters.push(resolve);
+    if (flushPromise !== null) return flushPromise;
+    flushPromise = new Promise<DocumentAutosaveQueueSnapshot>((resolve) => {
+      resolveFlushPromise = resolve;
     });
+    return flushPromise;
   }
 
   /** Begin idempotent shutdown without aborting active host transport. */
@@ -639,7 +634,7 @@ export function createDocumentAutosaveQueue(
       blockedReason = null;
       closePendingRequest();
       finishClosingIfPossible();
-      settleFlushWaiters();
+      settleFlushPromise();
     }
     return flush();
   }
