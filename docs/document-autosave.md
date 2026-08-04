@@ -2,8 +2,9 @@
 
 Inkspan 0.5.28 adds a framework-independent autosave coordination surface at
 `@contextualwisdomlab/cwl-editor/autosave`. It accepts immutable document
-revision evidence, ensures that only one host save callback runs at a time, and
-retains at most one not-yet-started revision.
+revision evidence, ensures that only one host save callback runs at a time,
+retains at most one not-yet-started revision, and shares one internal pending
+flush promise across concurrent quiescence checks.
 
 Inkspan coordinates local ordering only. The host application continues to own
 transport, authentication, authorization, tenant isolation, durable storage,
@@ -26,8 +27,8 @@ import {
 ```
 
 The autosave subpath has no React, React DOM, TipTap, ProseMirror, or Yjs runtime
-dependency. It does not create timers, perform network requests, or access
-storage.
+dependency. It does not create timers, perform network requests, read environment
+variables, or access storage.
 
 ## Capture immutable revision evidence
 
@@ -46,6 +47,11 @@ const evidence = await createDocumentEnvelopeRevisionEvidence({
 An editor host may instead use
 `CwlEditorHandle.getDocumentEnvelopeRevisionEvidence()` so the document and its
 revision are captured atomically from the active editor.
+
+The queue validates the public evidence shape and consistency of the declared
+SHA-256 digest and strong tag. It does not recompute the digest. Use an
+Inkspan-created evidence value, or apply an equivalent private validation and
+canonicalization boundary before enqueueing it.
 
 ## Create the queue
 
@@ -119,7 +125,8 @@ switch (outcome.status) {
 
 Requests for the same active or pending strong entity tag share one callback and
 one promise. A newer different revision may replace only pending work. It never
-cancels or overlaps a callback that has already started.
+cancels or overlaps a callback that has already started. Inkspan retains at most
+one active document and one pending document regardless of edit frequency.
 
 ## Recover from conflict or failure
 
@@ -143,8 +150,10 @@ host-owned durable base tag, and creating new revision evidence. A transport
 failure usually requires host-specific retry budget, backoff, offline, and
 user-notification policy.
 
-`flush()` resolves when the queue is idle, blocked, or closed. It does not wait
-forever for an external conflict decision.
+`flush()` resolves when the queue is idle, blocked, or closed. Concurrent calls
+while work is active return the same pending promise, so repeated component,
+worker, or operator checks do not append unbounded internal waiters. It does not
+wait forever for an external conflict decision.
 
 ## Shutdown
 
@@ -156,6 +165,24 @@ const finalSnapshot = await autosaveQueue.close();
 
 Closing rejects new work, resolves not-yet-started work as `closed`, and allows
 an active host callback to finish. Inkspan never aborts host transport.
+
+## SSR, worker, and modular host integration
+
+The autosave subpath is safe to import in SSR, Node.js, web workers, service
+workers, and provider-neutral queues because it has no DOM or framework runtime
+requirement. Hosts should instantiate one queue per authorized document editing
+context rather than placing tenant or user identifiers inside Inkspan.
+
+For CWL and naruon integrations:
+
+- a compose service or `ui.panel` captures Inkspan revision evidence and owns
+  accessible dirty, saving, blocked, retry, and conflict UI;
+- a host service supplies authenticated transport and the durable base revision;
+- the persistence service performs tenant-scoped atomic `If-Match` comparison
+  and writes the envelope in one transaction;
+- Inkspan never receives provider credentials, room identifiers, database
+  connections, retention policy, or model-use policy;
+- queue snapshots may drive local presentation but are not a durable audit log.
 
 ## Snapshot and observability rules
 
@@ -177,8 +204,9 @@ tenant-confidential metadata:
 
 | Concern | Inkspan | Host application |
 | --- | --- | --- |
-| Immutable evidence validation | Owns | Uses Inkspan evidence APIs |
+| Immutable evidence shape validation | Owns | Uses Inkspan evidence APIs |
 | Single-flight local ordering | Owns | Enqueues approved revisions |
+| Active/pending/flush-waiter bounds | Owns | Bounds external callers and transport |
 | Pending revision coalescing | Owns | Chooses change/debounce timing |
 | Durable base revision tracking | Does not own | Owns |
 | Transport and credentials | Does not own | Owns |
@@ -199,4 +227,5 @@ validator and write the proposed new document atomically in the same authorized
 storage transaction, consistent with RFC 9110 `If-Match` semantics.
 
 See `docs/doctoring/document-autosave-queue.md` for the architectural decision,
-security analysis, test plan, and APA 7th references.
+security analysis, verification plan, and APA 7th references to RFC 9110, RFC
+8785, Herlihy and Wing (1990), and ISO/IEC 25010:2023.
