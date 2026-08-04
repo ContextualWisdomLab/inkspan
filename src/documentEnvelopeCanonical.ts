@@ -1,0 +1,77 @@
+import {
+  DocumentEnvelopeError,
+  parseDocumentEnvelope,
+} from './documentEnvelope.js';
+
+type CanonicalJsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | readonly CanonicalJsonValue[]
+  | CanonicalJsonObject;
+
+type CanonicalJsonObject = Readonly<Record<string, CanonicalJsonValue>>;
+
+const INVALID_UNICODE_MESSAGE =
+  'Document envelope must contain valid Unicode scalar strings';
+
+/**
+ * Serialize a valid Inkspan envelope to deterministic RFC 8785 JSON.
+ *
+ * Object property names are sorted recursively by UTF-16 code units, array
+ * order is preserved, ECMAScript JSON primitive serialization is used, and no
+ * insignificant whitespace is emitted. Lone UTF-16 surrogates fail closed.
+ */
+export function serializeDocumentEnvelope(source: unknown): string {
+  const envelope = parseDocumentEnvelope(source);
+  return serializeCanonicalValue(
+    envelope as unknown as CanonicalJsonObject,
+  );
+}
+
+/** Encode a canonical Inkspan envelope as UTF-8 bytes without a BOM. */
+export function encodeDocumentEnvelope(source: unknown): Uint8Array {
+  return new TextEncoder().encode(serializeDocumentEnvelope(source));
+}
+
+function serializeCanonicalValue(value: CanonicalJsonValue): string {
+  if (value === null) return 'null';
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (typeof value === 'number') return JSON.stringify(value) as string;
+  if (typeof value === 'string') {
+    assertUnicodeScalarString(value);
+    return JSON.stringify(value) as string;
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(serializeCanonicalValue).join(',')}]`;
+  }
+
+  const objectValue = value as CanonicalJsonObject;
+  const keys = Object.keys(objectValue).sort();
+  return `{${keys
+    .map((key) => {
+      assertUnicodeScalarString(key);
+      return `${JSON.stringify(key)}:${serializeCanonicalValue(
+        objectValue[key],
+      )}`;
+    })
+    .join(',')}}`;
+}
+
+function assertUnicodeScalarString(value: string): void {
+  for (let index = 0; index < value.length; index += 1) {
+    const codeUnit = value.charCodeAt(index);
+    if (codeUnit >= 0xd800 && codeUnit <= 0xdbff) {
+      const nextCodeUnit = value.charCodeAt(index + 1);
+      if (nextCodeUnit >= 0xdc00 && nextCodeUnit <= 0xdfff) {
+        index += 1;
+        continue;
+      }
+      throw new DocumentEnvelopeError(INVALID_UNICODE_MESSAGE);
+    }
+    if (codeUnit >= 0xdc00 && codeUnit <= 0xdfff) {
+      throw new DocumentEnvelopeError(INVALID_UNICODE_MESSAGE);
+    }
+  }
+}
