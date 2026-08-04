@@ -39,7 +39,7 @@ function run(command, argumentsList, cwd = repositoryRoot) {
   });
 }
 
-/** Assert that a resolved path remains inside the dependency-free consumer. */
+/** Assert that a resolved path remains inside the framework-free consumer. */
 function assertInsideConsumer(resolvedPath, description) {
   const relativePath = relative(consumerDirectory, realpathSync(resolvedPath));
   assert.equal(isAbsolute(relativePath), false, description);
@@ -51,7 +51,7 @@ function assertInsideConsumer(resolvedPath, description) {
 }
 
 /** Pack and extract the exact npm artifact without installing dependencies. */
-function prepareDependencyFreePackage() {
+function prepareFrameworkFreePackage() {
   mkdirSync(extractionDirectory, { recursive: true });
   mkdirSync(dirname(packageDirectory), { recursive: true });
   const packOutput = run('npm', [
@@ -83,7 +83,7 @@ function prepareDependencyFreePackage() {
   );
 }
 
-/** Execute the packed revision-evidence subpath with no framework dependencies. */
+/** Execute the packed revision-evidence subpath with no framework installed. */
 function verifyRuntimeConsumers() {
   const esmPath = join(consumerDirectory, 'consumer.mjs');
   writeFileSync(
@@ -167,7 +167,7 @@ void evidence.createDocumentEnvelopeRevisionEvidence(
   run(process.execPath, [commonJsPath], consumerDirectory);
 }
 
-/** Compile strict declarations from the dependency-free packed subpath. */
+/** Compile declarations without DOM, React, TipTap, ProseMirror, or Yjs types. */
 function verifyDeclarationConsumer() {
   const sourcePath = join(consumerDirectory, 'consumer.ts');
   writeFileSync(
@@ -207,17 +207,17 @@ void captured;
     '--target',
     'ES2022',
     '--lib',
-    'ES2022,DOM,DOM.Iterable',
+    'ES2022',
     sourcePath,
   ]);
 }
 
 try {
-  prepareDependencyFreePackage();
+  prepareFrameworkFreePackage();
   verifyRuntimeConsumers();
   verifyDeclarationConsumer();
   console.log(
-    `Verified dependency-free packed ${packageJson.name}/revision-evidence through ESM, CommonJS, and strict TypeScript.`,
+    `Verified framework-free packed ${packageJson.name}/revision-evidence through ESM, CommonJS, and strict TypeScript.`,
   );
 } finally {
   rmSync(verificationRoot, { recursive: true, force: true });
