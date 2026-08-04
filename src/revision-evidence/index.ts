@@ -170,7 +170,9 @@ export function createDocumentEnvelopeRevisionEvidence(
   return createRuntimeDocumentEnvelopeRevisionEvidence(
     source,
     limits,
-    digestProvider,
+    digestProvider as unknown as Parameters<
+      typeof createRuntimeDocumentEnvelopeRevisionEvidence
+    >[2],
   ) as unknown as Promise<CwlEditorDocumentRevisionEvidence>;
 }
 
@@ -189,6 +191,8 @@ export function createDocumentEnvelopeRevisionEvidenceBytes(
   return createRuntimeDocumentEnvelopeRevisionEvidenceBytes(
     source,
     limits,
-    digestProvider,
+    digestProvider as unknown as Parameters<
+      typeof createRuntimeDocumentEnvelopeRevisionEvidenceBytes
+    >[2],
   ) as unknown as Promise<CwlEditorDocumentRevisionEvidence>;
 }
