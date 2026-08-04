@@ -80,6 +80,9 @@ function verifyPackedFiles(filePaths) {
     'dist/cwl-converter.js',
     'dist/cwl-converter.cjs',
     'dist/converter/index.d.ts',
+    'dist/cwl-revision-evidence.js',
+    'dist/cwl-revision-evidence.cjs',
+    'dist/revision-evidence/index.d.ts',
     'src/fonts/fonts.css',
     'src/fonts/fonts-latin.css',
   ];
@@ -155,6 +158,12 @@ import {
   bytesToDataUri,
   type EncodeOptions,
 } from '${packageName}/converter';
+import {
+  createDocumentEnvelopeRevisionEvidence as createStandaloneRevisionEvidence,
+  createDocumentEnvelopeRevisionEvidenceBytes as createStandaloneRevisionEvidenceBytes,
+  type CwlEditorDocumentRevisionEvidence as StandaloneRevisionEvidence,
+  type DocumentEnvelopeDigestProvider as StandaloneDigestProvider,
+} from '${packageName}/revision-evidence';
 
 const renderMarkdown: (markdown: string) => string = markdownToHtml;
 const safeHref: string = validateSafeLinkHref('/documents/current');
@@ -178,6 +187,7 @@ declare const destroyCallback: EditorDestroyCallback;
 declare const documentChangeCallback: EditorDocumentChangeCallback;
 declare const collaborationUser: CollaborationUser;
 declare const digestProvider: DocumentEnvelopeDigestProvider;
+declare const standaloneDigestProvider: StandaloneDigestProvider;
 const expectedStrongEntityTag = '"sha256-' + '0'.repeat(64) + '"';
 const currentSnapshot: CwlEditorDocumentSnapshot = editorHandle.getSnapshot();
 const currentRevision: Promise<CwlEditorDocumentRevision | null> =
@@ -227,6 +237,28 @@ const standaloneRevision: Promise<CwlEditorDocumentRevision> =
     undefined,
     digestProvider,
   );
+const standaloneEvidence: Promise<StandaloneRevisionEvidence> =
+  createStandaloneRevisionEvidence(
+    {
+      schemaId: 'https://inkspan.io/schemas/document-envelope/v1',
+      schemaVersion: 1,
+      documentJson: { type: 'doc' },
+    },
+    undefined,
+    standaloneDigestProvider,
+  );
+const standaloneByteEvidence: Promise<StandaloneRevisionEvidence> =
+  createStandaloneRevisionEvidenceBytes(
+    new TextEncoder().encode(
+      JSON.stringify({
+        schemaId: 'https://inkspan.io/schemas/document-envelope/v1',
+        schemaVersion: 1,
+        documentJson: { type: 'doc' },
+      }),
+    ),
+    undefined,
+    standaloneDigestProvider,
+  );
 void [
   renderMarkdown,
   safeHref,
@@ -244,6 +276,8 @@ void [
   conditionalEvidence,
   conditionalByteRestoreResult,
   standaloneRevision,
+  standaloneEvidence,
+  standaloneByteEvidence,
   resetEvent,
   selectionEvent,
   selectionSnapshot,
@@ -293,6 +327,7 @@ try {
 import * as editor from '${packageName}';
 import * as collaboration from '${packageName}/collaboration';
 import * as converter from '${packageName}/converter';
+import * as revisionEvidence from '${packageName}/revision-evidence';
 
 assert.equal(typeof editor.markdownToHtml, 'function');
 assert.equal(editor.validateSafeLinkHref('/documents/current'), '/documents/current');
@@ -303,6 +338,16 @@ assert.ok(editor.CwlEditor);
 assert.equal(typeof collaboration.assertCollaborationConfiguration, 'function');
 assert.ok(collaboration.CollaborativeCwlEditor);
 assert.equal(typeof converter.bytesToDataUri, 'function');
+assert.equal(
+  typeof revisionEvidence.createDocumentEnvelopeRevisionEvidence,
+  'function',
+);
+assert.equal(
+  typeof revisionEvidence.createDocumentEnvelopeRevisionEvidenceBytes,
+  'function',
+);
+assert.equal(typeof revisionEvidence.DocumentEnvelopeError, 'function');
+assert.equal(typeof revisionEvidence.DocumentEnvelopeRevisionError, 'function');
 for (const subpath of ['styles.css', 'fonts.css', 'fonts-latin.css']) {
   const resolved = import.meta.resolve('${packageName}/' + subpath);
   assert.ok(resolved.startsWith('file:'));
@@ -316,6 +361,7 @@ for (const subpath of ['styles.css', 'fonts.css', 'fonts-latin.css']) {
 const editor = require('${packageName}');
 const collaboration = require('${packageName}/collaboration');
 const converter = require('${packageName}/converter');
+const revisionEvidence = require('${packageName}/revision-evidence');
 
 assert.equal(typeof editor.markdownToHtml, 'function');
 assert.equal(editor.validateSafeLinkHref('/documents/current'), '/documents/current');
@@ -326,6 +372,16 @@ assert.ok(editor.CwlEditor);
 assert.equal(typeof collaboration.assertCollaborationConfiguration, 'function');
 assert.ok(collaboration.CollaborativeCwlEditor);
 assert.equal(typeof converter.bytesToDataUri, 'function');
+assert.equal(
+  typeof revisionEvidence.createDocumentEnvelopeRevisionEvidence,
+  'function',
+);
+assert.equal(
+  typeof revisionEvidence.createDocumentEnvelopeRevisionEvidenceBytes,
+  'function',
+);
+assert.equal(typeof revisionEvidence.DocumentEnvelopeError, 'function');
+assert.equal(typeof revisionEvidence.DocumentEnvelopeRevisionError, 'function');
 for (const subpath of ['styles.css', 'fonts.css', 'fonts-latin.css']) {
   const resolved = require.resolve('${packageName}/' + subpath);
   assert.ok(resolved.length > 0);
@@ -343,7 +399,7 @@ for (const subpath of ['styles.css', 'fonts.css', 'fonts-latin.css']) {
   }
 
   console.log(
-    `Verified ${packageName}@${packageJson.version}: npm contents, ESM, CommonJS, SSR-safe imports, subpath exports, and TypeScript declarations.`,
+    `Verified ${packageName}@${packageJson.version}: npm contents, ESM, CommonJS, SSR-safe imports, standalone revision evidence, subpath exports, and TypeScript declarations.`,
   );
 } finally {
   rmSync(verificationDirectory, { recursive: true, force: true });
