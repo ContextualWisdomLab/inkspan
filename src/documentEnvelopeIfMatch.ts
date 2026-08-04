@@ -35,7 +35,7 @@ export type CwlEditorIfMatchRestoreResult =
       readonly previousEnvelope: CwlEditorDocumentEnvelope;
       /** SHA-256 strong validator derived from the applied `envelope`. */
       readonly revision: CwlEditorDocumentRevision;
-      /** Detached validated envelope applied to the editor. */
+      /** Exact frozen active-schema envelope applied to the editor. */
       readonly envelope: CwlEditorDocumentEnvelope;
     }
   | {
@@ -113,9 +113,10 @@ export function restoreDocumentEnvelopeBytesIfMatch(
  * Execute one guarded restore using a caller-selected envelope preparation path.
  *
  * The function captures and hashes one current envelope, returns that same
- * frozen envelope beside every non-null revision, prepares and hashes the exact
- * incoming envelope before mutation, and performs no source inspection when the
- * expected validator already conflicts.
+ * frozen envelope beside every non-null current revision, reconstructs the
+ * incoming source through the active schema, and hashes the exact normalized
+ * document that will be applied. It does not inspect the incoming source when
+ * the expected validator already conflicts.
  */
 async function restoreIfMatch(
   editor: Editor,
@@ -152,9 +153,13 @@ async function restoreIfMatch(
   }
 
   const prepared = prepare(editor, source, limits);
+  const appliedEnvelope = createDocumentEnvelope(
+    prepared.documentNode.toJSON(),
+    limits,
+  );
   const nextEvidence =
     await createValidatedDocumentEnvelopeRevisionEvidence(
-      prepared.envelope,
+      appliedEnvelope,
       digestProvider,
     );
   if (hasEditorMoved(editor, capturedDocument)) {
