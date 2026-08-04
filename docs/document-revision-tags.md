@@ -66,6 +66,15 @@ Web Cryptography digest operation is not streaming. Existing
 `DocumentEnvelopeLimits` should therefore be selected conservatively for the
 browser, worker, desktop, or server runtime that performs the operation.
 
+A provider receives a `BufferSource`, not an Inkspan-specific byte class. Browser
+iframes, workers, test realms, and server runtimes can expose typed arrays with
+different prototype identities even when their bytes are identical. Provider
+adapters and integration tests should compare or copy the addressed byte range
+(`buffer`, `byteOffset`, and `byteLength`) rather than requiring constructor or
+prototype identity. The provider must treat the supplied bytes as read-only and
+must not retain them beyond the digest operation unless the host explicitly owns
+that additional copy and its retention policy.
+
 ## Security, privacy, and audit boundaries
 
 A SHA-256 digest detects equality with extremely high confidence, but it is not
