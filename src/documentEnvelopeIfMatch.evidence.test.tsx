@@ -11,7 +11,10 @@ import {
   type CwlEditorDocumentRevision,
   type DocumentEnvelopeDigestProvider,
 } from './documentEnvelopeRevision.js';
-import { restoreDocumentEnvelopeIfMatch } from './documentEnvelopeIfMatch.js';
+import {
+  restoreDocumentEnvelopeIfMatch,
+  type CwlEditorIfMatchRestoreResult,
+} from './documentEnvelopeIfMatch.js';
 import type { CwlEditorHandle } from './types.js';
 
 const DIGEST_PROVIDER: DocumentEnvelopeDigestProvider = {
@@ -117,13 +120,7 @@ describe('atomic revision-envelope conflict evidence', () => {
       DIGEST_PROVIDER,
     );
     const incomingEnvelope = createParagraphEnvelope('Applied next revision');
-    let result = await restoreDocumentEnvelopeIfMatch(
-      editor,
-      previousRevision.strongEntityTag,
-      previousEnvelope,
-      undefined,
-      DIGEST_PROVIDER,
-    );
+    let result!: CwlEditorIfMatchRestoreResult;
 
     await act(async () => {
       result = await restoreDocumentEnvelopeIfMatch(
