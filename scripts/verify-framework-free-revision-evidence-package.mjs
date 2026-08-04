@@ -68,6 +68,11 @@ function prepareFrameworkFreePackage() {
   assert.ok(existsSync(tarballPath), 'npm pack did not create the tarball');
   run('tar', ['-xzf', tarballPath, '-C', extractionDirectory]);
   renameSync(join(extractionDirectory, 'package'), packageDirectory);
+  writeFileSync(
+    join(consumerDirectory, 'package.json'),
+    '{"name":"inkspan-framework-free-consumer","private":true,"type":"module"}\n',
+    'utf8',
+  );
 
   const topLevelDependencies = readdirSync(
     join(consumerDirectory, 'node_modules'),
@@ -170,6 +175,7 @@ void evidence.createDocumentEnvelopeRevisionEvidence(
 /** Compile declarations without DOM, React, TipTap, ProseMirror, or Yjs types. */
 function verifyDeclarationConsumer() {
   const sourcePath = join(consumerDirectory, 'consumer.ts');
+  const configurationPath = join(consumerDirectory, 'tsconfig.json');
   writeFileSync(
     sourcePath,
     `import {
@@ -193,23 +199,36 @@ void captured;
 `,
     'utf8',
   );
-  run('pnpm', [
-    'exec',
+  writeFileSync(
+    configurationPath,
+    `${JSON.stringify(
+      {
+        compilerOptions: {
+          noEmit: true,
+          strict: true,
+          skipLibCheck: false,
+          module: 'NodeNext',
+          moduleResolution: 'NodeNext',
+          target: 'ES2022',
+          lib: ['ES2022'],
+          types: [],
+        },
+        files: ['./consumer.ts'],
+      },
+      null,
+      2,
+    )}\n`,
+    'utf8',
+  );
+  const compilerPath = join(
+    repositoryRoot,
+    'node_modules',
+    'typescript',
+    'bin',
     'tsc',
-    '--noEmit',
-    '--strict',
-    '--skipLibCheck',
-    'false',
-    '--module',
-    'NodeNext',
-    '--moduleResolution',
-    'NodeNext',
-    '--target',
-    'ES2022',
-    '--lib',
-    'ES2022',
-    sourcePath,
-  ]);
+  );
+  assert.ok(existsSync(compilerPath), 'repository TypeScript compiler is missing');
+  run(process.execPath, [compilerPath, '--project', configurationPath]);
 }
 
 try {
