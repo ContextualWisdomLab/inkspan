@@ -4,6 +4,7 @@ import type {
   CwlEditorDocumentEnvelope,
   DocumentEnvelopeLimits,
 } from './documentEnvelope.js';
+import type { CwlEditorDocumentRevision } from './documentEnvelopeRevision.js';
 
 /** Which document surface the editor reads from and writes to. */
 export type EditorMode = 'markdown' | 'html';
@@ -127,6 +128,13 @@ export interface CwlEditorHandle {
    * Returns an empty byte array before editor creation.
    */
   getDocumentEnvelopeBytes(limits?: DocumentEnvelopeLimits): Uint8Array;
+  /**
+   * Create a SHA-256 strong validator for the exact canonical current revision.
+   * Returns `null` before editor creation.
+   */
+  getDocumentEnvelopeRevision(
+    limits?: DocumentEnvelopeLimits,
+  ): Promise<CwlEditorDocumentRevision | null>;
   /** Replace the whole document from a string in the active `mode`. */
   setValue(value: string): void;
   /**
