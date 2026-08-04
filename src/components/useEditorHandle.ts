@@ -77,11 +77,12 @@ export function useEditorHandle(
               createCurrentDocumentEnvelope(editor, limits),
             )
           : new Uint8Array(),
-      getDocumentEnvelopeRevision: (limits) =>
+      getDocumentEnvelopeRevision: (limits, digestProvider) =>
         editor
           ? createDocumentEnvelopeRevision(
               createCurrentDocumentEnvelope(editor, limits),
               limits,
+              digestProvider,
             )
           : Promise.resolve(null),
       setValue: (next: string) => {
