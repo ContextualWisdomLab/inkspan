@@ -10,9 +10,10 @@ import {
   type DocumentEnvelopeLimits,
 } from '../documentEnvelope.js';
 import {
-  encodeDocumentEnvelope,
-  serializeDocumentEnvelope,
+  encodeValidatedDocumentEnvelope,
+  serializeValidatedDocumentEnvelope,
 } from '../documentEnvelopeCanonical.js';
+import { createValidatedDocumentEnvelopeRevision } from '../documentEnvelopeRevision.js';
 import {
   restoreDocumentEnvelope,
   restoreDocumentEnvelopeBytes,
@@ -66,16 +67,23 @@ export function useEditorHandle(
         editor ? createCurrentDocumentEnvelope(editor, limits) : null,
       getDocumentEnvelopeJson: (limits) =>
         editor
-          ? serializeDocumentEnvelope(
+          ? serializeValidatedDocumentEnvelope(
               createCurrentDocumentEnvelope(editor, limits),
             )
           : '',
       getDocumentEnvelopeBytes: (limits) =>
         editor
-          ? encodeDocumentEnvelope(
+          ? encodeValidatedDocumentEnvelope(
               createCurrentDocumentEnvelope(editor, limits),
             )
           : new Uint8Array(),
+      getDocumentEnvelopeRevision: (limits, digestProvider) =>
+        editor
+          ? createValidatedDocumentEnvelopeRevision(
+              createCurrentDocumentEnvelope(editor, limits),
+              digestProvider,
+            )
+          : Promise.resolve(null),
       setValue: (next: string) => {
         if (!editor) return;
         editor.commands.setContent(

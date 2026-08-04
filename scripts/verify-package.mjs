@@ -129,15 +129,18 @@ function verifyConsumerTypes() {
   writeFileSync(
     consumerTypePath,
     `import {
+  createDocumentEnvelopeRevision,
   markdownToHtml,
   validateSafeLinkHref,
   type CwlEditorDocumentChangeEvent,
+  type CwlEditorDocumentRevision,
   type CwlEditorDocumentSnapshot,
   type CwlEditorFormResetEvent,
   type CwlEditorHandle,
   type CwlEditorProps,
   type CwlEditorSelectionEvent,
   type CwlEditorSelectionSnapshot,
+  type DocumentEnvelopeDigestProvider,
 } from '${packageName}';
 import {
   assertCollaborationConfiguration,
@@ -166,7 +169,20 @@ declare const selectionSnapshot: CwlEditorSelectionSnapshot;
 declare const destroyCallback: EditorDestroyCallback;
 declare const documentChangeCallback: EditorDocumentChangeCallback;
 declare const collaborationUser: CollaborationUser;
+declare const digestProvider: DocumentEnvelopeDigestProvider;
 const currentSnapshot: CwlEditorDocumentSnapshot = editorHandle.getSnapshot();
+const currentRevision: Promise<CwlEditorDocumentRevision | null> =
+  editorHandle.getDocumentEnvelopeRevision(undefined, digestProvider);
+const standaloneRevision: Promise<CwlEditorDocumentRevision> =
+  createDocumentEnvelopeRevision(
+    {
+      schemaId: 'https://inkspan.io/schemas/document-envelope/v1',
+      schemaVersion: 1,
+      documentJson: { type: 'doc' },
+    },
+    undefined,
+    digestProvider,
+  );
 void [
   renderMarkdown,
   safeHref,
@@ -176,6 +192,8 @@ void [
   documentChangeEvent,
   documentSnapshot,
   currentSnapshot,
+  currentRevision,
+  standaloneRevision,
   resetEvent,
   selectionEvent,
   selectionSnapshot,

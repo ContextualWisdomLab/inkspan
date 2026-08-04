@@ -7,6 +7,10 @@ import {
   DOCUMENT_ENVELOPE_SCHEMA_VERSION,
 } from '../documentEnvelope.js';
 import { encodeDocumentEnvelope } from '../documentEnvelopeCanonical.js';
+import {
+  createDocumentEnvelopeRevision,
+  type DocumentEnvelopeDigestProvider,
+} from '../documentEnvelopeRevision.js';
 import { DocumentSchemaError } from '../documentSchema.js';
 import type { CwlEditorHandle } from '../types.js';
 import { CwlEditor } from './CwlEditor.js';
@@ -26,7 +30,7 @@ function createParagraphDocument(text: string) {
 }
 
 describe('CwlEditor imperative envelope persistence', () => {
-  it('exports the current revision as object, canonical JSON, and UTF-8 bytes', async () => {
+  it('exports the current revision as object, canonical JSON, bytes, and a strong validator', async () => {
     const editorRef = createRef<CwlEditorHandle>();
     render(
       <CwlEditor
@@ -57,6 +61,25 @@ describe('CwlEditor imperative envelope persistence', () => {
         handle.getDocumentEnvelopeBytes({ maxJsonValues: 32 }),
       ),
     ).toBe(canonicalJson);
+
+    const digestProvider: DocumentEnvelopeDigestProvider = {
+      digest: async () => new Uint8Array(32).fill(0xef).buffer,
+    };
+    const revision = await handle.getDocumentEnvelopeRevision(
+      { maxJsonValues: 32 },
+      digestProvider,
+    );
+    expect(revision).toEqual(
+      await createDocumentEnvelopeRevision(
+        envelope,
+        { maxJsonValues: 32 },
+        digestProvider,
+      ),
+    );
+    expect(revision?.digestHex).toBe('ef'.repeat(32));
+    expect(revision?.strongEntityTag).toBe(
+      `"sha256-${revision?.digestHex}"`,
+    );
   });
 
   it('preflights and atomically restores object and byte envelopes', async () => {

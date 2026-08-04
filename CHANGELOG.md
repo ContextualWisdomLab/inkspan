@@ -4,6 +4,37 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+
+## [0.5.22] — 2026-08-04
+
+### Added
+- `createDocumentEnvelopeRevision()` and `createDocumentEnvelopeRevisionBytes()` for deterministic SHA-256 validators over RFC 8785 canonical envelope bytes
+- Frozen `CwlEditorDocumentRevision`, injectable `DocumentEnvelopeDigestProvider`, and redacted `DocumentEnvelopeRevisionError` public contracts
+- `CwlEditorHandle.getDocumentEnvelopeRevision()` for one-call revision generation from the current standalone or collaborative editor state
+
+### Changed
+- Package version **0.5.22**
+- Object, JSON-text, byte, and imperative revision paths normalize supported envelopes to one canonical UTF-8 representation before hashing
+- Imperative envelope JSON, byte, and revision exports reuse one validated envelope instead of cloning the full document twice
+
+### Reliability
+- Equivalent envelopes produce the same lowercase digest and quoted strong entity tag despite object-property order or insignificant JSON whitespace
+- The implementation fails closed when Web Cryptography is unavailable, platform provider access fails, an injected digest operation fails, or a provider returns anything other than a genuine 32-byte `ArrayBuffer`
+
+### Security
+- Inkspan never falls back to SHA-1 or a non-cryptographic checksum; digest errors remain redacted and source document content is not copied into diagnostics
+- Digest results are intrinsic-brand checked so `Symbol.toStringTag` or array-like spoofing cannot produce an invalid validator
+- Revision tags are equality validators, not signatures, authorization tokens, tenant identifiers, or proof of persistence; CWL and naruon hosts retain atomic server-side `If-Match`, access control, signing, encryption, audit, and conflict policy
+- Validation and dependency execution run with read-only repository permission; the separate finalization job receives write permission but does not install dependencies or execute package code
+
+### Tests
+- Added canonical-byte, noncanonical-input, platform-provider, injected-provider, unavailable-provider, hostile-platform, rejected-provider, spoofed-result, lifecycle, imperative-handle, ESM, CommonJS, strict declaration-consumer, and repository-wide 100% coverage verification
+
+### Documentation
+- Added `docs/document-revision-tags.md` with RFC 9110 strong-validator usage, Web Cryptography behavior, privacy boundaries, and optimistic-concurrency ownership
+- Expanded `docs/imperative-envelope-persistence.md` with revision export and server-side compare-and-swap guidance
+
+
 ## [0.5.21] — 2026-08-04
 
 ### Added

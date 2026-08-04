@@ -1,6 +1,7 @@
 import {
   DocumentEnvelopeError,
   parseDocumentEnvelope,
+  type CwlEditorDocumentEnvelope,
 } from './documentEnvelope.js';
 
 interface CanonicalJsonObject {
@@ -17,30 +18,60 @@ type CanonicalJsonValue =
 
 const INVALID_UNICODE_MESSAGE =
   'Document envelope must contain valid Unicode scalar strings';
+const NEGATIVE_ZERO_MESSAGE =
+  'Document envelope must not contain negative zero';
 
 /**
  * Serialize a valid Inkspan envelope to deterministic RFC 8785 JSON.
  *
  * Object property names are sorted recursively by UTF-16 code units, array
  * order is preserved, ECMAScript JSON primitive serialization is used, and no
- * insignificant whitespace is emitted. Lone UTF-16 surrogates fail closed.
+ * insignificant whitespace is emitted. Lone UTF-16 surrogates and negative
+ * zero fail closed under the verified RFC 8785 errata.
  */
 export function serializeDocumentEnvelope(source: unknown): string {
-  const envelope = parseDocumentEnvelope(source);
+  return serializeValidatedDocumentEnvelope(parseDocumentEnvelope(source));
+}
+
+/** Encode a canonical Inkspan envelope as UTF-8 bytes without a BOM. */
+export function encodeDocumentEnvelope(
+  source: unknown,
+): Uint8Array<ArrayBuffer> {
+  return encodeValidatedDocumentEnvelope(parseDocumentEnvelope(source));
+}
+
+/**
+ * Serialize an envelope already returned by the strict parser.
+ *
+ * This internal package helper avoids cloning the complete document a second
+ * time when a caller has just completed the fail-closed parse boundary.
+ */
+export function serializeValidatedDocumentEnvelope(
+  envelope: CwlEditorDocumentEnvelope,
+): string {
   return serializeCanonicalValue(
     envelope as unknown as CanonicalJsonObject,
   );
 }
 
-/** Encode a canonical Inkspan envelope as UTF-8 bytes without a BOM. */
-export function encodeDocumentEnvelope(source: unknown): Uint8Array {
-  return new TextEncoder().encode(serializeDocumentEnvelope(source));
+/** Encode an already-validated envelope without repeating graph validation. */
+export function encodeValidatedDocumentEnvelope(
+  envelope: CwlEditorDocumentEnvelope,
+): Uint8Array<ArrayBuffer> {
+  return new TextEncoder().encode(
+    serializeValidatedDocumentEnvelope(envelope),
+  );
 }
 
 function serializeCanonicalValue(value: CanonicalJsonValue): string {
   if (value === null) return 'null';
   if (typeof value === 'boolean') return value ? 'true' : 'false';
-  if (typeof value === 'number') return JSON.stringify(value) as string;
+  if (typeof value === 'number') {
+    if (Object.is(value, -0)) {
+      throw new DocumentEnvelopeError(NEGATIVE_ZERO_MESSAGE);
+    }
+    return JSON.stringify(value) as string;
+  }
   if (typeof value === 'string') {
     assertUnicodeScalarString(value);
     return JSON.stringify(value) as string;

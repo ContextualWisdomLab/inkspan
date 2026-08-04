@@ -7,12 +7,18 @@ const esmPackage = await import(packageName);
 const commonJsPackage = require(packageName);
 
 /** Verify one published module-system surface of the canonical envelope API. */
-function verifyModuleSurface(moduleSurface) {
+async function verifyModuleSurface(moduleSurface) {
   assert.equal(typeof moduleSurface.createDocumentEnvelope, 'function');
   assert.equal(typeof moduleSurface.parseDocumentEnvelope, 'function');
   assert.equal(typeof moduleSurface.parseDocumentEnvelopeBytes, 'function');
   assert.equal(typeof moduleSurface.serializeDocumentEnvelope, 'function');
   assert.equal(typeof moduleSurface.encodeDocumentEnvelope, 'function');
+  assert.equal(typeof moduleSurface.createDocumentEnvelopeRevision, 'function');
+  assert.equal(
+    typeof moduleSurface.createDocumentEnvelopeRevisionBytes,
+    'function',
+  );
+  assert.equal(typeof moduleSurface.DocumentEnvelopeRevisionError, 'function');
   assert.deepEqual(moduleSurface.DEFAULT_DOCUMENT_ENVELOPE_LIMITS, {
     maxUtf8Bytes: 64 * 1024 * 1024,
     maxJsonTextCodeUnits: 64 * 1024 * 1024,
@@ -65,8 +71,37 @@ function verifyModuleSurface(moduleSurface) {
       }),
     /UTF-8 bytes exceed/u,
   );
+
+  const digestProvider = {
+    async digest(algorithm, source) {
+      assert.equal(algorithm, 'SHA-256');
+      assert.deepEqual([...source], [...canonicalBytes]);
+      return new Uint8Array(32).fill(0xcd).buffer;
+    },
+  };
+  const revision = await moduleSurface.createDocumentEnvelopeRevision(
+    envelope,
+    undefined,
+    digestProvider,
+  );
+  assert.deepEqual(revision, {
+    algorithm: 'SHA-256',
+    digestHex: 'cd'.repeat(32),
+    strongEntityTag: `"sha256-${'cd'.repeat(32)}"`,
+  });
+  assert.equal(Object.isFrozen(revision), true);
+  assert.deepEqual(
+    await moduleSurface.createDocumentEnvelopeRevisionBytes(
+      canonicalBytes,
+      undefined,
+      digestProvider,
+    ),
+    revision,
+  );
 }
 
-verifyModuleSurface(esmPackage);
-verifyModuleSurface(commonJsPackage);
-console.log('Verified canonical envelope APIs through ESM and CommonJS.');
+await verifyModuleSurface(esmPackage);
+await verifyModuleSurface(commonJsPackage);
+console.log(
+  'Verified canonical envelope and revision APIs through ESM and CommonJS.',
+);
