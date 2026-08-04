@@ -63,7 +63,7 @@ describe('revision-guarded restore lifecycle', () => {
     );
 
     unmount();
-    expect(editor.isDestroyed).toBe(true);
+    await waitFor(() => expect(editor.isDestroyed).toBe(true));
     deferred.resolve();
 
     await expect(pending).resolves.toEqual({
@@ -79,6 +79,7 @@ describe('revision-guarded restore lifecycle', () => {
     };
     const expectedStrongEntityTag = `"sha256-${'00'.repeat(32)}"`;
     unmount();
+    await waitFor(() => expect(editor.isDestroyed).toBe(true));
 
     await expect(
       restoreDocumentEnvelopeIfMatch(
