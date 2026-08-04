@@ -72,7 +72,7 @@ jobs:
       - name: Verify packaged schema and license
         run: |
           python - <<'PY'
-          from pathlib import import Path
+          from pathlib import Path
           from zipfile import ZipFile
 
           wheel = next(Path("dist").glob("*.whl"))
