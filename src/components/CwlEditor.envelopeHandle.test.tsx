@@ -31,7 +31,7 @@ function createParagraphDocument(text: string) {
 }
 
 describe('CwlEditor imperative envelope persistence', () => {
-  it('exports the current revision as object, canonical JSON, bytes, and a strong validator', async () => {
+  it('exports the current revision as object, canonical JSON, bytes, and paired strong-validator evidence', async () => {
     const editorRef = createRef<CwlEditorHandle>();
     render(
       <CwlEditor
@@ -64,8 +64,19 @@ describe('CwlEditor imperative envelope persistence', () => {
     ).toBe(canonicalJson);
 
     const digestProvider: DocumentEnvelopeDigestProvider = {
-      digest: async () => new Uint8Array(32).fill(0xef).buffer,
+      digest: vi.fn(async () => new Uint8Array(32).fill(0xef).buffer),
     };
+    const evidence = await handle.getDocumentEnvelopeRevisionEvidence(
+      { maxJsonValues: 32 },
+      digestProvider,
+    );
+    expect(evidence?.envelope).toEqual(envelope);
+    expect(Object.isFrozen(evidence)).toBe(true);
+    expect(Object.isFrozen(evidence?.envelope)).toBe(true);
+    expect(Object.isFrozen(evidence?.revision)).toBe(true);
+    expect(evidence?.revision.digestHex).toBe('ef'.repeat(32));
+    expect(digestProvider.digest).toHaveBeenCalledOnce();
+
     const revision = await handle.getDocumentEnvelopeRevision(
       { maxJsonValues: 32 },
       digestProvider,
@@ -77,10 +88,11 @@ describe('CwlEditor imperative envelope persistence', () => {
         digestProvider,
       ),
     );
-    expect(revision?.digestHex).toBe('ef'.repeat(32));
+    expect(revision).toEqual(evidence?.revision);
     expect(revision?.strongEntityTag).toBe(
       `"sha256-${revision?.digestHex}"`,
     );
+    expect(digestProvider.digest).toHaveBeenCalledTimes(3);
   });
 
   it('preflights and atomically restores object and byte envelopes', async () => {
