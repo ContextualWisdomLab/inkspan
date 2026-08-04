@@ -4,7 +4,7 @@
 
 **Goal:** Return the exact frozen envelope paired with every non-null revision in revision-guarded restore results, eliminating the host-side post-conflict snapshot race.
 
-**Architecture:** Extend the existing result union additively with `previousEnvelope` and `currentEnvelope`. Reuse the `currentEnvelope` already created before SHA-256 hashing; do not introduce another clone, serialization, digest, transport adapter, or persistence dependency. Null-evidence conflicts remain the fail-closed outcome when the editor moves or is destroyed.
+**Architecture:** Extend the existing result union additively with `previousEnvelope` and `currentEnvelope`. Encode stable conflict evidence and moved/destroyed null evidence as distinct TypeScript union variants. Reuse the `currentEnvelope` already created before SHA-256 hashing; do not introduce another clone, serialization, digest, transport adapter, or persistence dependency.
 
 **Tech Stack:** TypeScript 5.9, TipTap/ProseMirror, React 18/19 declarations, Vitest 3, V8 coverage, pnpm 11, Vite, Yjs, Node.js 22, Python 3.11/3.14 Office verification.
 
@@ -61,10 +61,9 @@ expect(result).toEqual({
   previousEnvelope,
   envelope: incomingEnvelope,
 });
-expect(result.previousEnvelope).toBe(previousEnvelope);
 ```
 
-The equality assertion proves the evidence describes the same document; implementation review and provider-call coverage enforce reuse without a second digest.
+The equality assertion and revision re-derivation prove the evidence describes the same document. Implementation review plus provider-call coverage verify that the implementation returns its already-created internal envelope rather than performing a second digest or editor read.
 
 - [ ] **Step 3: Tighten null-evidence lifecycle assertions**
 
@@ -126,13 +125,22 @@ Update `CwlEditorIfMatchRestoreResult` so the restored branch includes:
 readonly previousEnvelope: CwlEditorDocumentEnvelope;
 ```
 
-and the conflict branch includes:
+Encode the two conflict states separately:
 
 ```ts
-readonly currentEnvelope: CwlEditorDocumentEnvelope;
+| {
+    readonly status: 'conflict';
+    readonly currentRevision: CwlEditorDocumentRevision;
+    readonly currentEnvelope: CwlEditorDocumentEnvelope;
+  }
+| {
+    readonly status: 'conflict';
+    readonly currentRevision: null;
+    readonly currentEnvelope: null;
+  }
 ```
 
-Document that each non-null revision and envelope describe the same captured editor document.
+Document that each non-null revision and envelope describe the same captured editor document and that null fields always occur in lockstep.
 
 - [ ] **Step 2: Return stable mismatch evidence**
 
@@ -221,19 +229,25 @@ Update the imperative handle test so a successful object and byte restore assert
 
 - [ ] **Step 2: Assert collaborative evidence**
 
-Update the Yjs-backed test to capture the pre-restore envelope and assert the returned `previousEnvelope` is that exact frozen object while the Yjs document converges to the incoming content.
+Update the Yjs-backed test to capture the pre-restore envelope and assert the returned `previousEnvelope` describes that exact frozen document while the Yjs document converges to the incoming content.
 
 - [ ] **Step 3: Compile additive result fields externally**
 
-In `scripts/verify-package.mjs`, add strict TypeScript narrowing:
+In `scripts/verify-package.mjs`, add strict TypeScript narrowing without non-null assertions:
 
 ```ts
 conditionalRestore.then((result) => {
-  if (result?.status === 'restored') {
+  if (result === null) return;
+  if (result.status === 'restored') {
     result.previousEnvelope.documentJson;
-  } else if (result?.currentRevision) {
-    result.currentEnvelope!.documentJson;
+    return;
   }
+  if (result.currentRevision === null) {
+    const currentEnvelope: null = result.currentEnvelope;
+    void currentEnvelope;
+    return;
+  }
+  result.currentEnvelope.documentJson;
 });
 ```
 
