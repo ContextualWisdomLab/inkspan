@@ -4,14 +4,15 @@ import {
   type ForwardedRef,
   type MutableRefObject,
 } from 'react';
+import {
+  parseDocumentJsonForEditor,
+  validateDocumentJson,
+} from '../documentSchema.js';
 import type { CwlEditorHandle, EditorMode } from '../types.js';
 import { createEditorDocumentSnapshot } from './editorDocumentSnapshot.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
 
-/**
- * Expose the stable host-control contract shared by standalone and
- * collaborative editor surfaces.
- */
+/** Expose the stable host-control contract shared by editor surfaces. */
 export function useEditorHandle(
   ref: ForwardedRef<CwlEditorHandle>,
   editor: Editor | null,
@@ -45,9 +46,12 @@ export function useEditorHandle(
           false,
         );
       },
+      validateDocumentJson: (documentJson) =>
+        editor ? validateDocumentJson(editor, documentJson) : false,
       setDocumentJson: (documentJson) => {
         if (!editor) return;
-        editor.commands.setContent(documentJson, false);
+        const documentNode = parseDocumentJsonForEditor(editor, documentJson);
+        editor.commands.setContent(documentNode, false);
       },
       insertValue: (next: string) => {
         if (!editor) return;

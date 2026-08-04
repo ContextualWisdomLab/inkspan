@@ -40,6 +40,12 @@ export {
 } from './documentEnvelope.js';
 export type { CwlEditorDocumentEnvelope } from './documentEnvelope.js';
 
+// Active-schema validation for atomic structural restore.
+export {
+  DocumentSchemaError,
+  validateDocumentJson,
+} from './documentSchema.js';
+
 // Extensions (reusable headlessly).
 export {
   Base64Image,
