@@ -80,8 +80,14 @@ source preparation is in progress, Inkspan returns:
 The captured validator is intentionally withheld because it is no longer the
 active document's validator. The host can obtain a fresh revision and retry.
 Conflict is a normal result rather than an exception; malformed inputs,
-provider failures, resource violations, and active-schema incompatibility
-remain typed redacted exceptions.
+provider failures, resource violations, active-schema incompatibility, and
+active editor-policy rejection remain typed redacted exceptions.
+
+`DocumentEnvelopeRestoreError` means the document passed envelope and schema
+preparation but a ProseMirror transaction policy refused or transformed the
+replacement. The error contains no source URL, text, inline image payload, or
+tenant data. A caller must not record the operation as restored when this error
+is raised.
 
 ## Race and reentrancy boundary
 
@@ -100,8 +106,13 @@ discarded and a null-revision conflict is returned.
 
 Only after both checks does Inkspan apply one
 `setContent(documentNode, false)` replacement without another asynchronous
-boundary or attacker-controlled property access. Selection-only transactions
-keep the same document reference and do not create false content conflicts.
+boundary or attacker-controlled property access. TipTap commands can report
+command execution before ProseMirror transaction filters decide whether the
+new document is acceptable, so Inkspan compares the resulting active document
+with the prepared node. Built-in safe-link and inline-image filters, or a
+host-supplied policy plugin, therefore cannot produce a false `restored` result.
+Selection-only transactions keep the same document reference and do not create
+false content conflicts.
 
 This is a local JavaScript concurrency and reentrancy boundary. It does not make
 browser memory a durable system of record and cannot replace a database
