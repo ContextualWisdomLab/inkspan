@@ -62,7 +62,9 @@ describe('document envelope revision tags', () => {
       digestProvider,
     );
 
-    expect(receivedBytes).toEqual(expectedBytes);
+    expect(Array.from(receivedBytes ?? [])).toEqual(
+      Array.from(expectedBytes),
+    );
     const digestHex =
       '000102030405060708090a0b0c0d0e0f' +
       '101112131415161718191a1b1c1d1e1f';
@@ -103,7 +105,9 @@ describe('document envelope revision tags', () => {
       digestProvider,
     );
 
-    expect(receivedBytes).toEqual(canonicalBytes);
+    expect(Array.from(receivedBytes ?? [])).toEqual(
+      Array.from(canonicalBytes),
+    );
     expect(revision.digestHex).toBe('ab'.repeat(32));
   });
 
