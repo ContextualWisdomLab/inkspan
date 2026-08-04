@@ -1,9 +1,10 @@
 # Imperative document-envelope persistence
 
-Inkspan 0.5.22 exposes the complete versioned persistence round trip and strong
-revision validation on `CwlEditorHandle`. Hosts no longer need to reach through
-`getEditor()` or manually compose envelope, canonicalization, schema-validation,
-revision-digest, and restore functions for ordinary autosave and load workflows.
+Inkspan 0.5.23 exposes the complete versioned persistence round trip, strong
+revision validation, and revision-guarded restore on `CwlEditorHandle`. Hosts no
+longer need to reach through `getEditor()` or manually compose envelope,
+canonicalization, schema-validation, revision-digest, and restore functions for
+ordinary autosave and load workflows.
 
 ## Export the current revision
 
@@ -59,28 +60,64 @@ already-persisted revision must not immediately schedule another autosave.
 Hosts should update their own saved-revision, dirty-state, and optimistic-
 concurrency records after the method returns.
 
+## Prevent stale local restore
+
+A delayed autosave response, AI result, template expansion, or review operation
+can be applied only if the editor still matches the revision from which the
+operation started:
+
+```tsx
+const result = await editorRef.current?.restoreDocumentEnvelopeIfMatch(
+  expectedRevision.strongEntityTag,
+  incomingEnvelope,
+  limits,
+  digestProvider,
+);
+
+if (result?.status === 'conflict') {
+  // Route to the host's reload, compare, merge, fork, or retry workflow.
+}
+```
+
+Use `restoreDocumentEnvelopeBytesIfMatch()` for strict UTF-8 bytes. A stable tag
+mismatch returns the current revision without inspecting or applying the source.
+If content moves while the asynchronous digest is pending, the conflict has
+`currentRevision: null`; the host should capture a fresh revision before retry.
+Malformed expected tags and invalid incoming envelopes remain typed redacted
+errors, not conflict results.
+
+Before hydration or after destruction, both methods resolve to `null` without
+invoking the digest provider. A successful conditional restore suppresses the
+normal change callbacks just like ordinary persistence restore.
+
+See [revision-guarded restore](./revision-guarded-restore.md) for the local race
+boundary, result semantics, collaboration requirements, and verification.
+
 For an HTTP persistence service, a host can return the exact canonical
 envelope's `strongEntityTag` as `ETag` and require the saved tag through
 `If-Match` on update. The server must perform the compare-and-swap atomically and
-return `412 Precondition Failed` instead of overwriting a newer revision. See
-[document revision tags](./document-revision-tags.md) for representation,
-privacy, and authorization boundaries.
+return `412 Precondition Failed` instead of overwriting a newer revision. A
+successful local conditional restore does not remove this durable server-side
+requirement. See [document revision tags](./document-revision-tags.md) for
+representation, privacy, and authorization boundaries.
 
 ## Collaboration authorization
 
 `CollaborativeCwlEditor` exposes the same handle because both surfaces share
 the implementation. Restoring into a collaborative editor replaces the
 Yjs-backed document and can affect other participants. Inkspan validates
-content compatibility but does not grant permission. The CWL or naruon host
-must authorize the document, tenant, user, and expected revision before
-invoking restore and must coordinate awareness, audit, and conflict UX.
+content compatibility and local revision continuity but does not grant
+permission. The CWL or naruon host must authorize the document, tenant, user,
+expected revision, and operation before invoking restore and must coordinate
+provider persistence, awareness, audit, and conflict UX.
 
 ## Security and MSA boundary
 
 The convenience methods preserve all lower-level guarantees: redacted typed
 errors, duplicate-name rejection, configurable resource ceilings, strict UTF-8
 decoding, canonical serialization, active-schema validation, strong SHA-256
-revision generation, and unchanged-document failure behavior.
+revision generation, local revision preconditions, and unchanged-document
+failure behavior.
 
 They do not replace gateway byte limits, decompression limits, timeouts,
 rate/concurrency controls, migration routing, tenant isolation, encryption,
@@ -98,4 +135,5 @@ metadata rather than extending the strict envelope with ad hoc fields.
 - [W3C Web Cryptography API Recommendation](https://www.w3.org/TR/2017/REC-WebCryptoAPI-20170126/)
 - [WHATWG Encoding Standard: UTF-8](https://encoding.spec.whatwg.org/#utf-8)
 - [TipTap persistence guidance](https://tiptap.dev/docs/editor/core-concepts/persistence)
+- [TipTap v2 `setContent`](https://v2.tiptap.dev/docs/editor/api/commands/content/set-content)
 - [ProseMirror `Node.fromJSON`](https://prosemirror.net/docs/ref/#model.Node^fromJSON)

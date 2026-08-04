@@ -23,6 +23,7 @@ describe('useEditorHandle', () => {
     const editorRef = createRef<CwlEditorHandle>();
     render(<EmptyEditorHandle ref={editorRef} />);
     const handle = editorRef.current!;
+    const strongEntityTag = `"sha256-${'00'.repeat(32)}"`;
 
     expect(handle.getEditor()).toBeNull();
     expect(() => handle.focus()).not.toThrow();
@@ -48,6 +49,15 @@ describe('useEditorHandle', () => {
     expect(handle.validateDocumentEnvelopeBytes(new Uint8Array())).toBe(false);
     expect(handle.restoreDocumentEnvelope({})).toBeNull();
     expect(handle.restoreDocumentEnvelopeBytes(new Uint8Array())).toBeNull();
+    await expect(
+      handle.restoreDocumentEnvelopeIfMatch(strongEntityTag, {}),
+    ).resolves.toBeNull();
+    await expect(
+      handle.restoreDocumentEnvelopeBytesIfMatch(
+        strongEntityTag,
+        new Uint8Array(),
+      ),
+    ).resolves.toBeNull();
     expect(() => handle.setValue('ignored')).not.toThrow();
     expect(
       handle.validateDocumentJson({ type: 'doc', content: [] }),

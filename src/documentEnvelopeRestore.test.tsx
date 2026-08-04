@@ -7,6 +7,7 @@ import {
 } from './documentEnvelope.js';
 import { encodeDocumentEnvelope } from './documentEnvelopeCanonical.js';
 import {
+  DocumentEnvelopeRestoreError,
   restoreDocumentEnvelope,
   restoreDocumentEnvelopeBytes,
   validateDocumentEnvelopeBytesForEditor,
@@ -102,6 +103,26 @@ describe('atomic document-envelope restore', () => {
         maxUtf8Bytes: incompatibleBytes.byteLength - 1,
       }),
     ).toThrow(DocumentEnvelopeError);
+
+    const policyRejected = createDocumentEnvelope({
+      type: 'doc',
+      content: [
+        {
+          type: 'image',
+          attrs: {
+            src: 'https://tracker.example/pixel.png',
+            alt: 'Remote tracking image',
+            title: null,
+          },
+        },
+      ],
+    });
+    expect(validateDocumentEnvelopeForEditor(editor, policyRejected)).toBe(
+      true,
+    );
+    expect(() => restoreDocumentEnvelope(editor, policyRejected)).toThrow(
+      DocumentEnvelopeRestoreError,
+    );
 
     expect(editorRef.current!.getSnapshot()).toEqual(before);
   });

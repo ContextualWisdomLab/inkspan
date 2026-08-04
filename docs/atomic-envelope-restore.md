@@ -4,17 +4,26 @@ Inkspan exposes one supported composition boundary for restoring a versioned doc
 
 ```ts
 import {
+  DocumentEnvelopeRestoreError,
   restoreDocumentEnvelopeBytes,
   validateDocumentEnvelopeBytesForEditor,
 } from '@contextualwisdomlab/cwl-editor';
 
 const editor = editorHandle.getEditor();
 if (editor && validateDocumentEnvelopeBytesForEditor(editor, storedBytes)) {
-  restoreDocumentEnvelopeBytes(editor, storedBytes);
+  try {
+    restoreDocumentEnvelopeBytes(editor, storedBytes);
+  } catch (error) {
+    if (error instanceof DocumentEnvelopeRestoreError) {
+      // An active ProseMirror transaction policy refused or transformed the
+      // otherwise valid document. Do not record the operation as restored.
+    }
+    throw error;
+  }
 }
 ```
 
-The equivalent object or JSON-text path uses `validateDocumentEnvelopeForEditor()` and `restoreDocumentEnvelope()`. All four helpers are exported from the package root for ESM, CommonJS, and strict TypeScript consumers.
+The equivalent object or JSON-text path uses `validateDocumentEnvelopeForEditor()` and `restoreDocumentEnvelope()`. All helpers and typed errors are exported from the package root for ESM, CommonJS, and strict TypeScript consumers.
 
 ## Atomicity contract
 
@@ -26,32 +35,38 @@ Restore performs these operations in order:
 4. validate the Inkspan envelope schema identifier and version;
 5. detach and deeply freeze the document JSON;
 6. reconstruct and recursively check the complete document against the active ProseMirror schema;
-7. replace the editor document once.
+7. dispatch one TipTap `setContent(..., false)` replacement;
+8. verify that the resulting active document is structurally equal to the prepared document.
 
-Any failure before step 7 leaves the current document unchanged. Successful restore uses TipTap's loading form of `setContent(..., false)`, so the operation does not immediately emit the normal update callback and enqueue a duplicate autosave.
+Any failure before step 7 leaves the current document unchanged. A ProseMirror transaction filter may reject a schema-valid replacement at step 7; Inkspan then throws `DocumentEnvelopeRestoreError` and never reports the operation as successful. Inkspan's built-in safe-link and inline-image policies reject unsafe replacements without changing the document.
 
-The restore functions return the validated, detached, frozen envelope that was applied. This allows a host to associate the exact accepted artifact with its own audit, revision, or optimistic-concurrency record without retaining the caller's mutable input object.
+A host-supplied plugin can instead transform a dispatched transaction. Inkspan detects the non-exact result and throws `DocumentEnvelopeRestoreError`, but the plugin may already have changed the editor state. Hosts that install transforming transaction plugins must treat this error as an indeterminate local state, inspect or reload the current document, and must not record the incoming envelope as the applied revision.
+
+Successful restore suppresses the normal update callback so loading an already-persisted artifact does not immediately enqueue a duplicate autosave. The restore functions return the validated, detached, frozen envelope that was exactly applied. This allows a host to associate the accepted artifact with its own audit, revision, or optimistic-concurrency record without retaining the caller's mutable input object.
 
 ## Validation helpers
 
-The validation helpers run the same parsing and active-schema checks without mutating the editor. They return `false` for malformed, oversized, incompatible, or unsupported input instead of exposing source data through an error message. Use them for file-picker feedback, migration routing, import previews, and disabled/enabled UI state.
+The validation helpers run envelope parsing, resource checks, and active-schema reconstruction without mutating the editor. They return `false` for malformed, oversized, incompatible, or unsupported input instead of exposing source data through an error message. Use them for file-picker feedback, migration routing, and import previews.
+
+A `true` result means the source can be prepared under the current envelope and ProseMirror schema. It is not a promise that every active transaction policy will accept the later replacement. Restore remains the authoritative application gate and can still raise `DocumentEnvelopeRestoreError`. UI enablement based on a validation helper must therefore preserve a visible restore-error path rather than assuming the subsequent command cannot fail.
 
 Restore functions preserve typed failure categories:
 
 - `DocumentEnvelopeError` for malformed, oversized, duplicate-name, encoding, schema-ID, or version failures;
-- `DocumentSchemaError` when the envelope is valid but its document tree is incompatible with the active extension schema.
+- `DocumentSchemaError` when the envelope is valid but its document tree is incompatible with the active extension schema;
+- `DocumentEnvelopeRestoreError` when an active ProseMirror policy refuses or transforms the prepared replacement.
 
-Neither error includes document text, URLs, inline image payloads, tenant identifiers, or source JSON.
+These errors contain no document text, URLs, inline image payloads, tenant identifiers, or source JSON.
 
 ## Collaboration and authorization
 
 Calling a restore helper with the editor instance owned by `CollaborativeCwlEditor` changes the host-owned Yjs document. Inkspan does not decide whether the caller may overwrite shared state. CWL and naruon hosts must authorize the document, tenant, user, revision, and operation before invoking restore and should use their own confirmation, audit, revision, and conflict policy.
 
-For optimistic concurrency, compare a host-owned revision or hash derived from `encodeDocumentEnvelope()` before authorization. Canonical bytes provide a deterministic comparison input but do not grant write permission or replace an authenticated revision token.
+For optimistic concurrency, use Inkspan's strong document revision and revision-guarded restore APIs locally, and enforce authenticated RFC 9110 `If-Match` atomically in the durable persistence transaction. Canonical bytes and equality validators do not grant write permission or replace tenant authorization.
 
 ## Migration boundary
 
-The current parser intentionally rejects unknown envelope versions. Hosts must route older artifacts through an explicit, reviewed migration before restore. A migration should produce a current envelope, then pass that result through the same restore helper so the active schema remains the final acceptance gate.
+The current parser intentionally rejects unknown envelope versions. Hosts must route older artifacts through an explicit, reviewed migration before restore. A migration should produce a current envelope, then pass that result through the same restore helper so the active schema and editor policies remain the final acceptance gates.
 
 Do not silently discard unknown nodes or marks during migration. Preserve the original artifact for audit and make lossy transformations explicit to the user or workflow owner.
 
@@ -72,9 +87,11 @@ The helper adds no database, credential, environment-variable, transport, provid
 
 ## Primary references
 
-- TipTap `setContent` command and update-event behavior
-- ProseMirror `Schema.nodeFromJSON()` and `Node.check()`
-- RFC 8259, *The JavaScript Object Notation (JSON) Data Interchange Format*
-- RFC 7493, *The I-JSON Message Format*
-- RFC 8785, *JSON Canonicalization Scheme (JCS)*
-- WHATWG Encoding Standard, fatal UTF-8 decoding
+- [TipTap v2 `setContent` command](https://v2.tiptap.dev/docs/editor/api/commands/content/set-content)
+- [ProseMirror `PluginSpec.filterTransaction`](https://prosemirror.net/docs/ref/#state.PluginSpec.filterTransaction)
+- [ProseMirror `Schema.nodeFromJSON()` and `Node.check()`](https://prosemirror.net/docs/ref/#model.Schema.nodeFromJSON)
+- [RFC 8259: The JavaScript Object Notation (JSON) Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259)
+- [RFC 7493: The I-JSON Message Format](https://www.rfc-editor.org/rfc/rfc7493)
+- [RFC 8785: JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785)
+- [RFC 9110 §13.1.1: `If-Match`](https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1)
+- [WHATWG Encoding Standard: UTF-8](https://encoding.spec.whatwg.org/#utf-8)
