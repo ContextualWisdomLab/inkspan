@@ -1,5 +1,5 @@
 import type { JSONContent } from '@tiptap/core';
-import { containsDuplicateJsonObjectNames } from './jsonObjectNameScanner.js';
+import { inspectJsonText } from './jsonObjectNameScanner.js';
 
 /** Canonical identifier for Inkspan's first portable document envelope. */
 export const DOCUMENT_ENVELOPE_SCHEMA_ID =
@@ -182,9 +182,29 @@ function parseDocumentEnvelopeWithLimits(
         'Document envelope JSON text exceeds the supported length',
       );
     }
-    if (containsDuplicateJsonObjectNames(source)) {
+    const inspection = inspectJsonText(source, {
+      maxValues: Math.min(
+        Number.MAX_SAFE_INTEGER,
+        resolvedLimits.maxJsonValues + 3,
+      ),
+      maxDepth: Math.min(
+        Number.MAX_SAFE_INTEGER,
+        resolvedLimits.maxNestingDepth + 1,
+      ),
+    });
+    if (inspection === 'duplicate-object-name') {
       throw new DocumentEnvelopeError(
         'Document envelope JSON must not contain duplicate object names',
+      );
+    }
+    if (inspection === 'value-count-limit') {
+      throw new DocumentEnvelopeError(
+        'Document envelope exceeds the supported JSON value count',
+      );
+    }
+    if (inspection === 'nesting-depth-limit') {
+      throw new DocumentEnvelopeError(
+        'Document envelope exceeds the supported document nesting depth',
       );
     }
     try {

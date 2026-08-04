@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { containsDuplicateJsonObjectNames } from './jsonObjectNameScanner.js';
+import {
+  containsDuplicateJsonObjectNames,
+  inspectJsonText,
+} from './jsonObjectNameScanner.js';
 
 describe('duplicate JSON object-name scanning', () => {
   it('detects duplicate names at the root and in nested containers', () => {
@@ -75,4 +78,56 @@ describe('duplicate JSON object-name scanning', () => {
       expect(containsDuplicateJsonObjectNames(source)).toBe(false);
     },
   );
+});
+
+describe('bounded JSON text inspection', () => {
+  it('accepts exact value-count and depth ceilings', () => {
+    const source = '{"document":{"content":[true,null]}}';
+
+    expect(
+      inspectJsonText(source, { maxValues: 5, maxDepth: 3 }),
+    ).toBe('valid');
+  });
+
+  it('fails before native parsing when object or array values exceed the budget', () => {
+    expect(
+      inspectJsonText('{"left":true,"right":false}', {
+        maxValues: 2,
+        maxDepth: 10,
+      }),
+    ).toBe('value-count-limit');
+    expect(
+      inspectJsonText('[true,false]', {
+        maxValues: 2,
+        maxDepth: 10,
+      }),
+    ).toBe('value-count-limit');
+  });
+
+  it('fails before native parsing when scalar or container depth is exceeded', () => {
+    expect(
+      inspectJsonText('{"outer":{"inner":true}}', {
+        maxValues: 10,
+        maxDepth: 1,
+      }),
+    ).toBe('nesting-depth-limit');
+    expect(
+      inspectJsonText('[[]]', { maxValues: 10, maxDepth: 0 }),
+    ).toBe('nesting-depth-limit');
+  });
+
+  it('reports duplicate and malformed inputs distinctly', () => {
+    expect(
+      inspectJsonText('{"name":1,"name":2}', {
+        maxValues: 10,
+        maxDepth: 10,
+      }),
+    ).toBe('duplicate-object-name');
+    expect(
+      inspectJsonText('{"name":1,}', {
+        maxValues: 10,
+        maxDepth: 10,
+      }),
+    ).toBe('malformed');
+  });
 });

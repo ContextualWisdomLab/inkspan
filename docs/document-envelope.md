@@ -108,10 +108,17 @@ message, compressed-body, and object-store limits before the library boundary.
 OWASP likewise recommends total request-size limits and avoiding unbounded
 input-driven resource allocation.
 
-The value and array-width checks run before recursively materializing child
-values. Object reflection reads descriptors without invoking getters. Limit
-failures use `DocumentEnvelopeError` and do not include source strings, object
-names, inline image bytes, or tenant identifiers.
+For JSON text and decoded UTF-8 bytes, the iterative duplicate-name scanner also
+counts every scalar and container and tracks value depth before `JSON.parse()`.
+The fixed three-value and one-depth envelope wrapper allowance keeps configured
+limits scoped to `documentJson`. Oversized raw structures therefore fail before
+the native parser allocates their complete object graph. Syntax-invalid input
+that remains inside the ceilings is still reported by the canonical parser.
+
+The post-parse value and array-width checks remain as defense in depth before
+recursively cloning child values. Object reflection reads descriptors without
+invoking getters. Limit failures use `DocumentEnvelopeError` and do not include
+source strings, object names, inline image bytes, or tenant identifiers.
 
 ## Validation and safety
 
