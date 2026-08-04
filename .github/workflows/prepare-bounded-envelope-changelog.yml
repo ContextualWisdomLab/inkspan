@@ -1,0 +1,68 @@
+name: Prepare bounded envelope changelog once
+
+on:
+  push:
+    branches: [security/bounded-document-envelopes]
+    paths:
+      - .github/workflows/prepare-bounded-envelope-changelog.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prepare-bounded-envelope-changelog
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.repository == 'ContextualWisdomLab/inkspan'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: security/bounded-document-envelopes
+      - name: Add release notes and remove one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          changelog_path = Path('CHANGELOG.md')
+          current = changelog_path.read_text(encoding='utf-8')
+          marker = '## [Unreleased]\n'
+          release = '''## [0.5.17] — 2026-08-04
+
+          ### Added
+          - Exported `DocumentEnvelopeLimits` and frozen `DEFAULT_DOCUMENT_ENVELOPE_LIMITS` for host-specific ceilings on raw JSON text, total JSON values, decoded strings/object names, and nesting depth
+
+          ### Changed
+          - Package version **0.5.17**
+          - `createDocumentEnvelope()` and `parseDocumentEnvelope()` now accept optional fail-closed resource ceilings
+          - Object and array widths are preflighted before recursive materialization; raw JSON text is bounded before duplicate-name scanning and `JSON.parse()`
+
+          ### Security
+          - Default ceilings bound pathological CPU and memory use while remaining generous for large image-bearing documents
+          - Limit options are allowlisted positive safe integers, and failures remain typed while redacting source data
+          - CWL and naruon gateways still enforce transport byte size, timeout, rate/concurrency, tenant, authorization, and product-tier policy
+
+          ### Tests
+          - Added exact-limit success, text/value/string/depth rejection, invalid configuration, hostile reflection, packaged ESM/CommonJS, and redaction coverage under the repository-wide 100% TypeScript coverage gate
+
+          ### Documentation
+          - Expanded `docs/document-envelope.md` with defaults, override examples, RFC 8259 parser-limit guidance, OWASP denial-of-service and REST guidance, and modular MSA boundaries
+
+          '''
+          if '## [0.5.17]' not in current:
+              if marker not in current:
+                  raise SystemExit('CHANGELOG Unreleased marker is missing')
+              current = current.replace(marker, marker + '\n' + release, 1)
+              changelog_path.write_text(current, encoding='utf-8')
+          PY
+          rm .github/workflows/prepare-bounded-envelope-changelog.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add CHANGELOG.md .github/workflows/prepare-bounded-envelope-changelog.yml
+          git diff --cached --check
+          git commit -m "docs: record bounded document envelopes"
+          git push origin HEAD:security/bounded-document-envelopes
