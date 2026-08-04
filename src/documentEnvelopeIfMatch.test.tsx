@@ -1,5 +1,5 @@
 import { act, render, waitFor } from '@testing-library/react';
-import { createRef } from 'react';
+import { createRef, type RefObject } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { CwlEditor } from './components/CwlEditor.js';
 import {
@@ -15,6 +15,7 @@ import {
 import {
   restoreDocumentEnvelopeBytesIfMatch,
   restoreDocumentEnvelopeIfMatch,
+  type CwlEditorIfMatchRestoreResult,
 } from './documentEnvelopeIfMatch.js';
 import { DocumentSchemaError } from './documentSchema.js';
 import type { CwlEditorHandle } from './types.js';
@@ -25,11 +26,13 @@ function createDigestProvider(): DocumentEnvelopeDigestProvider {
       const bytes = ArrayBuffer.isView(source)
         ? new Uint8Array(source.buffer, source.byteOffset, source.byteLength)
         : new Uint8Array(source);
-      let accumulator = 0;
-      for (const byte of bytes) accumulator = (accumulator + byte) % 256;
-      const digest = new ArrayBuffer(32);
-      new Uint8Array(digest).fill(accumulator);
-      return digest;
+      const digest = new Uint8Array(32);
+      for (let index = 0; index < bytes.length; index += 1) {
+        const digestIndex = index % digest.length;
+        digest[digestIndex] =
+          (digest[digestIndex] + bytes[index] + index) % 256;
+      }
+      return digest.buffer;
     },
   };
 }
@@ -53,7 +56,7 @@ function createDeferredDigestProvider(fill = 0): {
 }
 
 async function renderEditor(): Promise<{
-  editorRef: React.RefObject<CwlEditorHandle>;
+  editorRef: RefObject<CwlEditorHandle>;
   onChange: ReturnType<typeof vi.fn>;
 }> {
   const editorRef = createRef<CwlEditorHandle>();
@@ -98,14 +101,17 @@ describe('revision-guarded document-envelope restore', () => {
       digestProvider,
     );
     const objectEnvelope = incomingEnvelope();
+    let objectResult!: CwlEditorIfMatchRestoreResult;
 
-    const objectResult = await restoreDocumentEnvelopeIfMatch(
-      editor,
-      currentRevision.strongEntityTag,
-      objectEnvelope,
-      undefined,
-      digestProvider,
-    );
+    await act(async () => {
+      objectResult = await restoreDocumentEnvelopeIfMatch(
+        editor,
+        currentRevision.strongEntityTag,
+        objectEnvelope,
+        undefined,
+        digestProvider,
+      );
+    });
 
     expect(objectResult).toEqual({
       status: 'restored',
@@ -124,13 +130,16 @@ describe('revision-guarded document-envelope restore', () => {
       digestProvider,
     );
     const byteEnvelope = incomingEnvelope('Restored from bytes');
-    const byteResult = await restoreDocumentEnvelopeBytesIfMatch(
-      editor,
-      restoredRevision.strongEntityTag,
-      encodeDocumentEnvelope(byteEnvelope),
-      undefined,
-      digestProvider,
-    );
+    let byteResult!: CwlEditorIfMatchRestoreResult;
+    await act(async () => {
+      byteResult = await restoreDocumentEnvelopeBytesIfMatch(
+        editor,
+        restoredRevision.strongEntityTag,
+        encodeDocumentEnvelope(byteEnvelope),
+        undefined,
+        digestProvider,
+      );
+    });
 
     expect(byteResult.status).toBe('restored');
     expect(byteResult).toMatchObject({
@@ -227,13 +236,18 @@ describe('revision-guarded document-envelope restore', () => {
     await act(async () => {
       editor.commands.setTextSelection(1);
     });
-    deferred.resolve();
+    let result!: CwlEditorIfMatchRestoreResult;
+    await act(async () => {
+      deferred.resolve();
+      result = await pending;
+    });
 
-    await expect(pending).resolves.toMatchObject({ status: 'restored' });
+    expect(result).toMatchObject({ status: 'restored' });
     expect(editorRef.current!.getMarkdown()).toBe('## Selection-safe restore');
   });
 
   it.each([
+    42,
     'sha256-' + '0'.repeat(64),
     `W/"sha256-${'0'.repeat(64)}"`,
     `"sha256-${'A'.repeat(64)}"`,
@@ -249,7 +263,7 @@ describe('revision-guarded document-envelope restore', () => {
     await expect(
       restoreDocumentEnvelopeIfMatch(
         editorRef.current!.getEditor()!,
-        tag,
+        tag as string,
         incomingEnvelope(),
         undefined,
         digestProvider,
