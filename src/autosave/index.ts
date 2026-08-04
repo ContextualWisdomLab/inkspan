@@ -77,7 +77,7 @@ export interface DocumentAutosaveSavedOutcome {
   readonly strongEntityTag: string;
 }
 
-/** Outcome for a revision that was already the last durable queue revision. */
+/** Outcome for a revision already durable with no competing queued write. */
 export interface DocumentAutosaveUnchangedOutcome {
   /** Indicates that no duplicate host callback was necessary. */
   readonly status: 'unchanged';
@@ -147,6 +147,8 @@ export interface DocumentAutosaveQueue {
    * Matching active or pending revisions share one promise. A newer different
    * revision replaces only not-yet-started work; it never cancels or overlaps an
    * active host call. Invalid evidence fails synchronously before it is stored.
+   * A revision is `unchanged` only when no active or pending write can replace
+   * the durable revision before this request completes.
    *
    * @param evidence - Frozen evidence returned by Inkspan revision APIs.
    * @returns A promise for the saved, unchanged, superseded, conflict, or closed outcome.
@@ -583,7 +585,11 @@ export function createDocumentAutosaveQueue(
     if (pendingRequest?.strongEntityTag === strongEntityTag) {
       return pendingRequest.promise;
     }
-    if (lastSavedStrongEntityTag === strongEntityTag) {
+    if (
+      activeRequest === null &&
+      pendingRequest === null &&
+      lastSavedStrongEntityTag === strongEntityTag
+    ) {
       return Promise.resolve(
         createSimpleOutcome('unchanged', strongEntityTag),
       );
