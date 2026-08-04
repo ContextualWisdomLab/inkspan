@@ -200,7 +200,6 @@ interface AutosaveRequest {
   readonly promise: Promise<DocumentAutosaveRequestOutcome>;
   readonly resolve: (outcome: DocumentAutosaveRequestOutcome) => void;
   readonly reject: (error: DocumentAutosaveQueueError) => void;
-  settled: boolean;
 }
 
 type QueueLifecycle = 'open' | 'closing' | 'closed';
@@ -373,27 +372,22 @@ function createRequest(
     promise,
     resolve,
     reject,
-    settled: false,
   };
 }
 
-/** Resolve a request exactly once. */
+/** Resolve a request. */
 function resolveRequest(
   request: AutosaveRequest,
   outcome: DocumentAutosaveRequestOutcome,
 ): void {
-  if (request.settled) return;
-  request.settled = true;
   request.resolve(outcome);
 }
 
-/** Reject a request exactly once. */
+/** Reject a request. */
 function rejectRequest(
   request: AutosaveRequest,
   error: DocumentAutosaveQueueError,
 ): void {
-  if (request.settled) return;
-  request.settled = true;
   request.reject(error);
 }
 
