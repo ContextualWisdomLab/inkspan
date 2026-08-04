@@ -1,4 +1,5 @@
 import type { JSONContent } from '@tiptap/core';
+import { containsDuplicateJsonObjectNames } from './jsonObjectNameScanner.js';
 
 /** Canonical identifier for Inkspan's first portable document envelope. */
 export const DOCUMENT_ENVELOPE_SCHEMA_ID =
@@ -59,8 +60,9 @@ export function createDocumentEnvelope(
 /**
  * Parse and validate an Inkspan document envelope from JSON text or a value.
  *
- * Unknown fields and unsupported schema identifiers or versions fail closed so
- * hosts can route older envelopes through an explicit migration layer.
+ * Unknown fields, duplicate JSON object names, and unsupported schema
+ * identifiers or versions fail closed so hosts can route older envelopes
+ * through an explicit migration layer.
  */
 export function parseDocumentEnvelope(
   source: string | unknown,
@@ -68,6 +70,11 @@ export function parseDocumentEnvelope(
   return withRedactedInspectionErrors(() => {
     let value: unknown = source;
     if (typeof source === 'string') {
+      if (containsDuplicateJsonObjectNames(source)) {
+        throw new DocumentEnvelopeError(
+          'Document envelope JSON must not contain duplicate object names',
+        );
+      }
       try {
         value = JSON.parse(source) as unknown;
       } catch {
