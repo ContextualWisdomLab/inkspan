@@ -561,13 +561,6 @@ export function createDocumentAutosaveQueue(
     } finally {
       pumpRunning = false;
       finishClosingIfPossible();
-      if (
-        lifecycle === 'open' &&
-        blockedReason === null &&
-        pendingRequest !== null
-      ) {
-        startPump();
-      }
       settleFlushWaiters();
     }
   }
