@@ -49,12 +49,19 @@ revision are captured atomically from the active editor.
 
 ## Create the queue
 
-The save callback receives one immutable evidence value. Return `saved` only
-after the authorized durable transaction has committed. Return `conflict` when
-the server rejects the expected revision, normally as HTTP `412 Precondition
-Failed` after an atomic `If-Match` comparison.
+The save callback receives one immutable evidence value. The host must separately
+retain the strong entity tag of the durable revision that it loaded or last
+committed. Use that durable base tag as `If-Match`; the submitted evidence tag
+identifies the proposed new revision and becomes the next base only after the
+write commits.
+
+Return `saved` only after the authorized durable transaction has committed.
+Return `conflict` when the server rejects the durable base revision, normally as
+HTTP `412 Precondition Failed` after an atomic `If-Match` comparison.
 
 ```ts
+let durableStrongEntityTag = loadedRevision.strongEntityTag;
+
 const autosaveQueue = createDocumentAutosaveQueue({
   async save(evidence): Promise<DocumentAutosaveSaveResult> {
     const response = await fetch('/documents/current', {
@@ -62,7 +69,7 @@ const autosaveQueue = createDocumentAutosaveQueue({
       credentials: 'include',
       headers: {
         'content-type': 'application/json',
-        'if-match': evidence.revision.strongEntityTag,
+        'if-match': durableStrongEntityTag,
       },
       body: JSON.stringify(evidence.envelope),
     });
@@ -73,6 +80,8 @@ const autosaveQueue = createDocumentAutosaveQueue({
     if (!response.ok) {
       throw new Error('Private transport failure');
     }
+
+    durableStrongEntityTag = evidence.revision.strongEntityTag;
     return { status: 'saved' };
   },
 });
@@ -121,16 +130,18 @@ Inkspan does not guess whether a retry is authorized, safe, or useful.
 const snapshot = await autosaveQueue.flush();
 
 if (snapshot.state === 'blocked') {
-  await reloadCompareMergeOrForkUnderHostAuthorization();
+  const recovery = await reloadCompareMergeOrForkUnderHostAuthorization();
+  durableStrongEntityTag = recovery.currentDurableStrongEntityTag;
   autosaveQueue.resume();
 }
 ```
 
 Call `resume()` only after the host has completed its authenticated recovery
 workflow. A conflict usually requires fetching the current durable revision,
-showing or applying an accessible compare/merge/fork decision, and creating new
-revision evidence. A transport failure usually requires host-specific retry
-budget, backoff, offline, and user-notification policy.
+showing or applying an accessible compare/merge/fork decision, updating the
+host-owned durable base tag, and creating new revision evidence. A transport
+failure usually requires host-specific retry budget, backoff, offline, and
+user-notification policy.
 
 `flush()` resolves when the queue is idle, blocked, or closed. It does not wait
 forever for an external conflict decision.
@@ -169,6 +180,7 @@ tenant-confidential metadata:
 | Immutable evidence validation | Owns | Uses Inkspan evidence APIs |
 | Single-flight local ordering | Owns | Enqueues approved revisions |
 | Pending revision coalescing | Owns | Chooses change/debounce timing |
+| Durable base revision tracking | Does not own | Owns |
 | Transport and credentials | Does not own | Owns |
 | Authentication and authorization | Does not own | Owns |
 | Tenant isolation | Does not own | Owns |
@@ -182,9 +194,9 @@ tenant-confidential metadata:
 
 The queue provides a linearizable local coordination surface for callback
 invocations. It does not create a distributed transaction. Durable lost-update
-prevention requires the host to compare the strong validator and write the new
-document atomically in the same authorized storage transaction, consistent with
-RFC 9110 `If-Match` semantics.
+prevention requires the host to compare the previously loaded or committed base
+validator and write the proposed new document atomically in the same authorized
+storage transaction, consistent with RFC 9110 `If-Match` semantics.
 
 See `docs/doctoring/document-autosave-queue.md` for the architectural decision,
 security analysis, test plan, and APA 7th references.
