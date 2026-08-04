@@ -4,6 +4,28 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.17] — 2026-08-04
+
+### Added
+- Exported `DocumentEnvelopeLimits` and frozen `DEFAULT_DOCUMENT_ENVELOPE_LIMITS` for host-specific ceilings on raw JSON text, total JSON values, decoded strings/object names, and nesting depth
+
+### Changed
+- Package version **0.5.17**
+- `createDocumentEnvelope()` and `parseDocumentEnvelope()` now accept optional fail-closed resource ceilings
+- Object and array widths are preflighted before recursive materialization; raw JSON text is bounded before duplicate-name scanning and `JSON.parse()`
+
+### Security
+- Default ceilings bound pathological CPU and memory use while remaining generous for large image-bearing documents
+- Limit options are allowlisted positive safe integers, and failures remain typed while redacting source data
+- CWL and naruon gateways still enforce transport byte size, timeout, rate/concurrency, tenant, authorization, and product-tier policy
+
+### Tests
+- Added exact-limit success, text/value/string/depth rejection, invalid configuration, hostile reflection, packaged ESM/CommonJS, and redaction coverage under the repository-wide 100% TypeScript coverage gate
+
+### Documentation
+- Expanded `docs/document-envelope.md` with defaults, override examples, RFC 8259 parser-limit guidance, OWASP denial-of-service and REST guidance, and modular MSA boundaries
+
+
 ## [0.5.16] — 2026-08-04
 
 ### Changed

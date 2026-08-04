@@ -32,13 +32,17 @@ export type {
 
 // Versioned, lossless persistence boundary.
 export {
+  DEFAULT_DOCUMENT_ENVELOPE_LIMITS,
   DOCUMENT_ENVELOPE_SCHEMA_ID,
   DOCUMENT_ENVELOPE_SCHEMA_VERSION,
   DocumentEnvelopeError,
   createDocumentEnvelope,
   parseDocumentEnvelope,
 } from './documentEnvelope.js';
-export type { CwlEditorDocumentEnvelope } from './documentEnvelope.js';
+export type {
+  CwlEditorDocumentEnvelope,
+  DocumentEnvelopeLimits,
+} from './documentEnvelope.js';
 export {
   encodeDocumentEnvelope,
   serializeDocumentEnvelope,
