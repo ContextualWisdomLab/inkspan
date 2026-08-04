@@ -7,7 +7,10 @@ import {
   DOCUMENT_ENVELOPE_SCHEMA_VERSION,
 } from '../documentEnvelope.js';
 import { encodeDocumentEnvelope } from '../documentEnvelopeCanonical.js';
-import { createDocumentEnvelopeRevision } from '../documentEnvelopeRevision.js';
+import {
+  createDocumentEnvelopeRevision,
+  type DocumentEnvelopeDigestProvider,
+} from '../documentEnvelopeRevision.js';
 import { DocumentSchemaError } from '../documentSchema.js';
 import type { CwlEditorHandle } from '../types.js';
 import { CwlEditor } from './CwlEditor.js';
@@ -59,13 +62,21 @@ describe('CwlEditor imperative envelope persistence', () => {
       ),
     ).toBe(canonicalJson);
 
-    const revision = await handle.getDocumentEnvelopeRevision({
-      maxJsonValues: 32,
-    });
-    expect(revision).toEqual(
-      await createDocumentEnvelopeRevision(envelope, { maxJsonValues: 32 }),
+    const digestProvider: DocumentEnvelopeDigestProvider = {
+      digest: async () => new Uint8Array(32).fill(0xef).buffer,
+    };
+    const revision = await handle.getDocumentEnvelopeRevision(
+      { maxJsonValues: 32 },
+      digestProvider,
     );
-    expect(revision?.digestHex).toMatch(/^[0-9a-f]{64}$/u);
+    expect(revision).toEqual(
+      await createDocumentEnvelopeRevision(
+        envelope,
+        { maxJsonValues: 32 },
+        digestProvider,
+      ),
+    );
+    expect(revision?.digestHex).toBe('ef'.repeat(32));
     expect(revision?.strongEntityTag).toBe(
       `"sha256-${revision?.digestHex}"`,
     );
