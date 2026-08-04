@@ -5,6 +5,34 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 ## [Unreleased]
 
 
+## [0.5.25] — 2026-08-04
+
+### Added
+- `CwlEditorHandle.getDocumentEnvelopeRevisionEvidence()` for capturing one frozen versioned envelope together with the exact SHA-256 revision derived from that same capture
+- Public `CwlEditorDocumentRevisionEvidence` contract for standalone and provider-neutral collaborative editor surfaces
+
+### Changed
+- Package version **0.5.25**
+- Imperative persistence guidance now directs autosave, AI, template, and review workflows to capture revision-envelope evidence in one call
+
+### Reliability
+- Asynchronous hashing can no longer cause a host to pair a separately captured envelope with a revision from a different editor state
+- A document change while hashing leaves the returned evidence pair stable and internally consistent without rereading the editor
+
+### Performance
+- Evidence capture creates one frozen envelope and hashes its canonical bytes; it adds no second editor read, document traversal, clone, parser pass, schema reconstruction, or provider call
+
+### Security
+- Captured envelopes contain the full client-controlled document and inherit host authorization, encryption, redaction, retention, residency, and audit requirements
+- Revision evidence remains an equality validator rather than authorization, tenant membership, cryptographic authenticity, or proof of durable persistence; hosts retain authenticated atomic RFC 9110 `If-Match`
+
+### Tests
+- Added lifecycle fallback, asynchronous editor-movement, exact pairing, freezing, strict packed TypeScript declaration, and repository-wide coverage verification
+
+### Documentation
+- Expanded imperative persistence guidance with an atomic autosave base example, local race semantics, privacy handling, and CWL/naruon ownership boundaries
+
+
 ## [0.5.24] — 2026-08-04
 
 ### Added
