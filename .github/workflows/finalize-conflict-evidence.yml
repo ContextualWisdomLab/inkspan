@@ -12,7 +12,7 @@ permissions:
 
 concurrency:
   group: finalize-conflict-evidence
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   finalize:
@@ -22,6 +22,7 @@ jobs:
         with:
           ref: feat/conflict-evidence
           fetch-depth: 0
+
       - name: Finalize release documentation
         shell: python
         run: |
@@ -133,163 +134,21 @@ jobs:
               readme_section,
           )
 
-          imperative_path = "docs/imperative-envelope-persistence.md"
-          imperative = read(imperative_path).replace(
-              "Inkspan 0.5.23 exposes",
-              "Inkspan 0.5.24 exposes",
+          design_path = "docs/superpowers/specs/2026-08-04-conflict-evidence-design.md"
+          design = read(design_path)
+          design = design.replace(
+              "readonly currentEnvelope: CwlEditorDocumentEnvelope | null;",
+              "readonly currentEnvelope: CwlEditorDocumentEnvelope;",
               1,
           )
-          old_imperative = """Use `restoreDocumentEnvelopeBytesIfMatch()` for strict UTF-8 bytes. A stable tag
-          mismatch returns the current revision without inspecting or applying the source.
-          If content moves while the asynchronous digest is pending, the conflict has
-          `currentRevision: null`; the host should capture a fresh revision before retry.
-          Malformed expected tags and invalid incoming envelopes remain typed redacted
-          errors, not conflict results.
-
-          Before hydration or after destruction, both methods resolve to `null` without
-          invoking the digest provider. A successful conditional restore suppresses the
-          normal change callbacks just like ordinary persistence restore.
+          if "readonly currentRevision: null;" not in design:
+              stable_variant = """            | {
+                readonly status: 'conflict';
+                readonly currentRevision: CwlEditorDocumentRevision;
+                readonly currentEnvelope: CwlEditorDocumentEnvelope;
+              };
           """
-          new_imperative = """Use `restoreDocumentEnvelopeBytesIfMatch()` for strict UTF-8 bytes. A stable tag
-          mismatch returns `currentRevision` together with the exact frozen
-          `currentEnvelope` used to derive it, without inspecting or applying the source.
-          Strict TypeScript consumers can narrow this pair by checking that
-          `currentRevision !== null`. If content moves, hostile source reflection changes
-          the document, or the editor is destroyed, both `currentRevision` and
-          `currentEnvelope` are `null`; the host must capture a fresh revision before
-          retry. Malformed expected tags and invalid incoming envelopes remain typed
-          redacted errors, not conflict results.
-
-          A successful result returns `previousRevision` together with its exact
-          `previousEnvelope` and the incoming `envelope` that was applied. Inkspan reuses
-          the current envelope already created for hashing, so the evidence fields add no
-          second document traversal, clone, canonical serialization, digest, schema
-          reconstruction, or provider invocation.
-
-          Before hydration or after destruction, both imperative methods resolve to
-          `null` without invoking the digest provider. A successful conditional restore
-          suppresses the normal change callbacks just like ordinary persistence restore.
-          The evidence envelopes contain the full client-controlled document body and
-          must not be copied into ordinary logs or telemetry.
-          """
-          old_imperative = "\n".join(
-              line[10:] if line.startswith("          ") else line
-              for line in old_imperative.splitlines()
-          )
-          new_imperative = "\n".join(
-              line[10:] if line.startswith("          ") else line
-              for line in new_imperative.splitlines()
-          )
-          if old_imperative not in imperative:
-              raise SystemExit("imperative conflict section marker is missing")
-          write(imperative_path, imperative.replace(old_imperative, new_imperative, 1))
-
-          result_states = """## Result states
-
-          A successful result is frozen and contains the stable previous revision, the
-          exact frozen envelope from which that revision was derived, and the validated
-          envelope that was applied:
-
-          ```ts
-          {
-            status: 'restored',
-            previousRevision,
-            previousEnvelope,
-            envelope,
-          }
-          ```
-
-          A stable mismatch is also frozen. Its non-null fields are an atomic evidence
-          pair describing the same captured editor document:
-
-          ```ts
-          {
-            status: 'conflict',
-            currentRevision,
-            currentEnvelope,
-          }
-          ```
-
-          When the document changes while SHA-256 or untrusted-source preparation is in
-          progress, or the editor is destroyed, Inkspan returns null evidence in lockstep:
-
-          ```ts
-          {
-            status: 'conflict',
-            currentRevision: null,
-            currentEnvelope: null,
-          }
-          ```
-
-          The captured validator and envelope are intentionally withheld because neither
-          can still be reported as the active document. The host must obtain a fresh
-          revision before retry. The TypeScript result union encodes stable and null
-          conflict evidence as separate variants, so checking `currentRevision` also
-          narrows `currentEnvelope` without a non-null assertion.
-
-          Conflict is a normal result rather than an exception; malformed inputs,
-          provider failures, resource violations, active-schema incompatibility, and
-          editor-policy refusal remain typed redacted exceptions. Evidence envelopes
-          contain the full document body and are not telemetry-safe summaries.
-
-          """
-          result_states = "\n".join(
-              line[10:] if line.startswith("          ") else line
-              for line in result_states.splitlines()
-          )
-          revision_path = "docs/revision-guarded-restore.md"
-          revision = read(revision_path).replace(
-              "Inkspan 0.5.23 adds",
-              "Inkspan 0.5.24 adds",
-              1,
-          )
-          write(revision_path, revision)
-          replace_between(
-              revision_path,
-              "## Result states\n",
-              "## Race boundary\n",
-              result_states,
-          )
-          revision = read(revision_path)
-          allocation_marker = "## Imperative handle\n"
-          allocation_section = """## Allocation behavior
-
-          The guard already creates and freezes one current envelope before hashing it.
-          Stable conflict and successful restore return that same envelope object as
-          evidence. No second `Editor.getJSON()` call, document traversal, clone,
-          canonical serialization, SHA-256 digest, schema reconstruction, or provider
-          operation is introduced. Hosts that need canonical JSON or bytes can derive
-          them deliberately from the returned frozen envelope.
-
-          """
-          allocation_section = "\n".join(
-              line[10:] if line.startswith("          ") else line
-              for line in allocation_section.splitlines()
-          )
-          if allocation_section.strip() not in revision:
-              if allocation_marker not in revision:
-                  raise SystemExit("revision guide imperative marker is missing")
-              revision = revision.replace(
-                  allocation_marker,
-                  allocation_section + allocation_marker,
-                  1,
-              )
-              write(revision_path, revision)
-
-          design_section = """## Selected approach
-
-          Extend the existing result contract while preserving every 0.5.23 field and
-          encoding the revision-envelope invariant directly in the TypeScript union:
-
-          ```ts
-          export type CwlEditorIfMatchRestoreResult =
-            | {
-                readonly status: 'restored';
-                readonly previousRevision: CwlEditorDocumentRevision;
-                readonly previousEnvelope: CwlEditorDocumentEnvelope;
-                readonly envelope: CwlEditorDocumentEnvelope;
-              }
-            | {
+              null_variant = """            | {
                 readonly status: 'conflict';
                 readonly currentRevision: CwlEditorDocumentRevision;
                 readonly currentEnvelope: CwlEditorDocumentEnvelope;
@@ -299,54 +158,41 @@ jobs:
                 readonly currentRevision: null;
                 readonly currentEnvelope: null;
               };
-          ```
-
-          The existing `status`, `previousRevision`, `envelope`, and
-          `currentRevision` properties remain unchanged. Stable and null conflicts are
-          separate variants, preventing a strict consumer from constructing or accepting
-          an inconsistent non-null revision/null-envelope pair. The pure object/JSON and
-          strict UTF-8 functions plus the shared standalone/collaborative imperative
-          handle all inherit the enriched result.
-
           """
-          design_section = "\n".join(
-              line[10:] if line.startswith("          ") else line
-              for line in design_section.splitlines()
-          )
-          replace_between(
-              "docs/superpowers/specs/2026-08-04-conflict-evidence-design.md",
-              "## Selected approach\n",
-              "## Alternatives considered\n",
-              design_section,
-          )
+              stable_variant = "\n".join(
+                  line[10:] if line.startswith("          ") else line
+                  for line in stable_variant.splitlines()
+              )
+              null_variant = "\n".join(
+                  line[10:] if line.startswith("          ") else line
+                  for line in null_variant.splitlines()
+              )
+              if stable_variant not in design:
+                  raise SystemExit("design conflict union marker is missing")
+              design = design.replace(stable_variant, null_variant, 1)
+          write(design_path, design)
 
           plan_path = "docs/superpowers/plans/2026-08-04-conflict-evidence.md"
           plan = read(plan_path)
           plan = plan.replace(
-              "and the conflict branch includes:\n\n```ts\nreadonly currentEnvelope: CwlEditorDocumentEnvelope | null;\n```",
-              "and stable versus moved conflict branches encode the evidence pair:\n\n```ts\n| {\n    readonly status: 'conflict';\n    readonly currentRevision: CwlEditorDocumentRevision;\n    readonly currentEnvelope: CwlEditorDocumentEnvelope;\n  }\n| {\n    readonly status: 'conflict';\n    readonly currentRevision: null;\n    readonly currentEnvelope: null;\n  }\n```",
-              1,
-          )
-          plan = plan.replace(
-              "expect(result.previousEnvelope).toBe(previousEnvelope);",
-              "expect(result.previousEnvelope).toEqual(previousEnvelope);",
+              "readonly currentEnvelope: CwlEditorDocumentEnvelope | null;",
+              "readonly currentEnvelope: CwlEditorDocumentEnvelope;",
               1,
           )
           plan = plan.replace(
               "The exact object reference assertion proves the implementation reuses the already-created envelope instead of cloning it again.",
-              "The equality assertion proves the evidence describes the same document; implementation review and single-provider-call coverage enforce reuse without a second digest.",
+              "The equality assertion proves the evidence describes the same document; implementation review and provider-call coverage enforce reuse without a second digest.",
               1,
           )
           write(plan_path, plan)
 
           Path(".github/workflows/finalize-conflict-evidence.yml").unlink()
+
       - name: Commit finalized release documentation
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add CHANGELOG.md README.md \
-            docs/imperative-envelope-persistence.md \
-            docs/revision-guarded-restore.md \
             docs/superpowers/specs/2026-08-04-conflict-evidence-design.md \
             docs/superpowers/plans/2026-08-04-conflict-evidence.md \
             .github/workflows/finalize-conflict-evidence.yml
