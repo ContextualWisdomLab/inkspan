@@ -1,4 +1,8 @@
 import {
+  DOCUMENT_ENVELOPE_SCHEMA_ID as INTERNAL_DOCUMENT_ENVELOPE_SCHEMA_ID,
+  DOCUMENT_ENVELOPE_SCHEMA_VERSION as INTERNAL_DOCUMENT_ENVELOPE_SCHEMA_VERSION,
+} from '../documentEnvelope.js';
+import {
   createDocumentEnvelopeRevisionEvidence as createRevisionEvidenceInternal,
   createDocumentEnvelopeRevisionEvidenceBytes as createRevisionEvidenceBytesInternal,
 } from '../documentRevisionEvidence.js';
@@ -14,11 +18,13 @@ import {
  */
 
 /** Canonical identifier for Inkspan's first portable document envelope. */
-export const DOCUMENT_ENVELOPE_SCHEMA_ID =
-  'https://inkspan.io/schemas/document-envelope/v1' as const;
+export const DOCUMENT_ENVELOPE_SCHEMA_ID:
+  'https://inkspan.io/schemas/document-envelope/v1' =
+    INTERNAL_DOCUMENT_ENVELOPE_SCHEMA_ID;
 
 /** Current document-envelope schema version. */
-export const DOCUMENT_ENVELOPE_SCHEMA_VERSION = 1 as const;
+export const DOCUMENT_ENVELOPE_SCHEMA_VERSION: 1 =
+  INTERNAL_DOCUMENT_ENVELOPE_SCHEMA_VERSION;
 
 /** Optional resource ceilings applied while inspecting one envelope. */
 export interface DocumentEnvelopeLimits {
