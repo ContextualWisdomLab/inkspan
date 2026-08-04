@@ -21,6 +21,7 @@ import {
   createValidatedDocumentEnvelopeRevision,
   type DocumentEnvelopeDigestProvider,
 } from '../documentEnvelopeRevision.js';
+import type { CwlEditorDocumentRevisionEvidence } from '../documentRevisionEvidence.js';
 import {
   restoreDocumentEnvelope,
   restoreDocumentEnvelopeBytes,
@@ -31,11 +32,7 @@ import {
   parseDocumentJsonForEditor,
   validateDocumentJson,
 } from '../documentSchema.js';
-import type {
-  CwlEditorDocumentRevisionEvidence,
-  CwlEditorHandle,
-  EditorMode,
-} from '../types.js';
+import type { CwlEditorHandle, EditorMode } from '../types.js';
 import { createEditorDocumentSnapshot } from './editorDocumentSnapshot.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
 
