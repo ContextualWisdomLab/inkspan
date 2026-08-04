@@ -33,6 +33,7 @@ export type {
   EditorTextDirection,
   ImageConfig,
 } from './types.js';
+export type { CwlEditorDocumentRevisionEvidenceCapture } from './documentRevisionEvidenceHandle.js';
 
 // Versioned, lossless persistence boundary.
 export {
