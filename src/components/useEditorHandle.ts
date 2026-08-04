@@ -5,7 +5,9 @@ import {
   type MutableRefObject,
 } from 'react';
 import {
+  parseDocumentInsertionJsonForEditor,
   parseDocumentJsonForEditor,
+  validateDocumentInsertionJson,
   validateDocumentJson,
 } from '../documentSchema.js';
 import type { CwlEditorHandle, EditorMode } from '../types.js';
@@ -61,9 +63,15 @@ export function useEditorHandle(
           .insertContent(editorValueToHtml(next, modeRef.current))
           .run();
       },
+      validateDocumentInsertionJson: (documentJson) =>
+        editor ? validateDocumentInsertionJson(editor, documentJson) : false,
       insertDocumentJson: (documentJson) => {
         if (!editor) return;
-        editor.chain().focus().insertContent(documentJson).run();
+        const documentFragment = parseDocumentInsertionJsonForEditor(
+          editor,
+          documentJson,
+        );
+        editor.chain().focus().insertContent(documentFragment).run();
       },
       clear: () => {
         editor?.commands.clearContent(true);
