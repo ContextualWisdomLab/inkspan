@@ -68,7 +68,8 @@ did not satisfy the precondition:
 ```
 
 When the document changes while asynchronous SHA-256 or synchronous untrusted-
-source preparation is in progress, Inkspan returns:
+source preparation is in progress, or when the captured editor is destroyed,
+Inkspan returns:
 
 ```ts
 {
@@ -78,7 +79,12 @@ source preparation is in progress, Inkspan returns:
 ```
 
 The captured validator is intentionally withheld because it is no longer the
-active document's validator. The host can obtain a fresh revision and retry.
+active document's validator. A destroyed editor is likewise no longer a valid
+mutation target. Inkspan does not parse the incoming source after detecting
+destruction, and an already-destroyed editor returns the null-revision conflict
+before hashing. The host can acquire the current editor instance and a fresh
+revision before retrying.
+
 Conflict is a normal result rather than an exception; malformed inputs,
 provider failures, resource violations, active-schema incompatibility, and
 active editor-policy rejection remain typed redacted exceptions.
@@ -89,20 +95,21 @@ replacement. The error contains no source URL, text, inline image payload, or
 tenant data. A caller must not record the operation as restored when this error
 is raised.
 
-## Race and reentrancy boundary
+## Race, lifecycle, and reentrancy boundary
 
 Inkspan captures the immutable ProseMirror `editor.state.doc` reference and
 hashes the versioned canonical envelope derived from that exact node. After the
-digest resolves, it verifies that the active document reference is unchanged.
-If it moved, the incoming source is not parsed and no mutation occurs.
+digest resolves, it verifies that the editor remains alive and the active
+document reference is unchanged. If the editor was destroyed or the document
+moved, the incoming source is not parsed and no mutation occurs.
 
 When the stable revision matches, Inkspan completes envelope parsing, resource
 checks, version routing, hostile-value detachment, and complete active-schema
 reconstruction synchronously. Reflection over untrusted objects can invoke
 Proxy traps even though ordinary accessor properties are rejected without
-execution, so Inkspan checks the active document reference again after source
-preparation. If that reentrant code changed the editor, the prepared source is
-discarded and a null-revision conflict is returned.
+execution, so Inkspan checks editor lifecycle and active document identity again
+after source preparation. If reentrant code changed or destroyed the editor,
+the prepared source is discarded and a null-revision conflict is returned.
 
 Only after both checks does Inkspan apply one
 `setContent(documentNode, false)` replacement without another asynchronous
@@ -114,9 +121,9 @@ host-supplied policy plugin, therefore cannot produce a false `restored` result.
 Selection-only transactions keep the same document reference and do not create
 false content conflicts.
 
-This is a local JavaScript concurrency and reentrancy boundary. It does not make
-browser memory a durable system of record and cannot replace a database
-transaction.
+This is a local JavaScript concurrency, lifecycle, and reentrancy boundary. It
+does not make browser memory a durable system of record and cannot replace a
+database transaction.
 
 ## Imperative handle
 
@@ -132,8 +139,10 @@ const result = await editorRef.current?.restoreDocumentEnvelopeIfMatch(
 ```
 
 Use `restoreDocumentEnvelopeBytesIfMatch()` for strict UTF-8 bytes. Before
-client hydration or after editor destruction, both methods resolve to `null`
-without reading the source or invoking the digest provider.
+client hydration, handle methods resolve to `null` without reading the source or
+invoking the digest provider. A conditional restore that was started on a live
+editor but outlives that editor resolves to a null-revision conflict rather than
+mutating a destroyed instance or reporting stale success.
 
 Successful restore suppresses normal change callbacks, matching the existing
 atomic restore contract. The host should update its saved revision and dirty
@@ -172,6 +181,7 @@ identifiers as host metadata.
 - [Verified RFC 8785 erratum 7920: reject negative zero](https://www.rfc-editor.org/errata/eid7920)
 - [RFC 9110 §13.1.1: `If-Match`](https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1)
 - [W3C Web Cryptography API Recommendation](https://www.w3.org/TR/2017/REC-WebCryptoAPI-20170126/)
+- [TipTap v2 editor lifecycle and `isDestroyed`](https://v2.tiptap.dev/docs/editor/api/editor)
 - [TipTap v2 `setContent`](https://v2.tiptap.dev/docs/editor/api/commands/content/set-content)
 - [TipTap JSON persistence guidance](https://v2.tiptap.dev/docs/guides/output-json-html)
 - [ProseMirror state and immutable document model](https://prosemirror.net/docs/ref/#state.EditorState)
