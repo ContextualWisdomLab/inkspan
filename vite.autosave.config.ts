@@ -9,13 +9,7 @@ import dts from 'vite-plugin-dts';
 export default defineConfig({
   plugins: [
     dts({
-      include: [
-        'src/autosave',
-        'src/documentEnvelope.ts',
-        'src/documentEnvelopeCanonical.ts',
-        'src/documentEnvelopeRevision.ts',
-        'src/documentRevisionEvidence.ts',
-      ],
+      include: ['src/autosave/package.ts'],
       exclude: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'src/**/*.spec.ts'],
       rollupTypes: false,
       entryRoot: 'src',
@@ -24,7 +18,7 @@ export default defineConfig({
   build: {
     emptyOutDir: false,
     lib: {
-      entry: resolve(__dirname, 'src/autosave/index.ts'),
+      entry: resolve(__dirname, 'src/autosave/package.ts'),
       name: 'InkspanAutosave',
       fileName: (format) =>
         format === 'es' ? 'cwl-autosave.js' : 'cwl-autosave.cjs',
