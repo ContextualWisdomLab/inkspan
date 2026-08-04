@@ -2,14 +2,14 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
   existsSync,
-  mkdirSync,
   mkdtempSync,
   readFileSync,
-  renameSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -17,8 +17,18 @@ const packageJson = JSON.parse(
   readFileSync(join(repositoryRoot, 'package.json'), 'utf8'),
 );
 const verificationDirectory = mkdtempSync(
-  join(repositoryRoot, '.revision-evidence-verification-'),
+  join(tmpdir(), 'inkspan-revision-evidence-'),
 );
+const externalDependencyNames = Object.freeze([
+  ...new Set([
+    ...Object.keys(packageJson.dependencies ?? {}),
+    ...Object.keys(packageJson.peerDependencies ?? {}),
+  ]),
+]);
+const consumerTypeDependencyNames = Object.freeze([
+  '@types/react',
+  '@types/react-dom',
+]);
 
 /** Execute a package-consumer command from the repository root. */
 function run(command, argumentsList) {
@@ -29,38 +39,44 @@ function run(command, argumentsList) {
   });
 }
 
-/**
- * Create an independent package scope for every generated consumer.
- *
- * Node package self-reference resolves an import matching the nearest package's
- * own name before searching `node_modules`. The verification directory lives
- * beneath the Inkspan repository, so it must declare a different package name;
- * otherwise a consumer can silently load the working tree instead of the packed
- * artifact that the release would publish.
- */
-function createIndependentConsumerScope() {
-  writeFileSync(
-    join(verificationDirectory, 'package.json'),
-    `${JSON.stringify(
-      {
-        name: 'inkspan-revision-evidence-consumer',
-        private: true,
-        type: 'module',
-      },
-      null,
-      2,
-    )}\n`,
-    'utf8',
+/** Return the exact already-installed version of one consumer dependency. */
+function readInstalledDependencyVersion(packageName) {
+  const manifestPath = join(
+    repositoryRoot,
+    'node_modules',
+    ...packageName.split('/'),
+    'package.json',
+  );
+  assert.ok(
+    existsSync(manifestPath),
+    `repository install is missing dependency metadata: ${packageName}`,
+  );
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  assert.equal(
+    typeof manifest.version,
+    'string',
+    `installed dependency has no version: ${packageName}`,
+  );
+  return manifest.version;
+}
+
+/** Assert that a resolved path cannot escape the independent consumer tree. */
+function assertPathInsideConsumer(resolvedPath, description) {
+  const relativePath = relative(verificationDirectory, resolvedPath);
+  assert.equal(
+    isAbsolute(relativePath),
+    false,
+    `${description} resolved outside the independent consumer tree`,
+  );
+  assert.equal(
+    relativePath === '..' || relativePath.startsWith(`..${sep}`),
+    false,
+    `${description} resolved outside the independent consumer tree`,
   );
 }
 
-/**
- * Pack and install the exact npm artifact into the isolated consumer tree.
- *
- * Extraction avoids a networked npm install while ensuring package-name imports
- * resolve to the tarball contents rather than to this repository's self-reference.
- */
-function installPackedArtifact() {
+/** Pack the exact publishable npm artifact without executing package scripts. */
+function packArtifact() {
   const packOutput = run('npm', [
     'pack',
     '--json',
@@ -71,23 +87,90 @@ function installPackedArtifact() {
   const packResult = JSON.parse(packOutput)[0];
   assert.equal(packResult.name, packageJson.name);
   assert.equal(packResult.version, packageJson.version);
-
   const tarballPath = join(verificationDirectory, packResult.filename);
-  const extractionDirectory = join(verificationDirectory, 'extracted');
-  mkdirSync(extractionDirectory, { recursive: true });
-  run('tar', ['-xzf', tarballPath, '-C', extractionDirectory]);
+  assert.ok(existsSync(tarballPath), 'npm pack did not create the tarball');
+  return packResult.filename;
+}
+
+/**
+ * Install the tarball and its declared dependency closure outside the repository.
+ *
+ * Exact versions come from the already hash-locked repository installation, and
+ * `--offline` prevents this verification step from fetching an unreviewed
+ * package. Because the consumer lives under the operating-system temporary
+ * directory, Node and TypeScript cannot fall through to repository `node_modules`.
+ */
+function installIndependentConsumer(tarballFileName) {
+  const exactRuntimeDependencies = Object.fromEntries(
+    externalDependencyNames.map((packageName) => [
+      packageName,
+      readInstalledDependencyVersion(packageName),
+    ]),
+  );
+  const exactTypeDependencies = Object.fromEntries(
+    consumerTypeDependencyNames.map((packageName) => [
+      packageName,
+      readInstalledDependencyVersion(packageName),
+    ]),
+  );
+  writeFileSync(
+    join(verificationDirectory, 'package.json'),
+    `${JSON.stringify(
+      {
+        name: 'inkspan-revision-evidence-consumer',
+        private: true,
+        type: 'module',
+        packageManager: packageJson.packageManager,
+        dependencies: {
+          [packageJson.name]: `file:./${tarballFileName}`,
+          ...exactRuntimeDependencies,
+        },
+        devDependencies: exactTypeDependencies,
+      },
+      null,
+      2,
+    )}\n`,
+    'utf8',
+  );
+
+  run('pnpm', [
+    '--dir',
+    verificationDirectory,
+    'install',
+    '--offline',
+    '--ignore-scripts',
+    '--frozen-lockfile=false',
+    '--strict-peer-dependencies',
+  ]);
 
   const packageDirectory = join(
     verificationDirectory,
     'node_modules',
     ...packageJson.name.split('/'),
   );
-  mkdirSync(dirname(packageDirectory), { recursive: true });
-  renameSync(join(extractionDirectory, 'package'), packageDirectory);
   assert.ok(
     existsSync(join(packageDirectory, 'package.json')),
-    'packed package was not installed into the isolated consumer tree',
+    'packed package was not installed into the independent consumer tree',
   );
+  assertPathInsideConsumer(
+    realpathSync(packageDirectory),
+    'packed package directory',
+  );
+  for (const dependencyName of externalDependencyNames) {
+    const dependencyDirectory = join(
+      verificationDirectory,
+      'node_modules',
+      ...dependencyName.split('/'),
+    );
+    assert.ok(
+      existsSync(join(dependencyDirectory, 'package.json')),
+      `independent consumer is missing declared dependency: ${dependencyName}`,
+    );
+    assertPathInsideConsumer(
+      realpathSync(dependencyDirectory),
+      `dependency ${dependencyName}`,
+    );
+  }
   return packageDirectory;
 }
 
@@ -165,13 +248,30 @@ import { isAbsolute, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as editor from '${packageJson.name}';
 
+const consumerDirectory = ${JSON.stringify(verificationDirectory)};
+function assertInsideConsumer(resolvedPath, description) {
+  const resolvedRelative = relative(consumerDirectory, resolvedPath);
+  assert.equal(isAbsolute(resolvedRelative), false, description);
+  assert.equal(
+    resolvedRelative === '..' || resolvedRelative.startsWith('..' + sep),
+    false,
+    description,
+  );
+}
 const resolvedEntry = fileURLToPath(import.meta.resolve('${packageJson.name}'));
-const resolvedRelative = relative(${JSON.stringify(packageDirectory)}, resolvedEntry);
-assert.equal(isAbsolute(resolvedRelative), false);
+assertInsideConsumer(resolvedEntry, 'packed ESM entry escaped consumer tree');
+const packageRelative = relative(${JSON.stringify(packageDirectory)}, resolvedEntry);
+assert.equal(isAbsolute(packageRelative), false);
 assert.equal(
-  resolvedRelative === '..' || resolvedRelative.startsWith('..' + sep),
+  packageRelative === '..' || packageRelative.startsWith('..' + sep),
   false,
 );
+for (const dependencyName of ${JSON.stringify(externalDependencyNames)}) {
+  assertInsideConsumer(
+    fileURLToPath(import.meta.resolve(dependencyName)),
+    'ESM dependency escaped consumer tree: ' + dependencyName,
+  );
+}
 assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidence, 'function');
 assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
 const sourceEnvelope = {
@@ -278,13 +378,13 @@ void (async () => {
 }
 
 try {
-  createIndependentConsumerScope();
-  const packageDirectory = installPackedArtifact();
+  const tarballFileName = packArtifact();
+  const packageDirectory = installIndependentConsumer(tarballFileName);
   verifyRevisionEvidenceDeclarations();
   verifyRevisionEvidenceEsmRuntime(packageDirectory);
   verifyRevisionEvidenceCommonJsRuntime(packageDirectory);
   console.log(
-    `Verified packed ${packageJson.name}@${packageJson.version} pure and imperative revision-evidence consumers.`,
+    `Verified independently installed ${packageJson.name}@${packageJson.version} pure and imperative revision-evidence consumers.`,
   );
 } finally {
   rmSync(verificationDirectory, { recursive: true, force: true });
