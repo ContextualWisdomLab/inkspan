@@ -28,16 +28,30 @@ function toBytes(source: BufferSource): Uint8Array {
     : new Uint8Array(source);
 }
 
+function createDigestBuffer(fill: number): ArrayBuffer {
+  const buffer = new ArrayBuffer(32);
+  new Uint8Array(buffer).fill(fill);
+  return buffer;
+}
+
+function createIndexedDigestBuffer(): ArrayBuffer {
+  const buffer = new ArrayBuffer(32);
+  const bytes = new Uint8Array(buffer);
+  for (let index = 0; index < bytes.length; index += 1) {
+    bytes[index] = index;
+  }
+  return buffer;
+}
+
 describe('document envelope revision tags', () => {
   it('hashes canonical envelope bytes and returns a frozen strong validator', async () => {
     const envelope = createDocumentEnvelope(DOCUMENT_JSON);
     const expectedBytes = encodeDocumentEnvelope(envelope);
-    const digestBytes = Uint8Array.from({ length: 32 }, (_value, index) => index);
     const digestProvider: DocumentEnvelopeDigestProvider = {
       digest: vi.fn(async (algorithm, source) => {
         expect(algorithm).toBe('SHA-256');
         expect(toBytes(source)).toEqual(expectedBytes);
-        return digestBytes.buffer.slice(0);
+        return createIndexedDigestBuffer();
       }),
     };
 
@@ -76,7 +90,7 @@ describe('document envelope revision tags', () => {
     const digestProvider: DocumentEnvelopeDigestProvider = {
       digest: vi.fn(async (_algorithm, source) => {
         expect(toBytes(source)).toEqual(canonicalBytes);
-        return new Uint8Array(32).fill(0xab).buffer;
+        return createDigestBuffer(0xab);
       }),
     };
 
@@ -92,7 +106,7 @@ describe('document envelope revision tags', () => {
   it('uses the platform provider deterministically when none is injected', async () => {
     const platformProvider: DocumentEnvelopeDigestProvider = {
       digest: vi.fn(async (_algorithm, source) =>
-        new Uint8Array(32).fill(toBytes(source).byteLength % 256).buffer,
+        createDigestBuffer(toBytes(source).byteLength % 256),
       ),
     };
     vi.stubGlobal('crypto', { subtle: platformProvider });
@@ -163,7 +177,7 @@ describe('document envelope revision tags', () => {
       digest: async () => 'not-an-array-buffer' as unknown as ArrayBuffer,
     };
     const invalidLengthProvider: DocumentEnvelopeDigestProvider = {
-      digest: async () => new Uint8Array(31).buffer,
+      digest: async () => new ArrayBuffer(31),
     };
 
     await expect(
