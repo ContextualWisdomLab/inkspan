@@ -4,6 +4,30 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+## [0.5.14] — 2026-08-04
+
+### Added
+- `CwlEditorHandle.validateDocumentJson()` for checking structural JSON against the active TipTap/ProseMirror schema without changing the document
+- Root-package `validateDocumentJson()` and redacted `DocumentSchemaError` exports for hosts that already own the editor instance
+
+### Changed
+- Package version **0.5.14**
+- `setDocumentJson()` now detaches hostile input, reconstructs and recursively checks the complete ProseMirror node tree, and only then commits one replacement transaction
+
+### Reliability
+- Unsupported nodes, marks, attributes, or content relationships fail before document state or change callbacks can be affected
+- Validated restore remains consistent across standalone and provider-neutral collaborative editor surfaces
+
+### Security
+- Structural restore does not execute source accessors and converts malformed, hostile, or schema-incompatible input to a bounded error that excludes document text, attributes, links, inline image data, and tenant identifiers
+- Schema compatibility remains distinct from authorization; CWL and naruon hosts retain migration, tenant, size, retention, audit, encryption, and collaborative replacement policy
+
+### Tests
+- Added valid preflight, invalid-schema atomicity, hostile-accessor, pre-hydration fallback, and public validation coverage under the repository-wide 100% TypeScript coverage gate
+
+### Documentation
+- Added `docs/schema-validated-restore.md` with import, migration, error, collaboration, security, and modular MSA integration guidance
+
 ## [0.5.13] — 2026-08-04
 
 ### Added
@@ -267,7 +291,7 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 - Focus callback props are read through live refs so hosts can add or replace handlers after mount without recreating editor state or Yjs bindings
 
 ### Tests
-- Standalone and collaborative tests cover absent callbacks, handlers added after mount, stable editor identity, and native focus/blur event types under the repository-wide 100% TypeScript coverage gate
+- Standalone and collaborative tests cover absent callbacks, handlers added after mount, stable editor identity, and native focus/blur event types under the repository-wide 100% coverage gate
 
 ### Documentation
 - Added the host focus lifecycle, validation, persistence, telemetry, accessibility, and CWL/naruon interoperability contract
