@@ -67,8 +67,8 @@ did not satisfy the precondition:
 }
 ```
 
-When the document changes while the asynchronous SHA-256 digest is in progress,
-Inkspan returns:
+When the document changes while asynchronous SHA-256 or synchronous untrusted-
+source preparation is in progress, Inkspan returns:
 
 ```ts
 {
@@ -83,7 +83,7 @@ Conflict is a normal result rather than an exception; malformed inputs,
 provider failures, resource violations, and active-schema incompatibility
 remain typed redacted exceptions.
 
-## Race boundary
+## Race and reentrancy boundary
 
 Inkspan captures the immutable ProseMirror `editor.state.doc` reference and
 hashes the versioned canonical envelope derived from that exact node. After the
@@ -92,13 +92,20 @@ If it moved, the incoming source is not parsed and no mutation occurs.
 
 When the stable revision matches, Inkspan completes envelope parsing, resource
 checks, version routing, hostile-value detachment, and complete active-schema
-reconstruction synchronously. It then applies one
-`setContent(documentNode, false)` replacement without another asynchronous
-boundary. Selection-only transactions keep the same document reference and do
-not create false content conflicts.
+reconstruction synchronously. Reflection over untrusted objects can invoke
+Proxy traps even though ordinary accessor properties are rejected without
+execution, so Inkspan checks the active document reference again after source
+preparation. If that reentrant code changed the editor, the prepared source is
+discarded and a null-revision conflict is returned.
 
-This is a local JavaScript concurrency boundary. It does not make browser memory
-a durable system of record and cannot replace a database transaction.
+Only after both checks does Inkspan apply one
+`setContent(documentNode, false)` replacement without another asynchronous
+boundary or attacker-controlled property access. Selection-only transactions
+keep the same document reference and do not create false content conflicts.
+
+This is a local JavaScript concurrency and reentrancy boundary. It does not make
+browser memory a durable system of record and cannot replace a database
+transaction.
 
 ## Imperative handle
 
