@@ -101,6 +101,11 @@ describe('revision-guarded document-envelope restore', () => {
       digestProvider,
     );
     const objectEnvelope = incomingEnvelope();
+    const objectRevision = await createDocumentEnvelopeRevision(
+      objectEnvelope,
+      undefined,
+      digestProvider,
+    );
     let objectResult!: CwlEditorIfMatchRestoreResult;
 
     await act(async () => {
@@ -117,6 +122,7 @@ describe('revision-guarded document-envelope restore', () => {
       status: 'restored',
       previousRevision: currentRevision,
       previousEnvelope: currentEnvelope,
+      revision: objectRevision,
       envelope: objectEnvelope,
     });
     expect(Object.isFrozen(objectResult)).toBe(true);
@@ -125,17 +131,17 @@ describe('revision-guarded document-envelope restore', () => {
     );
     expect(onChange).not.toHaveBeenCalled();
 
-    const restoredRevision = await createDocumentEnvelopeRevision(
-      objectEnvelope,
+    const byteEnvelope = incomingEnvelope('Restored from bytes');
+    const byteRevision = await createDocumentEnvelopeRevision(
+      byteEnvelope,
       undefined,
       digestProvider,
     );
-    const byteEnvelope = incomingEnvelope('Restored from bytes');
     let byteResult!: CwlEditorIfMatchRestoreResult;
     await act(async () => {
       byteResult = await restoreDocumentEnvelopeBytesIfMatch(
         editor,
-        restoredRevision.strongEntityTag,
+        objectRevision.strongEntityTag,
         encodeDocumentEnvelope(byteEnvelope),
         undefined,
         digestProvider,
@@ -144,8 +150,9 @@ describe('revision-guarded document-envelope restore', () => {
 
     expect(byteResult.status).toBe('restored');
     expect(byteResult).toMatchObject({
-      previousRevision: restoredRevision,
+      previousRevision: objectRevision,
       previousEnvelope: objectEnvelope,
+      revision: byteRevision,
       envelope: byteEnvelope,
     });
     expect(editorRef.current!.getMarkdown()).toBe('## Restored from bytes');
@@ -250,6 +257,10 @@ describe('revision-guarded document-envelope restore', () => {
     expect(result).toMatchObject({
       status: 'restored',
       previousEnvelope,
+      revision: {
+        digestHex: '00'.repeat(32),
+        strongEntityTag: expectedStrongEntityTag,
+      },
     });
     expect(editorRef.current!.getMarkdown()).toBe('## Selection-safe restore');
   });
