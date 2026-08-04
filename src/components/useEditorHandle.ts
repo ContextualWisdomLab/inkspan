@@ -10,8 +10,8 @@ import {
   type DocumentEnvelopeLimits,
 } from '../documentEnvelope.js';
 import {
-  encodeDocumentEnvelope,
-  serializeDocumentEnvelope,
+  encodeValidatedDocumentEnvelope,
+  serializeValidatedDocumentEnvelope,
 } from '../documentEnvelopeCanonical.js';
 import { createDocumentEnvelopeRevision } from '../documentEnvelopeRevision.js';
 import {
@@ -67,20 +67,20 @@ export function useEditorHandle(
         editor ? createCurrentDocumentEnvelope(editor, limits) : null,
       getDocumentEnvelopeJson: (limits) =>
         editor
-          ? serializeDocumentEnvelope(
+          ? serializeValidatedDocumentEnvelope(
               createCurrentDocumentEnvelope(editor, limits),
             )
           : '',
       getDocumentEnvelopeBytes: (limits) =>
         editor
-          ? encodeDocumentEnvelope(
+          ? encodeValidatedDocumentEnvelope(
               createCurrentDocumentEnvelope(editor, limits),
             )
           : new Uint8Array(),
       getDocumentEnvelopeRevision: (limits, digestProvider) =>
         editor
           ? createDocumentEnvelopeRevision(
-              createCurrentDocumentEnvelope(editor, limits),
+              editor.getJSON(),
               limits,
               digestProvider,
             )
