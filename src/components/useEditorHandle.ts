@@ -17,7 +17,7 @@ import {
   restoreDocumentEnvelopeBytesIfMatch,
   restoreDocumentEnvelopeIfMatch,
 } from '../documentEnvelopeIfMatch.js';
-import { createValidatedDocumentEnvelopeRevision } from '../documentEnvelopeRevision.js';
+import { createValidatedDocumentEnvelopeRevisionEvidence } from '../documentEnvelopeRevision.js';
 import {
   restoreDocumentEnvelope,
   restoreDocumentEnvelopeBytes,
@@ -81,12 +81,19 @@ export function useEditorHandle(
               createCurrentDocumentEnvelope(editor, limits),
             )
           : new Uint8Array(),
-      getDocumentEnvelopeRevision: (limits, digestProvider) =>
+      getDocumentEnvelopeRevisionEvidence: (limits, digestProvider) =>
         editor
-          ? createValidatedDocumentEnvelopeRevision(
+          ? createValidatedDocumentEnvelopeRevisionEvidence(
               createCurrentDocumentEnvelope(editor, limits),
               digestProvider,
             )
+          : Promise.resolve(null),
+      getDocumentEnvelopeRevision: (limits, digestProvider) =>
+        editor
+          ? createValidatedDocumentEnvelopeRevisionEvidence(
+              createCurrentDocumentEnvelope(editor, limits),
+              digestProvider,
+            ).then((evidence) => evidence.revision)
           : Promise.resolve(null),
       setValue: (next: string) => {
         if (!editor) return;
