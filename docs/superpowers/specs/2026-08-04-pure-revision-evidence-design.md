@@ -58,18 +58,45 @@ The revision is an equality validator, not a signature, authorization token, ten
 
 ## Standards basis
 
-- RFC 8785, JSON Canonicalization Scheme, for deterministic hashable JSON bytes.
-- RFC 9110 §§8.8 and 13.1.1, strong entity tags and lost-update prevention through `If-Match`.
-- W3C Web Cryptography Level 2, `SubtleCrypto.digest()` with `SHA-256`.
-- WHATWG Encoding Standard and RFC 8259 for strict UTF-8 JSON interchange.
+The stable normative basis is RFC 8785 for canonical JSON, RFC 9110 for strong validators and `If-Match`, RFC 8259 plus the WHATWG Encoding Standard for UTF-8 JSON interchange, the 2017 W3C Web Cryptography API Recommendation for `SubtleCrypto.digest()`, and FIPS PUB 180-4 for SHA-256. Verified RFC 8785 erratum 7920 is applied to reject negative zero before canonicalization.
+
+Web Cryptography Level 2 was a First Public Working Draft as of 2026-08-04. It is tracked as work in progress and is not used as the product's conformance claim. NIST has announced a future revision of FIPS PUB 180-4, but FIPS PUB 180-4 remains the current final Secure Hash Standard for SHA-256.
 
 ## Verification
 
 - Object/JSON evidence returns the exact frozen parsed envelope and matching revision.
 - Strict UTF-8 evidence normalizes valid noncanonical bytes and returns the normalized frozen envelope.
 - Each path invokes the digest provider exactly once.
+- A fixed canonical-envelope vector is checked against a real SHA-256 implementation and a precomputed digest.
 - Invalid source, byte, resource, canonicalization, and provider paths retain existing typed redacted failures through composition.
 - Imperative evidence continues to pass asynchronous movement and lifecycle tests through the shared helper.
 - Packed ESM, CommonJS, and strict TypeScript consumers expose both pure functions and the evidence type.
 - TypeScript production coverage remains 100%; Office Python 3.11/3.14 branch and shipped-symbol docstring coverage remain 100%.
 - SAST, Security Scan, CodeRabbit, exact-head, and unresolved-review-thread gates pass.
+
+## References (APA 7th edition)
+
+Bray, T. (2017). *The JavaScript Object Notation (JSON) data interchange format*
+(RFC 8259). RFC Editor. https://doi.org/10.17487/RFC8259
+
+Fielding, R., Nottingham, M., & Reschke, J. (2022). *HTTP semantics* (RFC
+9110). RFC Editor. https://doi.org/10.17487/RFC9110
+
+National Institute of Standards and Technology. (2015). *Secure Hash Standard
+(SHS)* (FIPS PUB 180-4). U.S. Department of Commerce.
+https://doi.org/10.6028/NIST.FIPS.180-4
+
+RFC Editor. (2024). *Errata ID 7920 for RFC 8785: Reject negative zero*.
+https://www.rfc-editor.org/errata/eid7920
+
+Rundgren, A., Jordan, B., & Erdtman, S. (2020). *JSON Canonicalization Scheme
+(JCS)* (RFC 8785). RFC Editor. https://doi.org/10.17487/RFC8785
+
+WHATWG. (n.d.). *Encoding Standard*. Retrieved August 4, 2026, from
+https://encoding.spec.whatwg.org/
+
+World Wide Web Consortium. (2017). *Web Cryptography API* (W3C
+Recommendation). https://www.w3.org/TR/2017/REC-WebCryptoAPI-20170126/
+
+World Wide Web Consortium. (2025). *Web Cryptography Level 2* (First Public
+Working Draft). https://www.w3.org/TR/2025/WD-webcrypto-2-20250422/
