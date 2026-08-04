@@ -3,7 +3,7 @@
 **Date:** 2026-08-04  
 **Target release:** Inkspan 0.5.26  
 **Decision owner:** ContextualWisdomLab  
-**Scope:** Dependency-free npm subpath for server, worker, queue, migration, and storage consumers.
+**Scope:** Framework-free runtime subpath for server, worker, queue, migration, and storage consumers.
 
 ## Review finding
 
@@ -35,6 +35,13 @@ transport, database, credential, or provider-SDK import. The existing root
 exports remain for backward compatibility, while non-editor consumers use the
 explicit subpath.
 
+A subpath does not change npm's package-level dependency installation model.
+Normal installation of `@contextualwisdomlab/cwl-editor` still installs the
+package dependencies declared for the interactive editor. The guarantee in this
+release is that evaluating `/revision-evidence` loads no framework module. A
+separately published package would be required for dependency-graph isolation,
+independent procurement, or a smaller installed software bill of materials.
+
 ## Verification evidence
 
 The release gate builds the dedicated bundle and packs the exact npm artifact.
@@ -52,7 +59,9 @@ TipTap, ProseMirror, Yjs, or other package dependency is installed. It then:
 Any accidental framework import, missing subpath export, declaration reference
 to editor types, or repository-level dependency fallthrough makes this gate
 fail. The ordinary full-package consumer verification remains in place for the
-interactive editor, collaboration, and converter surfaces.
+interactive editor, collaboration, and converter surfaces. The dependency-free
+extraction is deliberately stricter than normal package installation and proves
+the loaded subpath graph, not the package manager's installation graph.
 
 ## MSA and security boundary
 
@@ -84,24 +93,26 @@ consumers, not only for an optimizing downstream build.
 
 ### Keep only root exports and document required peer dependencies
 
-Rejected because it would preserve the framework coupling and contradict the
-server/worker product claim. It also increases installation size and attack
-surface for processes that never render an editor.
+Rejected because it would preserve module-evaluation coupling and contradict the
+server/worker runtime claim. Processes that never render an editor should not
+execute its framework graph.
 
 ### Split revision evidence into a separate npm package immediately
 
-Rejected for this release because a verified subpath provides the required
-runtime isolation without introducing new registry ownership, version
-coordination, publication credentials, or procurement artifacts. A separate
-package can be reconsidered if independent release cadence becomes valuable.
+Deferred rather than rejected permanently. A verified subpath provides the
+required runtime isolation without introducing new registry ownership, version
+coordination, publication credentials, or procurement artifacts. It does not
+reduce package-level dependency installation. A separate package should be
+reconsidered if installed size, SBOM minimization, independent release cadence,
+or procurement isolation becomes a buyer requirement.
 
 ## Release decision
 
 Inkspan 0.5.26 may merge only when the exact head contains the dedicated
-subpath, the dependency-free extracted-tarball ESM/CommonJS/TypeScript gate,
-updated package exports and build configuration, complete documentation, 100%
-production coverage and docstrings, Office Python gates, SAST, Security Scan,
-CodeRabbit, and no unresolved review finding.
+subpath, the dependency-free extracted-tarball ESM/CommonJS/TypeScript runtime
+gate, updated package exports and build configuration, complete documentation,
+100% production coverage and docstrings, Office Python gates, SAST, Security
+Scan, CodeRabbit, and no unresolved review finding.
 
 ## References (APA 7th edition)
 
