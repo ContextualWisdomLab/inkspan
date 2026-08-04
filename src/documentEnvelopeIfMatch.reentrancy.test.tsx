@@ -79,6 +79,7 @@ describe('revision-guarded restore reentrancy', () => {
     expect(result).toEqual({
       status: 'conflict',
       currentRevision: null,
+      currentEnvelope: null,
     });
     expect(handle.getMarkdown()).toBe('Reentrant newer document');
   });

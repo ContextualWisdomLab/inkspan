@@ -28,18 +28,26 @@ export type CwlEditorIfMatchRestoreResult =
       readonly status: 'restored';
       /** Stable revision that guarded the replacement. */
       readonly previousRevision: CwlEditorDocumentRevision;
+      /** Exact frozen envelope from which `previousRevision` was derived. */
+      readonly previousEnvelope: CwlEditorDocumentEnvelope;
       /** Detached validated envelope applied to the editor. */
       readonly envelope: CwlEditorDocumentEnvelope;
     }
   | {
-      /** The current editor document no longer satisfies the precondition. */
+      /** A stable current document did not satisfy the precondition. */
       readonly status: 'conflict';
-      /**
-       * Stable observed revision, or `null` when the document moved while the
-       * digest or untrusted-source preparation was in progress, or when the
-       * editor was destroyed, and no captured tag is still current.
-       */
-      readonly currentRevision: CwlEditorDocumentRevision | null;
+      /** Stable observed revision that did not match the expected validator. */
+      readonly currentRevision: CwlEditorDocumentRevision;
+      /** Exact frozen envelope from which `currentRevision` was derived. */
+      readonly currentEnvelope: CwlEditorDocumentEnvelope;
+    }
+  | {
+      /** No captured version can still be reported as the active document. */
+      readonly status: 'conflict';
+      /** Null because the editor moved or was destroyed during the operation. */
+      readonly currentRevision: null;
+      /** Null in lockstep with `currentRevision`; the host must read afresh. */
+      readonly currentEnvelope: null;
     };
 
 type DocumentEnvelopePreparation = (
@@ -73,7 +81,12 @@ export function restoreDocumentEnvelopeIfMatch(
   );
 }
 
-/** Restore strict UTF-8 envelope bytes only when the current tag matches. */
+/**
+ * Restore strict UTF-8 envelope bytes only when the current tag matches.
+ *
+ * The byte path applies the same lifecycle, revision, schema, policy, and
+ * revision-envelope evidence guarantees as the object and JSON-text path.
+ */
 export function restoreDocumentEnvelopeBytesIfMatch(
   editor: Editor,
   expectedStrongEntityTag: string,
@@ -91,6 +104,13 @@ export function restoreDocumentEnvelopeBytesIfMatch(
   );
 }
 
+/**
+ * Execute one guarded restore using a caller-selected envelope preparation path.
+ *
+ * The function captures and hashes one current envelope, returns that same
+ * frozen envelope beside every non-null revision, and performs no source
+ * inspection when the expected validator already conflicts.
+ */
 async function restoreIfMatch(
   editor: Editor,
   expectedStrongEntityTag: string,
@@ -121,6 +141,7 @@ async function restoreIfMatch(
     return Object.freeze({
       status: 'conflict',
       currentRevision,
+      currentEnvelope,
     });
   }
 
@@ -133,10 +154,12 @@ async function restoreIfMatch(
   return Object.freeze({
     status: 'restored',
     previousRevision: currentRevision,
+    previousEnvelope: currentEnvelope,
     envelope,
   });
 }
 
+/** Check whether the captured document can no longer authorize a replacement. */
 function hasEditorMoved(
   editor: Editor,
   capturedDocument: ProseMirrorNode,
@@ -144,13 +167,16 @@ function hasEditorMoved(
   return editor.isDestroyed || editor.state.doc !== capturedDocument;
 }
 
+/** Create the frozen conflict returned when no captured evidence remains current. */
 function createMovedDocumentConflict(): CwlEditorIfMatchRestoreResult {
   return Object.freeze({
     status: 'conflict',
     currentRevision: null,
+    currentEnvelope: null,
   });
 }
 
+/** Reject any validator outside Inkspan's exact quoted lowercase strong-tag form. */
 function assertExpectedStrongEntityTag(value: unknown): asserts value is string {
   if (
     typeof value !== 'string' ||

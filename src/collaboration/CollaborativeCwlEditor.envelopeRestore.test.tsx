@@ -39,6 +39,7 @@ describe('collaborative revision-guarded envelope restore', () => {
     await waitFor(() => expect(editorRef.current?.getEditor()).toBeTruthy());
 
     const handle = editorRef.current!;
+    const previousEnvelope = handle.getDocumentEnvelope()!;
     const revision = await handle.getDocumentEnvelopeRevision(
       undefined,
       DIGEST_PROVIDER,
@@ -67,6 +68,7 @@ describe('collaborative revision-guarded envelope restore', () => {
     expect(result).toEqual({
       status: 'restored',
       previousRevision: revision,
+      previousEnvelope,
       envelope,
     });
     expect(handle.getMarkdown()).toBe('Collaborative restored content');

@@ -136,6 +136,7 @@ function verifyConsumerTypes() {
   restoreDocumentEnvelopeIfMatch,
   validateSafeLinkHref,
   type CwlEditorDocumentChangeEvent,
+  type CwlEditorDocumentEnvelope,
   type CwlEditorDocumentRevision,
   type CwlEditorDocumentSnapshot,
   type CwlEditorFormResetEvent,
@@ -192,6 +193,22 @@ const conditionalRestore: Promise<CwlEditorIfMatchRestoreResult | null> =
     undefined,
     digestProvider,
   );
+const conditionalEvidence: Promise<void> = conditionalRestore.then((result) => {
+  if (result === null) return;
+  if (result.status === 'restored') {
+    const previousEnvelope: CwlEditorDocumentEnvelope =
+      result.previousEnvelope;
+    void previousEnvelope.documentJson;
+    return;
+  }
+  if (result.currentRevision === null) {
+    const currentEnvelope: null = result.currentEnvelope;
+    void currentEnvelope;
+    return;
+  }
+  const currentEnvelope: CwlEditorDocumentEnvelope = result.currentEnvelope;
+  void currentEnvelope.documentJson;
+});
 const conditionalByteRestoreResult: Promise<
   CwlEditorIfMatchRestoreResult | null
 > = editorHandle.restoreDocumentEnvelopeBytesIfMatch(
@@ -224,6 +241,7 @@ void [
   currentSnapshot,
   currentRevision,
   conditionalRestore,
+  conditionalEvidence,
   conditionalByteRestoreResult,
   standaloneRevision,
   resetEvent,

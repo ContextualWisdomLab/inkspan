@@ -4,6 +4,34 @@ All notable changes to **Inkspan** (`@contextualwisdomlab/cwl-editor`) are docum
 
 ## [Unreleased]
 
+
+## [0.5.24] — 2026-08-04
+
+### Added
+- `previousEnvelope` on successful revision-guarded restore results, paired with the exact `previousRevision` derived from that frozen envelope
+- `currentEnvelope` on stable conflict results, paired with the exact non-null `currentRevision` that failed the precondition
+
+### Changed
+- Package version **0.5.24**
+- `CwlEditorIfMatchRestoreResult` now encodes stable conflict evidence and moved/destroyed null evidence as separate TypeScript union variants, preventing inconsistent revision-envelope pairs in strict consumers
+
+### Reliability
+- Hosts no longer need a second post-conflict editor read that could race with a newer edit and associate the wrong document with a returned revision
+- Document movement, hostile-source reentrancy, and editor destruction return `currentRevision: null` together with `currentEnvelope: null`, requiring a fresh host read before retry
+- Successful restore returns the exact previous envelope and revision beside the applied incoming envelope for compare, merge, fork, audit, and retry workflows
+
+### Performance
+- Conflict evidence reuses the frozen current envelope already created before SHA-256 hashing; no second document traversal, clone, canonical serialization, digest, schema reconstruction, or provider call is added
+
+### Security
+- Conflict envelopes contain the full client-controlled document body, including text, links, inline image payloads, alternative text, and extension attributes; hosts must not treat them as telemetry-safe summaries
+- Revision-envelope evidence remains an equality observation rather than authorization, tenant membership, a signature, or proof of durable persistence; CWL and naruon hosts retain authenticated atomic RFC 9110 `If-Match`, tenant isolation, encryption, retention, redaction, and audit policy
+
+### Tests
+- Added stable-conflict, successful-restore, moved-document, hostile-reentrancy, destroyed-editor, standalone-handle, Yjs collaboration, strict declaration-consumer, and repository-wide 100% production coverage verification for atomic conflict evidence
+
+### Documentation
+- Expanded README and persistence guidance with compile-time evidence pairing, null-evidence retry behavior, no-extra-copy performance guarantees, privacy boundaries, and durable server compare-and-swap ownership
 ## [0.5.23] — 2026-08-04
 
 ### Added

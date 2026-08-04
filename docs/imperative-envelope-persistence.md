@@ -1,10 +1,10 @@
 # Imperative document-envelope persistence
 
-Inkspan 0.5.23 exposes the complete versioned persistence round trip, strong
-revision validation, and revision-guarded restore on `CwlEditorHandle`. Hosts no
-longer need to reach through `getEditor()` or manually compose envelope,
-canonicalization, schema-validation, revision-digest, and restore functions for
-ordinary autosave and load workflows.
+Inkspan 0.5.24 exposes the complete versioned persistence round trip, strong
+revision validation, revision-guarded restore, and atomic revision-envelope
+conflict evidence on `CwlEditorHandle`. Hosts do not need to reach through
+`getEditor()` or manually compose envelope, canonicalization, schema-validation,
+revision-digest, and restore functions for ordinary autosave and load workflows.
 
 ## Export the current revision
 
@@ -74,24 +74,47 @@ const result = await editorRef.current?.restoreDocumentEnvelopeIfMatch(
   digestProvider,
 );
 
-if (result?.status === 'conflict') {
-  // Route to the host's reload, compare, merge, fork, or retry workflow.
+if (result?.status === 'restored') {
+  const previousRevision = result.previousRevision;
+  const previousEnvelope = result.previousEnvelope;
+  const appliedEnvelope = result.envelope;
+  // previousRevision and previousEnvelope describe the same captured document.
+  void [previousRevision, previousEnvelope, appliedEnvelope];
+} else if (
+  result?.status === 'conflict' &&
+  result.currentRevision !== null
+) {
+  const currentRevision = result.currentRevision;
+  const currentEnvelope = result.currentEnvelope;
+  // Stable mismatch: compare, merge, fork, audit, or retry from this pair.
+  void [currentRevision, currentEnvelope];
+} else if (result?.status === 'conflict') {
+  // The editor moved or was destroyed. Acquire a fresh editor and evidence pair.
 }
 ```
 
 Use `restoreDocumentEnvelopeBytesIfMatch()` for strict UTF-8 bytes. A stable tag
-mismatch returns the current revision without inspecting or applying the source.
-If content moves while the asynchronous digest is pending, the conflict has
-`currentRevision: null`; the host should capture a fresh revision before retry.
-Malformed expected tags and invalid incoming envelopes remain typed redacted
-errors, not conflict results.
+mismatch returns `currentRevision` and `currentEnvelope` from one captured
+editor document without inspecting or applying the incoming source. A
+successful restore returns `previousRevision` and `previousEnvelope` from that
+same pre-restore capture together with the applied envelope. Inkspan reuses the
+already-created frozen envelope; it does not perform a second clone,
+serialization, digest, schema reconstruction, or editor read to create the
+result.
+
+If content moves while the asynchronous digest or synchronous hostile-source
+preparation is pending, or the captured editor is destroyed, the conflict has
+both `currentRevision: null` and `currentEnvelope: null`. The host must capture a
+fresh pair before retrying. Malformed expected tags and invalid incoming
+envelopes remain typed redacted errors, not conflict results.
 
 Before hydration or after destruction, both methods resolve to `null` without
 invoking the digest provider. A successful conditional restore suppresses the
 normal change callbacks just like ordinary persistence restore.
 
 See [revision-guarded restore](./revision-guarded-restore.md) for the local race
-boundary, result semantics, collaboration requirements, and verification.
+boundary, complete result semantics, collaboration requirements, privacy, and
+verification.
 
 For an HTTP persistence service, a host can return the exact canonical
 envelope's `strongEntityTag` as `ETag` and require the saved tag through
@@ -100,6 +123,21 @@ return `412 Precondition Failed` instead of overwriting a newer revision. A
 successful local conditional restore does not remove this durable server-side
 requirement. See [document revision tags](./document-revision-tags.md) for
 representation, privacy, and authorization boundaries.
+
+## Conflict evidence handling
+
+`previousEnvelope` and `currentEnvelope` contain the complete versioned document,
+including text and accepted inline base64 images. They are shareable only under
+the host's document and tenant policy. Do not write them to ordinary logs,
+metrics labels, analytics events, exception messages, public URLs, or revision
+identifier fields. Apply the same authorization, encryption, redaction,
+retention, regional-residency, and audit controls used for the persisted
+document.
+
+A returned revision-envelope pair is useful for conflict UI and audit evidence,
+but it does not establish user authority, tenant membership, durable commit
+status, or cryptographic authenticity. The host must record actor, operation,
+resource, authorization decision, and durable transaction outcome separately.
 
 ## Collaboration authorization
 
@@ -116,8 +154,8 @@ provider persistence, awareness, audit, and conflict UX.
 The convenience methods preserve all lower-level guarantees: redacted typed
 errors, duplicate-name rejection, configurable resource ceilings, strict UTF-8
 decoding, canonical serialization, active-schema validation, strong SHA-256
-revision generation, local revision preconditions, and unchanged-document
-failure behavior.
+revision generation, local revision preconditions, atomic revision-envelope
+evidence, and unchanged-document failure behavior.
 
 They do not replace gateway byte limits, decompression limits, timeouts,
 rate/concurrency controls, migration routing, tenant isolation, encryption,

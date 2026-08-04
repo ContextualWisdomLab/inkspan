@@ -159,14 +159,27 @@ const result = await editorRef.current?.restoreDocumentEnvelopeIfMatch(
 );
 
 if (result?.status === 'conflict') {
-  // Reload, compare, merge, fork, or retry from a fresh host-owned revision.
+  if (result.currentRevision === null) {
+    // The editor moved or was destroyed. Capture a fresh revision.
+  } else {
+    // currentRevision and currentEnvelope describe the same frozen
+    // document and can enter the host's compare/merge/fork workflow.
+    openConflict(result.currentRevision, result.currentEnvelope);
+  }
+} else if (result?.status === 'restored') {
+  // previousRevision and previousEnvelope describe the exact document
+  // replaced by result.envelope.
+  recordAcceptedTransition(result);
 }
 ```
 
 Use `restoreDocumentEnvelopeBytesIfMatch()` for strict UTF-8 envelope bytes.
 Stable mismatch and document movement during asynchronous hashing never replace
-newer content. Durable services must still enforce authenticated, atomic RFC
-9110 `If-Match` within the write transaction. See
+newer content. Inkspan reuses the envelope already created for the guard, so
+returning evidence adds no second document clone, canonicalization, or digest.
+A conflict envelope contains the full document body and must not be copied into
+ordinary telemetry or logs. Durable services must still enforce authenticated,
+atomic RFC 9110 `If-Match` within the write transaction. See
 [`docs/revision-guarded-restore.md`](docs/revision-guarded-restore.md).
 
 ### Main props

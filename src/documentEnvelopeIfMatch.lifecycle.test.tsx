@@ -69,6 +69,7 @@ describe('revision-guarded restore lifecycle', () => {
     await expect(pending).resolves.toEqual({
       status: 'conflict',
       currentRevision: null,
+      currentEnvelope: null,
     });
   });
 
@@ -92,6 +93,7 @@ describe('revision-guarded restore lifecycle', () => {
     ).resolves.toEqual({
       status: 'conflict',
       currentRevision: null,
+      currentEnvelope: null,
     });
     expect(digestProvider.digest).not.toHaveBeenCalled();
   });
