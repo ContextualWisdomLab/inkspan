@@ -128,6 +128,13 @@ one promise. A newer different revision may replace only pending work. It never
 cancels or overlaps a callback that has already started. Inkspan retains at most
 one active document and one pending document regardless of edit frequency.
 
+An `unchanged` outcome is emitted only when the requested revision is still
+known to be durably current and no active or pending write can replace it. A
+different active or pending write, a server conflict, an invalid callback result,
+or an ambiguous callback failure invalidates that shortcut. Calling `resume()`
+does not make the earlier durable assumption valid again; a later successful
+save must establish a new known-durable revision.
+
 ## Recover from conflict or failure
 
 A conflict or callback failure blocks automatic progression. This is deliberate:
@@ -149,6 +156,11 @@ showing or applying an accessible compare/merge/fork decision, updating the
 host-owned durable base tag, and creating new revision evidence. A transport
 failure usually requires host-specific retry budget, backoff, offline, and
 user-notification policy.
+
+Resuming permits retained or newly enqueued work to run, but it deliberately does
+not restore the previous duplicate-save shortcut. The first subsequent
+successful callback establishes the next revision that the queue may safely
+report as `unchanged` while quiescent.
 
 `flush()` resolves when the queue is idle, blocked, or closed. Concurrent calls
 while work is active return the same pending promise, so repeated component,
@@ -189,6 +201,11 @@ For CWL and naruon integrations:
 `getSnapshot()` returns frozen lifecycle metadata containing active, pending, and
 last-saved strong entity tags. It never contains document bodies, callback
 results, credentials, tenant identifiers, or original exceptions.
+
+`lastSavedStrongEntityTag` records the most recent revision for which the host
+reported `saved`; after conflict or callback uncertainty it is historical
+metadata, not proof that the same revision remains current and not permission to
+skip a future host write.
 
 Strong entity tags can correlate identical canonical documents. Treat them as
 tenant-confidential metadata:
