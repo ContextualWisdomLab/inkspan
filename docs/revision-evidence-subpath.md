@@ -32,8 +32,15 @@ configuration.
 
 The root package continues to export the same functions for compatibility.
 Applications already using `CwlEditor` can keep one root import. Non-editor
-processes should prefer `/revision-evidence` so their runtime boundary and
-installed application graph do not depend on the interactive editor.
+processes should prefer `/revision-evidence` so their loaded module graph does
+not evaluate the interactive editor.
+
+Because this subpath is distributed inside the existing editor package, a normal
+npm or pnpm installation still installs the package-level dependencies declared
+by `@contextualwisdomlab/cwl-editor`. The subpath guarantees framework-free
+module evaluation, not a smaller registry dependency graph. A separately
+versioned npm package would be required if procurement, image size, or software
+composition policy later requires dependency-level isolation.
 
 ## Evidence semantics
 
@@ -78,7 +85,8 @@ system temporary `node_modules` tree containing only Inkspan, and executes the
 subpath through ESM and CommonJS without installing any framework dependency.
 A strict TypeScript consumer compiles against the same extracted package. An
 accidental React, TipTap, ProseMirror, or Yjs import therefore fails before
-merge.
+merge. This deliberately tests the subpath's runtime graph more strictly than a
+normal package-manager installation, which installs the package-level closure.
 
 ## References
 
