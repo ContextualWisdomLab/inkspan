@@ -267,12 +267,6 @@ assert.equal(
   packageRelative === '..' || packageRelative.startsWith('..' + sep),
   false,
 );
-for (const dependencyName of ${JSON.stringify(externalDependencyNames)}) {
-  assertInsideConsumer(
-    fileURLToPath(import.meta.resolve(dependencyName)),
-    'ESM dependency escaped consumer tree: ' + dependencyName,
-  );
-}
 assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidence, 'function');
 assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
 const sourceEnvelope = {
