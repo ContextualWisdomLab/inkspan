@@ -193,6 +193,13 @@ describe('document envelope revision tags', () => {
     const invalidLengthProvider: DocumentEnvelopeDigestProvider = {
       digest: async () => new ArrayBuffer(31),
     };
+    const spoofedArrayBufferProvider: DocumentEnvelopeDigestProvider = {
+      digest: async () =>
+        ({
+          byteLength: 32,
+          [Symbol.toStringTag]: 'ArrayBuffer',
+        }) as unknown as ArrayBuffer,
+    };
     const hostileResult = {
       get [Symbol.toStringTag]() {
         throw new Error('provider-secret-value');
@@ -205,6 +212,7 @@ describe('document envelope revision tags', () => {
     for (const provider of [
       invalidTypeProvider,
       invalidLengthProvider,
+      spoofedArrayBufferProvider,
       hostileProvider,
     ]) {
       await expect(
