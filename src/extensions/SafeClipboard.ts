@@ -15,6 +15,7 @@ export const DEFAULT_CLIPBOARD_MAX_DEPTH = 64;
 const MAXIMUM_CLIPBOARD_HTML_BYTES = 16_777_216;
 const MAXIMUM_CLIPBOARD_NODES = 100_000;
 const MAXIMUM_CLIPBOARD_DEPTH = 256;
+const SAFE_CLIPBOARD_PRIORITY = -1_000_000;
 const SAFE_LINK_REL = 'noopener noreferrer nofollow';
 const CONFIGURATION_KEYS = [
   'maxHtmlBytes',
@@ -260,6 +261,25 @@ function resolveClipboardDocument(
   return candidate;
 }
 
+/** Detect Office's hidden-subtree declaration from bounded raw style text. */
+function hasOfficeHiddenDeclaration(element: Element): boolean {
+  const rawStyle = element.getAttribute('style');
+  if (rawStyle === null) return false;
+  const withoutComments = rawStyle.replace(/\/\*[\s\S]*?\*\//gu, '');
+  return withoutComments.split(';').some((declaration) => {
+    const separator = declaration.indexOf(':');
+    if (separator < 0) return false;
+    const propertyName = declaration.slice(0, separator).trim().toLowerCase();
+    if (propertyName !== 'mso-hide') return false;
+    const propertyValue = declaration
+      .slice(separator + 1)
+      .replace(/\s*!important\s*$/iu, '')
+      .trim()
+      .toLowerCase();
+    return propertyValue === 'all';
+  });
+}
+
 /** Return true when the element marks its complete subtree as hidden. */
 function isHiddenClipboardElement(element: Element): boolean {
   if (element.hasAttribute('hidden')) return true;
@@ -270,7 +290,7 @@ function isHiddenClipboardElement(element: Element): boolean {
   return (
     style.display.trim().toLowerCase() === 'none' ||
     style.visibility.trim().toLowerCase() === 'hidden' ||
-    style.getPropertyValue('mso-hide').trim().toLowerCase() === 'all'
+    hasOfficeHiddenDeclaration(element)
   );
 }
 
@@ -378,7 +398,9 @@ export function sanitizeRichClipboardHtml(
   if (typeof sourceHtml !== 'string') {
     throw new ClipboardSanitizationError('invalid_html');
   }
-  if (new TextEncoder().encode(sourceHtml).byteLength > resolvedConfig.maxHtmlBytes) {
+  if (
+    new TextEncoder().encode(sourceHtml).byteLength > resolvedConfig.maxHtmlBytes
+  ) {
     throw new ClipboardSanitizationError('input_too_large');
   }
   const sourceDocument = resolveClipboardDocument(documentOverride);
@@ -424,7 +446,10 @@ export function sanitizeRichClipboardHtml(
       const outputName = normalizedOutputElement(sourceName);
       let childParent = frame.outputParent;
       if (outputName !== null) {
-        if (outputName === 'a' && !isSafeLinkHref(sourceElement.getAttribute('href'))) {
+        if (
+          outputName === 'a' &&
+          !isSafeLinkHref(sourceElement.getAttribute('href'))
+        ) {
           childParent = frame.outputParent;
         } else {
           const outputElement = inertDocument.createElement(outputName);
@@ -467,6 +492,7 @@ export interface SafeClipboardOptions extends ResolvedClipboardConfig {
 /** Shared TipTap extension that sanitizes `text/html` before ProseMirror parsing. */
 export const SafeClipboard = Extension.create<SafeClipboardOptions>({
   name: 'safeClipboard',
+  priority: SAFE_CLIPBOARD_PRIORITY,
 
   addOptions() {
     return {
