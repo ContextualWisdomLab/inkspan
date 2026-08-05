@@ -1,5 +1,5 @@
 import { cleanup, render, waitFor } from '@testing-library/react';
-import type { Editor, Extension } from '@tiptap/react';
+import type { Editor } from '@tiptap/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CwlEditor } from './CwlEditor.js';
 
@@ -9,7 +9,7 @@ afterEach(cleanup);
 function transformRichClipboard(editor: Editor, html: string): string {
   const extension = editor.extensionManager.extensions.find(
     (candidate) => candidate.name === 'safeClipboard',
-  ) as Extension | undefined;
+  );
   const transform = extension?.config.transformPastedHTML;
   if (!extension || !transform) throw new Error('SafeClipboard is not installed');
   return transform.call({ options: extension.options } as never, html);
