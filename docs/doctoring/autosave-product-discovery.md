@@ -14,6 +14,8 @@ The buyer-visible contract is intentionally small:
 - one copyable autosave example demonstrates the public import, immutable
   revision evidence, an explicitly server-issued initial durable validator, and
   the host save callback;
+- initial and replacement validators use one shared fail-closed strong entity-tag
+  check before either value can enter an `If-Match` request;
 - after a successful durable write, the example adopts the host response's
   strong entity tag and fails closed when that validator is absent, weak, or
   malformed;
@@ -57,12 +59,13 @@ representation boundary. The example therefore does not assume that
 `loadedStrongEntityTag` must come from the durable service, and each accepted
 write adopts the strong `ETag` returned by that service.
 
-The copyable example validates RFC 9110 quoted opaque-tag syntax, explicitly
-rejects the `W/` weak prefix, and fails closed for missing or malformed values.
-The host remains responsible for issuing a validator that represents the durable
-selected representation, exposing the `ETag` response header through CORS where
-applicable, and performing authenticated comparison atomically inside the durable
-write transaction.
+The copyable example validates initial and replacement validators with the same
+RFC 9110 quoted opaque-tag syntax, explicitly rejects the `W/` weak prefix, and
+fails closed for missing or malformed values before any invalid value reaches an
+`If-Match` request. The host remains responsible for issuing a validator that
+represents the durable selected representation, exposing the `ETag` response
+header through CORS where applicable, and performing authenticated comparison
+atomically inside the durable write transaction.
 
 ## Verification
 
@@ -73,6 +76,8 @@ write transaction.
   boundary;
 - the initial base validator is server-issued rather than derived from local
   Inkspan revision evidence;
+- initial and replacement validators pass through the same strong quoted
+  opaque-tag guard before assignment or transmission;
 - successful writes adopt a server-issued strong `ETag`, reject missing, weak, or
   malformed validators using quoted opaque-tag syntax, and never substitute
   local revision evidence;
