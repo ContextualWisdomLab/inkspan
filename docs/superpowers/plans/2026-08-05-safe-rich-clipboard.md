@@ -118,7 +118,7 @@ and existing hash-locked Office Python verification.
 
 ## Post-review reconciliation
 
-The first integrated review identified three valid implementation defects and
+The first integrated review identified four valid implementation defects and
 one assurance gap. They were handled test-first:
 
 - [x] **Configuration boundary:** the shared kit previously dereferenced nested
