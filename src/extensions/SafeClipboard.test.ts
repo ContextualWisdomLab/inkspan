@@ -104,24 +104,32 @@ describe('sanitizeRichClipboardHtml', () => {
   it('preserves bounded list and table semantics and rejects malformed spans', () => {
     const sanitized = sanitizeRichClipboardHtml(
       `<ol start="-4"><li>one</li></ol>
+       <ol start="not-an-integer"><li>two</li></ol>
        <table><thead><tr><th colspan="2" rowspan="1">head</th></tr></thead>
-       <tbody><tr><td colspan="0" rowspan="999">cell</td></tr></tbody></table>`,
+       <tbody><tr><td colspan="0" rowspan="999">cell</td></tr>
+       <tr><td colspan="999999999999999999999999">huge</td></tr></tbody></table>`,
       {},
       document,
     );
     const container = document.createElement('div');
     container.innerHTML = sanitized;
+    const orderedLists = container.querySelectorAll('ol');
+    const dataCells = container.querySelectorAll('td');
 
-    expect(container.querySelector('ol')?.getAttribute('start')).toBe('-4');
+    expect(orderedLists[0]?.getAttribute('start')).toBe('-4');
+    expect(orderedLists[1]?.hasAttribute('start')).toBe(false);
     expect(container.querySelector('th')?.getAttribute('colspan')).toBe('2');
     expect(container.querySelector('th')?.getAttribute('rowspan')).toBe('1');
-    expect(container.querySelector('td')?.hasAttribute('colspan')).toBe(false);
-    expect(container.querySelector('td')?.hasAttribute('rowspan')).toBe(false);
+    expect(dataCells[0]?.hasAttribute('colspan')).toBe(false);
+    expect(dataCells[0]?.hasAttribute('rowspan')).toBe(false);
+    expect(dataCells[1]?.hasAttribute('colspan')).toBe(false);
   });
 
   it('normalizes equivalent semantic tags and unwraps unsupported ordinary containers', () => {
     const sanitized = sanitizeRichClipboardHtml(
-      `<section><b>bold</b><i>italic</i><strike>strike</strike><font>font text</font></section>`,
+      `<section><b>bold</b><i>italic</i><strike>strike</strike><font>font text</font></section>
+       <strong style="font-weight:bolder">already strong</strong>
+       <span style="font-style:oblique">oblique</span><br><hr>`,
       {},
       document,
     );
@@ -131,6 +139,9 @@ describe('sanitizeRichClipboardHtml', () => {
     expect(sanitized).toContain('<strong>bold</strong>');
     expect(sanitized).toContain('<em>italic</em>');
     expect(sanitized).toContain('<s>strike</s>');
+    expect(sanitized).toContain('<strong>already strong</strong>');
+    expect(sanitized).toContain('<em>oblique</em>');
+    expect(container.querySelectorAll('br, hr')).toHaveLength(2);
     expect(sanitized).toContain('font text');
     expect(container.querySelectorAll('section, font')).toHaveLength(0);
   });
@@ -155,6 +166,17 @@ describe('sanitizeRichClipboardHtml', () => {
       expect.objectContaining({
         code: 'input_too_large',
         message: 'Rich clipboard HTML exceeds the configured byte limit.',
+      }),
+    );
+  });
+
+  it('rejects non-string source values before DOM parsing', () => {
+    expect(() =>
+      sanitizeRichClipboardHtml(42 as never, {}, document),
+    ).toThrowError(
+      expect.objectContaining({
+        code: 'invalid_html',
+        message: 'Rich clipboard HTML could not be sanitized.',
       }),
     );
   });
@@ -184,6 +206,10 @@ describe('sanitizeRichClipboardHtml', () => {
         throw new Error('private getter detail');
       },
     });
+    const nonEnumerableConfig = Object.defineProperty({}, 'maxNodes', {
+      enumerable: false,
+      value: 10,
+    });
     const proxy = new Proxy(
       {},
       {
@@ -194,11 +220,18 @@ describe('sanitizeRichClipboardHtml', () => {
     );
 
     for (const config of [
+      null,
+      1,
+      { maxHtmlBytes: '10' },
       { maxHtmlBytes: 0 },
+      { maxHtmlBytes: 16_777_217 },
       { maxNodes: Number.NaN },
+      { maxNodes: 100_001 },
       { maxDepth: 1.5 },
+      { maxDepth: 257 },
       { unexpected: 1 },
       Object.assign({ maxHtmlBytes: 10 }, { [symbolKey]: true }),
+      nonEnumerableConfig,
       getterConfig,
       proxy,
     ]) {
@@ -213,7 +246,7 @@ describe('sanitizeRichClipboardHtml', () => {
     }
   });
 
-  it('accepts documented defaults and explicit undefined values', () => {
+  it('accepts documented defaults, explicit undefined values, and the ambient DOM', () => {
     const sanitized = sanitizeRichClipboardHtml(
       '<p>defaults</p>',
       {
@@ -221,7 +254,6 @@ describe('sanitizeRichClipboardHtml', () => {
         maxNodes: undefined,
         maxDepth: undefined,
       },
-      document,
     );
 
     expect(sanitized).toBe('<p>defaults</p>');
@@ -230,13 +262,48 @@ describe('sanitizeRichClipboardHtml', () => {
     expect(DEFAULT_CLIPBOARD_MAX_DEPTH).toBe(64);
   });
 
-  it('fails closed when no DOM-capable document exists', () => {
+  it('fails closed for absent or malformed DOM capabilities', () => {
+    const missingCreateElement = {
+      implementation: {
+        createHTMLDocument() {
+          return document;
+        },
+      },
+    } as unknown as Document;
+    const missingCreateDocument = {
+      createElement: document.createElement.bind(document),
+      implementation: {},
+    } as unknown as Document;
+
+    for (const candidate of [null, missingCreateElement, missingCreateDocument]) {
+      expect(() =>
+        sanitizeRichClipboardHtml('<p>x</p>', {}, candidate as never),
+      ).toThrowError(
+        expect.objectContaining({
+          code: 'dom_unavailable',
+          message:
+            'Rich clipboard sanitization requires a DOM-capable document.',
+        }),
+      );
+    }
+  });
+
+  it('redacts unexpected DOM implementation failures', () => {
+    const hostileDocument = {
+      createElement: document.createElement.bind(document),
+      implementation: {
+        createHTMLDocument() {
+          throw new Error('private DOM implementation detail');
+        },
+      },
+    } as unknown as Document;
+
     expect(() =>
-      sanitizeRichClipboardHtml('<p>x</p>', {}, null as never),
+      sanitizeRichClipboardHtml('<p>x</p>', {}, hostileDocument),
     ).toThrowError(
       expect.objectContaining({
-        code: 'dom_unavailable',
-        message: 'Rich clipboard sanitization requires a DOM-capable document.',
+        code: 'invalid_html',
+        message: 'Rich clipboard HTML could not be sanitized.',
       }),
     );
   });
@@ -265,7 +332,7 @@ describe('SafeClipboard extension', () => {
     expect(String(onError.mock.calls[0]?.[0])).not.toContain('this is too large');
   });
 
-  it('contains host callback failures and unexpected sanitizer errors', () => {
+  it('contains host callback failures', () => {
     const onError = vi.fn(() => {
       throw new Error('host callback failure');
     });
@@ -283,5 +350,43 @@ describe('SafeClipboard extension', () => {
     expect(() => transform?.('<p>x</p>')).not.toThrow();
     expect(transform?.('<p>x</p>')).toBe('');
     expect(onError).toHaveBeenCalled();
+  });
+
+  it('redacts unexpected extension-option failures and supports no observer', () => {
+    const onError = vi.fn();
+    const hostileOptions = {
+      get config() {
+        throw new Error('private extension option detail');
+      },
+      maxHtmlBytes: DEFAULT_CLIPBOARD_HTML_BYTES,
+      maxNodes: DEFAULT_CLIPBOARD_MAX_NODES,
+      maxDepth: DEFAULT_CLIPBOARD_MAX_DEPTH,
+      onError,
+      document,
+    };
+    const transformHostile = SafeClipboard.config.transformPastedHTML?.bind({
+      options: hostileOptions,
+    } as never);
+
+    expect(transformHostile?.('<p>x</p>')).toBe('');
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'invalid_html',
+        message: 'Rich clipboard HTML could not be sanitized.',
+      }),
+    );
+
+    const configuredWithoutObserver = SafeClipboard.configure({
+      maxHtmlBytes: 1,
+      maxNodes: DEFAULT_CLIPBOARD_MAX_NODES,
+      maxDepth: DEFAULT_CLIPBOARD_MAX_DEPTH,
+      document,
+    });
+    const transformWithoutObserver =
+      configuredWithoutObserver.config.transformPastedHTML?.bind({
+        options: configuredWithoutObserver.options,
+      } as never);
+
+    expect(transformWithoutObserver?.('<p>x</p>')).toBe('');
   });
 });
