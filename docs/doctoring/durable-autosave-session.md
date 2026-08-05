@@ -40,8 +40,9 @@ RFC 9110 defines an entity tag as an opaque validator selected by the origin ser
 8. Public errors remain redacted and machine-readable through the existing `DocumentAutosaveQueueError` categories.
 9. The runtime and declaration graph contain no React, React DOM, TipTap, ProseMirror, Yjs, DOM, provider SDK, storage driver, credential, or network client dependency.
 10. No database object, migration, scheduler, model call, reviewer identity, or credential-chain change is introduced.
+11. `flush()` re-reads the current queue state after each awaited terminal notification. If recovery or shutdown starts before the public wrapper continuation executes, it follows the new transition until the session is currently idle, blocked, or closed, then combines that lifecycle state and durable validator without another asynchronous boundary.
 
-These invariants create a linearizable process-local handoff around host callbacks. They do not create a distributed transaction. Durable correctness still requires the host to compare the supplied base and commit the new representation atomically inside the same authorized storage transaction.
+These invariants create a linearizable process-local handoff around host callbacks and public session snapshots. They do not create a distributed transaction. Durable correctness still requires the host to compare the supplied base and commit the new representation atomically inside the same authorized storage transaction.
 
 ## Security and privacy analysis
 
@@ -72,6 +73,8 @@ This boundary preserves standalone operation and allows naruon compose surfaces,
 ## Verification evidence
 
 Deterministic unit and integration tests cover strong-tag grammar, malformed options, hostile option getters, sequential server-validator handoff, frozen callback requests, conflict retention, explicit recovered-tag installation, invalid exact callback shapes, weak replacement validators, inaccessible reflection, promise-assimilation failure, thrown transport failure, flush, shutdown, and document-free snapshots.
+
+A test-first microtask-ordering regression proves that an internal blocked notification cannot escape as a stale lifecycle snapshot after a request continuation has already installed a recovered validator and restarted retained work. The red commit preserves the inconsistent `blocked` plus recovered-validator result; the implementation re-reads current queue state and waits for the resumed transition before returning one coherent terminal snapshot.
 
 The exact packed npm artifact is executed through ESM and CommonJS and compiled as a strict TypeScript consumer in an isolated temporary package tree that contains no React, React DOM, TipTap, ProseMirror, or Yjs installation. The packed tests prove that the exported session supplies the initial server tag, adopts only the returned replacement tag, preserves framework independence, and exposes complete declarations.
 
