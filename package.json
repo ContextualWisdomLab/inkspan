@@ -90,7 +90,7 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "test:package-config": "node --test ./scripts/revision-evidence-consumer-config.test.mjs",
-    "verify:package": "pnpm run test:package-config && node ./scripts/verify-package.mjs && node ./scripts/verify-canonical-envelope-package.mjs && node ./scripts/verify-revision-evidence-package.mjs && node ./scripts/verify-framework-free-revision-evidence-package.mjs && node ./scripts/verify-framework-free-autosave-package.mjs"
+    "verify:package": "pnpm run test:package-config && node ./scripts/verify-package.mjs && node ./scripts/verify-canonical-envelope-package.mjs && node ./scripts/verify-revision-evidence-package.mjs && node ./scripts/verify-framework-free-revision-evidence-package.mjs && node ./tests/package/verify-framework-free-autosave-package.mjs"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
@@ -131,7 +131,7 @@
     "@types/node": "^22.10.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "@types/turndown": "^5.0.5",
+    "@types/turndown": "^5.0.6",
     "@vitejs/plugin-react": "^4.3.4",
     "@vitest/coverage-v8": "^3.2.6",
     "jsdom": "^25.0.1",
