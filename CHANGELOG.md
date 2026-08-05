@@ -6,10 +6,16 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+## [0.5.29] — 2026-08-05
+
 ### Added
 - Added `createDocumentAutosaveSession()` to bind every single-flight save to the exact server-issued strong entity tag loaded or last committed by the host, without adding transport, persistence, credentials, tenancy, or provider coupling
 - Added `isStrongHttpEntityTag()` for fail-closed RFC 9110 quoted opaque-tag validation without trimming or repair
 - Added immutable durable save request, result, session, recovery, and document-free snapshot contracts to the framework-independent `autosave` package surface
+
+### Changed
+- Package version **0.5.29**
+- Package discovery metadata now identifies the server-validator-bound durable autosave session alongside the lower-level single-flight coordinator
 
 ### Reliability
 - Successful durable writes advance the next `If-Match` base only from the host callback's validated server-selected replacement tag
@@ -31,7 +37,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Extended isolated packed-artifact ESM, CommonJS, and strict TypeScript consumers to prove the durable session and strong-tag validator work without React, React DOM, TipTap, ProseMirror, or Yjs installed
 
 ### Documentation
-- Added buyer-visible autosave onboarding, explicit `autosave` and `revision-evidence` distribution surfaces, and npm persistence discovery metadata without changing runtime behavior or package version
+- Added buyer-visible autosave onboarding, explicit `autosave` and `revision-evidence` distribution surfaces, and npm persistence discovery metadata
 - Corrected the autosave onboarding so initial and replacement validators are checked before use and come from the durable host's server-issued strong `ETag` rather than local revision evidence; missing, weak, or malformed validators now fail closed in the example
 - Documented that host-owned save callbacks must apply their own timeout or abort signal because an unresolved callback intentionally retains the active single-flight operation; retry policy remains host-owned
 - Added a deterministic repository contract test and APA 7th-style doctoring for README, npm-search, Node.js package-export discoverability, RFC 9110 validator ownership, and quoted opaque-tag syntax
