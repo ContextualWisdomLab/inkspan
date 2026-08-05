@@ -78,14 +78,20 @@ describe('document autosave schema evidence boundary', () => {
   it('accepts deeply frozen JSON evidence containing every JSON primitive', async () => {
     const save = vi.fn(() => ({ status: 'saved' as const }));
     const queue = createDocumentAutosaveQueue({ save });
+    const nullPrototypeAttributes = Object.create(null) as Record<
+      string,
+      unknown
+    >;
+    Object.defineProperties(nullPrototypeAttributes, {
+      checked: { value: true, enumerable: true },
+      count: { value: 3, enumerable: true },
+      label: { value: 'frozen evidence', enumerable: true },
+      optional: { value: null, enumerable: true },
+    });
+    Object.freeze(nullPrototypeAttributes);
     const documentJson = Object.freeze({
       type: 'doc',
-      attrs: Object.freeze({
-        checked: true,
-        count: 3,
-        label: 'frozen evidence',
-        optional: null,
-      }),
+      attrs: nullPrototypeAttributes,
       content: Object.freeze([]),
     });
 
@@ -99,6 +105,75 @@ describe('document autosave schema evidence boundary', () => {
       ),
     ).resolves.toMatchObject({ status: 'saved' });
     expect(save).toHaveBeenCalledOnce();
+  });
+
+  it('rejects malformed evidence wrappers without evaluating accessors', () => {
+    let getterCalls = 0;
+    const digestHex = '31'.repeat(32);
+    const revision = Object.freeze({
+      algorithm: 'SHA-256',
+      digestHex,
+      strongEntityTag: `"sha256-${digestHex}"`,
+    });
+    const frozenDocument = Object.freeze({ type: 'doc' });
+    const nonEnumerableEvidence = Object.freeze(
+      Object.defineProperty({ revision }, 'envelope', {
+        value: Object.freeze({ documentJson: frozenDocument }),
+        enumerable: false,
+      }),
+    );
+    const accessorEvidence = Object.freeze(
+      Object.defineProperty({ revision }, 'envelope', {
+        enumerable: true,
+        get() {
+          getterCalls += 1;
+          return Object.freeze({ documentJson: frozenDocument });
+        },
+      }),
+    );
+    const nonEnumerableEnvelope = Object.freeze(
+      Object.defineProperty({}, 'documentJson', {
+        value: frozenDocument,
+        enumerable: false,
+      }),
+    );
+    const accessorEnvelope = Object.freeze(
+      Object.defineProperty({}, 'documentJson', {
+        enumerable: true,
+        get() {
+          getterCalls += 1;
+          return frozenDocument;
+        },
+      }),
+    );
+    const hostileEvidence = new Proxy(Object.freeze({}), {
+      getOwnPropertyDescriptor() {
+        throw new Error('tenant-private-evidence-detail');
+      },
+    });
+    const candidates: unknown[] = [
+      'not-an-object',
+      null,
+      Object.freeze({ revision }),
+      nonEnumerableEvidence,
+      accessorEvidence,
+      Object.freeze({ envelope: 42, revision }),
+      Object.freeze({ envelope: null, revision }),
+      Object.freeze({ envelope: Object.freeze({}), revision }),
+      Object.freeze({ envelope: nonEnumerableEnvelope, revision }),
+      Object.freeze({ envelope: accessorEnvelope, revision }),
+      hostileEvidence,
+    ];
+
+    for (const candidate of candidates) {
+      const save = vi.fn(() => ({ status: 'saved' as const }));
+      const queue = createDocumentAutosaveQueue({ save });
+      expect(() => queue.enqueue(candidate as never)).toThrow(
+        DocumentAutosaveQueueError,
+      );
+      expect(save).not.toHaveBeenCalled();
+    }
+    expect(getterCalls).toBe(0);
   });
 
   it('rejects a mutable nested object even when every evidence root is frozen', () => {
@@ -152,7 +227,32 @@ describe('document autosave schema evidence boundary', () => {
     const cyclicNode: Record<string, unknown> = { type: 'paragraph' };
     cyclicNode.content = cyclicNode;
     Object.freeze(cyclicNode);
-    const sparseContent = Object.freeze(new Array<unknown>(1));
+
+    const sparseContent = new Array<unknown>(1);
+    Object.defineProperty(sparseContent, Symbol('padding'), {
+      value: 'unsupported',
+      enumerable: true,
+    });
+    Object.freeze(sparseContent);
+
+    const nonEnumerableContent: unknown[] = [];
+    Object.defineProperty(nonEnumerableContent, '0', {
+      value: 'hidden',
+      enumerable: false,
+    });
+    Object.freeze(nonEnumerableContent);
+
+    let arrayGetterCalls = 0;
+    const accessorContent: unknown[] = [];
+    Object.defineProperty(accessorContent, '0', {
+      enumerable: true,
+      get() {
+        arrayGetterCalls += 1;
+        return 'hidden';
+      },
+    });
+    Object.freeze(accessorContent);
+
     const nonEnumerableNode = Object.freeze(
       Object.defineProperty({}, 'type', {
         value: 'paragraph',
@@ -174,6 +274,8 @@ describe('document autosave schema evidence boundary', () => {
       }),
       Object.freeze({ type: 'doc', content: Object.freeze([cyclicNode]) }),
       Object.freeze({ type: 'doc', content: sparseContent }),
+      Object.freeze({ type: 'doc', content: nonEnumerableContent }),
+      Object.freeze({ type: 'doc', content: accessorContent }),
       Object.freeze({
         type: 'doc',
         content: Object.freeze([nonEnumerableNode]),
@@ -183,6 +285,7 @@ describe('document autosave schema evidence boundary', () => {
     ]) {
       expectRejectedBeforeSave(documentJson);
     }
+    expect(arrayGetterCalls).toBe(0);
   });
 
   it('bounds traversal of forged evidence to the supported JSON value count', () => {
