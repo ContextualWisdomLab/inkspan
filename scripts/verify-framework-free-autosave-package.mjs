@@ -131,6 +131,28 @@ assert.deepEqual(await queue.enqueue(evidence), {
   strongEntityTag: evidence.revision.strongEntityTag,
 });
 assert.equal(calls, 1);
+
+const mutableTextNode = { type: 'text', text: 'original' };
+const partiallyFrozenEvidence = Object.freeze({
+  envelope: Object.freeze({
+    schemaId: 'https://inkspan.io/schemas/document-envelope/v1',
+    schemaVersion: 1,
+    documentJson: Object.freeze({
+      type: 'doc',
+      content: Object.freeze([mutableTextNode]),
+    }),
+  }),
+  revision: evidence.revision,
+});
+assert.throws(
+  () => queue.enqueue(partiallyFrozenEvidence),
+  (error) =>
+    error instanceof DocumentAutosaveQueueError &&
+    error.code === 'invalid_revision_evidence',
+);
+mutableTextNode.text = 'mutated after rejection';
+assert.equal(calls, 1);
+
 assert.equal((await queue.flush()).state, 'idle');
 assert.equal((await queue.close()).state, 'closed');
 `,
