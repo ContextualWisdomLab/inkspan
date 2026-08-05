@@ -125,12 +125,14 @@ describe('sanitizeRichClipboardHtml', () => {
       {},
       document,
     );
+    const container = document.createElement('div');
+    container.innerHTML = sanitized;
 
     expect(sanitized).toContain('<strong>bold</strong>');
     expect(sanitized).toContain('<em>italic</em>');
     expect(sanitized).toContain('<s>strike</s>');
     expect(sanitized).toContain('font text');
-    expect(sanitized).not.toMatch(/section|font/i);
+    expect(container.querySelectorAll('section, font')).toHaveLength(0);
   });
 
   it('handles malformed nesting deterministically', () => {
