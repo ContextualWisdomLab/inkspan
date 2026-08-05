@@ -23,8 +23,8 @@ A correct integration should:
 
 Use a server component or equivalent host loader to authorize the document and
 load its durable representation. Pass only serializable document data, a
-server-selected strong `ETag`, and non-secret presentation options into one
-small client component.
+server-selected strong `ETag`, an opaque non-secret editing-context lifecycle
+identifier, and non-secret presentation options into one small client component.
 
 ```tsx
 // app/documents/[documentId]/inkspan-panel.tsx
@@ -43,12 +43,17 @@ import {
 import '@contextualwisdomlab/cwl-editor/styles.css';
 
 interface InkspanPanelProps {
+  readonly editingContextId: string;
   readonly documentId: string;
   readonly initialMarkdown: string;
   readonly initialStrongEntityTag: string;
 }
 
-export function InkspanPanel({
+export function InkspanPanel(props: InkspanPanelProps) {
+  return <InkspanPanelSession key={props.editingContextId} {...props} />;
+}
+
+function InkspanPanelSession({
   documentId,
   initialMarkdown,
   initialStrongEntityTag,
@@ -62,7 +67,8 @@ export function InkspanPanel({
       createDocumentAutosaveSession({
         initialStrongEntityTag,
         async save(request) {
-          const response = await fetch(`/api/documents/${documentId}`, {
+          const encodedDocumentId = encodeURIComponent(documentId);
+          const response = await fetch(`/api/documents/${encodedDocumentId}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -152,6 +158,15 @@ export function InkspanPanel({
 }
 ```
 
+The host must issue a new opaque `editingContextId` for every authorized document
+load and whenever the authorized workspace, tenant, or document context changes.
+The value is a UI lifecycle key only: it is not an authorization grant, tenant
+identifier, durable validator, or audit identifier, and it should not be logged.
+Keying the complete client session prevents React from reusing an uncontrolled
+editor, autosave validator, pending digest, or status state for a different
+document. Keying only `CwlEditor` is insufficient because the autosave session
+and asynchronous capture state must be replaced in the same lifecycle boundary.
+
 The generation guard prevents an older, slower asynchronous envelope digest from
 being enqueued after a newer edit. A production host may debounce before capture
 to reduce hashing frequency, but it must preserve the same latest-generation
@@ -174,6 +189,8 @@ or other CWL services, but it must preserve these ownership rules:
   for editing.
 - The composition root resolves authorization and tenant context before the
   panel receives a document.
+- The composition root issues a fresh opaque editing-context lifecycle value for
+  every authorized load and context transition.
 - The composition root decides whether model use is allowed and which reviewed
   contextual-orchestrator policy applies.
 - Model output returns as untrusted content and enters Inkspan through validated
@@ -185,8 +202,8 @@ or other CWL services, but it must preserve these ownership rules:
 
 Inkspan must not read provider credentials, model credentials, database
 credentials, or host authorization tokens. It also must not infer tenant
-identity from a document body, revision digest, collaboration room name, or
-server validator.
+identity from a document body, revision digest, collaboration room name, editing
+context value, or server validator.
 
 ## ui.panel contract
 
@@ -275,6 +292,12 @@ canonicalized, encrypted, or attached to a successful CI run.
 Before enabling the panel in production, verify that:
 
 - the server rejects unauthorized document IDs before returning content;
+- the host issues a fresh opaque editing-context lifecycle value for every
+  authorized document load and context transition;
+- the complete editor and autosave session remount together when that lifecycle
+  value changes;
+- document path segments are encoded before transport and revalidated by the
+  authorized server route;
 - every durable write uses an authenticated atomic `If-Match` transaction;
 - missing, weak, malformed, or stale validators fail closed;
 - request timeouts and cancellation are host-owned and bounded;
