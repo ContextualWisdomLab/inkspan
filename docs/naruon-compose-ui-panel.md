@@ -30,13 +30,14 @@ small client component.
 // app/documents/[documentId]/inkspan-panel.tsx
 'use client';
 
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   CwlEditor,
   type CwlEditorHandle,
 } from '@contextualwisdomlab/cwl-editor';
 import {
   createDocumentAutosaveSession,
+  isStrongHttpEntityTag,
   type DocumentAutosaveSession,
 } from '@contextualwisdomlab/cwl-editor/autosave';
 import '@contextualwisdomlab/cwl-editor/styles.css';
@@ -57,13 +58,13 @@ export function InkspanPanel({
   const session = useMemo<DocumentAutosaveSession>(
     () =>
       createDocumentAutosaveSession({
-        loadedStrongEntityTag: initialStrongEntityTag,
+        initialStrongEntityTag,
         async save(request) {
           const response = await fetch(`/api/documents/${documentId}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
-              'If-Match': request.ifMatch,
+              'If-Match': request.ifMatchStrongEntityTag,
             },
             body: JSON.stringify(request.evidence.envelope),
           });
@@ -76,13 +77,23 @@ export function InkspanPanel({
           }
 
           const nextStrongEntityTag = response.headers.get('ETag');
+          if (!isStrongHttpEntityTag(nextStrongEntityTag)) {
+            throw new Error('Document save omitted a valid strong ETag');
+          }
           return {
             status: 'saved',
-            strongEntityTag: nextStrongEntityTag,
+            nextStrongEntityTag,
           };
         },
       }),
     [documentId, initialStrongEntityTag],
+  );
+
+  useEffect(
+    () => () => {
+      void session.close();
+    },
+    [session],
   );
 
   return (
@@ -111,7 +122,9 @@ export function InkspanPanel({
 The example is intentionally transport-neutral beyond ordinary host `fetch()`.
 A production naruon composition should place authentication, tenant resolution,
 request deadlines, retry budgets, idempotency, telemetry, and error translation
-inside the host API layer rather than the editor component.
+inside the host API layer rather than the editor component. It should also
+translate rejected `enqueue()` promises into a redacted panel state instead of
+leaving an unhandled asynchronous error.
 
 ## compose contract
 
