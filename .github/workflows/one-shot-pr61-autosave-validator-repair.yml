@@ -84,6 +84,44 @@ jobs:
               "// durable representation. Do not substitute local revision evidence.\n"
               "let durableStrongEntityTag = loadedStrongEntityTag;",
           )
+          replace_exact(
+              readme,
+              "    const nextDurableStrongEntityTag = response.headers.get('ETag');\n"
+              "    if (\n"
+              "      nextDurableStrongEntityTag === null ||\n"
+              "      nextDurableStrongEntityTag.startsWith('W/')\n"
+              "    ) {",
+              "    const nextDurableStrongEntityTag = response.headers.get('ETag');\n"
+              "    const isQuotedOpaqueTag =\n"
+              "      nextDurableStrongEntityTag !== null &&\n"
+              "      /^\"[\\u0021\\u0023-\\u007e\\u0080-\\u00ff]*\"$/.test(\n"
+              "        nextDurableStrongEntityTag,\n"
+              "      );\n"
+              "    if (\n"
+              "      nextDurableStrongEntityTag === null ||\n"
+              "      nextDurableStrongEntityTag.startsWith('W/') ||\n"
+              "      !isQuotedOpaqueTag\n"
+              "    ) {",
+          )
+
+          doctoring = Path("docs/doctoring/autosave-product-discovery.md")
+          replace_exact(
+              doctoring,
+              "strong `ETag` returned by the host and fails closed if the response omits it or\n"
+              "returns a weak validator. The host remains responsible for validating entity-tag\n"
+              "syntax, exposing response headers through CORS where applicable, and performing\n",
+              "strong `ETag` returned by the host and fails closed if the response omits it,\n"
+              "returns a weak validator, or violates RFC 9110 quoted opaque-tag syntax. The host\n"
+              "remains responsible for exposing response headers through CORS where applicable\n"
+              "and performing\n",
+          )
+
+          changelog = Path("CHANGELOG.md")
+          replace_exact(
+              changelog,
+              "missing or weak validators now fail closed in the example",
+              "missing, weak, or malformed validators now fail closed in the example",
+          )
 
           Path(".github/workflows/one-shot-pr61-autosave-validator-repair.yml").unlink()
           PY
@@ -102,10 +140,23 @@ jobs:
               | gh api -X POST "repos/${GITHUB_REPOSITORY}/git/blobs" \
                   --input - --jq '.sha'
           )"
+          doctoring_blob="$(
+            jq -Rs '{content: ., encoding: "utf-8"}' \
+              <docs/doctoring/autosave-product-discovery.md \
+              | gh api -X POST "repos/${GITHUB_REPOSITORY}/git/blobs" \
+                  --input - --jq '.sha'
+          )"
+          changelog_blob="$(
+            jq -Rs '{content: ., encoding: "utf-8"}' <CHANGELOG.md \
+              | gh api -X POST "repos/${GITHUB_REPOSITORY}/git/blobs" \
+                  --input - --jq '.sha'
+          )"
           tree_sha="$(
             jq -n \
               --arg base_tree "$base_tree" \
               --arg readme_blob "$readme_blob" \
+              --arg doctoring_blob "$doctoring_blob" \
+              --arg changelog_blob "$changelog_blob" \
               '{
                 base_tree: $base_tree,
                 tree: [
@@ -114,6 +165,18 @@ jobs:
                     mode: "100644",
                     type: "blob",
                     sha: $readme_blob
+                  },
+                  {
+                    path: "docs/doctoring/autosave-product-discovery.md",
+                    mode: "100644",
+                    type: "blob",
+                    sha: $doctoring_blob
+                  },
+                  {
+                    path: "CHANGELOG.md",
+                    mode: "100644",
+                    type: "blob",
+                    sha: $changelog_blob
                   },
                   {
                     path: ".github/workflows/one-shot-pr61-autosave-validator-repair.yml",
@@ -128,7 +191,7 @@ jobs:
           )"
           commit_sha="$(
             jq -n \
-              --arg message "fix(docs): use server-selected autosave validators" \
+              --arg message "fix(docs): validate durable autosave entity tags" \
               --arg tree "$tree_sha" \
               --arg parent "$EXPECTED_HEAD" \
               '{message: $message, tree: $tree, parents: [$parent]}' \
