@@ -19,7 +19,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ### Security
 - Active, embedded, form, metadata, media, SVG/MathML, template, resource-bearing, hidden, and HTML-image subtrees are removed before insertion
-- Raw `mso-hide` declarations are parsed with exact case-insensitive property/value matching, CSS-comment removal, optional terminal `!important`, and false-positive guards instead of relying on browser CSSOM support for the proprietary Office property
+- Raw `mso-hide` declarations are parsed with exact case-insensitive property/value matching, closed and EOF-terminated CSS-comment removal, optional terminal `!important`, and false-positive guards instead of relying on browser CSSOM support for the proprietary Office property
 - CSS-escaped property and keyword forms of `mso-hide: all` are decoded for exact comparison, while invalid code points, escaped newlines, prefixes, and longer look-alike values remain visible instead of producing false-positive subtree removal
 - SafeClipboard uses the lowest-practical extension priority as the final ordinary TipTap paste transform, with an integration regression proving a prior host transform cannot reintroduce scripts or tracking images before parsing
 - A host-installed lower-priority transform or post-parse mutation is explicitly outside the supported safety contract and requires an independently verified equivalent validation boundary
@@ -34,7 +34,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ### Tests
 - Added realistic Word-like and Google-Docs-like fixtures, Office conditional comments, style-to-semantic conversion, tables and lists, malformed HTML, active/embedded/resource content, hidden data, remote images, unsafe links, UTF-8 byte limits, breadth/depth limits, hostile configuration, DOM-unavailable execution, callback failure, and error-redaction cases
-- Added raw Office hidden-style variants and false-positive cases, structural removed-element assertions, real TipTap transform-chain ordering, and standalone/Yjs regressions proving configuration accessors are not evaluated before paste
+- Added raw Office hidden-style variants including EOF-terminated CSS comments, false-positive cases, structural removed-element assertions, real TipTap transform-chain ordering, and standalone/Yjs regressions proving configuration accessors are not evaluated before paste
 - Added standalone and Yjs collaborative integration tests proving identical sanitizer behavior and latest-callback routing without editor or provider recreation
 - Kept repository-wide 100% production statement, branch, function, and line coverage as the merge gate
 - Recorded that current jsdom results are not cross-engine browser evidence; version-pinned Chromium, Firefox, and WebKit differential fixtures are a publication gate for 0.6.0
