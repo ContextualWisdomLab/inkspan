@@ -90,7 +90,7 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "test:package-config": "node --test ./scripts/revision-evidence-consumer-config.test.mjs",
-    "verify:package": "pnpm run test:package-config && node ./scripts/verify-package.mjs && node ./scripts/verify-canonical-envelope-package.mjs && node ./scripts/verify-revision-evidence-package.mjs && node ./scripts/verify-framework-free-revision-evidence-package.mjs && node ./tests/package/verify-framework-free-autosave-package.mjs"
+    "verify:package": "pnpm run test:package-config && node ./tests/package/verify-package.mjs && node ./scripts/verify-canonical-envelope-package.mjs && node ./scripts/verify-revision-evidence-package.mjs && node ./scripts/verify-framework-free-revision-evidence-package.mjs && node ./tests/package/verify-framework-free-autosave-package.mjs"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
