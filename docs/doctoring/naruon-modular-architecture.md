@@ -125,7 +125,7 @@ and must not leave focus on a removed node or announce private document content.
 
 ## SSR and hydration boundary
 
-React `hydrateRoot` attaches an interactive tree to server-generated markup.
+The React hydrateRoot API attaches an interactive tree to server-generated markup.
 Next.js App Router separates Server and Client Components and uses `'use client'`
 to declare the client module boundary. The integration therefore keeps Inkspan,
 browser-only providers, event handlers, and `Y.Doc` creation in the narrow
