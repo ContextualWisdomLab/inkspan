@@ -1,15 +1,22 @@
 # Provider-neutral document autosave
 
-Inkspan 0.5.28 adds a framework-independent autosave coordination surface at
-`@contextualwisdomlab/cwl-editor/autosave`. It accepts immutable document
+Inkspan exposes framework-independent autosave coordination at
+`@contextualwisdomlab/cwl-editor/autosave`. The package accepts immutable document
 revision evidence, ensures that only one host save callback runs at a time,
 retains at most one not-yet-started revision, and shares one internal pending
 flush promise across concurrent quiescence checks.
 
-Inkspan coordinates local ordering only. The host application continues to own
-transport, authentication, authorization, tenant isolation, durable storage,
-credentials, schema migration, retention, audit storage, retry budgets, and
-conflict-resolution user experience.
+Use `createDocumentAutosaveSession()` for ordinary durable HTTP persistence. It
+binds every callback to the exact server-issued strong entity tag loaded or last
+committed by the host. Use the lower-level `createDocumentAutosaveQueue()` only
+when the host deliberately owns a different version-token protocol and can prove
+its validator handoff separately.
+
+Inkspan owns deterministic local ordering, immutable evidence validation, and
+server-validator handoff only. The host continues to own transport,
+authentication, authorization, tenant isolation, durable storage, credentials,
+schema migration, backup, rollback, retention, audit storage, retry budgets,
+offline and idempotency policy, and conflict-resolution user experience.
 
 ## Install and import
 
@@ -18,22 +25,23 @@ server, worker, queue, or test code:
 
 ```ts
 import {
-  createDocumentAutosaveQueue,
-  type DocumentAutosaveSaveResult,
+  createDocumentAutosaveSession,
+  type DocumentAutosaveDurableSaveResult,
 } from '@contextualwisdomlab/cwl-editor/autosave';
 import {
   createDocumentEnvelopeRevisionEvidence,
 } from '@contextualwisdomlab/cwl-editor/revision-evidence';
 ```
 
-The autosave subpath has no React, React DOM, TipTap, ProseMirror, or Yjs runtime
-dependency. It does not create timers, perform network requests, read environment
-variables, or access storage.
+The autosave subpath has no React, React DOM, TipTap, ProseMirror, Yjs, DOM,
+provider SDK, storage driver, or network runtime dependency. It does not create
+timers, perform requests, read environment variables, access storage, or choose
+a tenant.
 
 ## Capture immutable revision evidence
 
 Create evidence through Inkspan rather than constructing a look-alike object.
-The envelope and SHA-256 strong entity tag are derived from the same normalized,
+The envelope and local SHA-256 revision are derived from the same normalized,
 frozen document capture:
 
 ```ts
@@ -48,36 +56,31 @@ An editor host may instead use
 `CwlEditorHandle.getDocumentEnvelopeRevisionEvidence()` so the document and its
 revision are captured atomically from the active editor.
 
-The queue validates the public evidence shape and consistency of the declared
-SHA-256 digest and strong tag. It does not recompute the digest. Use an
-Inkspan-created evidence value, or apply an equivalent private validation and
-canonicalization boundary before enqueueing it.
+The autosave boundary validates the public evidence shape, deep immutability,
+active schema, SHA-256 metadata, and resource ceilings. It does not recompute the
+digest. Use an Inkspan-created evidence value, or apply an equivalent trusted
+private canonicalization and hashing boundary before enqueueing it.
 
-## Create the queue
+The evidence revision is local equality evidence. It is not automatically the
+origin server's durable HTTP `ETag`, authorization decision, tenant identifier,
+signature, or proof that a durable transaction committed.
 
-The save callback receives one immutable evidence value. The host must separately
-retain the strong entity tag of the durable revision that it loaded or last
-committed. Use that durable base tag as `If-Match`; the submitted evidence tag
-identifies the proposed new revision and becomes the next base only after the
-write commits.
+## Load the durable base validator
 
-Return `saved` only after the authorized durable transaction has committed.
-Return `conflict` when the server rejects the durable base revision, normally as
-HTTP `412 Precondition Failed` after an atomic `If-Match` comparison.
+The host must load the document and the durable service's server-selected strong
+`ETag` under the same authenticated document context. Missing, weak, malformed,
+or inaccessible validators fail closed before the session is created.
 
 ```ts
-let durableStrongEntityTag = loadedRevision.strongEntityTag;
+const loadedResponse = await loadDocument();
+const loadedStrongEntityTag = loadedResponse.headers.get('ETag');
 
-const autosaveQueue = createDocumentAutosaveQueue({
-  async save(evidence): Promise<DocumentAutosaveSaveResult> {
-    const response = await fetch('/documents/current', {
-      method: 'PUT',
-      credentials: 'include',
-      headers: {
-        'content-type': 'application/json',
-        'if-match': durableStrongEntityTag,
-      },
-      body: JSON.stringify(evidence.envelope),
+const autosaveSession = createDocumentAutosaveSession({
+  initialStrongEntityTag: loadedStrongEntityTag ?? '',
+  async save(request): Promise<DocumentAutosaveDurableSaveResult> {
+    const response = await saveDocument({
+      envelope: request.evidence.envelope,
+      ifMatch: request.ifMatchStrongEntityTag,
     });
 
     if (response.status === 412) {
@@ -87,16 +90,31 @@ const autosaveQueue = createDocumentAutosaveQueue({
       throw new Error('Private transport failure');
     }
 
-    durableStrongEntityTag = evidence.revision.strongEntityTag;
-    return { status: 'saved' };
+    return {
+      status: 'saved',
+      nextStrongEntityTag: response.headers.get('ETag') ?? '',
+    };
   },
 });
 ```
 
+`createDocumentAutosaveSession()` validates the initial value immediately. It
+also validates every replacement before advancing the next callback's
+`If-Match` base. Empty, missing, weak, unquoted, whitespace-containing, list,
+wildcard, control-character, and out-of-range values are rejected through a
+redacted `DocumentAutosaveQueueError`; they never become a later transport
+validator.
+
+The host callback must return `saved` only after the authorized durable
+transaction commits. The returned `nextStrongEntityTag` must be the strong
+validator selected by the durable service for the committed representation.
+Return `conflict` when the service rejects the supplied base, normally as HTTP
+`412 Precondition Failed` after an atomic `If-Match` comparison.
+
 Do not copy private transport exceptions into public UI, logs, or telemetry. The
-queue converts callback failures into a redacted `DocumentAutosaveQueueError`.
-The original exception remains available only to the host's private transport
-observability boundary.
+session converts callback failures into a redacted queue error. The original
+exception remains available only to the host's private transport observability
+boundary.
 
 ## Enqueue editor changes
 
@@ -104,7 +122,7 @@ Change detection and debounce timing remain host-owned. When the host decides a
 revision is ready, enqueue its immutable evidence:
 
 ```ts
-const outcome = await autosaveQueue.enqueue(evidence);
+const outcome = await autosaveSession.enqueue(evidence);
 
 switch (outcome.status) {
   case 'saved':
@@ -123,17 +141,17 @@ switch (outcome.status) {
 }
 ```
 
-Requests for the same active or pending strong entity tag share one callback and
-one promise. A newer different revision may replace only pending work. It never
+Requests for the same active or pending local revision share one callback and one
+promise. A newer different revision may replace only pending work. It never
 cancels or overlaps a callback that has already started. Inkspan retains at most
 one active document and one pending document regardless of edit frequency.
 
-An `unchanged` outcome is emitted only when the requested revision is still
-known to be durably current and no active or pending write can replace it. A
-different active or pending write, a server conflict, an invalid callback result,
-or an ambiguous callback failure invalidates that shortcut. Calling `resume()`
-does not make the earlier durable assumption valid again; a later successful
-save must establish a new known-durable revision.
+An `unchanged` outcome is emitted only when the requested local revision is still
+known to be the session's last successful revision and no active or pending write
+can replace it. A different active or pending write, server conflict, invalid
+callback result, promise-assimilation failure, or ambiguous transport failure
+invalidates that shortcut. Recovery does not restore the shortcut; a later
+successful save must establish it again.
 
 ## Recover from conflict or failure
 
@@ -141,28 +159,28 @@ A conflict or callback failure blocks automatic progression. This is deliberate:
 Inkspan does not guess whether a retry is authorized, safe, or useful.
 
 ```ts
-const snapshot = await autosaveQueue.flush();
+const snapshot = await autosaveSession.flush();
 
 if (snapshot.state === 'blocked') {
   const recovery = await reloadCompareMergeOrForkUnderHostAuthorization();
-  durableStrongEntityTag = recovery.currentDurableStrongEntityTag;
-  autosaveQueue.resume();
+
+  autosaveSession.resume(recovery.currentDurableStrongEntityTag);
 }
 ```
 
-Call `resume()` only after the host has completed its authenticated recovery
-workflow. A conflict usually requires fetching the current durable revision,
-showing or applying an accessible compare/merge/fork decision, updating the
-host-owned durable base tag, and creating new revision evidence. A transport
-failure usually requires host-specific retry budget, backoff, offline, and
+Call `resume(nextStrongEntityTag)` only after the host completes its authenticated
+recovery workflow. A conflict normally requires fetching the current durable
+revision, showing or applying an accessible compare/merge/fork decision, and
+creating new revision evidence. A transport failure normally requires
+host-specific retry budget, backoff, offline, idempotency confirmation, and
 user-notification policy.
 
-Resuming permits retained or newly enqueued work to run, but it deliberately does
-not restore the previous duplicate-save shortcut. The first subsequent
-successful callback establishes the next revision that the queue may safely
-report as `unchanged` while quiescent.
+The replacement durable tag is validated and installed before retained work
+resumes. An invalid tag throws without clearing the blocked state. Calling
+`resume()` while the session is not blocked returns `false` and does not change
+the current durable base.
 
-`flush()` resolves when the queue is idle, blocked, or closed. Concurrent calls
+`flush()` resolves when the session is idle, blocked, or closed. Concurrent calls
 while work is active return the same pending promise, so repeated component,
 worker, or operator checks do not append unbounded internal waiters. It does not
 wait forever for an external conflict decision.
@@ -172,77 +190,104 @@ wait forever for an external conflict decision.
 Use `close()` during page, worker, or host lifecycle shutdown:
 
 ```ts
-const finalSnapshot = await autosaveQueue.close();
+const finalSnapshot = await autosaveSession.close();
 ```
 
 Closing rejects new work, resolves not-yet-started work as `closed`, and allows
-an active host callback to finish. Inkspan never aborts host transport.
+an active host callback to finish. Inkspan never aborts host transport. The final
+session snapshot includes the last accepted durable validator but no document
+body or private callback value.
+
+## Lower-level queue
+
+`createDocumentAutosaveQueue()` remains available for hosts whose durable version
+protocol is not an RFC 9110 entity tag or whose validator state is intentionally
+owned elsewhere. Its callback receives only immutable revision evidence and
+returns `saved` or `conflict`.
+
+A host choosing this primitive must independently prove that it:
+
+- loads the correct durable base under authorization;
+- supplies that exact base to every compare-and-swap transaction;
+- advances the base only from the committed service response;
+- preserves the base across conflict and ambiguous failure;
+- installs the recovered base before calling `resume()`; and
+- rejects malformed or weak validators before transport.
+
+The durable session exists so ordinary hosts do not have to reimplement that
+security-sensitive mutable closure.
 
 ## SSR, worker, and modular host integration
 
 The autosave subpath is safe to import in SSR, Node.js, web workers, service
-workers, and provider-neutral queues because it has no DOM or framework runtime
-requirement. Hosts should instantiate one queue per authorized document editing
-context rather than placing tenant or user identifiers inside Inkspan.
+workers, and provider-neutral queues because it has no DOM or editor-framework
+runtime requirement. Instantiate one session per authorized document editing
+context rather than placing tenant, user, room, or credential identifiers inside
+Inkspan.
 
 For CWL and naruon integrations:
 
 - a compose service or `ui.panel` captures Inkspan revision evidence and owns
   accessible dirty, saving, blocked, retry, and conflict UI;
-- a host service supplies authenticated transport and the durable base revision;
+- a host service supplies authenticated transport and the initially loaded and
+  subsequently returned durable strong entity tags;
 - the persistence service performs tenant-scoped atomic `If-Match` comparison
-  and writes the envelope in one transaction;
+  and envelope commit in one transaction;
+- contextual-orchestrator may coordinate host policy but does not become part of
+  the Inkspan runtime dependency graph;
 - Inkspan never receives provider credentials, room identifiers, database
-  connections, retention policy, or model-use policy;
-- queue snapshots may drive local presentation but are not a durable audit log.
+  connections, retention policy, or model-use policy; and
+- session snapshots may drive local presentation but are not a durable audit log.
 
 ## Snapshot and observability rules
 
-`getSnapshot()` returns frozen lifecycle metadata containing active, pending, and
-last-saved strong entity tags. It never contains document bodies, callback
-results, credentials, tenant identifiers, or original exceptions.
+`getSnapshot()` returns frozen lifecycle metadata containing active, pending,
+last-saved local revision tags, and the current durable server tag. It never
+contains document bodies, callback results, credentials, tenant identifiers, or
+original exceptions.
 
-`lastSavedStrongEntityTag` records the most recent revision for which the host
-reported `saved`; after conflict or callback uncertainty it is historical
-metadata, not proof that the same revision remains current and not permission to
-skip a future host write.
+`lastSavedStrongEntityTag` is the local evidence revision most recently reported
+as saved. `durableStrongEntityTag` is the current server-selected base for the
+next compare-and-swap. They may differ and must not be substituted for each
+other.
 
-Strong entity tags can correlate identical canonical documents. Treat them as
-tenant-confidential metadata:
+Both values can correlate representations. Treat them as tenant-confidential
+metadata:
 
 - do not use document bodies or revision tags as metric-label values;
 - do not place them in public URLs, unauthenticated logs, analytics events, or
   exception messages;
-- use host-generated descriptive trace identifiers for correlation;
+- use host-generated descriptive trace identifiers for correlation; and
 - apply the same authorization, retention, residency, encryption, and audit
   controls used for the durable document.
 
 ## Ownership matrix
 
-| Concern | Inkspan | Host application |
+| Concern | Inkspan session | Host application or service |
 | --- | --- | --- |
-| Immutable evidence shape validation | Owns | Uses Inkspan evidence APIs |
-| Single-flight local ordering | Owns | Enqueues approved revisions |
-| Active/pending/flush-waiter bounds | Owns | Bounds external callers and transport |
-| Pending revision coalescing | Owns | Chooses change/debounce timing |
-| Durable base revision tracking | Does not own | Owns |
+| Immutable evidence validation | Owns | Uses Inkspan evidence APIs |
+| Single-flight ordering and bounded pending work | Owns | Chooses change/debounce timing |
+| Strong entity-tag syntax validation | Owns | Supplies server-selected values |
+| Durable validator handoff between callbacks | Owns | Returns committed replacement value |
 | Transport and credentials | Does not own | Owns |
 | Authentication and authorization | Does not own | Owns |
 | Tenant isolation | Does not own | Owns |
-| Durable atomic `If-Match` | Does not own | Owns |
-| Storage and migration | Does not own | Owns |
-| Retention and audit storage | Does not own | Owns |
-| Retry and offline policy | Does not own | Owns |
-| Conflict comparison and UX | Does not own | Owns |
+| Atomic durable `If-Match` comparison and commit | Does not own | Owns |
+| Storage, migration, backup, and rollback | Does not own | Owns |
+| Retention, residency, redaction, and audit storage | Does not own | Owns |
+| Retry, offline, idempotency, and conflict UX | Does not own | Owns |
+| Model provider and model-use policy | Does not own | Owns |
 
 ## Standards boundary
 
-The queue provides a linearizable local coordination surface for callback
-invocations. It does not create a distributed transaction. Durable lost-update
-prevention requires the host to compare the previously loaded or committed base
-validator and write the proposed new document atomically in the same authorized
-storage transaction, consistent with RFC 9110 `If-Match` semantics.
+The session provides a linearizable local coordination and validator-handoff
+surface for callback invocations. It does not create a distributed transaction.
+Durable lost-update prevention requires the host to compare the supplied
+previously loaded or committed server validator and write the proposed document
+atomically in the same authorized storage transaction, consistent with RFC 9110
+`If-Match` semantics.
 
-See `docs/doctoring/document-autosave-queue.md` for the architectural decision,
-security analysis, verification plan, and APA 7th references to RFC 9110, RFC
+See `docs/doctoring/document-autosave-queue.md` and
+`docs/doctoring/durable-autosave-session.md` for the architectural decisions,
+security analyses, verification plans, and APA 7th references to RFC 9110, RFC
 8785, Herlihy and Wing (1990), and ISO/IEC 25010:2023.
