@@ -55,6 +55,25 @@ describe('acquisition-ready modular architecture documentation', () => {
     expect(integration).toContain('must not create or destroy the host provider');
   });
 
+  it('keeps the autosave example exact and rejects out-of-order capture completion', () => {
+    const integration = repositoryFile('docs/naruon-compose-ui-panel.md');
+
+    expect(integration).toContain('initialStrongEntityTag,');
+    expect(integration).toContain("'If-Match': request.ifMatchStrongEntityTag");
+    expect(integration).toContain('isStrongHttpEntityTag(nextStrongEntityTag)');
+    expect(integration).toContain('nextStrongEntityTag,');
+    expect(integration).not.toContain('loadedStrongEntityTag:');
+    expect(integration).not.toContain('request.ifMatch,');
+    expect(integration).not.toContain('strongEntityTag: nextStrongEntityTag');
+    expect(integration).toContain('const editGeneration = useRef(0);');
+    expect(integration).toContain('const capturedGeneration = ++editGeneration.current;');
+    expect(integration).toContain(
+      'capturedGeneration !== editGeneration.current',
+    );
+    expect(integration).toContain('void captureAndQueueLatestDocument();');
+    expect(integration).toContain('void session.close();');
+  });
+
   it('records authoritative standards and the unreleased product change', () => {
     const doctoring = repositoryFile(
       'docs/doctoring/naruon-modular-architecture.md',
