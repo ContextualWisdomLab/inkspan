@@ -128,17 +128,35 @@ are discarded.
 
 Active, embedded, executable, form, metadata, resource-fetching, template, SVG,
 MathML, canvas, media, source, picture, and HTML image elements are removed with
-all descendants. Elements carrying `hidden`, case-insensitive
-`aria-hidden="true"`, `display:none`, `visibility:hidden`, or Office
-`mso-hide:all` are removed with descendants. Comments, including Office
-conditional comments, are omitted.
+all descendants. Native-widget and obsolete fallback subtrees (`progress`,
+`meter`, `noframes`, and `noembed`) are also removed because unwrapping them
+would promote fallback descendants into ordinary editor prose without preserving
+the source widget semantics. Hidden `datalist` suggestion and down-level
+fallback subtrees are removed because Inkspan does not preserve the linked form
+control or its `list` relationship.
+
+Elements carrying `hidden`, case-insensitive `aria-hidden="true"`,
+`display:none`, `visibility:hidden`, or Office `mso-hide:all` are removed with
+descendants. Comments, including Office conditional comments, are omitted. A
+closed `dialog` contributes no subtree. A closed `details` contributes only the
+sanitized contents of its first `summary` element child, when present; open
+variants are unwrapped and sanitized normally.
 
 Office hidden-content detection reads the bounded raw `style` attribute, removes
-CSS comments, splits declarations, and requires an exact case-insensitive
-`mso-hide` property with exact value `all`, optionally followed by terminal
-`!important`. This avoids relying on engine-specific CSSOM support while
-rejecting misleading values such as `alligator` and property names such as
-`not-mso-hide`. No source style attribute survives reconstruction.
+closed CSS comments and a final comment that runs through end of input, decodes
+bounded CSS escapes in the property name and keyword value, splits declarations,
+and requires an exact case-insensitive `mso-hide` property with exact value
+`all`, optionally followed by terminal `!important`. This avoids relying on
+engine-specific CSSOM support while rejecting malformed escapes, misleading
+values such as `alligator`, and property names such as `not-mso-hide`. No source
+style attribute survives reconstruction.
+
+The detailed standards, test-first evidence, residual-risk, and rollback
+boundaries are recorded in
+`docs/doctoring/closed-interactive-content.md`,
+`docs/doctoring/native-widget-fallback-content.md`,
+`docs/doctoring/datalist-hidden-suggestion-content.md`, and
+`docs/doctoring/css-escaped-office-hidden-content.md`.
 
 All HTML images are removed even when their source appears to be a data URI.
 Binary clipboard image items use the pre-existing Base64Image pipeline instead.
@@ -160,9 +178,10 @@ non-integers, and reflection failures are rejected without leaking private
 errors.
 
 Traversal is iterative and preserves source order by pushing children in
-reverse. Source nodes and attributes are never reused. The parser must allocate
-at most the bounded input representation; traversal and output work are linear
-in the accepted node and text volume.
+reverse. Source nodes and attributes are never reused. Input bytes, traversed
+nodes, and source depth are bounded. Parser and output DOM memory remain
+implementation-dependent; traversal and output work are linear in the accepted
+node and text volume.
 
 ## Modular ownership
 
