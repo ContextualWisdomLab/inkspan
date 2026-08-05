@@ -137,14 +137,49 @@ describe('durable autosave session', () => {
       } as never),
     ).toThrowError(expect.objectContaining({ code: 'invalid_options' }));
     expect(() =>
-      createDocumentAutosaveSession(
-        new Proxy({ initialStrongEntityTag: '"valid"', save }, {
-          get() {
-            throw new Error('private option getter');
-          },
-        }),
-      ),
+      createDocumentAutosaveSession({
+        initialStrongEntityTag: '"valid"',
+        save,
+        unexpectedOption: true,
+      } as never),
     ).toThrowError(expect.objectContaining({ code: 'invalid_options' }));
+
+    let optionGetterCalls = 0;
+    const accessorOptions = Object.defineProperties({}, {
+      initialStrongEntityTag: {
+        enumerable: true,
+        get() {
+          optionGetterCalls += 1;
+          return '"valid"';
+        },
+      },
+      save: {
+        enumerable: true,
+        get() {
+          optionGetterCalls += 1;
+          return save;
+        },
+      },
+    });
+    expect(() =>
+      createDocumentAutosaveSession(accessorOptions as never),
+    ).toThrowError(expect.objectContaining({ code: 'invalid_options' }));
+    expect(optionGetterCalls).toBe(0);
+
+    const proxiedOptions = new Proxy(
+      { initialStrongEntityTag: '"valid"', save },
+      {
+        get() {
+          optionGetterCalls += 1;
+          throw new Error('private option getter');
+        },
+      },
+    );
+    expect(createDocumentAutosaveSession(proxiedOptions).getSnapshot()).toMatchObject({
+      state: 'idle',
+      durableStrongEntityTag: '"valid"',
+    });
+    expect(optionGetterCalls).toBe(0);
   });
 
   it('rejects malformed revision evidence before host save begins', () => {
