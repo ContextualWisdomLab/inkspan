@@ -103,6 +103,32 @@ describe('safe rich clipboard documentation contract', () => {
     );
   });
 
+  it('records native-widget and obsolete fallback content as non-visible by default', () => {
+    const operatorGuide = normalizedRepositoryDocument(
+      'docs/clipboard-security.md',
+    );
+    const doctoring = normalizedRepositoryDocument(
+      'docs/doctoring/native-widget-fallback-content.md',
+    );
+    const changelog = normalizedRepositoryDocument('CHANGELOG.md');
+
+    for (const element of ['progress', 'meter', 'noframes', 'noembed']) {
+      expect(operatorGuide).toContain(`\`${element}\``);
+      expect(doctoring).toContain(`\`${element}\``);
+    }
+    expect(operatorGuide).toContain(
+      'promote fallback text to ordinary visible editor prose',
+    );
+    expect(doctoring).toContain('HTML Living Standard: The progress element');
+    expect(doctoring).toContain('HTML Living Standard: The meter element');
+    expect(doctoring).toContain(
+      'cross-engine differential corpus remains a release-acceptance gate',
+    );
+    expect(changelog).toContain(
+      'Native `progress` and `meter` widget subtrees and obsolete `noframes` and `noembed` fallback subtrees are removed',
+    );
+  });
+
   it('retains the current standards edition and explicit work-in-progress boundary', () => {
     const doctoring = normalizedRepositoryDocument(
       'docs/doctoring/safe-rich-clipboard.md',
