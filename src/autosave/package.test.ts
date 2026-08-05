@@ -238,18 +238,45 @@ describe('durable autosave session', () => {
     });
   });
 
-  it('converts hostile result access and host failures into redacted queue errors', async () => {
-    const hostileResult = new Proxy({ status: 'saved' }, {
+  it('fails closed when durable result reflection is unavailable', async () => {
+    const inaccessibleResult = new Proxy(
+      { status: 'saved', nextStrongEntityTag: '"durable-two"' },
+      {
+        get(target, property, receiver) {
+          if (property === 'then') return undefined;
+          return Reflect.get(target, property, receiver);
+        },
+        ownKeys() {
+          throw new Error('private result keys');
+        },
+      },
+    );
+    const session = createDocumentAutosaveSession({
+      initialStrongEntityTag: '"durable-one"',
+      save: () => inaccessibleResult,
+    });
+
+    await expect(session.enqueue(createEvidence())).rejects.toMatchObject({
+      code: 'invalid_save_result',
+      message: 'The host save operation returned an invalid result.',
+    });
+  });
+
+  it('converts callback assimilation and execution failures into redacted errors', async () => {
+    const hostileThenable = new Proxy({ status: 'saved' }, {
       get() {
-        throw new Error('private result getter');
+        throw new Error('private then getter');
       },
     });
-    const invalidSession = createDocumentAutosaveSession({
+    const assimilationFailureSession = createDocumentAutosaveSession({
       initialStrongEntityTag: '"durable-one"',
-      save: () => hostileResult as never,
+      save: () => hostileThenable as never,
     });
-    await expect(invalidSession.enqueue(createEvidence())).rejects.toMatchObject({
-      code: 'invalid_save_result',
+    await expect(
+      assimilationFailureSession.enqueue(createEvidence()),
+    ).rejects.toMatchObject({
+      code: 'host_save_failed',
+      message: 'The host save operation failed.',
     });
 
     const failedSession = createDocumentAutosaveSession({
