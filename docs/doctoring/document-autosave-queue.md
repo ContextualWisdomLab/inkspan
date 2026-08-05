@@ -96,11 +96,42 @@ aborts host transport.
     that revision.
 11. Conflict, invalid callback results, and callback failures invalidate the
     durable shortcut across `resume()` until another save succeeds.
+12. Public autosave evidence cannot reach the host callback unless its complete
+    document JSON graph is descriptor-safe, JSON-compatible, deeply frozen, and
+    within the active envelope resource ceilings.
 
 These invariants provide a linearizable local coordination surface without
 claiming distributed transaction semantics. Durable lost-update prevention
 still depends on the host enforcing the evidence strong entity tag atomically in
 the same authorized write transaction.
+
+## Review finding: partially frozen look-alike evidence
+
+The first queue implementation verified that the evidence object, envelope,
+revision object, and `documentJson` root were frozen. That was insufficient for
+a public structural TypeScript boundary: a caller could construct a frozen root
+whose nested paragraph, text node, attribute object, or array remained mutable.
+The queue would retain that look-alike value under a previously selected strong
+entity tag, and the nested content could change before or during the host save.
+This was a real process-local time-of-check/time-of-use integrity gap even though
+evidence created by Inkspan itself is deeply frozen.
+
+The corrected public `/autosave` boundary performs one iterative inspection
+before scheduling. It reads only own data-property descriptors and never invokes
+getters. It rejects mutable nested containers, accessor or non-enumerable fields,
+symbol properties, non-finite numbers, unsupported prototypes, aliases, cycles,
+sparse arrays, hostile reflection failures, nesting deeper than 128 levels, and
+more than 1,000,000 JSON values. Those ceilings match the active document-envelope
+defaults. The public wrapper then delegates to the existing exact schema and
+SHA-256 metadata validation before any host callback begins.
+
+The inspection deliberately does not recompute SHA-256. Recomputing would make
+the synchronous queue boundary asynchronous and duplicate the canonicalization
+work already performed by Inkspan evidence creation. Callers must still use
+Inkspan-created evidence or an equivalent trusted private canonicalization and
+hashing boundary. Deep immutability proves that the submitted graph cannot be
+mutated after validation; it does not prove that a caller-supplied digest was
+honestly derived from that graph.
 
 ## Security and privacy considerations
 
@@ -110,12 +141,12 @@ canonical documents and therefore remain tenant-confidential metadata. Hosts
 must not place revision tags, document bodies, callback exceptions, credentials,
 or conflict payloads in public URLs, metrics labels, or unauthenticated logs.
 
-The queue validates the public evidence and host callback-result shapes
-fail-closed without evaluating ordinary accessor properties. It does not
-recompute the document digest because evidence creation already performs
-canonicalization and hashing. Callers must enqueue evidence returned by Inkspan
-or evidence validated under an equivalent private boundary; a structurally
-similar object is not cryptographic proof of document integrity.
+The queue validates public evidence and host callback-result shapes fail-closed
+without evaluating ordinary accessor properties. Nested document inspection is
+iterative rather than recursive so hostile depth cannot consume the JavaScript
+call stack. Reflection exceptions become the same bounded redacted invalid-
+evidence error and never copy candidate values or private exception text into a
+public diagnostic.
 
 No database object is introduced. Any host persistence object must use at least
 two descriptive words and `snake_case` by default, or valid CamelCase/PascalCase
@@ -131,6 +162,15 @@ quiescent unchanged revisions, competing-write requeue, blocked requeue,
 durable-shortcut invalidation across resume, shared flush promises, close during
 idle/saving/blocked states, frozen public values, invalid evidence, and bounded
 active/pending retention.
+
+Adversarial evidence tests use realistic frozen document graphs and prove that
+mutable nested nodes, frozen getters, throwing proxies, aliases, cycles, sparse
+or accessor arrays, symbol keys, non-enumerable properties, unsupported
+prototypes, non-JSON values, excessive depth, and excessive value counts are
+rejected before the host save callback. Valid deeply frozen graphs cover every
+JSON primitive and null-prototype data objects. The packed ESM consumer repeats
+the partially frozen nested-node regression against the exact publishable
+artifact.
 
 A packed-artifact consumer executes ESM and CommonJS imports and compiles a
 strict TypeScript consumer from an operating-system temporary package tree. The
