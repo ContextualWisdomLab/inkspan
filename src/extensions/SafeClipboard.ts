@@ -317,7 +317,7 @@ function decodeCssEscapes(source: string): string | null {
 function hasOfficeHiddenDeclaration(element: Element): boolean {
   const rawStyle = element.getAttribute('style');
   if (rawStyle === null) return false;
-  const withoutComments = rawStyle.replace(/\/\*[\s\S]*?\*\//gu, '');
+  const withoutComments = rawStyle.replace(/\/\*[\s\S]*?(?:\*\/|$)/gu, '');
   return withoutComments.split(';').some((declaration) => {
     const separator = declaration.indexOf(':');
     if (separator < 0) return false;
