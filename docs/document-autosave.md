@@ -116,6 +116,14 @@ session converts callback failures into a redacted queue error. The original
 exception remains available only to the host's private transport observability
 boundary.
 
+Every host save callback must apply a host-owned timeout or abort signal around
+its transport and durable transaction. Inkspan intentionally cannot cancel
+host-owned I/O. A callback that never settles retains the one active
+single-flight request, prevents pending work from starting, and keeps `flush()`
+and `close()` unresolved. Timeout handling, retry budgets, backoff, offline
+policy, idempotency confirmation, and user notification remain host-owned; a
+failed attempt must reject or throw without falsely returning `saved`.
+
 ## Enqueue editor changes
 
 Change detection and debounce timing remain host-owned. When the host decides a
@@ -176,7 +184,8 @@ host-specific retry budget, backoff, offline, idempotency confirmation, and
 user-notification policy.
 
 The replacement durable tag is validated and installed before retained work
-resumes. An invalid tag throws without clearing the blocked state. Calling
+resumes. An invalid tag throws the machine-readable
+`invalid_recovery_validator` error without clearing the blocked state. Calling
 `resume()` while the session is not blocked returns `false` and does not change
 the current durable base.
 
@@ -184,6 +193,14 @@ the current durable base.
 while work is active return the same pending promise, so repeated component,
 worker, or operator checks do not append unbounded internal waiters. It does not
 wait forever for an external conflict decision.
+
+A recovery or shutdown decision can race with the asynchronous wrapper that
+turns an internal queue snapshot into a public session snapshot. When recovery
+or closing starts before that wrapper continuation runs, `flush()` follows the
+new work until the session is currently idle, blocked, or closed. The returned
+lifecycle fields and `durableStrongEntityTag` therefore describe one coherent
+logical moment rather than combining a stale blocked snapshot with a newer
+validator.
 
 ## Shutdown
 
