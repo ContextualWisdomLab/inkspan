@@ -27,7 +27,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 ### Tests
 - Added deterministic sequential and concurrently queued validator handoff, conflict recovery, lifecycle-independent recovery validation, malformed option, missing and symbol-keyed option, malformed callback result, hostile reflection, promise assimilation, transport failure, frozen request, shutdown, and snapshot tests under repository-wide 100% production statement and branch coverage gates
 - Added explicit regression cases for control characters, out-of-range Unicode, list-form values, wildcards, no-op recovery, and recovered-validator installation before retained work starts
-- Added deterministic recovery-before-wrapper and close-before-wrapper concurrency tests that prevent temporally mixed public flush snapshots
+- Added a test-first recovery-before-wrapper microtask regression that prevents temporally mixed public flush snapshots
 - Extended isolated packed-artifact ESM, CommonJS, and strict TypeScript consumers to prove the durable session and strong-tag validator work without React, React DOM, TipTap, ProseMirror, or Yjs installed
 
 ### Documentation
@@ -35,7 +35,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Corrected the autosave onboarding so initial and replacement validators are checked before use and come from the durable host's server-issued strong `ETag` rather than local revision evidence; missing, weak, or malformed validators now fail closed in the example
 - Documented that host-owned save callbacks must apply their own timeout or abort signal because an unresolved callback intentionally retains the active single-flight operation; retry policy remains host-owned
 - Added a deterministic repository contract test and APA 7th-style doctoring for README, npm-search, Node.js package-export discoverability, RFC 9110 validator ownership, and quoted opaque-tag syntax
-- Added operator and doctoring evidence for the durable autosave session, host ownership boundaries, exact-head verification, and acquisition-review scope
+- Added operator and doctoring evidence for the durable autosave session, coherent recovery-time flush snapshots, host ownership boundaries, exact-head verification, and acquisition-review scope
 
 ## [0.5.28] — 2026-08-05
 
