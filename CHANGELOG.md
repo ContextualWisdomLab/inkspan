@@ -6,6 +6,10 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Documentation
+- Added buyer-visible autosave onboarding, explicit `autosave` and `revision-evidence` distribution surfaces, and npm persistence discovery metadata without changing runtime behavior or package version
+- Added a deterministic repository contract test and APA 7th-style doctoring for README, npm-search, and Node.js package-export discoverability
+
 
 ## [0.5.28] — 2026-08-05
 
