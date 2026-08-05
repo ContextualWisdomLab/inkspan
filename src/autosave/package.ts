@@ -2,7 +2,7 @@ import {
   DocumentAutosaveQueueError as InternalDocumentAutosaveQueueError,
   createDocumentAutosaveQueue as createInternalDocumentAutosaveQueue,
 } from './index.js';
-import { hasDeeplyFrozenEvidenceDocumentJson } from './evidenceValidation.js';
+import { createDetachedAutosaveRevisionEvidence } from './evidenceValidation.js';
 
 /** Opaque frozen envelope shape required by the framework-free autosave API. */
 export interface DocumentAutosaveEnvelope {
@@ -179,6 +179,10 @@ export interface DocumentAutosaveQueue {
   /**
    * Queue one immutable revision for the host-owned save operation.
    *
+   * The public boundary snapshots descriptor values into a detached deeply
+   * frozen envelope before scheduling, so transparent proxy getters cannot
+   * change what the host callback receives after validation.
+   *
    * @param evidence - Frozen evidence returned by Inkspan revision APIs.
    * @returns A promise for the deterministic local request outcome.
    */
@@ -219,7 +223,9 @@ export interface DocumentAutosaveQueue {
  *
  * This explicit package-boundary adapter keeps the runtime implementation and
  * public declarations behaviorally identical while preventing editor-framework
- * types from leaking into standalone autosave consumers.
+ * types from leaking into standalone autosave consumers. Every accepted request
+ * is normalized into a detached frozen snapshot before the internal queue can
+ * retain it or invoke host transport.
  *
  * @param options - Exact object containing the host-owned save callback.
  * @returns A frozen provider-neutral autosave queue.
@@ -232,13 +238,14 @@ export function createDocumentAutosaveQueue(
   ) as unknown as DocumentAutosaveQueue;
   return Object.freeze({
     enqueue(evidence: DocumentAutosaveRevisionEvidence) {
-      if (!hasDeeplyFrozenEvidenceDocumentJson(evidence)) {
+      const detachedEvidence = createDetachedAutosaveRevisionEvidence(evidence);
+      if (detachedEvidence === null) {
         throw new InternalDocumentAutosaveQueueError(
           'invalid_revision_evidence',
           'Document revision evidence is invalid.',
         );
       }
-      return internalQueue.enqueue(evidence);
+      return internalQueue.enqueue(detachedEvidence);
     },
     resume: internalQueue.resume,
     flush: internalQueue.flush,
