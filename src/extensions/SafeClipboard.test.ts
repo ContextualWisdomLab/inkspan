@@ -58,12 +58,18 @@ describe('sanitizeRichClipboardHtml', () => {
     `;
 
     const sanitized = sanitizeRichClipboardHtml(source, {}, document);
+    const container = document.createElement('div');
+    container.innerHTML = sanitized;
 
     expect(sanitized).toContain('visible');
     expect(sanitized).not.toMatch(
       /script secret|frame secret|object secret|private|submit secret|template secret|svg secret|math secret|video secret|tracking secret|hidden attribute secret|aria secret|display secret|visibility secret|office hidden secret/i,
     );
-    expect(sanitized).not.toMatch(/script|iframe|object|form|input|button|template|svg|math|video|img/i);
+    expect(
+      container.querySelectorAll(
+        'script, iframe, object, form, input, button, template, svg, math, video, img',
+      ),
+    ).toHaveLength(0);
   });
 
   it('keeps only safe links and exact fixed link attributes', () => {
@@ -223,7 +229,9 @@ describe('sanitizeRichClipboardHtml', () => {
   });
 
   it('fails closed when no DOM-capable document exists', () => {
-    expect(() => sanitizeRichClipboardHtml('<p>x</p>', {}, null as never)).toThrowError(
+    expect(() =>
+      sanitizeRichClipboardHtml('<p>x</p>', {}, null as never),
+    ).toThrowError(
       expect.objectContaining({
         code: 'dom_unavailable',
         message: 'Rich clipboard sanitization requires a DOM-capable document.',
@@ -249,7 +257,9 @@ describe('SafeClipboard extension', () => {
     expect(transform?.('<b>x</b>')).toBe('<strong>x</strong>');
     expect(transform?.('<p>this is too large</p>')).toBe('');
     expect(onError).toHaveBeenCalledTimes(1);
-    expect(onError.mock.calls[0]?.[0]).toBeInstanceOf(ClipboardSanitizationError);
+    expect(onError.mock.calls[0]?.[0]).toBeInstanceOf(
+      ClipboardSanitizationError,
+    );
     expect(String(onError.mock.calls[0]?.[0])).not.toContain('this is too large');
   });
 
