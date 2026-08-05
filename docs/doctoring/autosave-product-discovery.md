@@ -12,9 +12,11 @@ The buyer-visible contract is intentionally small:
 - the distribution table lists `revision-evidence` and `autosave` beside the
   existing editor, collaboration, converter, style, font, and Office surfaces;
 - one copyable autosave example demonstrates the public import, immutable
-  revision evidence, explicit initial durable revision, and host save callback;
+  revision evidence, an explicitly server-issued initial durable validator, and
+  the host save callback;
 - after a successful durable write, the example adopts the host response's
-  strong entity tag and fails closed when that validator is absent or weak;
+  strong entity tag and fails closed when that validator is absent, weak, or
+  malformed;
 - the example states the host-owned authorization, tenant isolation, persistence,
   credentials, migration, retention, audit, retry, and conflict-policy boundary;
 - npm keywords describe autosave, document persistence, and optimistic
@@ -51,11 +53,16 @@ sent after a successful state-changing request identifies the selected
 representation resulting from that request. Inkspan's deterministic revision
 evidence is local equality evidence and may use a different derivation or
 representation boundary. The example therefore does not assume that
-`evidence.revision.strongEntityTag` is the durable HTTP entity tag. It adopts the
-strong `ETag` returned by the host and fails closed if the response omits it or
-returns a weak validator. The host remains responsible for validating entity-tag
-syntax, exposing response headers through CORS where applicable, and performing
-the authenticated comparison atomically inside the durable write transaction.
+`evidence.revision.strongEntityTag` is the durable HTTP entity tag. Its initial
+`loadedStrongEntityTag` must come from the durable service, and each accepted
+write adopts the strong `ETag` returned by that service.
+
+The copyable example validates RFC 9110 quoted opaque-tag syntax, explicitly
+rejects the `W/` weak prefix, and fails closed for missing or malformed values.
+The host remains responsible for issuing a validator that represents the durable
+selected representation, exposing the `ETag` response header through CORS where
+applicable, and performing authenticated comparison atomically inside the durable
+write transaction.
 
 ## Verification
 
@@ -64,8 +71,11 @@ the authenticated comparison atomically inside the durable write transaction.
 - both persistence-oriented export keys exist and are named in the README;
 - the README contains the copyable autosave import and explicit durable-host
   boundary;
-- successful writes adopt a server-issued strong `ETag`, reject missing or weak
-  validators, and never substitute local revision evidence;
+- the initial base validator is server-issued rather than derived from local
+  Inkspan revision evidence;
+- successful writes adopt a server-issued strong `ETag`, reject missing, weak, or
+  malformed validators using quoted opaque-tag syntax, and never substitute
+  local revision evidence;
 - npm metadata contains all three persistence discovery keywords; and
 - the unreleased changelog and this doctoring record remain present.
 
