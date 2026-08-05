@@ -118,6 +118,11 @@ describe('durable autosave session', () => {
   it('rejects malformed initial options without exposing source values', () => {
     const save = () => ({ status: 'conflict' as const });
 
+    for (const malformedOptions of [null, 1]) {
+      expect(() =>
+        createDocumentAutosaveSession(malformedOptions as never),
+      ).toThrowError(expect.objectContaining({ code: 'invalid_options' }));
+    }
     for (const initialStrongEntityTag of ['W/"weak"', 'unquoted', '"space tag"']) {
       expect(() =>
         createDocumentAutosaveSession({ initialStrongEntityTag, save }),
