@@ -8,8 +8,8 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ### Documentation
 - Added buyer-visible autosave onboarding, explicit `autosave` and `revision-evidence` distribution surfaces, and npm persistence discovery metadata without changing runtime behavior or package version
-- Corrected the autosave onboarding to adopt the durable host's server-issued strong `ETag` after a successful write instead of substituting local revision evidence; missing or weak validators now fail closed in the example
-- Added a deterministic repository contract test and APA 7th-style doctoring for README, npm-search, Node.js package-export discoverability, and RFC 9110 validator ownership
+- Corrected the autosave onboarding so the initial base validator and every successful replacement come from the durable host's server-issued strong `ETag` rather than local revision evidence; missing, weak, or malformed validators now fail closed in the example
+- Added a deterministic repository contract test and APA 7th-style doctoring for README, npm-search, Node.js package-export discoverability, RFC 9110 validator ownership, and quoted opaque-tag syntax
 
 
 ## [0.5.28] — 2026-08-05
