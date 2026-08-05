@@ -2,6 +2,7 @@ import { cleanup, render, waitFor } from '@testing-library/react';
 import type { Editor } from '@tiptap/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
+import type { ClipboardConfig } from '../extensions/SafeClipboard.js';
 import { CollaborativeCwlEditor } from './CollaborativeCwlEditor.js';
 
 afterEach(cleanup);
@@ -61,6 +62,46 @@ describe('CollaborativeCwlEditor safe rich clipboard integration', () => {
     });
     expect(String(latestCallback.mock.calls[0]?.[0])).not.toContain(
       'collaboration private',
+    );
+  });
+
+  it('defers hostile clipboard configuration validation until paste', async () => {
+    const collaborationDocument = new Y.Doc();
+    const accessor = vi.fn(() => {
+      throw new Error('private collaboration configuration');
+    });
+    const clipboard = Object.defineProperty({}, 'maxNodes', {
+      configurable: true,
+      enumerable: true,
+      get: accessor,
+    }) as ClipboardConfig;
+    const onClipboardError = vi.fn();
+    let editor: Editor | undefined;
+
+    render(
+      <CollaborativeCwlEditor
+        document={collaborationDocument}
+        clipboard={clipboard}
+        onClipboardError={onClipboardError}
+        onReady={(instance) => {
+          editor = instance;
+        }}
+      />,
+    );
+    await waitFor(() => expect(editor).toBeTruthy());
+
+    expect(accessor).not.toHaveBeenCalled();
+    expect(transformRichClipboard(editor!, '<p>collaboration private</p>')).toBe(
+      '',
+    );
+    expect(accessor).not.toHaveBeenCalled();
+    expect(onClipboardError).toHaveBeenCalledTimes(1);
+    expect(onClipboardError.mock.calls[0]?.[0]).toMatchObject({
+      code: 'invalid_configuration',
+      message: 'Rich clipboard configuration is invalid.',
+    });
+    expect(String(onClipboardError.mock.calls[0]?.[0])).not.toContain(
+      'private collaboration configuration',
     );
   });
 });
