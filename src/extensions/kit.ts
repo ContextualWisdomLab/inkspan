@@ -10,6 +10,14 @@ import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
 import type { Extensions } from '@tiptap/react';
 import { Base64Image } from './Base64Image.js';
+import {
+  DEFAULT_CLIPBOARD_HTML_BYTES,
+  DEFAULT_CLIPBOARD_MAX_DEPTH,
+  DEFAULT_CLIPBOARD_MAX_NODES,
+  SafeClipboard,
+  type ClipboardConfig,
+  type ClipboardSanitizationError,
+} from './SafeClipboard.js';
 import { SafeLink, isSafeLinkHref } from './SafeLink.js';
 import type { ImageConfig } from '../types.js';
 
@@ -17,10 +25,14 @@ import type { ImageConfig } from '../types.js';
 export interface BuildExtensionsOptions {
   placeholder?: string;
   image?: ImageConfig;
+  /** Bounded rich-HTML paste policy shared by all editor surfaces. */
+  clipboard?: ClipboardConfig;
   /**
    * Forwarded to {@link Base64Image} so paste/drop failures reach the host.
    */
   onImageError?: (error: Error) => void;
+  /** Redacted rich-clipboard rejection observer. */
+  onClipboardError?: (error: ClipboardSanitizationError) => void;
   /** Disable StarterKit history when a CRDT owns undo/redo semantics. */
   disableHistory?: boolean;
   /** Additional host or product extensions appended after the shared kit. */
@@ -32,6 +44,7 @@ export function buildExtensions(
   options: BuildExtensionsOptions = {},
 ): Extensions {
   const image = options.image ?? {};
+  const clipboard = options.clipboard ?? {};
   const historyConfiguration = options.disableHistory
     ? { history: false as const }
     : {};
@@ -50,6 +63,13 @@ export function buildExtensions(
       linkOnPaste: true,
       isAllowedUri: (href) => isSafeLinkHref(href),
       HTMLAttributes: { rel: 'noopener noreferrer nofollow' },
+    }),
+    SafeClipboard.configure({
+      maxHtmlBytes:
+        clipboard.maxHtmlBytes ?? DEFAULT_CLIPBOARD_HTML_BYTES,
+      maxNodes: clipboard.maxNodes ?? DEFAULT_CLIPBOARD_MAX_NODES,
+      maxDepth: clipboard.maxDepth ?? DEFAULT_CLIPBOARD_MAX_DEPTH,
+      onError: options.onClipboardError,
     }),
     Placeholder.configure({
       placeholder: options.placeholder ?? 'Start writing…',
