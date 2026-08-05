@@ -59,6 +59,8 @@ describe('safe rich clipboard documentation contract', () => {
 
     expect(operatorGuide).toContain('raw `style` declaration');
     expect(operatorGuide).toContain('CSS comments');
+    expect(operatorGuide).toContain('CSS escape sequences');
+    expect(doctoring).toContain('CSS Syntax Level 3');
     expect(doctoring).toContain(
       'No Chromium, Firefox, or WebKit conformance claim is made by this slice.',
     );
@@ -105,6 +107,7 @@ describe('safe rich clipboard documentation contract', () => {
     const changelog = normalizedRepositoryDocument('CHANGELOG.md');
 
     expect(changelog).toContain('Raw `mso-hide` declarations');
+    expect(changelog).toContain('CSS-escaped property and keyword forms');
     expect(changelog).toContain('final ordinary TipTap paste transform');
     expect(changelog).toContain('accessor-safe paste-time configuration');
     expect(changelog).toContain('cross-engine browser evidence');
