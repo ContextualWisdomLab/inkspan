@@ -36,18 +36,18 @@ Add one authoritative root `ARCHITECTURE.md` and one beginner-readable naruon
 The architecture explicitly states:
 
 > Inkspan owns editor and deterministic conversion surfaces.
-
 > Hosts own transport, authorization, tenant isolation, persistence,
 > credentials, migration, retention, and model-use policy.
 
 The documentation uses reviewable Mermaid diagrams for the modular component
 map and RFC 9110 optimistic-concurrency sequence. It defines local versus
 shareable evidence, host-owned Yjs provider lifecycle, narrow client hydration,
-server-selected strong validators, accessible conflict handling, exact-head
-release evidence, and one opaque editing-context lifecycle boundary that remounts
-the editor, autosave session, pending digest state, and status state together.
-Document identifiers are encoded before transport and remain subject to host-side
-authorization and route validation.
+server-selected strong validators, bounded host save callbacks, accessible
+conflict recovery through `session.resume(...)`, instance-unique panel labels,
+exact-head release evidence, and one opaque editing-context lifecycle boundary
+that remounts the editor, autosave session, pending digest state, and status state
+together. Document identifiers are encoded before transport and remain subject
+to host-side authorization and route validation.
 
 ## Architectural consequences
 
@@ -59,10 +59,12 @@ authorization and route validation.
   validation or deterministic conversion into the host.
 - Server-side secrets, tenant authorization, persistence, and model-use policy
   remain outside the browser editor package.
-- Integrators receive a concrete fail-closed autosave and conflict sequence.
+- Integrators receive a concrete fail-closed autosave and conflict sequence with
+  a bounded request and explicit authenticated recovery handoff.
 - A host-selected opaque editing-context key prevents uncontrolled editor state,
   durable validators, and in-flight digest completion from crossing authorized
   document boundaries.
+- Multiple panels on one page retain separate accessible heading relationships.
 - Acquisition reviewers can distinguish reproducible product evidence from
   restricted customer or deployment evidence.
 - The diagrams are version-controlled, text-reviewable, and render directly in
@@ -77,10 +79,13 @@ authorization and route validation.
   state on an authorized context transition. A host that permits drafts across
   transitions must persist and reauthorize those drafts outside Inkspan before
   issuing the new context.
+- The example's ten-second deadline is illustrative. Each host must derive a
+  bounded timeout, retry, and idempotency policy from its operating environment.
 - Mermaid rendering is useful for review but is not a substitute for accessible
   prose; every diagram is accompanied by equivalent text and tables.
-- Documentation tests can prove required statements remain present, but they do
-  not prove a deployed host is secure, accessible, or conformant.
+- Documentation tests can prove fenced example structure, required ordering, and
+  required statements remain present, but they do not prove a deployed host is
+  secure, accessible, reliable, or conformant.
 
 ## Security boundary
 
@@ -91,6 +96,10 @@ The decision follows the least-authority split recommended for modular systems:
   durable storage authority;
 - the host issues a fresh opaque editing-context lifecycle value after each
   authorized load or context transition;
+- the host bounds every durable save callback with a fresh timeout or abort
+  signal and treats timeout or abort as ambiguous rather than successful;
+- conflict recovery supplies a server-selected strong validator only after an
+  authenticated reload, merge, fork, discard, or equivalent confirmed decision;
 - the persistence service selects and atomically enforces strong entity tags;
 - the collaboration host owns room authorization, update persistence, and
   provider lifecycle;
@@ -114,10 +123,11 @@ must be assessed on the complete deployed host and its operating controls.
 ## Accessibility boundary
 
 The naruon `ui.panel` guide requires keyboard-operable conflict actions,
-labelled status and conflict regions, controlled focus movement, and restrained
-live-region announcements. This supports WCAG 2.2-oriented integration, but the
-host remains responsible for testing the complete page, all responsive states,
-and third-party content before making a conformance claim.
+labelled status and conflict regions, controlled focus movement, restrained
+live-region announcements, and a unique React-generated heading relationship for
+each panel instance. This supports WCAG 2.2-oriented integration, but the host
+remains responsible for testing the complete page, all responsive states, and
+third-party content before making a conformance claim.
 
 An editing-context remount also replaces focusable editor DOM. The host therefore
 owns deterministic focus placement after the newly authorized panel is mounted
@@ -142,6 +152,10 @@ identity guarantee and may discard its cached value. The initializer has no
 transport, timer, credential, persistence, or storage side effects; cleanup
 closes the retained session when the keyed subtree is removed.
 
+The server-facing boundary receives only serializable data. A host-owned client
+composition creates the conflict-recovery callback inside the client boundary
+rather than attempting to serialize a function from a Server Component.
+
 This is an architectural recommendation, not a dependency on Next.js. A
 traditional React SSR host may apply the same separation with its own server and
 client entry points.
@@ -153,6 +167,13 @@ strong entity-tag syntax and coordinates local single-flight ordering, but the
 host persistence transaction remains authoritative. The host must compare the
 `If-Match` value atomically with the durable representation and return a new
 server-selected strong `ETag` after an accepted write.
+
+A timeout, disconnect, abort, or malformed response is ambiguous. The host does
+not advance the durable validator or automatically retry unless separate
+idempotency evidence establishes the prior outcome. After an authenticated
+conflict decision, the client recovery boundary calls `session.resume(...)` so
+the validated replacement tag is installed immediately before retained work
+continues.
 
 A local Inkspan SHA-256 revision remains equality evidence for local deterministic
 operations. It is not substituted for a durable HTTP validator, authorization
@@ -178,7 +199,8 @@ contract without recording a tenant-derived value.
 
 ## Verification
 
-`src/architectureDocumentation.test.ts` fails unless:
+`src/architectureDocumentation.test.ts` extracts the fenced TSX example and fails
+unless:
 
 - the root architecture contains the standalone and modular ownership boundary;
 - the CWL repositories and host responsibilities are named;
@@ -188,8 +210,13 @@ contract without recording a tenant-derived value.
 - the complete editor/autosave subtree is keyed by an opaque editing-context
   value, uses lazy component state rather than `useMemo` for session identity,
   and encodes the document identifier before transport;
-- the latest-generation guard prevents an older asynchronous digest from being
-  enqueued after a newer edit;
+- each panel creates an instance-unique heading ID and binds its own
+  `aria-labelledby` relationship;
+- the host save callback supplies a fresh bounded abort signal;
+- the latest-generation capture, digest, first guard, enqueue, and second guard
+  remain in the required order;
+- the conflict path exposes a host recovery callback that invokes
+  `session.resume(...)` with the recovered strong validator;
 - this doctoring record retains the authoritative standards references; and
 - `CHANGELOG.md` records the unreleased buyer-visible documentation slice.
 
@@ -225,6 +252,25 @@ Rejected because React defines memoization as a performance optimization rather
 than a semantic guarantee. A mutable coordinator with explicit cleanup belongs
 in state owned by the keyed session subtree. The host changes the key, not a
 memoization dependency, to replace the complete authorized editing context.
+
+### Leave durable save callbacks unbounded
+
+Rejected because an unresolved host callback retains the single-flight request
+and prevents later enqueue, flush, and close operations from completing. The
+host must provide a finite timeout or abort boundary and preserve ambiguous-write
+semantics.
+
+### Reuse one static accessible heading ID
+
+Rejected because multiple panels could produce duplicate IDs and cause
+`aria-labelledby` to reference the wrong heading. Each mounted panel creates its
+own React-generated ID.
+
+### Display a conflict without exposing a recovery handoff
+
+Rejected because status text alone cannot install the authenticated replacement
+validator or resume retained work. The host client boundary must receive a
+bounded recovery callback tied to the exact autosave session.
 
 ### Store provider credentials in panel props or environment-reading editor code
 
