@@ -1,0 +1,65 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import { describe, expect, it } from 'vitest';
+
+interface PackageMetadata {
+  readonly exports: Readonly<Record<string, unknown>>;
+  readonly keywords: readonly string[];
+}
+
+const repositoryFile = (path: string): string =>
+  readFileSync(resolve(process.cwd(), path), 'utf8');
+
+const packageMetadata = (): PackageMetadata =>
+  JSON.parse(repositoryFile('package.json')) as PackageMetadata;
+
+describe('buyer-visible package discovery', () => {
+  it('documents every persistence-oriented public package subpath', () => {
+    const readme = repositoryFile('README.md');
+    const metadata = packageMetadata();
+
+    for (const subpath of ['./autosave', './revision-evidence'] as const) {
+      expect(metadata.exports).toHaveProperty(subpath);
+      expect(readme).toContain(
+        `@contextualwisdomlab/cwl-editor/${subpath.slice(2)}`,
+      );
+    }
+  });
+
+  it('provides a copyable autosave onboarding path and explicit host boundary', () => {
+    const readme = repositoryFile('README.md');
+
+    expect(readme).toContain('## Provider-neutral autosave');
+    expect(readme).toContain(
+      "import { createDocumentAutosaveQueue } from '@contextualwisdomlab/cwl-editor/autosave';",
+    );
+    expect(readme).toContain('authorization, tenant isolation, persistence');
+    expect(readme).toContain('RFC 9110 `If-Match`');
+    expect(readme).toContain('[`docs/document-autosave.md`](docs/document-autosave.md)');
+  });
+
+  it('makes persistence capabilities discoverable in npm metadata', () => {
+    const metadata = packageMetadata();
+
+    expect(metadata.keywords).toEqual(
+      expect.arrayContaining([
+        'autosave',
+        'document-persistence',
+        'optimistic-concurrency',
+      ]),
+    );
+  });
+
+  it('records the commercial discoverability decision and unreleased change', () => {
+    const changelog = repositoryFile('CHANGELOG.md');
+    const doctoring = repositoryFile(
+      'docs/doctoring/autosave-product-discovery.md',
+    );
+
+    expect(changelog).toContain('buyer-visible autosave onboarding');
+    expect(doctoring).toContain('Node.js package subpath exports');
+    expect(doctoring).toContain('npm search');
+    expect(doctoring).toContain('GitHub repository README');
+  });
+});
