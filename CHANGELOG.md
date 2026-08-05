@@ -21,6 +21,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Active, embedded, form, metadata, media, SVG/MathML, template, resource-bearing, hidden, and HTML-image subtrees are removed before insertion
 - Closed `details` elements preserve only their first rendered summary, closed `dialog` subtrees are removed, and open variants are unwrapped through the ordinary sanitizer so source-only interactive content cannot become visible editor text
 - Native `progress` and `meter` widget subtrees and obsolete `noframes` and `noembed` fallback subtrees are removed so stripping their wrappers cannot promote source fallback text into ordinary visible editor prose
+- Hidden `datalist` suggestion and down-level fallback subtrees are removed so stripping the suggestion-source wrapper cannot promote non-rendered descendants into ordinary visible editor prose
 - Raw `mso-hide` declarations are parsed with exact case-insensitive property/value matching, closed and EOF-terminated CSS-comment removal, optional terminal `!important`, and false-positive guards instead of relying on browser CSSOM support for the proprietary Office property
 - CSS-escaped property and keyword forms of `mso-hide: all` are decoded for exact comparison, while invalid code points, escaped newlines, prefixes, and longer look-alike values remain visible instead of producing false-positive subtree removal
 - SafeClipboard uses the lowest-practical extension priority as the final ordinary TipTap paste transform, with an integration regression proving a prior host transform cannot reintroduce scripts or tracking images before parsing
@@ -39,6 +40,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Added raw Office hidden-style variants including EOF-terminated CSS comments, false-positive cases, structural removed-element assertions, real TipTap transform-chain ordering, and standalone/Yjs regressions proving configuration accessors are not evaluated before paste
 - Added a test-first closed/open `details` and `dialog` regression that proves hidden additional or dialog content does not enter the sanitized fragment while rendered content remains
 - Added a test-first native-widget and obsolete-fallback regression proving ordinary visible text remains while `progress`, `meter`, `noframes`, and `noembed` descendants cannot surface after wrapper removal
+- Added a test-first `datalist` regression proving ordinary neighboring content remains while hidden suggestion and down-level fallback descendants cannot surface after wrapper removal
 - Added standalone and Yjs collaborative integration tests proving identical sanitizer behavior and latest-callback routing without editor or provider recreation
 - Kept repository-wide 100% production statement, branch, function, and line coverage as the merge gate
 - Recorded that current jsdom results are not cross-engine browser evidence; version-pinned Chromium, Firefox, and WebKit differential fixtures are a publication gate for 0.6.0
@@ -47,6 +49,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Documented preserved and removed clipboard content, Base64Image handoff, SSR behavior, error codes, modular ownership, performance bounds, rollback, and buyer integration
 - Documented closed interactive content against the WHATWG HTML Living Standard, including the source-rendering, accessibility, host-ownership, rollback, and cross-engine uncertainty boundaries
 - Documented native progress/gauge widgets and obsolete fallback elements against the WHATWG HTML Living Standard, including the fail-closed conversion decision, test-first evidence, residual risk, and rollback boundary
+- Documented hidden `datalist` suggestion and down-level fallback content against the WHATWG HTML Living Standard, including the linked-control, accessibility, host-ownership, rollback, and cross-engine uncertainty boundaries
 - Documented OWASP's DOMPurify recommendation, the bespoke sanitizer's vulnerability-response obligation, final-transform composition limits, and the current browser-assurance boundary
 - Added Mermaid architecture and trust-boundary diagrams to `ARCHITECTURE.md`
 
