@@ -309,7 +309,15 @@ const autosaveQueue = createDocumentAutosaveQueue({
       throw new Error('Private transport failure');
     }
 
-    durableStrongEntityTag = evidence.revision.strongEntityTag;
+    const nextDurableStrongEntityTag = response.headers.get('ETag');
+    if (
+      nextDurableStrongEntityTag === null ||
+      nextDurableStrongEntityTag.startsWith('W/')
+    ) {
+      throw new Error('Durable save response omitted a strong ETag');
+    }
+
+    durableStrongEntityTag = nextDurableStrongEntityTag;
     return { status: 'saved' };
   },
 });
@@ -328,7 +336,9 @@ coordination, deterministic outcomes, and redacted queue failures. The host owns
 transport, authentication, authorization, tenant isolation, persistence,
 credentials, migration, retention, audit storage, retry policy, accessible
 conflict handling, and atomic RFC 9110 `If-Match` enforcement inside the durable
-write transaction. See
+write transaction. A durable HTTP entity tag is a server-selected opaque
+validator: after a successful write, adopt the host response's strong `ETag`
+rather than substituting Inkspan's local revision evidence. See
 [`docs/document-autosave.md`](docs/document-autosave.md) for recovery, shutdown,
 privacy, SSR/worker, and CWL/naruon integration guidance.
 
