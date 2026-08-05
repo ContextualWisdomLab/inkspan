@@ -74,7 +74,7 @@ describe('framework-free autosave package boundary', () => {
     await expect(queue.enqueue(proxiedEvidence)).resolves.toMatchObject({
       status: 'saved',
     });
-    expect(receivedEvidence).not.toBe(proxiedEvidence);
+    expect(receivedEvidence === proxiedEvidence).toBe(false);
     expect(receivedEvidence?.envelope.documentJson).toEqual({ type: 'doc' });
     expect(Object.isFrozen(receivedEvidence?.envelope.documentJson)).toBe(true);
     mutableAlternateEnvelope.documentJson.content[0] = { type: 'text' };
