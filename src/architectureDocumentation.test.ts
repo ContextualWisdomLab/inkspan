@@ -6,6 +6,26 @@ import { describe, expect, it } from 'vitest';
 const repositoryFile = (path: string): string =>
   readFileSync(resolve(process.cwd(), path), 'utf8');
 
+const fencedCodeBlock = (markdown: string, language: string): string => {
+  const opening = `\`\`\`${language}\n`;
+  const start = markdown.indexOf(opening);
+  expect(start).toBeGreaterThanOrEqual(0);
+  const bodyStart = start + opening.length;
+  const end = markdown.indexOf('\n```', bodyStart);
+  expect(end).toBeGreaterThan(bodyStart);
+  return markdown.slice(bodyStart, end);
+};
+
+const markerPosition = (
+  text: string,
+  marker: string,
+  startAt = 0,
+): number => {
+  const position = text.indexOf(marker, startAt);
+  expect(position).toBeGreaterThanOrEqual(startAt);
+  return position;
+};
+
 describe('acquisition-ready modular architecture documentation', () => {
   it('defines one authoritative standalone and modular ownership boundary', () => {
     const architecture = repositoryFile('ARCHITECTURE.md');
@@ -55,44 +75,82 @@ describe('acquisition-ready modular architecture documentation', () => {
     expect(integration).toContain('must not create or destroy the host provider');
   });
 
-  it('keeps the autosave example exact and rejects out-of-order capture completion', () => {
+  it('validates fenced autosave structure and rejects out-of-order capture completion', () => {
     const integration = repositoryFile('docs/naruon-compose-ui-panel.md');
+    const example = fencedCodeBlock(integration, 'tsx');
 
-    expect(integration).toContain('initialStrongEntityTag,');
-    expect(integration).toContain("'If-Match': request.ifMatchStrongEntityTag");
-    expect(integration).toContain('isStrongHttpEntityTag(nextStrongEntityTag)');
-    expect(integration).toContain('nextStrongEntityTag,');
-    expect(integration).not.toContain('loadedStrongEntityTag:');
-    expect(integration).not.toContain('request.ifMatch,');
-    expect(integration).not.toContain('strongEntityTag: nextStrongEntityTag');
-    expect(integration).toContain('const editGeneration = useRef(0);');
-    expect(integration).toContain('const capturedGeneration = ++editGeneration.current;');
-    expect(integration).toContain(
-      'capturedGeneration !== editGeneration.current',
+    expect(example).toContain('initialStrongEntityTag,');
+    expect(example).toContain("'If-Match': request.ifMatchStrongEntityTag");
+    expect(example).toContain('signal: AbortSignal.timeout(10_000),');
+    expect(example).toContain('isStrongHttpEntityTag(nextStrongEntityTag)');
+    expect(example).toContain('nextStrongEntityTag,');
+    expect(example).not.toContain('loadedStrongEntityTag:');
+    expect(example).not.toContain('request.ifMatch,');
+    expect(example).not.toContain('strongEntityTag: nextStrongEntityTag');
+    expect(example).toContain('const editGeneration = useRef(0);');
+    expect(example).toContain(
+      'readonly requestConflictRecovery: (\n    resumeWithStrongEntityTag: (recoveredStrongEntityTag: string) => boolean,\n  ) => void;',
     );
-    expect(integration).toContain('void captureAndQueueLatestDocument();');
-    expect(integration).toContain('void session.close();');
+    expect(example).toContain(
+      'requestConflictRecovery((recoveredStrongEntityTag) => {',
+    );
+    expect(example).toContain(
+      'const resumed = session.resume(recoveredStrongEntityTag);',
+    );
+
+    const capture = markerPosition(
+      example,
+      'const capturedGeneration = ++editGeneration.current;',
+    );
+    const digest = markerPosition(
+      example,
+      'await editorRef.current?.getDocumentEnvelopeRevisionEvidence();',
+      capture,
+    );
+    const firstGenerationGuard = markerPosition(
+      example,
+      'capturedGeneration !== editGeneration.current',
+      digest,
+    );
+    const enqueue = markerPosition(
+      example,
+      'const outcome = await session.enqueue(evidence);',
+      firstGenerationGuard,
+    );
+    markerPosition(
+      example,
+      'capturedGeneration !== editGeneration.current',
+      enqueue,
+    );
+
+    expect(example).toContain('void captureAndQueueLatestDocument();');
+    expect(example).toContain('void session.close();');
   });
 
-  it('remounts the complete client session when the authorized editing context changes', () => {
+  it('uses instance-unique labels and remounts the complete authorized client session', () => {
     const integration = repositoryFile('docs/naruon-compose-ui-panel.md');
+    const example = fencedCodeBlock(integration, 'tsx');
     const doctoring = repositoryFile(
       'docs/doctoring/naruon-modular-architecture.md',
     );
     const changelog = repositoryFile('CHANGELOG.md');
 
-    expect(integration).toContain('readonly editingContextId: string;');
-    expect(integration).toContain('function InkspanPanelSession(');
-    expect(integration).toContain('<InkspanPanelSession');
-    expect(integration).toContain('key={props.editingContextId}');
-    expect(integration).toContain('encodeURIComponent(documentId)');
-    expect(integration).toContain(
-      "import { useEffect, useRef, useState } from 'react';",
+    expect(example).toContain('readonly editingContextId: string;');
+    expect(example).toContain('function InkspanPanelSession(');
+    expect(example).toContain('<InkspanPanelSession');
+    expect(example).toContain('key={props.editingContextId}');
+    expect(example).toContain('encodeURIComponent(documentId)');
+    expect(example).toContain(
+      "import { useEffect, useId, useRef, useState } from 'react';",
     );
-    expect(integration).toContain(
+    expect(example).toContain('const titleId = useId();');
+    expect(example).toContain('<section aria-labelledby={titleId}>');
+    expect(example).toContain('<h2 id={titleId}>Document editor</h2>');
+    expect(example).not.toContain('id="document-editor-title"');
+    expect(example).toContain(
       'const [session] = useState<DocumentAutosaveSession>',
     );
-    expect(integration).not.toContain('useMemo<DocumentAutosaveSession>');
+    expect(example).not.toContain('useMemo<DocumentAutosaveSession>');
     expect(integration).toContain(
       'must issue a new opaque `editingContextId` for every authorized document load',
     );
