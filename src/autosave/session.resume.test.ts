@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   createDocumentAutosaveSession,
+  isStrongHttpEntityTag,
+  type DocumentAutosaveDurableSaveResult,
   type DocumentAutosaveRevisionEvidence,
 } from './package.js';
 
@@ -22,6 +24,33 @@ function createRecoveryEvidence(byte: string): DocumentAutosaveRevisionEvidence 
 }
 
 describe('durable autosave recovery validator contract', () => {
+  it.each([
+    ['"control\u0001"'],
+    ['"beyond\u0100"'],
+    ['"first", "second"'],
+    ['*'],
+  ])('rejects the documented non-entity-tag form %s', (candidate) => {
+    expect(isStrongHttpEntityTag(candidate)).toBe(false);
+  });
+
+  it('rejects missing and symbol-keyed session options', () => {
+    const save = () => ({ status: 'conflict' as const });
+    const unexpectedOption = Symbol('unexpected option');
+    const symbolKeyedOptions = Object.assign(
+      { initialStrongEntityTag: '"server-one"', save },
+      { [unexpectedOption]: true },
+    );
+
+    expect(() =>
+      createDocumentAutosaveSession({
+        initialStrongEntityTag: '"server-one"',
+      } as never),
+    ).toThrowError(expect.objectContaining({ code: 'invalid_options' }));
+    expect(() =>
+      createDocumentAutosaveSession(symbolKeyedOptions as never),
+    ).toThrowError(expect.objectContaining({ code: 'invalid_options' }));
+  });
+
   it('rejects a malformed recovered validator in every lifecycle state', () => {
     const session = createDocumentAutosaveSession({
       initialStrongEntityTag: '"server-one"',
@@ -45,6 +74,35 @@ describe('durable autosave recovery validator contract', () => {
 
     expect(session.resume('"server-unused"')).toBe(false);
     expect(session.getSnapshot().durableStrongEntityTag).toBe('"server-one"');
+  });
+
+  it('hands the first committed server validator to concurrently queued work', async () => {
+    const observedValidators: string[] = [];
+    let completeFirstSave!: (result: DocumentAutosaveDurableSaveResult) => void;
+    const firstSave = new Promise<DocumentAutosaveDurableSaveResult>((resolve) => {
+      completeFirstSave = resolve;
+    });
+    const session = createDocumentAutosaveSession({
+      initialStrongEntityTag: '"server-one"',
+      save(request) {
+        observedValidators.push(request.ifMatchStrongEntityTag);
+        return observedValidators.length === 1
+          ? firstSave
+          : { status: 'saved', nextStrongEntityTag: '"server-three"' };
+      },
+    });
+
+    const firstRequest = session.enqueue(createRecoveryEvidence('41'));
+    const secondRequest = session.enqueue(createRecoveryEvidence('42'));
+    expect(observedValidators).toEqual(['"server-one"']);
+
+    completeFirstSave({
+      status: 'saved',
+      nextStrongEntityTag: '"server-two"',
+    });
+    await expect(firstRequest).resolves.toMatchObject({ status: 'saved' });
+    await expect(secondRequest).resolves.toMatchObject({ status: 'saved' });
+    expect(observedValidators).toEqual(['"server-one"', '"server-two"']);
   });
 
   it('installs the recovered validator before retained work starts', async () => {
