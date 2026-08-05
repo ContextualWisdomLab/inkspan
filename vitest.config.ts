@@ -10,7 +10,7 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     coverage: {
       provider: 'v8',
-      include: ['src/**/*.{ts,tsx}'],
+      include: ['src/**/*.{ts,tsx}', 'vite.autosave.config.ts'],
       exclude: [
         'src/**/*.{test,spec}.{ts,tsx}',
         'src/**/*.d.ts',
