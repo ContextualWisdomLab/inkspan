@@ -82,13 +82,34 @@ and properties such as `not-mso-hide`, remain visible and do not create false
 hidden-subtree matches. The complete hidden subtree is dropped, and the source
 style attribute is never copied to output.
 
+## Closed interactive content
+
+HTML disclosure and dialog elements can contain text that is present in source
+markup but not rendered to the user. Inkspan therefore treats their boolean
+`open` state as part of the hidden-content boundary:
+
+- a closed `<details>` element preserves only the sanitized contents of its
+  first `<summary>` element child, when one exists, and drops the additional
+  information;
+- a closed `<details>` element without a `<summary>` contributes no source text;
+- an open `<details>` element unwraps and sanitizes its rendered summary and
+  additional information;
+- a closed `<dialog>` subtree is dropped completely; and
+- an open `<dialog>` unwraps and sanitizes its rendered contents.
+
+The interactive wrapper elements and every source attribute are removed in all
+cases. This prevents pasted source-only disclosure or dialog text from becoming
+ordinary visible editor content while retaining content that the source document
+actually exposed.
+
 ## Removed content
 
 The sanitizer discards complete active, embedded, form, metadata,
-resource-fetching, media, SVG, MathML, canvas, template, and hidden subtrees.
-It also removes comments, Office conditional metadata, event handlers, IDs,
-classes, arbitrary ARIA, proprietary Office/Google attributes, `data-*`,
-`contenteditable`, and unapproved link attributes.
+resource-fetching, media, SVG, MathML, canvas, template, closed-dialog, and
+hidden subtrees. Closed disclosure widgets retain only the first rendered
+summary described above. It also removes comments, Office conditional metadata,
+event handlers, IDs, classes, arbitrary ARIA, proprietary Office/Google
+attributes, `data-*`, `contenteditable`, and unapproved link attributes.
 
 Rich HTML `<img>` elements are always removed. This prevents remote tracking
 pixels, local-file references, and unvalidated data URIs. A binary image copied
