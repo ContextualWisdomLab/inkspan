@@ -16,6 +16,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Conflict, malformed result, hostile reflection, promise-assimilation failure, and transport failure preserve the previous durable validator until explicit authenticated recovery supplies a new strong tag
 - Retained work resumes only after `resume(nextStrongEntityTag)` installs the recovered durable base before the next callback begins
 - Recovery validators are validated consistently before lifecycle inspection; a valid no-op resume cannot replace the current durable base, and an unexpectedly declined blocked transition restores the previous validator
+- Malformed recovery validators now raise the dedicated public `invalid_recovery_validator` code and redacted recovery message instead of being misclassified as malformed session-construction options
 
 ### Security
 - Initial and replacement durable validators reject weak, unquoted, whitespace-containing, list, wildcard, control-character, and out-of-range values before they can enter host transport
