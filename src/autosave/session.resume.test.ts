@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import type {
+  DocumentAutosaveQueueErrorCode as InternalDocumentAutosaveQueueErrorCode,
+} from './index.js';
 import {
   createDocumentAutosaveSession,
   isStrongHttpEntityTag,
@@ -50,6 +53,15 @@ describe('durable autosave recovery validator contract', () => {
     expect(() =>
       createDocumentAutosaveSession(symbolKeyedOptions as never),
     ).toThrowError(expect.objectContaining({ code: 'invalid_options' }));
+  });
+
+  it('keeps root and framework-free recovery error types aligned', () => {
+    const publicRecoveryErrorCode: DocumentAutosaveQueueErrorCode =
+      'invalid_recovery_validator';
+    const internalRecoveryErrorCode: InternalDocumentAutosaveQueueErrorCode =
+      publicRecoveryErrorCode;
+
+    expect(internalRecoveryErrorCode).toBe('invalid_recovery_validator');
   });
 
   it('rejects a malformed recovered validator in every lifecycle state', () => {
