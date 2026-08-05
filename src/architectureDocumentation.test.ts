@@ -74,6 +74,25 @@ describe('acquisition-ready modular architecture documentation', () => {
     expect(integration).toContain('void session.close();');
   });
 
+  it('remounts the complete client session when the authorized editing context changes', () => {
+    const integration = repositoryFile('docs/naruon-compose-ui-panel.md');
+    const doctoring = repositoryFile(
+      'docs/doctoring/naruon-modular-architecture.md',
+    );
+    const changelog = repositoryFile('CHANGELOG.md');
+
+    expect(integration).toContain('readonly editingContextId: string;');
+    expect(integration).toContain('function InkspanPanelSession(');
+    expect(integration).toContain('<InkspanPanelSession');
+    expect(integration).toContain('key={props.editingContextId}');
+    expect(integration).toContain('encodeURIComponent(documentId)');
+    expect(integration).toContain(
+      'must issue a new opaque `editingContextId` for every authorized document load',
+    );
+    expect(doctoring).toContain('cross-document state reuse');
+    expect(changelog).toContain('opaque editing-context remount');
+  });
+
   it('records authoritative standards and the unreleased product change', () => {
     const doctoring = repositoryFile(
       'docs/doctoring/naruon-modular-architecture.md',
