@@ -27,13 +27,15 @@ describe('buyer-visible package discovery', () => {
     }
   });
 
-  it('provides a copyable autosave onboarding path and explicit host boundary', () => {
+  it('provides a copyable fail-closed autosave path and explicit host boundary', () => {
     const readme = repositoryFile('README.md');
 
     expect(readme).toContain('## Provider-neutral autosave');
     expect(readme).toContain(
       "import { createDocumentAutosaveQueue } from '@contextualwisdomlab/cwl-editor/autosave';",
     );
+    expect(readme).toContain('if (!response.ok)');
+    expect(readme).toContain("throw new Error('Private transport failure');");
     expect(readme).toContain('authorization, tenant isolation, persistence');
     expect(readme).toContain('RFC 9110 `If-Match`');
     expect(readme).toContain('[`docs/document-autosave.md`](docs/document-autosave.md)');
