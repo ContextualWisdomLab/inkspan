@@ -5,6 +5,7 @@ import {
 } from './index.js';
 import { createDetachedAutosaveRevisionEvidence } from './evidenceValidation.js';
 import type {
+  DocumentAutosaveQueueErrorCode,
   DocumentAutosaveQueueSnapshot,
   DocumentAutosaveRequestOutcome,
   DocumentAutosaveRevisionEvidence,
@@ -92,7 +93,8 @@ export interface DocumentAutosaveSession {
    *
    * @param nextStrongEntityTag - Server-issued strong validator after recovery.
    * @returns `true` when one blocked state was cleared; otherwise `false`.
-   * @throws {DocumentAutosaveQueueError} When the recovered validator is not one
+   * @throws {DocumentAutosaveQueueError} With code
+   * `invalid_recovery_validator` when the recovered value is not one
    * syntactically valid strong entity tag.
    */
   resume(nextStrongEntityTag: string): boolean;
@@ -153,6 +155,16 @@ function createInvalidSessionOptionsError(): DocumentAutosaveQueueError {
   return new DocumentAutosaveQueueError(
     'invalid_options',
     'Document autosave session options are invalid.',
+  );
+}
+
+/** Create one redacted invalid-recovery-validator error. */
+function createInvalidRecoveryValidatorError(): DocumentAutosaveQueueError {
+  const code =
+    'invalid_recovery_validator' satisfies DocumentAutosaveQueueErrorCode;
+  return new DocumentAutosaveQueueError(
+    code as never,
+    'The recovered durable strong entity tag is invalid.',
   );
 }
 
@@ -339,7 +351,7 @@ export function createDocumentAutosaveSession(
   /** Resume blocked work only after installing a valid recovered validator. */
   function resume(nextStrongEntityTag: string): boolean {
     if (!isStrongHttpEntityTag(nextStrongEntityTag)) {
-      throw createInvalidSessionOptionsError();
+      throw createInvalidRecoveryValidatorError();
     }
     if (internalQueue.getSnapshot().state !== 'blocked') return false;
 
