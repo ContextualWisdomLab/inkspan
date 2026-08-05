@@ -3,6 +3,7 @@ import {
   DEFAULT_CLIPBOARD_HTML_BYTES,
   DEFAULT_CLIPBOARD_MAX_DEPTH,
   DEFAULT_CLIPBOARD_MAX_NODES,
+  type ClipboardConfig,
 } from './SafeClipboard.js';
 import { buildExtensions } from './kit.js';
 
@@ -52,17 +53,40 @@ describe('buildExtensions', () => {
     expect(clipboard?.options.maxDepth).toBe(DEFAULT_CLIPBOARD_MAX_DEPTH);
   });
 
-  it('forwards explicit rich clipboard limits and the redacted error observer', () => {
+  it('preserves explicit rich clipboard configuration and the error observer', () => {
     const onClipboardError = () => {};
+    const clipboardConfig = {
+      maxHtmlBytes: 123,
+      maxNodes: 42,
+      maxDepth: 7,
+    };
     const clipboard = buildExtensions({
-      clipboard: { maxHtmlBytes: 123, maxNodes: 42, maxDepth: 7 },
+      clipboard: clipboardConfig,
       onClipboardError,
     }).find((extension) => extension.name === 'safeClipboard');
 
-    expect(clipboard?.options.maxHtmlBytes).toBe(123);
-    expect(clipboard?.options.maxNodes).toBe(42);
-    expect(clipboard?.options.maxDepth).toBe(7);
+    expect(clipboard?.options.config).toBe(clipboardConfig);
     expect(clipboard?.options.onError).toBe(onClipboardError);
+  });
+
+  it('does not evaluate nested clipboard configuration accessors', () => {
+    const accessor = expect
+      .fn()
+      .mockImplementation(() => {
+        throw new Error('private configuration value');
+      });
+    const clipboardConfig = Object.defineProperty({}, 'maxHtmlBytes', {
+      configurable: true,
+      enumerable: true,
+      get: accessor,
+    }) as ClipboardConfig;
+
+    const clipboard = buildExtensions({ clipboard: clipboardConfig }).find(
+      (extension) => extension.name === 'safeClipboard',
+    );
+
+    expect(accessor).not.toHaveBeenCalled();
+    expect(clipboard?.options.config).toBe(clipboardConfig);
   });
 
   it('applies image defaults when the image config is an empty object', () => {
