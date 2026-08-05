@@ -96,5 +96,4 @@ unwrapping is not acceptable.
 
 ## References
 
-WHATWG. (2026). *HTML Living Standard: Interactive elements*. Retrieved August
-6, 2026, from https://html.spec.whatwg.org/multipage/interactive-elements.html
+WHATWG. (2026). *HTML Living Standard: Interactive elements*. https://html.spec.whatwg.org/multipage/interactive-elements.html
