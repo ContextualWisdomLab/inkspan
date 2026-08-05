@@ -228,6 +228,7 @@ describe('document autosave schema evidence boundary', () => {
     cyclicNode.content = cyclicNode;
     Object.freeze(cyclicNode);
 
+    const emptySparseContent = Object.freeze(new Array<unknown>(1));
     const sparseContent = new Array<unknown>(1);
     Object.defineProperty(sparseContent, Symbol('padding'), {
       value: 'unsupported',
@@ -267,12 +268,16 @@ describe('document autosave schema evidence boundary', () => {
     for (const documentJson of [
       Object.freeze({ type: 'doc', unsupported: undefined }),
       Object.freeze({ type: 'doc', invalidNumber: Number.NaN }),
-      Object.freeze({ type: 'doc', content: Object.freeze([new Date(0)]) }),
+      Object.freeze({
+        type: 'doc',
+        content: Object.freeze([Object.freeze(new Date(0))]),
+      }),
       Object.freeze({
         type: 'doc',
         content: Object.freeze([sharedNode, sharedNode]),
       }),
       Object.freeze({ type: 'doc', content: Object.freeze([cyclicNode]) }),
+      Object.freeze({ type: 'doc', content: emptySparseContent }),
       Object.freeze({ type: 'doc', content: sparseContent }),
       Object.freeze({ type: 'doc', content: nonEnumerableContent }),
       Object.freeze({ type: 'doc', content: accessorContent }),
