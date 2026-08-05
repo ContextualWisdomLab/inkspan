@@ -36,6 +36,34 @@ describe('autosave detached evidence failure handling', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
+  it('redacts top-level reflection failures before host transport', () => {
+    const save = vi.fn(() => ({ status: 'saved' as const }));
+    const queue = createDocumentAutosaveQueue({ save });
+    const digestHex = '52'.repeat(32);
+    const evidence = createEvidence(
+      Object.freeze({ type: 'doc' }),
+      Object.freeze({
+        algorithm: 'SHA-256',
+        digestHex,
+        strongEntityTag: `"sha256-${digestHex}"`,
+      }),
+    );
+    const hostileEvidence = new Proxy(evidence as object, {
+      ownKeys() {
+        throw new Error('sensitive reflection detail');
+      },
+    });
+
+    expect(() => queue.enqueue(hostileEvidence as never)).toThrowError(
+      expect.objectContaining({
+        name: 'DocumentAutosaveQueueError',
+        code: 'invalid_revision_evidence',
+        message: 'Document revision evidence is invalid.',
+      }),
+    );
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it('redacts an active-envelope resource failure during detached cloning', () => {
     const documentJson = Object.freeze({
       type: 'doc',
