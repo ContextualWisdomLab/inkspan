@@ -23,11 +23,16 @@ function createEvidence(): DocumentAutosaveRevisionEvidence {
 }
 
 describe('framework-free autosave package boundary', () => {
-  it('delegates queue behavior without exposing editor framework types', async () => {
+  it('delegates a detached evidence snapshot without editor framework types', async () => {
     const evidence = createEvidence();
     const queue = createDocumentAutosaveQueue({
       save(received) {
-        expect(received).toBe(evidence);
+        expect(received).not.toBe(evidence);
+        expect(received).toEqual(evidence);
+        expect(Object.isFrozen(received)).toBe(true);
+        expect(Object.isFrozen(received.envelope)).toBe(true);
+        expect(Object.isFrozen(received.envelope.documentJson)).toBe(true);
+        expect(Object.isFrozen(received.revision)).toBe(true);
         return { status: 'saved' };
       },
     });
@@ -37,6 +42,39 @@ describe('framework-free autosave package boundary', () => {
       strongEntityTag: evidence.revision.strongEntityTag,
     });
     await expect(queue.close()).resolves.toMatchObject({ state: 'closed' });
+  });
+
+  it('snapshots descriptor values instead of forwarding proxy getter output', async () => {
+    const evidence = createEvidence();
+    const mutableAlternateEnvelope = {
+      schemaId: evidence.envelope.schemaId,
+      schemaVersion: evidence.envelope.schemaVersion,
+      documentJson: { type: 'doc', content: [{ type: 'paragraph' }] },
+    };
+    let envelopeGetterCalls = 0;
+    const proxiedEvidence = new Proxy(evidence, {
+      get(target, property, receiver) {
+        if (property === 'envelope') {
+          envelopeGetterCalls += 1;
+          return mutableAlternateEnvelope;
+        }
+        return Reflect.get(target, property, receiver);
+      },
+    });
+    const queue = createDocumentAutosaveQueue({
+      save(received) {
+        expect(received).not.toBe(proxiedEvidence);
+        expect(received.envelope.documentJson).toEqual({ type: 'doc' });
+        expect(Object.isFrozen(received.envelope.documentJson)).toBe(true);
+        return { status: 'saved' };
+      },
+    });
+
+    await expect(queue.enqueue(proxiedEvidence)).resolves.toMatchObject({
+      status: 'saved',
+    });
+    mutableAlternateEnvelope.documentJson.content[0] = { type: 'text' };
+    expect(envelopeGetterCalls).toBe(0);
   });
 
   it('exports the redacted runtime error constructor', () => {
