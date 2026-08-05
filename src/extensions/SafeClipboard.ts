@@ -128,6 +128,7 @@ const DROPPED_SUBTREES = new Set([
   'base',
   'button',
   'canvas',
+  'datalist',
   'embed',
   'form',
   'iframe',
