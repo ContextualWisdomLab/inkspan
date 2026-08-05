@@ -142,6 +142,22 @@ describe('durable autosave session', () => {
     ).toThrowError(expect.objectContaining({ code: 'invalid_options' }));
   });
 
+  it('rejects malformed revision evidence before host save begins', () => {
+    let saveCalls = 0;
+    const session = createDocumentAutosaveSession({
+      initialStrongEntityTag: '"durable-one"',
+      save() {
+        saveCalls += 1;
+        return { status: 'conflict' };
+      },
+    });
+
+    expect(() => session.enqueue(Object.freeze({}) as never)).toThrowError(
+      expect.objectContaining({ code: 'invalid_revision_evidence' }),
+    );
+    expect(saveCalls).toBe(0);
+  });
+
   it('threads only server-issued validators through sequential durable writes', async () => {
     const requests: DocumentAutosaveDurableSaveRequest[] = [];
     const nextTags = ['"durable-two"', '"durable-three"'];
@@ -236,6 +252,30 @@ describe('durable autosave session', () => {
       blockedReason: 'failure',
       durableStrongEntityTag: '"durable-one"',
     });
+  });
+
+  it('rejects missing or accessor result status without evaluating accessors', async () => {
+    let statusGetterCalls = 0;
+    const accessorResult = Object.defineProperty({}, 'status', {
+      enumerable: true,
+      get() {
+        statusGetterCalls += 1;
+        throw new Error('private status getter');
+      },
+    });
+
+    for (const result of [{}, accessorResult]) {
+      const session = createDocumentAutosaveSession({
+        initialStrongEntityTag: '"durable-one"',
+        save: () => result as never,
+      });
+
+      await expect(session.enqueue(createEvidence())).rejects.toMatchObject({
+        code: 'invalid_save_result',
+        message: 'The host save operation returned an invalid result.',
+      });
+    }
+    expect(statusGetterCalls).toBe(0);
   });
 
   it('fails closed when durable result reflection is unavailable', async () => {
