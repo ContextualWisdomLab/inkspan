@@ -81,6 +81,29 @@ describe('SafeClipboard security regressions', () => {
     expect(container.querySelectorAll('title')).toHaveLength(0);
   });
 
+  it('drops native-widget and obsolete fallback text instead of surfacing it', () => {
+    const sanitized = sanitizeRichClipboardHtml(
+      `<p>visible ordinary content</p>
+       <progress value="1" max="2">progress fallback secret</progress>
+       <meter value="0.5">meter fallback secret</meter>
+       <noframes>frames fallback secret</noframes>
+       <noembed>embed fallback secret</noembed>`,
+      {},
+      document,
+    );
+    const container = document.createElement('div');
+    container.innerHTML = sanitized;
+
+    expect(container).toHaveTextContent('visible ordinary content');
+    expect(container).not.toHaveTextContent('progress fallback secret');
+    expect(container).not.toHaveTextContent('meter fallback secret');
+    expect(container).not.toHaveTextContent('frames fallback secret');
+    expect(container).not.toHaveTextContent('embed fallback secret');
+    expect(
+      container.querySelectorAll('progress, meter, noframes, noembed'),
+    ).toHaveLength(0);
+  });
+
   it('preserves only rendered disclosure content from closed interactive elements', () => {
     const sanitized = sanitizeRichClipboardHtml(
       `<details>
