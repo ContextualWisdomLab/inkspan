@@ -261,6 +261,7 @@ function verifyDeclarationConsumer() {
   createDocumentAutosaveQueue,
   createDocumentAutosaveSession,
   type DocumentAutosaveDurableSaveRequest,
+  type DocumentAutosaveQueueErrorCode,
   type DocumentAutosaveRequestOutcome,
   type DocumentAutosaveRevisionEvidence,
   type DocumentAutosaveSessionSnapshot,
@@ -271,6 +272,8 @@ const queue = createDocumentAutosaveQueue({
   save: async () => ({ status: 'saved' }),
 });
 const outcome: Promise<DocumentAutosaveRequestOutcome> = queue.enqueue(evidence);
+const recoveryErrorCode: DocumentAutosaveQueueErrorCode =
+  'invalid_recovery_validator';
 const session = createDocumentAutosaveSession({
   initialStrongEntityTag: '"server-one"',
   save: async (request: DocumentAutosaveDurableSaveRequest) => ({
@@ -280,6 +283,7 @@ const session = createDocumentAutosaveSession({
 });
 const snapshot: DocumentAutosaveSessionSnapshot = session.getSnapshot();
 void outcome;
+void recoveryErrorCode;
 void snapshot;
 `,
     'utf8',
