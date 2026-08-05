@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { DEFAULT_DOCUMENT_ENVELOPE_LIMITS } from '../documentEnvelope.js';
 import {
   createDocumentAutosaveQueue,
   DocumentAutosaveQueueError,
@@ -39,7 +40,9 @@ describe('autosave detached evidence failure handling', () => {
     const documentJson = Object.freeze({
       type: 'doc',
       attrs: Object.freeze({
-        oversizedText: 'x'.repeat(4_000_001),
+        oversizedText: 'x'.repeat(
+          DEFAULT_DOCUMENT_ENVELOPE_LIMITS.maxStringCodeUnits + 1,
+        ),
       }),
     });
     const digestHex = '63'.repeat(32);
