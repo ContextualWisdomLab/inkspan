@@ -100,7 +100,9 @@ function verifyRuntimeConsumers() {
 import { fileURLToPath } from 'node:url';
 import {
   createDocumentAutosaveQueue,
+  createDocumentAutosaveSession,
   DocumentAutosaveQueueError,
+  isStrongHttpEntityTag,
 } from '${packageJson.name}/autosave';
 
 const resolvedEntry = fileURLToPath(
@@ -108,7 +110,11 @@ const resolvedEntry = fileURLToPath(
 );
 assert.ok(resolvedEntry.endsWith('/dist/cwl-autosave.js'));
 assert.equal(typeof createDocumentAutosaveQueue, 'function');
+assert.equal(typeof createDocumentAutosaveSession, 'function');
 assert.equal(typeof DocumentAutosaveQueueError, 'function');
+assert.equal(typeof isStrongHttpEntityTag, 'function');
+assert.equal(isStrongHttpEntityTag('"server-one"'), true);
+assert.equal(isStrongHttpEntityTag('W/"weak"'), false);
 const digestHex = '42'.repeat(32);
 const evidence = Object.freeze({
   envelope: Object.freeze({
@@ -161,9 +167,26 @@ assert.throws(
 );
 mutableTextNode.text = 'mutated after rejection';
 assert.equal(calls, 1);
-
 assert.equal((await queue.flush()).state, 'idle');
 assert.equal((await queue.close()).state, 'closed');
+
+let durableRequest;
+const session = createDocumentAutosaveSession({
+  initialStrongEntityTag: '"server-one"',
+  save(request) {
+    durableRequest = request;
+    return { status: 'saved', nextStrongEntityTag: '"server-two"' };
+  },
+});
+assert.equal(Object.isFrozen(session), true);
+assert.equal((await session.enqueue(evidence)).status, 'saved');
+assert.equal(Object.isFrozen(durableRequest), true);
+assert.equal(durableRequest.ifMatchStrongEntityTag, '"server-one"');
+assert.notEqual(durableRequest.evidence, evidence);
+assert.equal(Object.isFrozen(durableRequest.evidence), true);
+assert.deepEqual(durableRequest.evidence, evidence);
+assert.equal(session.getSnapshot().durableStrongEntityTag, '"server-two"');
+assert.equal((await session.close()).durableStrongEntityTag, '"server-two"');
 `,
     'utf8',
   );
@@ -179,6 +202,8 @@ assert.ok(
     .endsWith('/dist/cwl-autosave.cjs'),
 );
 assert.equal(typeof autosave.createDocumentAutosaveQueue, 'function');
+assert.equal(typeof autosave.createDocumentAutosaveSession, 'function');
+assert.equal(typeof autosave.isStrongHttpEntityTag, 'function');
 const digestHex = '24'.repeat(32);
 const evidence = Object.freeze({
   envelope: Object.freeze({
@@ -201,6 +226,19 @@ void queue.enqueue(evidence).then(async (outcome) => {
   assert.equal(outcome.status, 'conflict');
   assert.equal((await queue.flush()).blockedReason, 'conflict');
   assert.equal((await queue.close()).state, 'closed');
+
+  let durableRequest;
+  const session = autosave.createDocumentAutosaveSession({
+    initialStrongEntityTag: '"server-one"',
+    save(request) {
+      durableRequest = request;
+      return { status: 'conflict' };
+    },
+  });
+  assert.equal((await session.enqueue(evidence)).status, 'conflict');
+  assert.equal(durableRequest.ifMatchStrongEntityTag, '"server-one"');
+  assert.equal(session.getSnapshot().durableStrongEntityTag, '"server-one"');
+  assert.equal((await session.close()).state, 'closed');
 }).catch((error) => {
   console.error(error);
   process.exitCode = 1;
@@ -221,8 +259,12 @@ function verifyDeclarationConsumer() {
     sourcePath,
     `import {
   createDocumentAutosaveQueue,
+  createDocumentAutosaveSession,
+  type DocumentAutosaveDurableSaveRequest,
+  type DocumentAutosaveQueueErrorCode,
   type DocumentAutosaveRequestOutcome,
   type DocumentAutosaveRevisionEvidence,
+  type DocumentAutosaveSessionSnapshot,
 } from '${packageJson.name}/autosave';
 
 declare const evidence: DocumentAutosaveRevisionEvidence;
@@ -230,7 +272,19 @@ const queue = createDocumentAutosaveQueue({
   save: async () => ({ status: 'saved' }),
 });
 const outcome: Promise<DocumentAutosaveRequestOutcome> = queue.enqueue(evidence);
+const recoveryErrorCode: DocumentAutosaveQueueErrorCode =
+  'invalid_recovery_validator';
+const session = createDocumentAutosaveSession({
+  initialStrongEntityTag: '"server-one"',
+  save: async (request: DocumentAutosaveDurableSaveRequest) => ({
+    status: 'saved' as const,
+    nextStrongEntityTag: request.ifMatchStrongEntityTag,
+  }),
+});
+const snapshot: DocumentAutosaveSessionSnapshot = session.getSnapshot();
 void outcome;
+void recoveryErrorCode;
+void snapshot;
 `,
     'utf8',
   );

@@ -6,11 +6,37 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
-### Documentation
-- Added buyer-visible autosave onboarding, explicit `autosave` and `revision-evidence` distribution surfaces, and npm persistence discovery metadata without changing runtime behavior or package version
-- Corrected the autosave onboarding so initial and replacement validators are checked before use and come from the durable host's server-issued strong `ETag` rather than local revision evidence; missing, weak, or malformed validators now fail closed in the example
-- Added a deterministic repository contract test and APA 7th-style doctoring for README, npm-search, Node.js package-export discoverability, RFC 9110 validator ownership, and quoted opaque-tag syntax
+### Added
+- Added `createDocumentAutosaveSession()` to bind every single-flight save to the exact server-issued strong entity tag loaded or last committed by the host, without adding transport, persistence, credentials, tenancy, or provider coupling
+- Added `isStrongHttpEntityTag()` for fail-closed RFC 9110 quoted opaque-tag validation without trimming or repair
+- Added immutable durable save request, result, session, recovery, and document-free snapshot contracts to the framework-independent `autosave` package surface
 
+### Reliability
+- Successful durable writes advance the next `If-Match` base only from the host callback's validated server-selected replacement tag
+- Conflict, malformed result, hostile reflection, promise-assimilation failure, and transport failure preserve the previous durable validator until explicit authenticated recovery supplies a new strong tag
+- Retained work resumes only after `resume(nextStrongEntityTag)` installs the recovered durable base before the next callback begins
+- Recovery validators are validated consistently before lifecycle inspection; a valid no-op resume cannot replace the current durable base, and an unexpectedly declined blocked transition restores the previous validator
+- Malformed recovery validators now raise the dedicated public `invalid_recovery_validator` code and redacted recovery message instead of being misclassified as malformed session-construction options
+- `flush()` reacquires the current terminal queue state after asynchronous wrapper boundaries, following recovery or shutdown races until lifecycle fields and `durableStrongEntityTag` describe one coherent idle, blocked, or closed logical moment
+
+### Security
+- Initial and replacement durable validators reject weak, unquoted, whitespace-containing, list, wildcard, control-character, and out-of-range values before they can enter host transport
+- Callback results are exact-shape validated through property descriptors; document bodies, validators, callback values, and private exceptions never enter public error messages
+- Session snapshots remain frozen and document-free; entity tags are still tenant-confidential equality metadata rather than authorization, signatures, tenant membership, or durable audit evidence
+
+### Tests
+- Added deterministic sequential and concurrently queued validator handoff, conflict recovery, lifecycle-independent recovery validation, malformed option, missing and symbol-keyed option, malformed callback result, hostile reflection, promise assimilation, transport failure, frozen request, shutdown, and snapshot tests under repository-wide 100% production statement and branch coverage gates
+- Added explicit regression cases for control characters, out-of-range Unicode, list-form values, wildcards, no-op recovery, and recovered-validator installation before retained work starts
+- Added deterministic recovery-before-wrapper and close-before-wrapper concurrency regressions that prevent temporally mixed public flush snapshots
+- Extended isolated packed-artifact ESM, CommonJS, and strict TypeScript consumers to prove the durable session and strong-tag validator work without React, React DOM, TipTap, ProseMirror, or Yjs installed
+
+### Documentation
+- Added buyer-visible autosave onboarding, explicit `autosave` and `revision-evidence` distribution surfaces, and npm persistence discovery metadata without changing the released package version
+- Updated package discovery metadata to identify the server-validator-bound durable autosave session alongside the lower-level single-flight coordinator
+- Corrected the autosave onboarding so initial and replacement validators are checked before use and come from the durable host's server-issued strong `ETag` rather than local revision evidence; missing, weak, or malformed validators now fail closed in the example
+- Documented that host-owned save callbacks must apply their own timeout or abort signal because an unresolved callback intentionally retains the active single-flight operation; retry policy remains host-owned
+- Added a deterministic repository contract test and APA 7th-style doctoring for README, npm-search, Node.js package-export discoverability, RFC 9110 validator ownership, and quoted opaque-tag syntax
+- Added operator and doctoring evidence for the durable autosave session, coherent recovery-time flush snapshots, host ownership boundaries, exact-head verification, and acquisition-review scope
 
 ## [0.5.28] — 2026-08-05
 
