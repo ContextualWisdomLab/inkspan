@@ -253,3 +253,16 @@ export function createDocumentAutosaveQueue(
     getSnapshot: internalQueue.getSnapshot,
   });
 }
+
+export {
+  createDocumentAutosaveSession,
+  isStrongHttpEntityTag,
+} from './session.js';
+export type {
+  DocumentAutosaveDurableSaveFunction,
+  DocumentAutosaveDurableSaveRequest,
+  DocumentAutosaveDurableSaveResult,
+  DocumentAutosaveSession,
+  DocumentAutosaveSessionOptions,
+  DocumentAutosaveSessionSnapshot,
+} from './session.js';
