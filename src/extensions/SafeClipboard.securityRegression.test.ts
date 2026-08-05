@@ -81,6 +81,35 @@ describe('SafeClipboard security regressions', () => {
     expect(container.querySelectorAll('title')).toHaveLength(0);
   });
 
+  it('preserves only rendered disclosure content from closed interactive elements', () => {
+    const sanitized = sanitizeRichClipboardHtml(
+      `<details>
+         <summary>closed details summary</summary>
+         <p>closed details secret</p>
+       </details>
+       <details><p>summaryless details secret</p></details>
+       <details open>
+         <summary>open details summary</summary>
+         <p>open details content</p>
+       </details>
+       <dialog><p>closed dialog secret</p></dialog>
+       <dialog open><p>open dialog content</p></dialog>`,
+      {},
+      document,
+    );
+    const container = document.createElement('div');
+    container.innerHTML = sanitized;
+
+    expect(container).toHaveTextContent('closed details summary');
+    expect(container).not.toHaveTextContent('closed details secret');
+    expect(container).not.toHaveTextContent('summaryless details secret');
+    expect(container).toHaveTextContent('open details summary');
+    expect(container).toHaveTextContent('open details content');
+    expect(container).not.toHaveTextContent('closed dialog secret');
+    expect(container).toHaveTextContent('open dialog content');
+    expect(container.querySelectorAll('details, summary, dialog')).toHaveLength(0);
+  });
+
   it('remains the final ordinary paste transform after host extensions', () => {
     const resourceReintroducer = Extension.create({
       name: 'resourceReintroducer',
