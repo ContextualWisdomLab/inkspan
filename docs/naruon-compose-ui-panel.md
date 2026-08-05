@@ -30,7 +30,7 @@ identifier, and non-secret presentation options into one small client component.
 // app/documents/[documentId]/inkspan-panel.tsx
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   CwlEditor,
   type CwlEditorHandle,
@@ -61,40 +61,37 @@ function InkspanPanelSession({
   const editorRef = useRef<CwlEditorHandle>(null);
   const editGeneration = useRef(0);
   const [saveMessage, setSaveMessage] = useState('Document loaded.');
+  const [session] = useState<DocumentAutosaveSession>(() =>
+    createDocumentAutosaveSession({
+      initialStrongEntityTag,
+      async save(request) {
+        const encodedDocumentId = encodeURIComponent(documentId);
+        const response = await fetch(`/api/documents/${encodedDocumentId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'If-Match': request.ifMatchStrongEntityTag,
+          },
+          body: JSON.stringify(request.evidence.envelope),
+        });
 
-  const session = useMemo<DocumentAutosaveSession>(
-    () =>
-      createDocumentAutosaveSession({
-        initialStrongEntityTag,
-        async save(request) {
-          const encodedDocumentId = encodeURIComponent(documentId);
-          const response = await fetch(`/api/documents/${encodedDocumentId}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'If-Match': request.ifMatchStrongEntityTag,
-            },
-            body: JSON.stringify(request.evidence.envelope),
-          });
+        if (response.status === 412) {
+          return { status: 'conflict' };
+        }
+        if (!response.ok) {
+          throw new Error('Document save failed without durable proof');
+        }
 
-          if (response.status === 412) {
-            return { status: 'conflict' };
-          }
-          if (!response.ok) {
-            throw new Error('Document save failed without durable proof');
-          }
-
-          const nextStrongEntityTag = response.headers.get('ETag');
-          if (!isStrongHttpEntityTag(nextStrongEntityTag)) {
-            throw new Error('Document save omitted a valid strong ETag');
-          }
-          return {
-            status: 'saved',
-            nextStrongEntityTag,
-          };
-        },
-      }),
-    [documentId, initialStrongEntityTag],
+        const nextStrongEntityTag = response.headers.get('ETag');
+        if (!isStrongHttpEntityTag(nextStrongEntityTag)) {
+          throw new Error('Document save omitted a valid strong ETag');
+        }
+        return {
+          status: 'saved',
+          nextStrongEntityTag,
+        };
+      },
+    }),
   );
 
   useEffect(
@@ -166,6 +163,13 @@ Keying the complete client session prevents React from reusing an uncontrolled
 editor, autosave validator, pending digest, or status state for a different
 document. Keying only `CwlEditor` is insufficient because the autosave session
 and asynchronous capture state must be replaced in the same lifecycle boundary.
+
+The session uses lazy component state rather than `useMemo`. The keyed child owns
+that state for one authorized editing context, and changing the key discards the
+whole session subtree. Memoization is an optimization and must not be treated as
+the semantic identity or disposal boundary for a mutable autosave coordinator.
+The session constructor performs no transport, timer, credential, or storage
+side effect; the retained session is closed by the component cleanup.
 
 The generation guard prevents an older, slower asynchronous envelope digest from
 being enqueued after a newer edit. A production host may debounce before capture
