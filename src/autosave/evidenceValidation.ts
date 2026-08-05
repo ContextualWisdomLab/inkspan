@@ -110,3 +110,47 @@ export function isDeeplyFrozenDocumentJson(rootValue: unknown): boolean {
     return false;
   }
 }
+
+/**
+ * Verify that one candidate evidence object contains deeply frozen document JSON.
+ *
+ * Only own data-property descriptors are inspected. The function never invokes
+ * candidate accessors and returns `false` for malformed objects or reflection
+ * failures so the public queue can reject them synchronously and without
+ * exposing private document content.
+ *
+ * @param evidence - Candidate framework-free revision evidence.
+ * @returns `true` when the candidate envelope contains deeply frozen JSON.
+ */
+export function hasDeeplyFrozenEvidenceDocumentJson(evidence: unknown): boolean {
+  try {
+    if (typeof evidence !== 'object' || evidence === null) return false;
+    const envelopeDescriptor = Object.getOwnPropertyDescriptor(
+      evidence,
+      'envelope',
+    );
+    if (
+      envelopeDescriptor === undefined ||
+      !envelopeDescriptor.enumerable ||
+      !Object.prototype.hasOwnProperty.call(envelopeDescriptor, 'value')
+    ) {
+      return false;
+    }
+    const envelope = envelopeDescriptor.value;
+    if (typeof envelope !== 'object' || envelope === null) return false;
+    const documentJsonDescriptor = Object.getOwnPropertyDescriptor(
+      envelope,
+      'documentJson',
+    );
+    if (
+      documentJsonDescriptor === undefined ||
+      !documentJsonDescriptor.enumerable ||
+      !Object.prototype.hasOwnProperty.call(documentJsonDescriptor, 'value')
+    ) {
+      return false;
+    }
+    return isDeeplyFrozenDocumentJson(documentJsonDescriptor.value);
+  } catch {
+    return false;
+  }
+}
