@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 import { resolve } from 'node:path';
 import type { LibraryOptions, UserConfig } from 'vite';
 import { describe, expect, it } from 'vitest';
