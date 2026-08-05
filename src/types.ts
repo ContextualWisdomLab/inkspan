@@ -271,7 +271,10 @@ export interface CwlEditorProps {
   onImageError?: (error: unknown) => void;
   /**
    * Bounded rich-HTML paste policy. Word, Google Docs, email, and web markup is
-   * rebuilt through Inkspan's strict semantic allowlist before insertion.
+   * rebuilt through Inkspan's strict semantic allowlist before insertion. The
+   * object is captured when `buildExtensions()` creates the editor; replacing it
+   * later does not update an existing extension, so remount the editor to apply a
+   * different policy.
    */
   clipboard?: ClipboardConfig;
   /**
