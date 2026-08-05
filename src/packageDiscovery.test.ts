@@ -62,6 +62,6 @@ describe('buyer-visible package discovery', () => {
     expect(changelog).toContain('buyer-visible autosave onboarding');
     expect(doctoring).toContain('Node.js package subpath exports');
     expect(doctoring).toContain('npm search');
-    expect(doctoring).toContain('GitHub documents the repository README');
+    expect(doctoring).toContain('GitHub repository README guidance');
   });
 });
