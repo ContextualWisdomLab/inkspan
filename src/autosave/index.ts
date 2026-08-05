@@ -15,6 +15,7 @@ export type DocumentAutosaveBlockedReason = 'conflict' | 'failure';
 export type DocumentAutosaveQueueErrorCode =
   | 'invalid_options'
   | 'invalid_revision_evidence'
+  | 'invalid_recovery_validator'
   | 'host_save_failed'
   | 'invalid_save_result';
 
