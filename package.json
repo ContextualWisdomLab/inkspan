@@ -1,7 +1,7 @@
 {
   "name": "@contextualwisdomlab/cwl-editor",
-  "version": "0.5.27",
-  "description": "Inkspan — commercial-grade Markdown + HTML WYSIWYG editor module (TipTap/ProseMirror, MIT) with SSR-safe client hydration, native form integration, lossless document snapshots, preparse-resource-bounded duplicate-name-safe versioned persistence envelopes, canonical JSON plus strict UTF-8 byte round trips, SHA-256 strong revision validators, framework-independent pure and imperative atomic revision-envelope evidence, local If-Match restore guards, and atomic before/after revision-envelope transition evidence for optimistic concurrency, one-call imperative envelope export and atomic active-schema restore, host-owned lifecycle callbacks, strict link and image policies, accessible editing controls, provider-neutral Yjs collaboration, a standalone base64 converter, and bundled offline multilingual Noto Sans fonts.",
+  "version": "0.5.28",
+  "description": "Inkspan — commercial-grade Markdown + HTML WYSIWYG editor module (TipTap/ProseMirror, MIT) with SSR-safe client hydration, native form integration, lossless document snapshots, preparse-resource-bounded duplicate-name-safe versioned persistence envelopes, canonical JSON plus strict UTF-8 byte round trips, SHA-256 strong revision validators, framework-independent pure and imperative atomic revision-envelope evidence, local If-Match restore guards, atomic before/after revision-envelope transition evidence for optimistic concurrency, and a provider-neutral bounded single-flight autosave coordinator, one-call imperative envelope export and atomic active-schema restore, host-owned lifecycle callbacks, strict link and image policies, accessible editing controls, provider-neutral Yjs collaboration, a standalone base64 converter, and bundled offline multilingual Noto Sans fonts.",
   "license": "MIT",
   "author": "ContextualWisdomLab",
   "type": "module",
@@ -47,6 +47,11 @@
       "import": "./dist/cwl-editor.js",
       "require": "./dist/cwl-editor.cjs"
     },
+    "./autosave": {
+      "types": "./dist/autosave/package.d.ts",
+      "import": "./dist/cwl-autosave.js",
+      "require": "./dist/cwl-autosave.cjs"
+    },
     "./collaboration": {
       "types": "./dist/collaboration/index.d.ts",
       "import": "./dist/cwl-collaboration.js",
@@ -76,7 +81,7 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && vite build --config vite.collaboration.config.ts && vite build --config vite.converter.config.ts && vite build --config vite.revision-evidence.config.ts && node ./scripts/copy-styles.mjs",
+    "build": "tsc --noEmit && vite build && vite build --config vite.collaboration.config.ts && vite build --config vite.converter.config.ts && vite build --config vite.revision-evidence.config.ts && vite build --config vite.autosave.config.ts && node ./scripts/copy-styles.mjs",
     "build:demo": "vite build --config vite.demo.config.ts",
     "fonts": "node ./scripts/fetch-fonts.mjs",
     "preview": "vite preview",
@@ -85,7 +90,7 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "test:package-config": "node --test ./scripts/revision-evidence-consumer-config.test.mjs",
-    "verify:package": "pnpm run test:package-config && node ./scripts/verify-package.mjs && node ./scripts/verify-canonical-envelope-package.mjs && node ./scripts/verify-revision-evidence-package.mjs && node ./scripts/verify-framework-free-revision-evidence-package.mjs"
+    "verify:package": "pnpm run test:package-config && node ./tests/package/verify-package.mjs && node ./scripts/verify-canonical-envelope-package.mjs && node ./scripts/verify-revision-evidence-package.mjs && node ./scripts/verify-framework-free-revision-evidence-package.mjs && node ./tests/package/verify-framework-free-autosave-package.mjs"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",

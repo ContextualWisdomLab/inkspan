@@ -10,7 +10,11 @@ import {
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const repositoryRoot = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+);
 const packageJson = JSON.parse(
   readFileSync(join(repositoryRoot, 'package.json'), 'utf8'),
 );
@@ -74,12 +78,18 @@ function verifyPackedFiles(filePaths) {
     'dist/cwl-editor.cjs',
     'dist/cwl-editor.css',
     'dist/index.d.ts',
+    'dist/cwl-autosave.js',
+    'dist/cwl-autosave.cjs',
+    'dist/autosave/index.d.ts',
     'dist/cwl-collaboration.js',
     'dist/cwl-collaboration.cjs',
     'dist/collaboration/index.d.ts',
     'dist/cwl-converter.js',
     'dist/cwl-converter.cjs',
     'dist/converter/index.d.ts',
+    'dist/cwl-revision-evidence.js',
+    'dist/cwl-revision-evidence.cjs',
+    'dist/revision-evidence/index.d.ts',
     'src/fonts/fonts.css',
     'src/fonts/fonts-latin.css',
   ];
@@ -148,6 +158,10 @@ function verifyConsumerTypes() {
   type DocumentEnvelopeDigestProvider,
 } from '${packageName}';
 import {
+  createDocumentAutosaveQueue,
+  type DocumentAutosaveRequestOutcome,
+} from '${packageName}/autosave';
+import {
   assertCollaborationConfiguration,
   type CollaborationUser,
 } from '${packageName}/collaboration';
@@ -155,6 +169,9 @@ import {
   bytesToDataUri,
   type EncodeOptions,
 } from '${packageName}/converter';
+import type {
+  CwlEditorDocumentRevisionEvidence,
+} from '${packageName}/revision-evidence';
 
 const renderMarkdown: (markdown: string) => string = markdownToHtml;
 const safeHref: string = validateSafeLinkHref('/documents/current');
@@ -178,6 +195,7 @@ declare const destroyCallback: EditorDestroyCallback;
 declare const documentChangeCallback: EditorDocumentChangeCallback;
 declare const collaborationUser: CollaborationUser;
 declare const digestProvider: DocumentEnvelopeDigestProvider;
+declare const revisionEvidence: CwlEditorDocumentRevisionEvidence;
 const expectedStrongEntityTag = '"sha256-' + '0'.repeat(64) + '"';
 const currentSnapshot: CwlEditorDocumentSnapshot = editorHandle.getSnapshot();
 const currentRevision: Promise<CwlEditorDocumentRevision | null> =
@@ -236,6 +254,11 @@ const standaloneRevision: Promise<CwlEditorDocumentRevision> =
     undefined,
     digestProvider,
   );
+const autosaveQueue = createDocumentAutosaveQueue({
+  save: async () => ({ status: 'saved' }),
+});
+const autosaveOutcome: Promise<DocumentAutosaveRequestOutcome> =
+  autosaveQueue.enqueue(revisionEvidence);
 void [
   renderMarkdown,
   safeHref,
@@ -253,6 +276,8 @@ void [
   conditionalEvidence,
   conditionalByteRestoreResult,
   standaloneRevision,
+  autosaveQueue,
+  autosaveOutcome,
   resetEvent,
   selectionEvent,
   selectionSnapshot,
@@ -300,6 +325,7 @@ try {
     'consumer-esm.mjs',
     `import assert from 'node:assert/strict';
 import * as editor from '${packageName}';
+import * as autosave from '${packageName}/autosave';
 import * as collaboration from '${packageName}/collaboration';
 import * as converter from '${packageName}/converter';
 
@@ -309,6 +335,8 @@ assert.equal(typeof editor.restoreDocumentEnvelopeIfMatch, 'function');
 assert.equal(typeof editor.restoreDocumentEnvelopeBytesIfMatch, 'function');
 assert.equal(typeof editor.DocumentEnvelopeRestoreError, 'function');
 assert.ok(editor.CwlEditor);
+assert.equal(typeof autosave.createDocumentAutosaveQueue, 'function');
+assert.equal(typeof autosave.DocumentAutosaveQueueError, 'function');
 assert.equal(typeof collaboration.assertCollaborationConfiguration, 'function');
 assert.ok(collaboration.CollaborativeCwlEditor);
 assert.equal(typeof converter.bytesToDataUri, 'function');
@@ -323,6 +351,7 @@ for (const subpath of ['styles.css', 'fonts.css', 'fonts-latin.css']) {
     'consumer-commonjs.cjs',
     `const assert = require('node:assert/strict');
 const editor = require('${packageName}');
+const autosave = require('${packageName}/autosave');
 const collaboration = require('${packageName}/collaboration');
 const converter = require('${packageName}/converter');
 
@@ -332,6 +361,8 @@ assert.equal(typeof editor.restoreDocumentEnvelopeIfMatch, 'function');
 assert.equal(typeof editor.restoreDocumentEnvelopeBytesIfMatch, 'function');
 assert.equal(typeof editor.DocumentEnvelopeRestoreError, 'function');
 assert.ok(editor.CwlEditor);
+assert.equal(typeof autosave.createDocumentAutosaveQueue, 'function');
+assert.equal(typeof autosave.DocumentAutosaveQueueError, 'function');
 assert.equal(typeof collaboration.assertCollaborationConfiguration, 'function');
 assert.ok(collaboration.CollaborativeCwlEditor);
 assert.equal(typeof converter.bytesToDataUri, 'function');
