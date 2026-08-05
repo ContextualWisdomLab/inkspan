@@ -38,6 +38,10 @@ export type DocumentAutosaveDurableSaveResult =
  * The host must enforce `ifMatchStrongEntityTag` atomically inside its authorized
  * storage transaction and return the server-selected strong entity tag for the
  * resulting representation. Inkspan never performs transport or persistence.
+ * The host must also bound its own callback with a timeout or abort signal:
+ * an unresolved callback retains the single-flight request and prevents later
+ * enqueue, flush, and close operations from completing. Retry policy remains
+ * host-owned.
  */
 export type DocumentAutosaveDurableSaveFunction = (
   request: Readonly<DocumentAutosaveDurableSaveRequest>,
@@ -88,6 +92,8 @@ export interface DocumentAutosaveSession {
    *
    * @param nextStrongEntityTag - Server-issued strong validator after recovery.
    * @returns `true` when one blocked state was cleared; otherwise `false`.
+   * @throws {DocumentAutosaveQueueError} When the recovered validator is not one
+   * syntactically valid strong entity tag.
    */
   resume(nextStrongEntityTag: string): boolean;
   /**
@@ -332,12 +338,19 @@ export function createDocumentAutosaveSession(
 
   /** Resume blocked work only after installing a valid recovered validator. */
   function resume(nextStrongEntityTag: string): boolean {
-    if (internalQueue.getSnapshot().state !== 'blocked') return false;
     if (!isStrongHttpEntityTag(nextStrongEntityTag)) {
       throw createInvalidSessionOptionsError();
     }
+    if (internalQueue.getSnapshot().state !== 'blocked') return false;
+
+    // `internalQueue.resume()` starts retained work synchronously until the first
+    // host await. Install the recovered validator before that call, but restore
+    // the previous value if the queue unexpectedly declines the transition.
+    const previousStrongEntityTag = durableStrongEntityTag;
     durableStrongEntityTag = nextStrongEntityTag;
-    return internalQueue.resume();
+    const resumed = internalQueue.resume();
+    if (!resumed) durableStrongEntityTag = previousStrongEntityTag;
+    return resumed;
   }
 
   /** Wait for quiescence and attach the current durable validator. */
