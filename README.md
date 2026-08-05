@@ -296,8 +296,16 @@ revision digest:
 import { createDocumentAutosaveQueue } from '@contextualwisdomlab/cwl-editor/autosave';
 import { createDocumentEnvelopeRevisionEvidence } from '@contextualwisdomlab/cwl-editor/revision-evidence';
 
+const isStrongEntityTag = (candidate: string | null): candidate is string =>
+  candidate !== null &&
+  !candidate.startsWith('W/') &&
+  /^"[\u0021\u0023-\u007e\u0080-\u00ff]*"$/.test(candidate);
+
 // This value comes from the durable service's ETag response header.
 // Inkspan's local revision digest is not a durable HTTP validator.
+if (!isStrongEntityTag(loadedStrongEntityTag)) {
+  throw new Error('Loaded document response omitted a strong ETag');
+}
 let durableStrongEntityTag = loadedStrongEntityTag;
 
 const autosaveQueue = createDocumentAutosaveQueue({
@@ -315,16 +323,7 @@ const autosaveQueue = createDocumentAutosaveQueue({
     }
 
     const nextDurableStrongEntityTag = response.headers.get('ETag');
-    const isQuotedOpaqueTag =
-      nextDurableStrongEntityTag !== null &&
-      /^"[\u0021\u0023-\u007e\u0080-\u00ff]*"$/.test(
-        nextDurableStrongEntityTag,
-      );
-    if (
-      nextDurableStrongEntityTag === null ||
-      nextDurableStrongEntityTag.startsWith('W/') ||
-      !isQuotedOpaqueTag
-    ) {
+    if (!isStrongEntityTag(nextDurableStrongEntityTag)) {
       throw new Error('Durable save response omitted a strong ETag');
     }
 
@@ -343,15 +342,16 @@ await autosaveQueue.enqueue(evidence);
 ```
 
 Inkspan owns immutable evidence validation, one-active/one-pending local
-coordination, deterministic outcomes, and redacted queue failures. A successful
-write advances the next `If-Match` value only from the durable service's returned
-strong `ETag`; a missing, weak, or malformed validator fails closed. The host
-owns transport, authentication, authorization, tenant isolation, persistence,
-credentials, migration, retention, audit storage, retry policy, accessible
-conflict handling, and atomic RFC 9110 `If-Match` enforcement inside the durable
-write transaction. A durable HTTP entity tag is a server-selected opaque
-validator: after a successful write, adopt the host response's strong `ETag`
-rather than substituting Inkspan's local revision evidence. See
+coordination, deterministic outcomes, and redacted queue failures. Initial and
+replacement validators are both checked before entering the next `If-Match`
+request. A successful write advances that value only from the durable service's
+returned strong `ETag`; a missing, weak, or malformed validator fails closed.
+The host owns transport, authentication, authorization, tenant isolation,
+persistence, credentials, migration, retention, audit storage, retry policy,
+accessible conflict handling, and atomic RFC 9110 `If-Match` enforcement inside
+the durable write transaction. A durable HTTP entity tag is a server-selected
+opaque validator: after a successful write, adopt the host response's strong
+`ETag` rather than substituting Inkspan's local revision evidence. See
 [`docs/document-autosave.md`](docs/document-autosave.md) for recovery, shutdown,
 privacy, SSR/worker, and CWL/naruon integration guidance.
 
