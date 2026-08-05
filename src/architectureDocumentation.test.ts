@@ -87,6 +87,13 @@ describe('acquisition-ready modular architecture documentation', () => {
     expect(integration).toContain('key={props.editingContextId}');
     expect(integration).toContain('encodeURIComponent(documentId)');
     expect(integration).toContain(
+      "import { useEffect, useRef, useState } from 'react';",
+    );
+    expect(integration).toContain(
+      'const [session] = useState<DocumentAutosaveSession>',
+    );
+    expect(integration).not.toContain('useMemo<DocumentAutosaveSession>');
+    expect(integration).toContain(
       'must issue a new opaque `editingContextId` for every authorized document load',
     );
     expect(doctoring).toContain('cross-document state reuse');
