@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
 } from 'react';
+import type { ClipboardSanitizationError } from '../extensions/SafeClipboard.js';
 import { buildExtensions } from '../extensions/kit.js';
 import type { CwlEditorHandle, CwlEditorProps } from '../types.js';
 import { EditorFrame } from './EditorFrame.js';
@@ -36,6 +37,8 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       onBlur,
       onSelectionChange,
       onImageError,
+      clipboard,
+      onClipboardError,
       placeholder = 'Start writing…',
       editable = true,
       hideToolbar = false,
@@ -69,6 +72,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     const onBlurRef = useLatestRef(onBlur);
     const onSelectionChangeRef = useLatestRef(onSelectionChange);
     const onImageErrorRef = useLatestRef(onImageError);
+    const onClipboardErrorRef = useLatestRef(onClipboardError);
     const onReadyRef = useLatestRef(onReady);
     const onDestroyRef = useLatestRef(onDestroy);
     const formResetValueRef = useLatestRef(formResetValue);
@@ -76,6 +80,12 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     const reportImageError = useCallback((error: Error) => {
       onImageErrorRef.current?.(error);
     }, [onImageErrorRef]);
+    const reportClipboardError = useCallback(
+      (error: ClipboardSanitizationError) => {
+        onClipboardErrorRef.current?.(error);
+      },
+      [onClipboardErrorRef],
+    );
     const editorAttributes = useMemo(
       () =>
         buildEditorAccessibilityAttributes({
@@ -109,7 +119,9 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       extensions: buildExtensions({
         placeholder,
         image,
+        clipboard,
         onImageError: reportImageError,
+        onClipboardError: reportClipboardError,
       }),
       content: editorValueToHtml(value ?? defaultValue ?? '', mode),
       editorProps: {
