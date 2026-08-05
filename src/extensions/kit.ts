@@ -11,9 +11,6 @@ import TableCell from '@tiptap/extension-table-cell';
 import type { Extensions } from '@tiptap/react';
 import { Base64Image } from './Base64Image.js';
 import {
-  DEFAULT_CLIPBOARD_HTML_BYTES,
-  DEFAULT_CLIPBOARD_MAX_DEPTH,
-  DEFAULT_CLIPBOARD_MAX_NODES,
   SafeClipboard,
   type ClipboardConfig,
   type ClipboardSanitizationError,
@@ -44,7 +41,6 @@ export function buildExtensions(
   options: BuildExtensionsOptions = {},
 ): Extensions {
   const image = options.image ?? {};
-  const clipboard = options.clipboard ?? {};
   const historyConfiguration = options.disableHistory
     ? { history: false as const }
     : {};
@@ -65,10 +61,7 @@ export function buildExtensions(
       HTMLAttributes: { rel: 'noopener noreferrer nofollow' },
     }),
     SafeClipboard.configure({
-      maxHtmlBytes:
-        clipboard.maxHtmlBytes ?? DEFAULT_CLIPBOARD_HTML_BYTES,
-      maxNodes: clipboard.maxNodes ?? DEFAULT_CLIPBOARD_MAX_NODES,
-      maxDepth: clipboard.maxDepth ?? DEFAULT_CLIPBOARD_MAX_DEPTH,
+      config: options.clipboard,
       onError: options.onClipboardError,
     }),
     Placeholder.configure({
