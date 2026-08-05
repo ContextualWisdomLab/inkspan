@@ -17,6 +17,9 @@ const MAXIMUM_CLIPBOARD_NODES = 100_000;
 const MAXIMUM_CLIPBOARD_DEPTH = 256;
 const SAFE_CLIPBOARD_PRIORITY = -1_000_000;
 const SAFE_LINK_REL = 'noopener noreferrer nofollow';
+const CSS_HEX_DIGIT = /^[0-9a-f]$/iu;
+const CSS_NEWLINE = /^[\n\r\f]$/u;
+const CSS_WHITESPACE = /^[\t\n\f\r ]$/u;
 const CONFIGURATION_KEYS = [
   'maxHtmlBytes',
   'maxNodes',
@@ -261,6 +264,55 @@ function resolveClipboardDocument(
   return candidate;
 }
 
+/** Decode the CSS escapes needed for exact hidden-property comparisons. */
+function decodeCssEscapes(source: string): string | null {
+  let decoded = '';
+  for (let index = 0; index < source.length; index += 1) {
+    const current = source[index];
+    if (current !== '\\') {
+      decoded += current;
+      continue;
+    }
+    if (index + 1 >= source.length) return null;
+    const next = source[index + 1] as string;
+    if (CSS_NEWLINE.test(next)) return null;
+
+    let cursor = index + 1;
+    let hexadecimal = '';
+    while (
+      cursor < source.length &&
+      hexadecimal.length < 6 &&
+      CSS_HEX_DIGIT.test(source[cursor] as string)
+    ) {
+      hexadecimal += source[cursor] as string;
+      cursor += 1;
+    }
+    if (hexadecimal.length === 0) {
+      decoded += next;
+      index += 1;
+      continue;
+    }
+
+    const codePoint = Number.parseInt(hexadecimal, 16);
+    if (
+      codePoint === 0 ||
+      codePoint > 0x10ffff ||
+      (codePoint >= 0xd800 && codePoint <= 0xdfff)
+    ) {
+      return null;
+    }
+    decoded += String.fromCodePoint(codePoint);
+    index = cursor - 1;
+    if (
+      index + 1 < source.length &&
+      CSS_WHITESPACE.test(source[index + 1] as string)
+    ) {
+      index += 1;
+    }
+  }
+  return decoded;
+}
+
 /** Detect Office's hidden-subtree declaration from bounded raw style text. */
 function hasOfficeHiddenDeclaration(element: Element): boolean {
   const rawStyle = element.getAttribute('style');
@@ -269,13 +321,16 @@ function hasOfficeHiddenDeclaration(element: Element): boolean {
   return withoutComments.split(';').some((declaration) => {
     const separator = declaration.indexOf(':');
     if (separator < 0) return false;
-    const propertyName = declaration.slice(0, separator).trim().toLowerCase();
+    const propertyName = decodeCssEscapes(
+      declaration.slice(0, separator).trim(),
+    )?.toLowerCase();
     if (propertyName !== 'mso-hide') return false;
-    const propertyValue = declaration
-      .slice(separator + 1)
-      .replace(/\s*!important\s*$/iu, '')
-      .trim()
-      .toLowerCase();
+    const propertyValue = decodeCssEscapes(
+      declaration
+        .slice(separator + 1)
+        .replace(/\s*!important\s*$/iu, '')
+        .trim(),
+    )?.toLowerCase();
     return propertyValue === 'all';
   });
 }
