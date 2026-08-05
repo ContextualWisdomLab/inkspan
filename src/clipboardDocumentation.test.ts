@@ -8,9 +8,16 @@ function repositoryDocument(path: string): string {
   return readFileSync(resolve(process.cwd(), path), 'utf8');
 }
 
+/** Collapse Markdown layout whitespace without weakening semantic wording checks. */
+function normalizedRepositoryDocument(path: string): string {
+  return repositoryDocument(path).replace(/\s+/gu, ' ').trim();
+}
+
 describe('safe rich clipboard documentation contract', () => {
   it('binds host configuration validation to the paste boundary', () => {
-    const operatorGuide = repositoryDocument('docs/clipboard-security.md');
+    const operatorGuide = normalizedRepositoryDocument(
+      'docs/clipboard-security.md',
+    );
 
     expect(operatorGuide).toContain(
       'preserved by identity when the editor is created',
@@ -24,14 +31,18 @@ describe('safe rich clipboard documentation contract', () => {
   });
 
   it('documents final ordinary transform ordering and its hostile-host boundary', () => {
-    const operatorGuide = repositoryDocument('docs/clipboard-security.md');
-    const doctoring = repositoryDocument(
+    const operatorGuide = normalizedRepositoryDocument(
+      'docs/clipboard-security.md',
+    );
+    const doctoring = normalizedRepositoryDocument(
       'docs/doctoring/safe-rich-clipboard.md',
     );
 
     for (const document of [operatorGuide, doctoring]) {
       expect(document).toContain('lowest-practical TipTap extension priority');
-      expect(document).toContain('final ordinary `transformPastedHTML` transform');
+      expect(document).toContain(
+        'final ordinary `transformPastedHTML` transform',
+      );
       expect(document).toContain('lower-priority transform');
     }
     expect(doctoring).toContain('TipTap extension priority');
@@ -39,8 +50,10 @@ describe('safe rich clipboard documentation contract', () => {
   });
 
   it('records Office hidden-style parsing and browser evidence limits', () => {
-    const operatorGuide = repositoryDocument('docs/clipboard-security.md');
-    const doctoring = repositoryDocument(
+    const operatorGuide = normalizedRepositoryDocument(
+      'docs/clipboard-security.md',
+    );
+    const doctoring = normalizedRepositoryDocument(
       'docs/doctoring/safe-rich-clipboard.md',
     );
 
@@ -58,7 +71,7 @@ describe('safe rich clipboard documentation contract', () => {
   });
 
   it('retains the current standards edition and explicit work-in-progress boundary', () => {
-    const doctoring = repositoryDocument(
+    const doctoring = normalizedRepositoryDocument(
       'docs/doctoring/safe-rich-clipboard.md',
     );
 
@@ -71,10 +84,10 @@ describe('safe rich clipboard documentation contract', () => {
   });
 
   it('keeps the design and implementation plan reconciled to reviewed behavior', () => {
-    const design = repositoryDocument(
+    const design = normalizedRepositoryDocument(
       'docs/superpowers/specs/2026-08-05-safe-rich-clipboard-design.md',
     );
-    const plan = repositoryDocument(
+    const plan = normalizedRepositoryDocument(
       'docs/superpowers/plans/2026-08-05-safe-rich-clipboard.md',
     );
 
@@ -89,9 +102,9 @@ describe('safe rich clipboard documentation contract', () => {
   });
 
   it('records the unreleased security and assurance changes', () => {
-    const changelog = repositoryDocument('CHANGELOG.md');
+    const changelog = normalizedRepositoryDocument('CHANGELOG.md');
 
-    expect(changelog).toContain('raw `mso-hide` declarations');
+    expect(changelog).toContain('Raw `mso-hide` declarations');
     expect(changelog).toContain('final ordinary TipTap paste transform');
     expect(changelog).toContain('accessor-safe paste-time configuration');
     expect(changelog).toContain('cross-engine browser evidence');
