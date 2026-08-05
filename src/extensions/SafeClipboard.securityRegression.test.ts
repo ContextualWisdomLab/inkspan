@@ -67,6 +67,20 @@ describe('SafeClipboard security regressions', () => {
     expect(container).toHaveTextContent('newline escape remains visible');
   });
 
+  it('drops metadata titles instead of surfacing document metadata as editor text', () => {
+    const sanitized = sanitizeRichClipboardHtml(
+      '<p>visible</p><title>metadata title secret</title>',
+      {},
+      document,
+    );
+    const container = document.createElement('div');
+    container.innerHTML = sanitized;
+
+    expect(container).toHaveTextContent('visible');
+    expect(container).not.toHaveTextContent('metadata title secret');
+    expect(container.querySelectorAll('title')).toHaveLength(0);
+  });
+
   it('remains the final ordinary paste transform after host extensions', () => {
     const resourceReintroducer = Extension.create({
       name: 'resourceReintroducer',
