@@ -38,10 +38,10 @@ npm documents `description` and `keywords` as inputs to npm search. Adding exact
 persistence terms therefore improves registry discovery without changing package
 identity or semantic versioning.
 
-GitHub documents the repository README as the first place many visitors learn
-what a project does, why it is useful, and how to get started. The root README
-therefore carries a concise, copyable onboarding path, while the existing
-`docs/document-autosave.md` remains the complete operator contract.
+GitHub repository README guidance identifies the README as the first place many
+visitors learn what a project does, why it is useful, and how to get started. The
+root README therefore carries a concise, copyable onboarding path, while the
+existing `docs/document-autosave.md` remains the complete operator contract.
 
 ## Verification
 
