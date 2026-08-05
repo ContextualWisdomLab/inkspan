@@ -70,6 +70,24 @@ describe('safe rich clipboard documentation contract', () => {
     expect(doctoring).not.toContain('WD-clipboard-apis-20251124');
   });
 
+  it('keeps the design and implementation plan reconciled to reviewed behavior', () => {
+    const design = repositoryDocument(
+      'docs/superpowers/specs/2026-08-05-safe-rich-clipboard-design.md',
+    );
+    const plan = repositoryDocument(
+      'docs/superpowers/plans/2026-08-05-safe-rich-clipboard.md',
+    );
+
+    for (const document of [design, plan]) {
+      expect(document).toContain('original `ClipboardConfig` object');
+      expect(document).toContain('lowest-practical TipTap extension priority');
+      expect(document).toContain('cross-engine');
+      expect(document).toContain('DOMPurify');
+    }
+    expect(plan).toContain('Post-review reconciliation');
+    expect(design).toContain('No cross-engine browser conformance claim');
+  });
+
   it('records the unreleased security and assurance changes', () => {
     const changelog = repositoryDocument('CHANGELOG.md');
 
