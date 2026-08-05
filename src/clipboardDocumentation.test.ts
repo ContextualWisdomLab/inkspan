@@ -76,6 +76,33 @@ describe('safe rich clipboard documentation contract', () => {
     expect(doctoring).toContain('vulnerability-response obligation');
   });
 
+  it('records closed interactive content as a hidden-content boundary', () => {
+    const operatorGuide = normalizedRepositoryDocument(
+      'docs/clipboard-security.md',
+    );
+    const doctoring = normalizedRepositoryDocument(
+      'docs/doctoring/closed-interactive-content.md',
+    );
+    const changelog = normalizedRepositoryDocument('CHANGELOG.md');
+
+    expect(operatorGuide).toContain(
+      'a closed `<details>` element preserves only the sanitized contents of its first `<summary>` element child',
+    );
+    expect(operatorGuide).toContain(
+      'a closed `<dialog>` subtree is dropped completely',
+    );
+    expect(doctoring).toContain('WHATWG HTML Living Standard');
+    expect(doctoring).toContain(
+      'A closed `details` contributes only its first `summary` element child',
+    );
+    expect(doctoring).toContain(
+      'A closed `dialog` contributes no subtree',
+    );
+    expect(changelog).toContain(
+      'Closed `details` elements preserve only their first rendered summary',
+    );
+  });
+
   it('retains the current standards edition and explicit work-in-progress boundary', () => {
     const doctoring = normalizedRepositoryDocument(
       'docs/doctoring/safe-rich-clipboard.md',
