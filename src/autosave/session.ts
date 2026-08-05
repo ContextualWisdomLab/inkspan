@@ -287,6 +287,15 @@ function createDocumentAutosaveSessionSnapshot(
   });
 }
 
+/** Report whether one current queue snapshot is terminal for session flushing. */
+function isSessionFlushTerminal(snapshot: InternalQueueSnapshot): boolean {
+  return (
+    snapshot.state === 'idle' ||
+    snapshot.state === 'blocked' ||
+    snapshot.state === 'closed'
+  );
+}
+
 /**
  * Create a provider-neutral durable-validator autosave session.
  *
@@ -362,13 +371,19 @@ export function createDocumentAutosaveSession(
     return resumed;
   }
 
-  /** Wait for quiescence and attach the current durable validator. */
+  /** Wait for the current terminal state and attach its durable validator. */
   async function flush(): Promise<DocumentAutosaveSessionSnapshot> {
-    const snapshot = await internalQueue.flush();
-    return createDocumentAutosaveSessionSnapshot(
-      snapshot as DocumentAutosaveQueueSnapshot,
-      durableStrongEntityTag,
-    );
+    await internalQueue.flush();
+    while (true) {
+      const snapshot = internalQueue.getSnapshot();
+      if (isSessionFlushTerminal(snapshot)) {
+        return createDocumentAutosaveSessionSnapshot(
+          snapshot as DocumentAutosaveQueueSnapshot,
+          durableStrongEntityTag,
+        );
+      }
+      await internalQueue.flush();
+    }
   }
 
   /** Close queue progression and attach the final durable validator. */
