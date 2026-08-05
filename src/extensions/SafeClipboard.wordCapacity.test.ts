@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_CLIPBOARD_MAX_NODES,
   sanitizeRichClipboardHtml,
@@ -43,5 +43,30 @@ describe('SafeClipboard representative Word capacity', () => {
     expect(container.firstElementChild).toHaveTextContent('Word paragraph 1');
     expect(container.lastElementChild).toHaveTextContent('Word paragraph 3000');
     expect(container.querySelector('[class], [style]')).toBeNull();
+  });
+
+  it('classifies one safe anchor href once and reuses that decision', () => {
+    const originalGetAttribute = Element.prototype.getAttribute;
+    const hrefReads = vi.fn();
+    const getAttributeSpy = vi
+      .spyOn(Element.prototype, 'getAttribute')
+      .mockImplementation(function (this: Element, qualifiedName: string) {
+        if (this.localName === 'a' && qualifiedName === 'href') hrefReads();
+        return originalGetAttribute.call(this, qualifiedName);
+      });
+
+    try {
+      const sanitized = sanitizeRichClipboardHtml(
+        '<a href="https://example.com/path">safe</a>',
+        {},
+        document,
+      );
+
+      expect(sanitized).toContain('href="https://example.com/path"');
+      expect(sanitized).toContain('rel="noopener noreferrer nofollow"');
+      expect(hrefReads).toHaveBeenCalledTimes(1);
+    } finally {
+      getAttributeSpy.mockRestore();
+    }
   });
 });
