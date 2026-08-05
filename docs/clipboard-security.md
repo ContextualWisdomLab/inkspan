@@ -70,13 +70,14 @@ overrides, or layout styles survive.
 Browser CSS object models do not expose every proprietary Office declaration
 consistently. Inkspan therefore detects `mso-hide: all` from the bounded raw
 `style` declaration rather than relying on `CSSStyleDeclaration` support for the
-proprietary property. It removes CSS comments, decodes bounded CSS escape
-sequences in the property name and keyword value, compares both
-case-insensitively, tolerates ordinary whitespace and a terminal `!important`,
-and requires the decoded property name `mso-hide` and decoded value `all`.
-Escaped equivalents such as `mso-\68 ide: \61ll` are hidden. Invalid null,
-surrogate, out-of-range, trailing, or newline escapes fail to match instead of
-being repaired. Values such as `none` or `alligator`, including escaped forms,
+proprietary property. It removes closed CSS comments and a final comment that
+runs to end of input, decodes bounded CSS escape sequences in the property name
+and keyword value, compares both case-insensitively, tolerates ordinary
+whitespace and a terminal `!important`, and requires the decoded property name
+`mso-hide` and decoded value `all`. Escaped equivalents such as
+`mso-\68 ide: \61ll` and EOF-commented `mso-hide: all/*` are hidden. Invalid
+null, surrogate, out-of-range, trailing, or newline escapes fail to match instead
+of being repaired. Values such as `none` or `alligator`, including escaped forms,
 and properties such as `not-mso-hide`, remain visible and do not create false
 hidden-subtree matches. The complete hidden subtree is dropped, and the source
 style attribute is never copied to output.
