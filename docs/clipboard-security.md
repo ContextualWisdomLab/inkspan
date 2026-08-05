@@ -29,9 +29,18 @@ The default limits are:
 />
 ```
 
-Configuration is read when the editor instance is created. Error observers are
-live: replacing `onClipboardError` does not recreate the editor or Yjs binding.
-Invalid configuration fails closed when rich HTML is pasted.
+The nested clipboard configuration is preserved by identity when the editor is
+created and validated only when rich HTML is pasted. Inkspan copies no nested
+configuration values and performs no nested spread, so the editor can be created
+without evaluating accessors or proxy traps during editor construction. At the
+paste boundary, Inkspan accepts only exact enumerable own data properties with
+supported names and bounded positive safe-integer values. Accessors, symbols,
+unknown keys, reflection failures, and malformed values fail closed with the
+redacted `invalid_configuration` error.
+
+Error observers are live: replacing `onClipboardError` does not recreate the
+editor or the Yjs binding. A host callback failure is contained and cannot make
+rejected HTML enter the document.
 
 ## Preserved structure
 
@@ -41,7 +50,7 @@ Inkspan reconstructs a new fragment containing only:
   breaks, and horizontal rules;
 - bold/strong, italic/emphasis, underline, strike, superscript, and subscript;
 - ordered and unordered lists;
-- tables, table sections, rows, header cells, and data cells;
+- tables, table sections, rows, header cells, and data cells; and
 - hyperlinks that pass Inkspan's existing SafeLink URI policy.
 
 Word and Google Docs often represent visible semantics only through inline
@@ -50,11 +59,24 @@ style attributes:
 
 - bold font weight → `<strong>`;
 - italic or oblique font style → `<em>`;
-- underline → `<u>`;
+- underline → `<u>`; and
 - line-through → `<s>`.
 
 No colors, fonts, sizes, backgrounds, positioning, hidden content, direction
 overrides, or layout styles survive.
+
+## Hidden Office content
+
+Browser CSS object models do not expose every proprietary Office declaration
+consistently. Inkspan therefore detects `mso-hide: all` from the bounded raw
+`style` declaration rather than relying on `CSSStyleDeclaration` support for the
+proprietary property. It removes CSS comments, compares the property name and
+value case-insensitively, tolerates ordinary whitespace and a terminal
+`!important`, and requires the exact property name `mso-hide` and exact value
+`all`. Values such as `none` or `alligator`, and properties such as
+`not-mso-hide`, remain visible and do not create false hidden-subtree matches.
+The complete hidden subtree is dropped, and the source style attribute is never
+copied to output.
 
 ## Removed content
 
@@ -73,6 +95,23 @@ Unsafe links are unwrapped while their visible text is retained. Safe links keep
 only the exact `href` and receive
 `rel="noopener noreferrer nofollow"`. Inkspan never trims or repairs an
 untrusted link into a different browser interpretation.
+
+## Paste-transform ordering
+
+TipTap registers extension hooks by extension priority and chains
+`transformPastedHTML` results. Inkspan assigns SafeClipboard the
+lowest-practical TipTap extension priority so it is the final ordinary
+`transformPastedHTML` transform in the shared extension set. A deterministic
+integration regression installs a competing host transform that reintroduces an
+image and script, then proves SafeClipboard receives that output last and removes
+both before ProseMirror parsing.
+
+A deliberately hostile host can still install a lower-priority transform or
+mutate the parsed transaction after the sanitizer. That lower-priority transform
+is outside Inkspan's supported composition contract and voids the pre-parse
+safety guarantee. Hosts must keep SafeClipboard as the final ordinary
+`transformPastedHTML` transform and must subject any later transaction mutation
+to an independently reviewed equivalent validation boundary.
 
 ## Errors
 
@@ -104,8 +143,18 @@ const safeHtml = sanitizeRichClipboardHtml(untrustedHtml);
 
 The function needs a DOM-capable document at call time but does not touch DOM
 globals at module import time. SSR can import Inkspan safely; invoke this API in
-a browser, jsdom-like controlled environment, or pass an explicit `Document` as
-the third argument.
+a browser, a jsdom-like controlled environment, or pass an explicit `Document`
+as the third argument.
+
+## Browser evidence boundary
+
+The current deterministic corpus runs in jsdom and proves the repository's
+allowlist, bounds, error redaction, integration wiring, transform ordering, and
+known Office/Google fixtures. It does not by itself prove parser, CSS, or
+serialization parity across Chromium, Firefox, and WebKit. The doctoring record
+therefore treats cross-engine differential execution as a release-acceptance
+gate for the future 0.6.0 publication rather than claiming browser conformance
+from jsdom evidence.
 
 ## Ownership boundary
 
@@ -117,7 +166,8 @@ integration, bounded errors, and deterministic tests. The host still owns:
 - authentication, authorization, and tenant isolation;
 - persistence, retention, audit storage, and data residency;
 - downstream HTML rendering and Content Security Policy;
-- model or AI use of pasted content;
+- extension ordering outside the supported shared kit;
+- model or AI use of pasted content; and
 - legal, privacy, and information-governance policy.
 
 The feature introduces no network request, storage adapter, credential,
