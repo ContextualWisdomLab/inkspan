@@ -456,6 +456,8 @@ export function sanitizeRichClipboardHtml(
 
 /** Options held by the TipTap paste transformation extension. */
 export interface SafeClipboardOptions extends ResolvedClipboardConfig {
+  /** Original host configuration validated fail-closed only when HTML is pasted. */
+  config?: ClipboardConfig;
   /** Latest host observer for redacted sanitizer failures. */
   onError?: (error: ClipboardSanitizationError) => void;
   /** Optional deterministic DOM document supplied by tests or controlled hosts. */
@@ -471,6 +473,7 @@ export const SafeClipboard = Extension.create<SafeClipboardOptions>({
       maxHtmlBytes: DEFAULT_CLIPBOARD_HTML_BYTES,
       maxNodes: DEFAULT_CLIPBOARD_MAX_NODES,
       maxDepth: DEFAULT_CLIPBOARD_MAX_DEPTH,
+      config: undefined,
       onError: undefined,
       document: undefined,
     };
@@ -478,15 +481,15 @@ export const SafeClipboard = Extension.create<SafeClipboardOptions>({
 
   transformPastedHTML(html: string) {
     try {
-      return sanitizeRichClipboardHtml(
-        html,
-        {
-          maxHtmlBytes: this.options.maxHtmlBytes,
-          maxNodes: this.options.maxNodes,
-          maxDepth: this.options.maxDepth,
-        },
-        this.options.document,
-      );
+      const config =
+        this.options.config === undefined
+          ? {
+              maxHtmlBytes: this.options.maxHtmlBytes,
+              maxNodes: this.options.maxNodes,
+              maxDepth: this.options.maxDepth,
+            }
+          : this.options.config;
+      return sanitizeRichClipboardHtml(html, config, this.options.document);
     } catch (error) {
       const clipboardError =
         error instanceof ClipboardSanitizationError
