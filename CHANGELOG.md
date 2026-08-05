@@ -14,10 +14,14 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 ### Changed
 - Rich HTML pasted from Word, Google Docs, email, and web pages now keeps supported structure and narrowly mapped bold/italic/underline/strike semantics while discarding arbitrary source styling and proprietary metadata
 - Standalone and collaborative editors now use exactly one shared clipboard policy through `buildExtensions()`
+- Nested clipboard policy objects are preserved without accessor evaluation during editor construction and use accessor-safe paste-time configuration validation at the exact rich-paste boundary
 - Because default rich-HTML paste behavior changes, the integrated feature targets the next minor release, **0.6.0**, only after a separate verified release PR
 
 ### Security
 - Active, embedded, form, metadata, media, SVG/MathML, template, resource-bearing, hidden, and HTML-image subtrees are removed before insertion
+- Raw `mso-hide` declarations are parsed with exact case-insensitive property/value matching, CSS-comment removal, optional terminal `!important`, and false-positive guards instead of relying on browser CSSOM support for the proprietary Office property
+- SafeClipboard uses the lowest-practical extension priority as the final ordinary TipTap paste transform, with an integration regression proving a prior host transform cannot reintroduce scripts or tracking images before parsing
+- A host-installed lower-priority transform or post-parse mutation is explicitly outside the supported safety contract and requires an independently verified equivalent validation boundary
 - Unsafe and credential-bearing links are unwrapped while visible text remains; SafeLink-approved links retain only exact `href` and fixed `noopener noreferrer nofollow`
 - IDs, classes, styles, event handlers, `data-*`, arbitrary ARIA, `contenteditable`, remote resources, local-file references, and Office/Google attributes never reach the output fragment
 - UTF-8 bytes, traversed nodes, and source depth are bounded; configuration accessors, symbols, unknown fields, invalid numbers, and reflection failures fail closed with static redacted error codes
@@ -29,11 +33,14 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ### Tests
 - Added realistic Word-like and Google-Docs-like fixtures, Office conditional comments, style-to-semantic conversion, tables and lists, malformed HTML, active/embedded/resource content, hidden data, remote images, unsafe links, UTF-8 byte limits, breadth/depth limits, hostile configuration, DOM-unavailable execution, callback failure, and error-redaction cases
+- Added raw Office hidden-style variants and false-positive cases, structural removed-element assertions, real TipTap transform-chain ordering, and standalone/Yjs regressions proving configuration accessors are not evaluated before paste
 - Added standalone and Yjs collaborative integration tests proving identical sanitizer behavior and latest-callback routing without editor or provider recreation
 - Kept repository-wide 100% production statement, branch, function, and line coverage as the merge gate
+- Recorded that current jsdom results are not cross-engine browser evidence; version-pinned Chromium, Firefox, and WebKit differential fixtures are a publication gate for 0.6.0
 
 ### Documentation
 - Documented preserved and removed clipboard content, Base64Image handoff, SSR behavior, error codes, modular ownership, performance bounds, rollback, and buyer integration
+- Documented OWASP's DOMPurify recommendation, the bespoke sanitizer's vulnerability-response obligation, final-transform composition limits, and the current browser-assurance boundary
 - Added Mermaid architecture and trust-boundary diagrams to `ARCHITECTURE.md`
 
 ## [0.5.29] — 2026-08-05
