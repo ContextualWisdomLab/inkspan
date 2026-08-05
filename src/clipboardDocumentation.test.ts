@@ -56,11 +56,15 @@ describe('safe rich clipboard documentation contract', () => {
     const doctoring = normalizedRepositoryDocument(
       'docs/doctoring/safe-rich-clipboard.md',
     );
+    const escapeDoctoring = normalizedRepositoryDocument(
+      'docs/doctoring/css-escaped-office-hidden-content.md',
+    );
 
     expect(operatorGuide).toContain('raw `style` declaration');
     expect(operatorGuide).toContain('CSS comments');
     expect(operatorGuide).toContain('CSS escape sequences');
-    expect(doctoring).toContain('CSS Syntax Level 3');
+    expect(escapeDoctoring).toContain('CSS Syntax Level 3');
+    expect(escapeDoctoring).toContain('null, surrogate');
     expect(doctoring).toContain(
       'No Chromium, Firefox, or WebKit conformance claim is made by this slice.',
     );
