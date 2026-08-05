@@ -2,6 +2,7 @@ import {
   DocumentAutosaveQueueError as InternalDocumentAutosaveQueueError,
   createDocumentAutosaveQueue as createInternalDocumentAutosaveQueue,
 } from './index.js';
+import { hasDeeplyFrozenEvidenceDocumentJson } from './evidenceValidation.js';
 
 /** Opaque frozen envelope shape required by the framework-free autosave API. */
 export interface DocumentAutosaveEnvelope {
@@ -226,7 +227,22 @@ export interface DocumentAutosaveQueue {
 export function createDocumentAutosaveQueue(
   options: DocumentAutosaveQueueOptions,
 ): DocumentAutosaveQueue {
-  return createInternalDocumentAutosaveQueue(
+  const internalQueue = createInternalDocumentAutosaveQueue(
     options as never,
   ) as unknown as DocumentAutosaveQueue;
+  return Object.freeze({
+    enqueue(evidence: DocumentAutosaveRevisionEvidence) {
+      if (!hasDeeplyFrozenEvidenceDocumentJson(evidence)) {
+        throw new InternalDocumentAutosaveQueueError(
+          'invalid_revision_evidence',
+          'Document revision evidence is invalid.',
+        );
+      }
+      return internalQueue.enqueue(evidence);
+    },
+    resume: internalQueue.resume,
+    flush: internalQueue.flush,
+    close: internalQueue.close,
+    getSnapshot: internalQueue.getSnapshot,
+  });
 }
