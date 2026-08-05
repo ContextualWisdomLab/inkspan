@@ -30,7 +30,7 @@ small client component.
 // app/documents/[documentId]/inkspan-panel.tsx
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CwlEditor,
   type CwlEditorHandle,
@@ -54,6 +54,8 @@ export function InkspanPanel({
   initialStrongEntityTag,
 }: InkspanPanelProps) {
   const editorRef = useRef<CwlEditorHandle>(null);
+  const editGeneration = useRef(0);
+  const [saveMessage, setSaveMessage] = useState('Document loaded.');
 
   const session = useMemo<DocumentAutosaveSession>(
     () =>
@@ -91,10 +93,45 @@ export function InkspanPanel({
 
   useEffect(
     () => () => {
+      editGeneration.current += 1;
       void session.close();
     },
     [session],
   );
+
+  async function captureAndQueueLatestDocument(): Promise<void> {
+    const capturedGeneration = ++editGeneration.current;
+    setSaveMessage('Saving changes.');
+
+    try {
+      const evidence =
+        await editorRef.current?.getDocumentEnvelopeRevisionEvidence();
+      if (
+        evidence === undefined ||
+        evidence === null ||
+        capturedGeneration !== editGeneration.current
+      ) {
+        return;
+      }
+
+      const outcome = await session.enqueue(evidence);
+      if (capturedGeneration !== editGeneration.current) {
+        return;
+      }
+
+      if (outcome.status === 'conflict') {
+        setSaveMessage('Saving paused. Resolve the durable document conflict.');
+      } else if (outcome.status === 'closed') {
+        setSaveMessage('Saving is unavailable because this session closed.');
+      } else {
+        setSaveMessage('All current changes are saved or queued.');
+      }
+    } catch {
+      if (capturedGeneration === editGeneration.current) {
+        setSaveMessage('Saving paused. Use the host recovery action.');
+      }
+    }
+  }
 
   return (
     <section aria-labelledby="document-editor-title">
@@ -103,28 +140,29 @@ export function InkspanPanel({
         ref={editorRef}
         mode="markdown"
         defaultValue={initialMarkdown}
-        onChange={async () => {
-          const evidence =
-            await editorRef.current?.getDocumentEnvelopeRevisionEvidence();
-          if (evidence) {
-            await session.enqueue(evidence);
-          }
+        onChange={() => {
+          void captureAndQueueLatestDocument();
         }}
       />
       <p role="status" aria-live="polite">
-        Save and conflict status belongs to the host panel.
+        {saveMessage}
       </p>
     </section>
   );
 }
 ```
 
+The generation guard prevents an older, slower asynchronous envelope digest from
+being enqueued after a newer edit. A production host may debounce before capture
+to reduce hashing frequency, but it must preserve the same latest-generation
+ordering rule.
+
 The example is intentionally transport-neutral beyond ordinary host `fetch()`.
 A production naruon composition should place authentication, tenant resolution,
 request deadlines, retry budgets, idempotency, telemetry, and error translation
-inside the host API layer rather than the editor component. It should also
-translate rejected `enqueue()` promises into a redacted panel state instead of
-leaving an unhandled asynchronous error.
+inside the host API layer rather than the editor component. It should translate
+redacted failure states into explicit recovery actions rather than expose private
+callback errors or document bodies.
 
 ## compose contract
 
