@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_CLIPBOARD_HTML_BYTES,
   DEFAULT_CLIPBOARD_MAX_DEPTH,
@@ -70,11 +70,9 @@ describe('buildExtensions', () => {
   });
 
   it('does not evaluate nested clipboard configuration accessors', () => {
-    const accessor = expect
-      .fn()
-      .mockImplementation(() => {
-        throw new Error('private configuration value');
-      });
+    const accessor = vi.fn(() => {
+      throw new Error('private configuration value');
+    });
     const clipboardConfig = Object.defineProperty({}, 'maxHtmlBytes', {
       configurable: true,
       enumerable: true,
