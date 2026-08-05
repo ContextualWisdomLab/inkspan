@@ -15,6 +15,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Successful durable writes advance the next `If-Match` base only from the host callback's validated server-selected replacement tag
 - Conflict, malformed result, hostile reflection, promise-assimilation failure, and transport failure preserve the previous durable validator until explicit authenticated recovery supplies a new strong tag
 - Retained work resumes only after `resume(nextStrongEntityTag)` installs the recovered durable base before the next callback begins
+- Recovery validators are validated consistently before lifecycle inspection; a valid no-op resume cannot replace the current durable base, and an unexpectedly declined blocked transition restores the previous validator
 
 ### Security
 - Initial and replacement durable validators reject weak, unquoted, whitespace-containing, list, wildcard, control-character, and out-of-range values before they can enter host transport
@@ -22,12 +23,14 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Session snapshots remain frozen and document-free; entity tags are still tenant-confidential equality metadata rather than authorization, signatures, tenant membership, or durable audit evidence
 
 ### Tests
-- Added deterministic sequential validator handoff, conflict recovery, malformed option, malformed callback result, hostile reflection, promise assimilation, transport failure, frozen request, shutdown, and snapshot tests under repository-wide 100% production statement and branch coverage gates
+- Added deterministic sequential and concurrently queued validator handoff, conflict recovery, lifecycle-independent recovery validation, malformed option, missing and symbol-keyed option, malformed callback result, hostile reflection, promise assimilation, transport failure, frozen request, shutdown, and snapshot tests under repository-wide 100% production statement and branch coverage gates
+- Added explicit regression cases for control characters, out-of-range Unicode, list-form values, wildcards, no-op recovery, and recovered-validator installation before retained work starts
 - Extended isolated packed-artifact ESM, CommonJS, and strict TypeScript consumers to prove the durable session and strong-tag validator work without React, React DOM, TipTap, ProseMirror, or Yjs installed
 
 ### Documentation
 - Added buyer-visible autosave onboarding, explicit `autosave` and `revision-evidence` distribution surfaces, and npm persistence discovery metadata without changing runtime behavior or package version
 - Corrected the autosave onboarding so initial and replacement validators are checked before use and come from the durable host's server-issued strong `ETag` rather than local revision evidence; missing, weak, or malformed validators now fail closed in the example
+- Documented that host-owned save callbacks must apply their own timeout or abort signal because an unresolved callback intentionally retains the active single-flight operation; retry policy remains host-owned
 - Added a deterministic repository contract test and APA 7th-style doctoring for README, npm-search, Node.js package-export discoverability, RFC 9110 validator ownership, and quoted opaque-tag syntax
 - Added operator and doctoring evidence for the durable autosave session, host ownership boundaries, exact-head verification, and acquisition-review scope
 
