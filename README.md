@@ -305,6 +305,9 @@ const autosaveQueue = createDocumentAutosaveQueue({
     if (response.status === 412) {
       return { status: 'conflict' };
     }
+    if (!response.ok) {
+      throw new Error('Private transport failure');
+    }
 
     durableStrongEntityTag = evidence.revision.strongEntityTag;
     return { status: 'saved' };
