@@ -58,7 +58,10 @@ describe('durable autosave recovery validator contract', () => {
     });
 
     expect(() => session.resume('W/"weak"')).toThrowError(
-      expect.objectContaining({ code: 'invalid_options' }),
+      expect.objectContaining({
+        code: 'invalid_recovery_validator',
+        message: 'The recovered durable strong entity tag is invalid.',
+      }),
     );
     expect(session.getSnapshot()).toMatchObject({
       state: 'idle',
