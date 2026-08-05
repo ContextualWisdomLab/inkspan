@@ -147,6 +147,7 @@ const DROPPED_SUBTREES = new Set([
   'svg',
   'template',
   'textarea',
+  'title',
   'track',
   'video',
   'xml',
