@@ -24,13 +24,15 @@ A correct integration should:
 Use a server component or equivalent host loader to authorize the document and
 load its durable representation. Pass only serializable document data, a
 server-selected strong `ETag`, an opaque non-secret editing-context lifecycle
-identifier, and non-secret presentation options into one small client component.
+identifier, and non-secret presentation options into one small host client
+boundary. That host client boundary creates the conflict-recovery callback; a
+server component must not attempt to serialize a function prop.
 
 ```tsx
 // app/documents/[documentId]/inkspan-panel.tsx
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import {
   CwlEditor,
   type CwlEditorHandle,
@@ -47,6 +49,9 @@ interface InkspanPanelProps {
   readonly documentId: string;
   readonly initialMarkdown: string;
   readonly initialStrongEntityTag: string;
+  readonly requestConflictRecovery: (
+    resumeWithStrongEntityTag: (recoveredStrongEntityTag: string) => boolean,
+  ) => void;
 }
 
 export function InkspanPanel(props: InkspanPanelProps) {
@@ -57,7 +62,9 @@ function InkspanPanelSession({
   documentId,
   initialMarkdown,
   initialStrongEntityTag,
+  requestConflictRecovery,
 }: InkspanPanelProps) {
+  const titleId = useId();
   const editorRef = useRef<CwlEditorHandle>(null);
   const editGeneration = useRef(0);
   const [saveMessage, setSaveMessage] = useState('Document loaded.');
@@ -73,6 +80,7 @@ function InkspanPanelSession({
             'If-Match': request.ifMatchStrongEntityTag,
           },
           body: JSON.stringify(request.evidence.envelope),
+          signal: AbortSignal.timeout(10_000),
         });
 
         if (response.status === 412) {
@@ -124,6 +132,16 @@ function InkspanPanelSession({
 
       if (outcome.status === 'conflict') {
         setSaveMessage('Saving paused. Resolve the durable document conflict.');
+        requestConflictRecovery((recoveredStrongEntityTag) => {
+          const resumed = session.resume(recoveredStrongEntityTag);
+          if (
+            resumed &&
+            capturedGeneration === editGeneration.current
+          ) {
+            setSaveMessage('Recovered changes resumed with a durable validator.');
+          }
+          return resumed;
+        });
       } else if (outcome.status === 'closed') {
         setSaveMessage('Saving is unavailable because this session closed.');
       } else {
@@ -137,8 +155,8 @@ function InkspanPanelSession({
   }
 
   return (
-    <section aria-labelledby="document-editor-title">
-      <h2 id="document-editor-title">Document editor</h2>
+    <section aria-labelledby={titleId}>
+      <h2 id={titleId}>Document editor</h2>
       <CwlEditor
         ref={editorRef}
         mode="markdown"
@@ -171,15 +189,35 @@ the semantic identity or disposal boundary for a mutable autosave coordinator.
 The session constructor performs no transport, timer, credential, or storage
 side effect; the retained session is closed by the component cleanup.
 
+Each panel instance creates its own React `useId()` value, so multiple editors on
+one page retain distinct heading relationships. The opaque editing-context key
+controls lifecycle replacement; the generated heading ID controls only the
+local accessible-name relationship and is not an authorization or audit value.
+
 The generation guard prevents an older, slower asynchronous envelope digest from
 being enqueued after a newer edit. A production host may debounce before capture
 to reduce hashing frequency, but it must preserve the same latest-generation
 ordering rule.
 
+The example applies a fresh ten-second `AbortSignal` to each host-owned save
+request so one unresolved callback cannot retain the single-flight queue forever.
+Ten seconds is illustrative rather than a universal service-level objective. The
+host must select a bounded deadline from its own latency and reliability policy,
+and an aborted or timed-out write remains ambiguous: do not claim success,
+advance the validator, or retry automatically without idempotency evidence.
+
+The `requestConflictRecovery` function is created by the host client composition,
+not passed across the server-component serialization boundary. It should open an
+accessible compare, merge, fork, or discard workflow. Only after that workflow
+performs an authenticated durable reload or equivalent confirmed decision may it
+invoke the supplied callback with the recovered server-selected strong `ETag`.
+The callback delegates to `session.resume(...)`, which validates and installs the
+new durable base immediately before retained work continues.
+
 The example is intentionally transport-neutral beyond ordinary host `fetch()`.
 A production naruon composition should place authentication, tenant resolution,
 request deadlines, retry budgets, idempotency, telemetry, and error translation
-inside the host API layer rather than the editor component. It should translate
+inside the host API layer rather than the editor module. It should translate
 redacted failure states into explicit recovery actions rather than expose private
 callback errors or document bodies.
 
@@ -195,6 +233,8 @@ or other CWL services, but it must preserve these ownership rules:
   panel receives a document.
 - The composition root issues a fresh opaque editing-context lifecycle value for
   every authorized load and context transition.
+- The host client composition creates conflict and recovery callbacks; server
+  components pass only serializable, non-secret data into that boundary.
 - The composition root decides whether model use is allowed and which reviewed
   contextual-orchestrator policy applies.
 - Model output returns as untrusted content and enters Inkspan through validated
@@ -224,7 +264,8 @@ A naruon `ui.panel` host should provide the surrounding product experience:
 Use `role="status"` or another appropriate live-region pattern for asynchronous
 save state. Do not announce every keystroke. When a conflict occurs, move focus
 to a labelled conflict region or dialog and provide a deterministic path back to
-the editor.
+the editor. Every panel heading and `aria-labelledby` target must be unique in the
+rendered page.
 
 ## Durable autosave and conflict handling
 
@@ -238,8 +279,8 @@ Treat outcomes as follows:
 | --- | --- |
 | Saved with replacement strong validator | Install the returned validator before the next save begins |
 | `412 Precondition Failed` | Pause automatic progression and show the accessible conflict workflow |
-| Timeout, disconnect, or malformed response | Treat as ambiguous; do not claim saved or advance the validator |
-| Authenticated recovery load | Supply the newly loaded server validator to the session before resuming retained work |
+| Timeout, disconnect, abort, or malformed response | Treat as ambiguous; do not claim saved or advance the validator |
+| Authenticated recovery load | Supply the newly loaded server validator through the recovery callback so `session.resume(...)` installs it before retained work continues |
 | Route or panel shutdown | Stop new work, let any active transport settle according to host policy, then discard private in-memory evidence |
 
 A local Inkspan SHA-256 revision is equality evidence for deterministic local
@@ -305,6 +346,10 @@ Before enabling the panel in production, verify that:
 - every durable write uses an authenticated atomic `If-Match` transaction;
 - missing, weak, malformed, or stale validators fail closed;
 - request timeouts and cancellation are host-owned and bounded;
+- aborts and timeouts remain ambiguous rather than being reported as saved;
+- authenticated conflict recovery installs its strong validator through
+  `session.resume(...)` before retained work continues;
+- every panel instance has a unique accessible heading relationship;
 - conflict UI is keyboard-operable and announced without exposing document text
   in generic telemetry;
 - provider and model credentials never enter client props, document envelopes,
