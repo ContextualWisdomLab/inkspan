@@ -123,6 +123,43 @@ describe('durable autosave recovery validator contract', () => {
     expect(observedValidators).toEqual(['"server-one"', '"server-two"']);
   });
 
+  it('keeps flush snapshots current when recovery resumes before the wrapper continuation', async () => {
+    const observedValidators: string[] = [];
+    let completeFirstSave!: (result: DocumentAutosaveDurableSaveResult) => void;
+    const firstSave = new Promise<DocumentAutosaveDurableSaveResult>((resolve) => {
+      completeFirstSave = resolve;
+    });
+    const session = createDocumentAutosaveSession({
+      initialStrongEntityTag: '"server-one"',
+      save(request) {
+        observedValidators.push(request.ifMatchStrongEntityTag);
+        return observedValidators.length === 1
+          ? firstSave
+          : { status: 'saved', nextStrongEntityTag: '"server-three"' };
+      },
+    });
+
+    const firstRequest = session.enqueue(createRecoveryEvidence('41'));
+    const retainedRequest = session.enqueue(createRecoveryEvidence('42'));
+    const flushRequest = session.flush();
+    const recoveryRequest = firstRequest.then((outcome) => {
+      expect(outcome.status).toBe('conflict');
+      expect(session.resume('"server-two"')).toBe(true);
+    });
+
+    completeFirstSave({ status: 'conflict' });
+    const flushSnapshot = await flushRequest;
+    await recoveryRequest;
+    await expect(retainedRequest).resolves.toMatchObject({ status: 'saved' });
+
+    expect(flushSnapshot).toMatchObject({
+      state: 'idle',
+      blockedReason: null,
+      durableStrongEntityTag: '"server-three"',
+    });
+    expect(observedValidators).toEqual(['"server-one"', '"server-two"']);
+  });
+
   it('installs the recovered validator before retained work starts', async () => {
     const observedValidators: string[] = [];
     const session = createDocumentAutosaveSession({
