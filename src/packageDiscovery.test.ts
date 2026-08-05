@@ -61,7 +61,9 @@ describe('buyer-visible package discovery', () => {
     expect(readme).not.toContain(
       'durableStrongEntityTag = evidence.revision.strongEntityTag;',
     );
-    expect(readme).toContain('authorization, tenant isolation, persistence');
+    expect(readme).toMatch(
+      /authorization,\s+tenant isolation,\s+persistence/,
+    );
     expect(readme).toContain('RFC 9110 `If-Match`');
     expect(readme).toContain('[`docs/document-autosave.md`](docs/document-autosave.md)');
   });
