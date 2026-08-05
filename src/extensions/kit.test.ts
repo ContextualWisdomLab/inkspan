@@ -1,4 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import {
+  DEFAULT_CLIPBOARD_HTML_BYTES,
+  DEFAULT_CLIPBOARD_MAX_DEPTH,
+  DEFAULT_CLIPBOARD_MAX_NODES,
+} from './SafeClipboard.js';
 import { buildExtensions } from './kit.js';
 
 /** Names present in every kit regardless of options. */
@@ -10,10 +15,12 @@ describe('buildExtensions', () => {
   it('builds the default set when called with no options', () => {
     const exts = buildExtensions();
     expect(Array.isArray(exts)).toBe(true);
-    // StarterKit + SafeLink + Placeholder + Table(+row/header/cell) + image.
+    // StarterKit + SafeLink + SafeClipboard + Placeholder + tables + image.
     expect(names(exts)).toContain('image');
     expect(names(exts)).toContain('link');
+    expect(names(exts)).toContain('safeClipboard');
     expect(names(exts)).toContain('table');
+    expect(names(exts).filter((name) => name === 'safeClipboard')).toHaveLength(1);
   });
 
   it('applies the strict shared hyperlink policy', () => {
@@ -33,6 +40,29 @@ describe('buildExtensions', () => {
         rel: 'noopener noreferrer nofollow',
       }),
     );
+  });
+
+  it('applies bounded rich clipboard defaults', () => {
+    const clipboard = buildExtensions().find(
+      (extension) => extension.name === 'safeClipboard',
+    );
+
+    expect(clipboard?.options.maxHtmlBytes).toBe(DEFAULT_CLIPBOARD_HTML_BYTES);
+    expect(clipboard?.options.maxNodes).toBe(DEFAULT_CLIPBOARD_MAX_NODES);
+    expect(clipboard?.options.maxDepth).toBe(DEFAULT_CLIPBOARD_MAX_DEPTH);
+  });
+
+  it('forwards explicit rich clipboard limits and the redacted error observer', () => {
+    const onClipboardError = () => {};
+    const clipboard = buildExtensions({
+      clipboard: { maxHtmlBytes: 123, maxNodes: 42, maxDepth: 7 },
+      onClipboardError,
+    }).find((extension) => extension.name === 'safeClipboard');
+
+    expect(clipboard?.options.maxHtmlBytes).toBe(123);
+    expect(clipboard?.options.maxNodes).toBe(42);
+    expect(clipboard?.options.maxDepth).toBe(7);
+    expect(clipboard?.options.onError).toBe(onClipboardError);
   });
 
   it('applies image defaults when the image config is an empty object', () => {
