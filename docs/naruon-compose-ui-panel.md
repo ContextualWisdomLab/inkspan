@@ -155,9 +155,9 @@ function InkspanPanelSession({
 }
 ```
 
-The host must issue a new opaque `editingContextId` for every authorized document
-load and whenever the authorized workspace, tenant, or document context changes.
-The value is a UI lifecycle key only: it is not an authorization grant, tenant
+The host must issue a new opaque `editingContextId` for every authorized document load
+and whenever the authorized workspace, tenant, or document context changes. The
+value is a UI lifecycle key only: it is not an authorization grant, tenant
 identifier, durable validator, or audit identifier, and it should not be logged.
 Keying the complete client session prevents React from reusing an uncontrolled
 editor, autosave validator, pending digest, or status state for a different
