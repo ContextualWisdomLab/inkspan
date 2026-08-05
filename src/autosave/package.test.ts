@@ -262,7 +262,10 @@ describe('durable autosave session', () => {
       durableStrongEntityTag: '"durable-one"',
     });
     expect(() => session.resume('W/"weak"')).toThrowError(
-      expect.objectContaining({ code: 'invalid_options' }),
+      expect.objectContaining({
+        code: 'invalid_recovery_validator',
+        message: 'The recovered durable strong entity tag is invalid.',
+      }),
     );
     expect(session.resume('"durable-two"')).toBe(true);
     await expect(pending).resolves.toMatchObject({ status: 'saved' });
