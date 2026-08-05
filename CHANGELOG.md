@@ -6,6 +6,36 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Added
+- Added a default `SafeClipboard` TipTap extension and `sanitizeRichClipboardHtml()` API that reconstruct browser-provided `text/html` through a strict semantic allowlist before ProseMirror parsing
+- Added `clipboard` byte/node/depth limits and a live `onClipboardError` observer to standalone and provider-neutral Yjs editor surfaces
+- Added root architecture, operator guidance, design, implementation-plan, and APA 7th doctoring records for the clipboard trust boundary
+
+### Changed
+- Rich HTML pasted from Word, Google Docs, email, and web pages now keeps supported structure and narrowly mapped bold/italic/underline/strike semantics while discarding arbitrary source styling and proprietary metadata
+- Standalone and collaborative editors now use exactly one shared clipboard policy through `buildExtensions()`
+- Because default rich-HTML paste behavior changes, the integrated feature targets the next minor release, **0.6.0**, only after a separate verified release PR
+
+### Security
+- Active, embedded, form, metadata, media, SVG/MathML, template, resource-bearing, hidden, and HTML-image subtrees are removed before insertion
+- Unsafe and credential-bearing links are unwrapped while visible text remains; SafeLink-approved links retain only exact `href` and fixed `noopener noreferrer nofollow`
+- IDs, classes, styles, event handlers, `data-*`, arbitrary ARIA, `contenteditable`, remote resources, local-file references, and Office/Google attributes never reach the output fragment
+- UTF-8 bytes, traversed nodes, and source depth are bounded; configuration accessors, symbols, unknown fields, invalid numbers, and reflection failures fail closed with static redacted error codes
+- Host error observers cannot weaken the rejection result and no rejected source HTML, URL, attribute, document text, tenant identifier, or parser exception enters public errors
+
+### Performance
+- Accepted clipboard traversal is iterative and linear in the bounded source tree; defaults are 1 MiB, 10,000 nodes, and 64 levels with documented hard ceilings
+- The feature adds no runtime dependency and performs no network, storage, clipboard-permission, model, provider, credential, or database operation
+
+### Tests
+- Added realistic Word-like and Google-Docs-like fixtures, Office conditional comments, style-to-semantic conversion, tables and lists, malformed HTML, active/embedded/resource content, hidden data, remote images, unsafe links, UTF-8 byte limits, breadth/depth limits, hostile configuration, DOM-unavailable execution, callback failure, and error-redaction cases
+- Added standalone and Yjs collaborative integration tests proving identical sanitizer behavior and latest-callback routing without editor or provider recreation
+- Kept repository-wide 100% production statement, branch, function, and line coverage as the merge gate
+
+### Documentation
+- Documented preserved and removed clipboard content, Base64Image handoff, SSR behavior, error codes, modular ownership, performance bounds, rollback, and buyer integration
+- Added Mermaid architecture and trust-boundary diagrams to `ARCHITECTURE.md`
+
 ## [0.5.29] — 2026-08-05
 
 ### Added
