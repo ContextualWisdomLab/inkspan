@@ -29,11 +29,19 @@ describe('SafeClipboard security regressions', () => {
       `<p style="mso-hide: all">ordinary hidden secret</p>
        <p style="MSO-HIDE : ALL !important">case hidden secret</p>
        <p style="mso-/*office*/hide: a/*word*/ll !important">comment hidden secret</p>
-       <p style="mso-\\68 ide: \\61ll">escaped hidden secret</p>
+       <p style="mso-\\68 ide: \\61ll">hex escaped hidden secret</p>
+       <p style="mso-h\\ide: a\\ll">simple escaped hidden secret</p>
+       <p style="mso-\\000068ide: all">six-digit escaped hidden secret</p>
        <p style="mso-hide: none">none remains visible</p>
        <p style="mso-hide: alligator">alligator remains visible</p>
        <p style="mso-\\68 ide: \\61lligator">escaped alligator remains visible</p>
-       <p style="not-mso-hide: all">prefixed property remains visible</p>`,
+       <p style="not-mso-hide: all">prefixed property remains visible</p>
+       <p style="mso-\\0 hide: all">null escape remains visible</p>
+       <p style="mso-\\d800 hide: all">surrogate escape remains visible</p>
+       <p style="mso-\\110000 hide: all">out of range escape remains visible</p>
+       <p style="mso-hide\\: all">trailing escape remains visible</p>
+       <p style="mso-\\
+       hide: all">newline escape remains visible</p>`,
       {},
       document,
     );
@@ -43,11 +51,18 @@ describe('SafeClipboard security regressions', () => {
     expect(container).not.toHaveTextContent('ordinary hidden secret');
     expect(container).not.toHaveTextContent('case hidden secret');
     expect(container).not.toHaveTextContent('comment hidden secret');
-    expect(container).not.toHaveTextContent('escaped hidden secret');
+    expect(container).not.toHaveTextContent('hex escaped hidden secret');
+    expect(container).not.toHaveTextContent('simple escaped hidden secret');
+    expect(container).not.toHaveTextContent('six-digit escaped hidden secret');
     expect(container).toHaveTextContent('none remains visible');
     expect(container).toHaveTextContent('alligator remains visible');
     expect(container).toHaveTextContent('escaped alligator remains visible');
     expect(container).toHaveTextContent('prefixed property remains visible');
+    expect(container).toHaveTextContent('null escape remains visible');
+    expect(container).toHaveTextContent('surrogate escape remains visible');
+    expect(container).toHaveTextContent('out of range escape remains visible');
+    expect(container).toHaveTextContent('trailing escape remains visible');
+    expect(container).toHaveTextContent('newline escape remains visible');
   });
 
   it('remains the final ordinary paste transform after host extensions', () => {
