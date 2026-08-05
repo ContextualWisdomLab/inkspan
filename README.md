@@ -287,13 +287,18 @@ CWL/naruon host responsibilities, standards references, and verification.
 ## Provider-neutral autosave
 
 Use the framework-independent autosave subpath when a host needs deterministic,
-bounded local ordering around its own durable document service:
+bounded local ordering around its own durable document service. The initial
+`loadedStrongEntityTag` and every replacement value must be a server-selected
+strong `ETag` for the durable representation, never Inkspan's local content
+revision digest:
 
 ```ts
 import { createDocumentAutosaveQueue } from '@contextualwisdomlab/cwl-editor/autosave';
 import { createDocumentEnvelopeRevisionEvidence } from '@contextualwisdomlab/cwl-editor/revision-evidence';
 
-let durableStrongEntityTag = loadedRevision.strongEntityTag;
+// This value comes from the durable service's ETag response header.
+// Inkspan's local revision digest is not a durable HTTP validator.
+let durableStrongEntityTag = loadedStrongEntityTag;
 
 const autosaveQueue = createDocumentAutosaveQueue({
   async save(evidence) {
@@ -310,9 +315,15 @@ const autosaveQueue = createDocumentAutosaveQueue({
     }
 
     const nextDurableStrongEntityTag = response.headers.get('ETag');
+    const isQuotedOpaqueTag =
+      nextDurableStrongEntityTag !== null &&
+      /^"[\u0021\u0023-\u007e\u0080-\u00ff]*"$/.test(
+        nextDurableStrongEntityTag,
+      );
     if (
       nextDurableStrongEntityTag === null ||
-      nextDurableStrongEntityTag.startsWith('W/')
+      nextDurableStrongEntityTag.startsWith('W/') ||
+      !isQuotedOpaqueTag
     ) {
       throw new Error('Durable save response omitted a strong ETag');
     }
@@ -332,8 +343,10 @@ await autosaveQueue.enqueue(evidence);
 ```
 
 Inkspan owns immutable evidence validation, one-active/one-pending local
-coordination, deterministic outcomes, and redacted queue failures. The host owns
-transport, authentication, authorization, tenant isolation, persistence,
+coordination, deterministic outcomes, and redacted queue failures. A successful
+write advances the next `If-Match` value only from the durable service's returned
+strong `ETag`; a missing, weak, or malformed validator fails closed. The host
+owns transport, authentication, authorization, tenant isolation, persistence,
 credentials, migration, retention, audit storage, retry policy, accessible
 conflict handling, and atomic RFC 9110 `If-Match` enforcement inside the durable
 write transaction. A durable HTTP entity tag is a server-selected opaque
