@@ -34,6 +34,9 @@ Office Open XML renderer for DOCX, XLSX, and PPTX.
   hydration, supporting Next.js and traditional React SSR integrations.
 - **Provider-neutral collaboration** — opt-in Yjs/TipTap real-time editing with
   host-owned transport, persistence, authorization, and lifecycle boundaries.
+- **Deterministic persistence coordination** — immutable revision evidence,
+  local `If-Match` restore guards, and a bounded single-flight autosave queue are
+  available without React, TipTap, ProseMirror, or Yjs runtime coupling.
 - **Email output** — Markdown-to-email HTML conversion preserves accepted inline
   base64 figures, emits only safe clickable links, and can return either a
   fragment or a complete HTML document.
@@ -59,6 +62,8 @@ runtime.
 | React editor | `@contextualwisdomlab/cwl-editor` | Markdown/HTML WYSIWYG component and serializers |
 | Collaboration | `@contextualwisdomlab/cwl-editor/collaboration` | Provider-neutral Yjs collaborative editing |
 | Converter | `@contextualwisdomlab/cwl-editor/converter` | Framework-independent base64/data-URI utilities |
+| Revision evidence | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent canonical envelope and strong revision evidence |
+| Autosave | `@contextualwisdomlab/cwl-editor/autosave` | Provider-neutral bounded single-flight persistence coordination |
 | Styles | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
 | Full fonts | `@contextualwisdomlab/cwl-editor/fonts.css` | KR/EN/JP/SC/TC/VI offline font bundle |
 | Latin fonts | `@contextualwisdomlab/cwl-editor/fonts-latin.css` | Smaller Latin/Vietnamese-only bundle |
@@ -279,6 +284,51 @@ const href = validateSafeLinkHref('/documents/current');
 See [`docs/link-security.md`](docs/link-security.md) for enforcement points,
 CWL/naruon host responsibilities, standards references, and verification.
 
+## Provider-neutral autosave
+
+Use the framework-independent autosave subpath when a host needs deterministic,
+bounded local ordering around its own durable document service:
+
+```ts
+import { createDocumentAutosaveQueue } from '@contextualwisdomlab/cwl-editor/autosave';
+import { createDocumentEnvelopeRevisionEvidence } from '@contextualwisdomlab/cwl-editor/revision-evidence';
+
+let durableStrongEntityTag = loadedRevision.strongEntityTag;
+
+const autosaveQueue = createDocumentAutosaveQueue({
+  async save(evidence) {
+    const response = await saveDocument({
+      envelope: evidence.envelope,
+      ifMatch: durableStrongEntityTag,
+    });
+
+    if (response.status === 412) {
+      return { status: 'conflict' };
+    }
+
+    durableStrongEntityTag = evidence.revision.strongEntityTag;
+    return { status: 'saved' };
+  },
+});
+
+const evidence = await createDocumentEnvelopeRevisionEvidence({
+  schemaId: 'https://inkspan.io/schemas/document-envelope/v1',
+  schemaVersion: 1,
+  documentJson: editorDocumentJson,
+});
+
+await autosaveQueue.enqueue(evidence);
+```
+
+Inkspan owns immutable evidence validation, one-active/one-pending local
+coordination, deterministic outcomes, and redacted queue failures. The host owns
+transport, authentication, authorization, tenant isolation, persistence,
+credentials, migration, retention, audit storage, retry policy, accessible
+conflict handling, and atomic RFC 9110 `If-Match` enforcement inside the durable
+write transaction. See
+[`docs/document-autosave.md`](docs/document-autosave.md) for recovery, shutdown,
+privacy, SSR/worker, and CWL/naruon integration guidance.
+
 ## Real-time collaboration
 
 Import `CollaborativeCwlEditor` from the opt-in collaboration entrypoint and
@@ -493,6 +543,7 @@ and standalone serializer ingress path.
 
 ```text
 src/
+  autosave/        Framework-independent single-flight persistence coordination
   collaboration/   Provider-neutral Yjs editor, awareness, and presence
   components/      Shared React editor frame, standalone editor, and toolbar
   converter/       Framework-independent base64/data-URI utilities
@@ -507,8 +558,9 @@ docs/              Design records, specifications, security contracts, citations
 ```
 
 Inkspan is designed to run independently and as a module within CWL/naruon
-hosts. The editor, converter, and Office renderer have separate dependency and
-runtime boundaries so hosts can adopt only the capabilities they require.
+hosts. The editor, converter, revision-evidence, autosave, and Office renderer
+have separate dependency and runtime boundaries so hosts can adopt only the
+capabilities they require.
 
 ## Licenses
 
