@@ -17,6 +17,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Retained work resumes only after `resume(nextStrongEntityTag)` installs the recovered durable base before the next callback begins
 - Recovery validators are validated consistently before lifecycle inspection; a valid no-op resume cannot replace the current durable base, and an unexpectedly declined blocked transition restores the previous validator
 - Malformed recovery validators now raise the dedicated public `invalid_recovery_validator` code and redacted recovery message instead of being misclassified as malformed session-construction options
+- `flush()` reacquires the current terminal queue state after asynchronous wrapper boundaries, following recovery or shutdown races until lifecycle fields and `durableStrongEntityTag` describe one coherent idle, blocked, or closed logical moment
 
 ### Security
 - Initial and replacement durable validators reject weak, unquoted, whitespace-containing, list, wildcard, control-character, and out-of-range values before they can enter host transport
@@ -26,6 +27,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 ### Tests
 - Added deterministic sequential and concurrently queued validator handoff, conflict recovery, lifecycle-independent recovery validation, malformed option, missing and symbol-keyed option, malformed callback result, hostile reflection, promise assimilation, transport failure, frozen request, shutdown, and snapshot tests under repository-wide 100% production statement and branch coverage gates
 - Added explicit regression cases for control characters, out-of-range Unicode, list-form values, wildcards, no-op recovery, and recovered-validator installation before retained work starts
+- Added deterministic recovery-before-wrapper and close-before-wrapper concurrency tests that prevent temporally mixed public flush snapshots
 - Extended isolated packed-artifact ESM, CommonJS, and strict TypeScript consumers to prove the durable session and strong-tag validator work without React, React DOM, TipTap, ProseMirror, or Yjs installed
 
 ### Documentation
