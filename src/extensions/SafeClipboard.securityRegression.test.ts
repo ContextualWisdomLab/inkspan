@@ -29,6 +29,7 @@ describe('SafeClipboard security regressions', () => {
       `<p style="mso-hide: all">ordinary hidden secret</p>
        <p style="MSO-HIDE : ALL !important">case hidden secret</p>
        <p style="mso-/*office*/hide: a/*word*/ll !important">comment hidden secret</p>
+       <p style="mso-hide: all/*">unterminated comment hidden secret</p>
        <p style="mso-\\68 ide: \\61ll">hex escaped hidden secret</p>
        <p style="mso-h\\ide: a\\ll">simple escaped hidden secret</p>
        <p style="mso-\\000068ide: all">six-digit escaped hidden secret</p>
@@ -51,6 +52,7 @@ describe('SafeClipboard security regressions', () => {
     expect(container).not.toHaveTextContent('ordinary hidden secret');
     expect(container).not.toHaveTextContent('case hidden secret');
     expect(container).not.toHaveTextContent('comment hidden secret');
+    expect(container).not.toHaveTextContent('unterminated comment hidden secret');
     expect(container).not.toHaveTextContent('hex escaped hidden secret');
     expect(container).not.toHaveTextContent('simple escaped hidden secret');
     expect(container).not.toHaveTextContent('six-digit escaped hidden secret');
