@@ -240,7 +240,7 @@ describe('durable autosave session', () => {
 
   it('fails closed when durable result reflection is unavailable', async () => {
     const inaccessibleResult = new Proxy(
-      { status: 'saved', nextStrongEntityTag: '"durable-two"' },
+      { status: 'saved' as const, nextStrongEntityTag: '"durable-two"' },
       {
         get(target, property, receiver) {
           if (property === 'then') return undefined;
