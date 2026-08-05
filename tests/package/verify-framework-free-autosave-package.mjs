@@ -182,6 +182,8 @@ assert.equal(Object.isFrozen(session), true);
 assert.equal((await session.enqueue(evidence)).status, 'saved');
 assert.equal(Object.isFrozen(durableRequest), true);
 assert.equal(durableRequest.ifMatchStrongEntityTag, '"server-one"');
+assert.notEqual(durableRequest.evidence, evidence);
+assert.equal(Object.isFrozen(durableRequest.evidence), true);
 assert.deepEqual(durableRequest.evidence, evidence);
 assert.equal(session.getSnapshot().durableStrongEntityTag, '"server-two"');
 assert.equal((await session.close()).durableStrongEntityTag, '"server-two"');
@@ -225,14 +227,16 @@ void queue.enqueue(evidence).then(async (outcome) => {
   assert.equal((await queue.flush()).blockedReason, 'conflict');
   assert.equal((await queue.close()).state, 'closed');
 
+  let durableRequest;
   const session = autosave.createDocumentAutosaveSession({
     initialStrongEntityTag: '"server-one"',
     save(request) {
-      assert.equal(request.ifMatchStrongEntityTag, '"server-one"');
+      durableRequest = request;
       return { status: 'conflict' };
     },
   });
   assert.equal((await session.enqueue(evidence)).status, 'conflict');
+  assert.equal(durableRequest.ifMatchStrongEntityTag, '"server-one"');
   assert.equal(session.getSnapshot().durableStrongEntityTag, '"server-one"');
   assert.equal((await session.close()).state, 'closed');
 }).catch((error) => {
