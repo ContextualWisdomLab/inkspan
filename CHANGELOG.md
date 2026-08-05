@@ -6,6 +6,11 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Documentation
+- Added an authoritative standalone and modular MSA architecture contract with reviewable deployment, optimistic-concurrency, data-ownership, security, and acquisition-evidence diagrams and tables
+- Added a beginner-readable naruon compose and ui.panel integration guide covering narrow client hydration, server-selected strong validators, accessible conflict handling, host-owned Yjs lifecycle, contextual-orchestrator boundaries, and local-versus-shareable evidence
+- Added deterministic documentation contract tests and APA 7th doctoring grounded in RFC 9110, WCAG 2.2, NIST SP 800-204, NIST SP 800-204D, OWASP ASVS 5.0.0, React, and current Next.js App Router guidance
+
 ## [0.5.29] — 2026-08-05
 
 ### Added
