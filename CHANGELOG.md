@@ -31,6 +31,8 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ### Security
 - Evidence and callback outcomes are validated fail-closed without evaluating accessors; hostile reflection failures become bounded redacted errors
+- The public autosave boundary traverses candidate document JSON iteratively before scheduling, rejecting mutable nested nodes, accessors, symbols, non-finite numbers, unsupported prototypes, aliases, cycles, sparse arrays, excessive nesting, and values beyond the active envelope resource ceiling
+- Partially frozen look-alike evidence cannot enter the host callback and mutate after its strong revision was selected
 - The queue includes no timer, network client, provider SDK, credential, tenant identifier, persistence adapter, React, TipTap, ProseMirror, or Yjs runtime dependency
 - Revision tags remain tenant-confidential equality validators rather than authorization, signatures, tenant membership, or proof of durable persistence
 - Hosts retain authentication, authorization, tenant isolation, transport, credentials, durable atomic base-revision comparison, migration, retention, audit storage, retry budgets, and conflict-resolution policy
@@ -38,10 +40,12 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 ### Performance
 - Autosave coordination performs constant-space local scheduling and retains at most one pending full-document evidence value
 - Matching active or pending revisions and concurrent flush callers avoid duplicate callback or internal waiter allocation
+- Evidence inspection uses an iterative traversal bounded to the active envelope's 1,000,000-value and 128-level default ceilings, avoiding recursive call-stack growth on hostile inputs
 
 ### Tests
 - Added deterministic single-flight, re-entrant enqueue, pending supersession, same-revision coalescing, durable-shortcut invalidation, last-saved ordering, blocked durable requeue, conflict pause/resume, callback failure recovery, invalid result, shutdown, frozen-value, hostile-reflection, bounded-flush-waiter, and repository-wide 100% production statement/branch coverage verification
-- Added exact packed-artifact ESM, CommonJS, and strict TypeScript consumers in an isolated temporary package tree without React, React DOM, TipTap, ProseMirror, or Yjs installed
+- Added realistic adversarial evidence tests for partially frozen document nodes, getters, reflection failures, aliases, cycles, sparse and accessor arrays, unsupported prototypes, non-JSON primitives, excessive depth, and the maximum JSON-value boundary
+- Added exact packed-artifact ESM, CommonJS, and strict TypeScript consumers in an isolated temporary package tree without React, React DOM, TipTap, ProseMirror, or Yjs installed; the packed ESM consumer also proves that mutable nested evidence is rejected before transport
 
 ### Documentation
 - Added the autosave architecture and doctoring record with APA 7th references to RFC 9110, RFC 8785, Herlihy and Wing (1990), and ISO/IEC 25010:2023
