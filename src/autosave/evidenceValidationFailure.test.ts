@@ -35,23 +35,12 @@ describe('autosave detached evidence failure handling', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
-  it('redacts a reflection failure that occurs during detached cloning', () => {
-    let getterCalls = 0;
-    const hostileNode = new Proxy(
-      Object.freeze({ type: 'paragraph' }),
-      {
-        get(target, property, receiver) {
-          if (property === 'type') {
-            getterCalls += 1;
-            throw new Error('tenant-private-document-detail');
-          }
-          return Reflect.get(target, property, receiver);
-        },
-      },
-    );
+  it('redacts an active-envelope resource failure during detached cloning', () => {
     const documentJson = Object.freeze({
       type: 'doc',
-      content: Object.freeze([hostileNode]),
+      attrs: Object.freeze({
+        oversizedText: 'x'.repeat(4_000_001),
+      }),
     });
     const digestHex = '63'.repeat(32);
     const evidence = createEvidence(
@@ -72,7 +61,6 @@ describe('autosave detached evidence failure handling', () => {
         message: 'Document revision evidence is invalid.',
       }),
     );
-    expect(getterCalls).toBe(1);
     expect(save).not.toHaveBeenCalled();
   });
 });
