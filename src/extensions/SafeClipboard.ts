@@ -394,12 +394,15 @@ function boundedIntegerAttribute(
 }
 
 /** Copy the exact small attribute allowlist to one new output element. */
-function copyAllowedAttributes(source: Element, output: HTMLElement): void {
+function copyAllowedAttributes(
+  source: Element,
+  output: HTMLElement,
+  safeLinkHref: string | null = null,
+): void {
   const tagName = output.localName;
   if (tagName === 'a') {
-    const href = source.getAttribute('href');
-    if (isSafeLinkHref(href)) {
-      output.setAttribute('href', href);
+    if (safeLinkHref !== null) {
+      output.setAttribute('href', safeLinkHref);
       output.setAttribute('rel', SAFE_LINK_REL);
     }
     return;
@@ -532,19 +535,17 @@ export function sanitizeRichClipboardHtml(
       }
 
       const outputName = normalizedOutputElement(sourceName);
+      const sourceHref =
+        outputName === 'a' ? sourceElement.getAttribute('href') : null;
+      const safeLinkHref =
+        outputName === 'a' && isSafeLinkHref(sourceHref) ? sourceHref : null;
+      const unwrapUnsafeLink = outputName === 'a' && safeLinkHref === null;
       let childParent = frame.outputParent;
-      if (outputName !== null) {
-        if (
-          outputName === 'a' &&
-          !isSafeLinkHref(sourceElement.getAttribute('href'))
-        ) {
-          childParent = frame.outputParent;
-        } else {
-          const outputElement = inertDocument.createElement(outputName);
-          copyAllowedAttributes(sourceElement, outputElement);
-          frame.outputParent.appendChild(outputElement);
-          childParent = outputElement;
-        }
+      if (outputName !== null && !unwrapUnsafeLink) {
+        const outputElement = inertDocument.createElement(outputName);
+        copyAllowedAttributes(sourceElement, outputElement, safeLinkHref);
+        frame.outputParent.appendChild(outputElement);
+        childParent = outputElement;
       }
 
       const wrappers = semanticStyleWrappers(sourceElement).filter(
