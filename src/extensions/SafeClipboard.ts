@@ -476,7 +476,7 @@ export const SafeClipboard = Extension.create<SafeClipboardOptions>({
     };
   },
 
-  transformPastedHTML(html) {
+  transformPastedHTML(html: string) {
     try {
       return sanitizeRichClipboardHtml(
         html,
