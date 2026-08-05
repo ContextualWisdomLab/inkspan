@@ -1,7 +1,7 @@
 # Doctoring record: native-widget and obsolete fallback content
 
 - **Status:** Accepted
-- **Decision date:** 2026-08-06
+- **Decision date:** 2026-08-05
 - **Scope:** SafeClipboard semantic reconstruction
 - **Runtime change:** Drop complete `progress`, `meter`, `noframes`, and `noembed`
   subtrees from rich clipboard HTML
