@@ -19,7 +19,9 @@ system view that explained:
 - how `ContextualWisdomLab/.github`, `ContextualWisdomLab/naruon`, and
   `ContextualWisdomLab/contextual-orchestrator` fit together;
 - where SSR, Yjs provider lifecycle, strong HTTP validators, accessibility, and
-  release evidence cross trust boundaries; and
+  release evidence cross trust boundaries;
+- how to prevent cross-document state reuse when a host changes the authorized
+  document, workspace, or tenant context in an existing client tree; and
 - which evidence may be shared during support, procurement, or acquisition
   diligence without disclosing tenant data.
 
@@ -41,8 +43,11 @@ The architecture explicitly states:
 The documentation uses reviewable Mermaid diagrams for the modular component
 map and RFC 9110 optimistic-concurrency sequence. It defines local versus
 shareable evidence, host-owned Yjs provider lifecycle, narrow client hydration,
-server-selected strong validators, accessible conflict handling, and exact-head
-release evidence.
+server-selected strong validators, accessible conflict handling, exact-head
+release evidence, and one opaque editing-context lifecycle boundary that remounts
+the editor, autosave session, pending digest state, and status state together.
+Document identifiers are encoded before transport and remain subject to host-side
+authorization and route validation.
 
 ## Architectural consequences
 
@@ -55,6 +60,9 @@ release evidence.
 - Server-side secrets, tenant authorization, persistence, and model-use policy
   remain outside the browser editor package.
 - Integrators receive a concrete fail-closed autosave and conflict sequence.
+- A host-selected opaque editing-context key prevents uncontrolled editor state,
+  durable validators, and in-flight digest completion from crossing authorized
+  document boundaries.
 - Acquisition reviewers can distinguish reproducible product evidence from
   restricted customer or deployment evidence.
 - The diagrams are version-controlled, text-reviewable, and render directly in
@@ -65,6 +73,10 @@ release evidence.
 - The guide is an architecture contract rather than a ready-made naruon
   persistence adapter. Host implementations still need their own authenticated
   APIs and database transactions.
+- The editing-context key deliberately discards client-local editor and autosave
+  state on an authorized context transition. A host that permits drafts across
+  transitions must persist and reauthorize those drafts outside Inkspan before
+  issuing the new context.
 - Mermaid rendering is useful for review but is not a substitute for accessible
   prose; every diagram is accompanied by equivalent text and tables.
 - Documentation tests can prove required statements remain present, but they do
@@ -77,6 +89,8 @@ The decision follows the least-authority split recommended for modular systems:
 - the editor receives document state and non-secret presentation configuration;
 - the host resolves identity, tenant membership, provider credentials, and
   durable storage authority;
+- the host issues a fresh opaque editing-context lifecycle value after each
+  authorized load or context transition;
 - the persistence service selects and atomically enforces strong entity tags;
 - the collaboration host owns room authorization, update persistence, and
   provider lifecycle;
@@ -84,6 +98,13 @@ The decision follows the least-authority split recommended for modular systems:
   execution; and
 - the central `.github` repository owns reusable CI, security, review,
   provenance, and release policy rather than runtime data authority.
+
+The editing-context value is not an authorization grant, tenant identifier,
+durable validator, audit identifier, or credential. It must not be derived from
+a document body or treated as server-side access evidence. Its sole purpose is to
+provide a non-secret client lifecycle identity so React destroys the entire
+stateful subtree when the authorized editing context changes. The host still
+validates every document identifier and every write independently.
 
 The architecture does not claim compliance with OWASP ASVS 5.0.0, NIST SP
 800-204, NIST SP 800-204D, WCAG 2.2, or RFC 9110 by documentation alone. Those
@@ -98,14 +119,28 @@ live-region announcements. This supports WCAG 2.2-oriented integration, but the
 host remains responsible for testing the complete page, all responsive states,
 and third-party content before making a conformance claim.
 
+An editing-context remount also replaces focusable editor DOM. The host therefore
+owns deterministic focus placement after the newly authorized panel is mounted
+and must not leave focus on a removed node or announce private document content.
+
 ## SSR and hydration boundary
 
-React hydrateRoot attaches an interactive tree to server-generated markup.
+React `hydrateRoot` attaches an interactive tree to server-generated markup.
 Next.js App Router separates Server and Client Components and uses `'use client'`
 to declare the client module boundary. The integration therefore keeps Inkspan,
 browser-only providers, event handlers, and `Y.Doc` creation in the narrow
 client panel while authorization, credential access, and initial durable loading
 remain server-side.
+
+React associates state with a component's position in the render tree and
+supports an explicit `key` to reset a stateful subtree. The host-facing wrapper
+therefore keys an inner client-session component with the opaque authorized
+editing-context value. The autosave coordinator is retained in lazy React state
+inside that keyed component. It is not created with `useMemo`, because React
+documents `useMemo` as a performance optimization rather than a semantic
+identity guarantee and may discard its cached value. The initializer has no
+transport, timer, credential, persistence, or storage side effects; cleanup
+closes the retained session when the keyed subtree is removed.
 
 This is an architectural recommendation, not a dependency on Next.js. A
 traditional React SSR host may apply the same separation with its own server and
@@ -136,6 +171,11 @@ validators, authorization claims, and deployment-specific exploitable findings.
 Hashing, canonicalization, encryption, or successful CI does not automatically
 make restricted evidence shareable.
 
+The editing-context key is intentionally non-secret, but it remains local product
+state and should not be promoted into logs, analytics dimensions, support
+artifacts, or acquisition evidence. Reproducible tests prove the lifecycle
+contract without recording a tenant-derived value.
+
 ## Verification
 
 `src/architectureDocumentation.test.ts` fails unless:
@@ -145,6 +185,11 @@ make restricted evidence shareable.
 - both deployment and optimistic-concurrency Mermaid diagrams exist;
 - the naruon guide includes client-boundary, strong-validator, accessible
   conflict, provider-lifecycle, credential, and evidence contracts;
+- the complete editor/autosave subtree is keyed by an opaque editing-context
+  value, uses lazy component state rather than `useMemo` for session identity,
+  and encodes the document identifier before transport;
+- the latest-generation guard prevents an older asynchronous digest from being
+  enqueued after a newer edit;
 - this doctoring record retains the authoritative standards references; and
 - `CHANGELOG.md` records the unreleased buyer-visible documentation slice.
 
@@ -164,6 +209,22 @@ transport and identity concerns, and couple releases to one product shell.
 Rejected because transport, authorization, tenant isolation, database schema,
 migration, retention, and credential policy are host responsibilities. A sample
 adapter could accidentally become an insecure de facto production contract.
+
+### Reuse one client panel across authorized document contexts
+
+Rejected because an uncontrolled editor, autosave validator, pending digest, and
+status state can remain associated with the same React tree position after props
+change. That creates a credible cross-document state reuse path in which content
+from the previous document may be sent to the next document route. Keying the
+whole inner session prevents partial reset and binds cleanup to one authorized
+editing context.
+
+### Use `useMemo` as the autosave session identity boundary
+
+Rejected because React defines memoization as a performance optimization rather
+than a semantic guarantee. A mutable coordinator with explicit cleanup belongs
+in state owned by the keyed session subtree. The host changes the key, not a
+memoization dependency, to replace the complete authorized editing context.
 
 ### Store provider credentials in panel props or environment-reading editor code
 
@@ -191,6 +252,11 @@ record, and the associated documentation contract test, then removes the
 unreleased changelog entry. No runtime, package export, dependency, database,
 credential, workflow, or published version rollback is required.
 
+A host that has implemented the opaque editing-context boundary must not remove
+that boundary merely because this documentation slice is rolled back. It should
+retain or replace the protection with an independently verified equivalent that
+prevents state and validator reuse across authorized document contexts.
+
 ## APA 7 references
 
 Chandramouli, R. (2019). *Security strategies for microservices-based
@@ -207,6 +273,15 @@ STD 97). RFC Editor. https://doi.org/10.17487/RFC9110
 
 Meta Platforms, Inc. (n.d.). *Client React DOM APIs: hydrateRoot*. React.
 Retrieved August 5, 2026, from https://react.dev/reference/react-dom/client
+
+Meta Platforms, Inc. (n.d.). *Preserving and resetting state*. React. Retrieved
+August 5, 2026, from https://react.dev/learn/preserving-and-resetting-state
+
+Meta Platforms, Inc. (n.d.). *useMemo*. React. Retrieved August 5, 2026, from
+https://react.dev/reference/react/useMemo
+
+Meta Platforms, Inc. (n.d.). *useState*. React. Retrieved August 5, 2026, from
+https://react.dev/reference/react/useState
 
 Open Worldwide Application Security Project Foundation. (2025). *OWASP
 Application Security Verification Standard 5.0.0*.
