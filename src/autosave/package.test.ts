@@ -25,14 +25,10 @@ function createEvidence(): DocumentAutosaveRevisionEvidence {
 describe('framework-free autosave package boundary', () => {
   it('delegates a detached evidence snapshot without editor framework types', async () => {
     const evidence = createEvidence();
+    let receivedEvidence: DocumentAutosaveRevisionEvidence | undefined;
     const queue = createDocumentAutosaveQueue({
       save(received) {
-        expect(received).not.toBe(evidence);
-        expect(received).toEqual(evidence);
-        expect(Object.isFrozen(received)).toBe(true);
-        expect(Object.isFrozen(received.envelope)).toBe(true);
-        expect(Object.isFrozen(received.envelope.documentJson)).toBe(true);
-        expect(Object.isFrozen(received.revision)).toBe(true);
+        receivedEvidence = received;
         return { status: 'saved' };
       },
     });
@@ -41,6 +37,12 @@ describe('framework-free autosave package boundary', () => {
       status: 'saved',
       strongEntityTag: evidence.revision.strongEntityTag,
     });
+    expect(receivedEvidence).not.toBe(evidence);
+    expect(receivedEvidence).toEqual(evidence);
+    expect(Object.isFrozen(receivedEvidence)).toBe(true);
+    expect(Object.isFrozen(receivedEvidence?.envelope)).toBe(true);
+    expect(Object.isFrozen(receivedEvidence?.envelope.documentJson)).toBe(true);
+    expect(Object.isFrozen(receivedEvidence?.revision)).toBe(true);
     await expect(queue.close()).resolves.toMatchObject({ state: 'closed' });
   });
 
@@ -61,11 +63,10 @@ describe('framework-free autosave package boundary', () => {
         return Reflect.get(target, property, receiver);
       },
     });
+    let receivedEvidence: DocumentAutosaveRevisionEvidence | undefined;
     const queue = createDocumentAutosaveQueue({
       save(received) {
-        expect(received).not.toBe(proxiedEvidence);
-        expect(received.envelope.documentJson).toEqual({ type: 'doc' });
-        expect(Object.isFrozen(received.envelope.documentJson)).toBe(true);
+        receivedEvidence = received;
         return { status: 'saved' };
       },
     });
@@ -73,6 +74,9 @@ describe('framework-free autosave package boundary', () => {
     await expect(queue.enqueue(proxiedEvidence)).resolves.toMatchObject({
       status: 'saved',
     });
+    expect(receivedEvidence).not.toBe(proxiedEvidence);
+    expect(receivedEvidence?.envelope.documentJson).toEqual({ type: 'doc' });
+    expect(Object.isFrozen(receivedEvidence?.envelope.documentJson)).toBe(true);
     mutableAlternateEnvelope.documentJson.content[0] = { type: 'text' };
     expect(envelopeGetterCalls).toBe(0);
   });
