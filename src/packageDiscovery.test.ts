@@ -20,7 +20,7 @@ describe('buyer-visible package discovery', () => {
     const metadata = packageMetadata();
 
     for (const subpath of ['./autosave', './revision-evidence'] as const) {
-      expect(metadata.exports).toHaveProperty(subpath);
+      expect(metadata.exports).toHaveProperty([subpath]);
       expect(readme).toContain(
         `@contextualwisdomlab/cwl-editor/${subpath.slice(2)}`,
       );
