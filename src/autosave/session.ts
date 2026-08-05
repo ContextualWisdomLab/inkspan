@@ -122,6 +122,10 @@ interface InternalQueueAdapter {
 
 const STRONG_HTTP_ENTITY_TAG =
   /^"[\u0021\u0023-\u007e\u0080-\u00ff]*"$/u;
+const DOCUMENT_AUTOSAVE_SESSION_OPTION_KEYS = [
+  'initialStrongEntityTag',
+  'save',
+] as const;
 
 /**
  * Determine whether a value is one RFC 9110 strong entity tag.
@@ -146,7 +150,13 @@ function createInvalidSessionOptionsError(): DocumentAutosaveQueueError {
   );
 }
 
-/** Read session options while redacting hostile option getters. */
+/**
+ * Read exact enumerable session option values without evaluating accessors.
+ *
+ * The descriptor-only boundary rejects unknown fields, symbols, accessors,
+ * non-enumerable fields, and hostile reflection while accepting transparent
+ * proxies whose target owns the two documented data properties.
+ */
 function readDocumentAutosaveSessionOptions(
   options: DocumentAutosaveSessionOptions,
 ): Readonly<{
@@ -157,8 +167,39 @@ function readDocumentAutosaveSessionOptions(
     if (typeof options !== 'object' || options === null) {
       throw createInvalidSessionOptionsError();
     }
-    const initialStrongEntityTag = options.initialStrongEntityTag;
-    const save = options.save;
+    const optionKeys = Reflect.ownKeys(options);
+    if (
+      optionKeys.length !== DOCUMENT_AUTOSAVE_SESSION_OPTION_KEYS.length ||
+      optionKeys.some(
+        (optionKey) =>
+          typeof optionKey !== 'string' ||
+          !DOCUMENT_AUTOSAVE_SESSION_OPTION_KEYS.includes(
+            optionKey as (typeof DOCUMENT_AUTOSAVE_SESSION_OPTION_KEYS)[number],
+          ),
+      )
+    ) {
+      throw createInvalidSessionOptionsError();
+    }
+    const initialStrongEntityTagDescriptor = Object.getOwnPropertyDescriptor(
+      options,
+      'initialStrongEntityTag',
+    );
+    const saveDescriptor = Object.getOwnPropertyDescriptor(options, 'save');
+    if (
+      initialStrongEntityTagDescriptor === undefined ||
+      saveDescriptor === undefined ||
+      !initialStrongEntityTagDescriptor.enumerable ||
+      !saveDescriptor.enumerable ||
+      !Object.prototype.hasOwnProperty.call(
+        initialStrongEntityTagDescriptor,
+        'value',
+      ) ||
+      !Object.prototype.hasOwnProperty.call(saveDescriptor, 'value')
+    ) {
+      throw createInvalidSessionOptionsError();
+    }
+    const initialStrongEntityTag = initialStrongEntityTagDescriptor.value;
+    const save = saveDescriptor.value;
     if (!isStrongHttpEntityTag(initialStrongEntityTag) || typeof save !== 'function') {
       throw createInvalidSessionOptionsError();
     }
