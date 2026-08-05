@@ -5,7 +5,6 @@ import {
 } from './index.js';
 import { createDetachedAutosaveRevisionEvidence } from './evidenceValidation.js';
 import type {
-  DocumentAutosaveQueueErrorCode,
   DocumentAutosaveQueueSnapshot,
   DocumentAutosaveRequestOutcome,
   DocumentAutosaveRevisionEvidence,
@@ -160,10 +159,8 @@ function createInvalidSessionOptionsError(): DocumentAutosaveQueueError {
 
 /** Create one redacted invalid-recovery-validator error. */
 function createInvalidRecoveryValidatorError(): DocumentAutosaveQueueError {
-  const code =
-    'invalid_recovery_validator' satisfies DocumentAutosaveQueueErrorCode;
   return new DocumentAutosaveQueueError(
-    code as never,
+    'invalid_recovery_validator',
     'The recovered durable strong entity tag is invalid.',
   );
 }
