@@ -251,13 +251,11 @@ export function createDocumentAutosaveSession(
   let durableStrongEntityTag = validatedOptions.initialStrongEntityTag;
   const internalQueue = createInternalDocumentAutosaveQueue({
     async save(internalEvidence) {
-      const detachedEvidence = createDetachedAutosaveRevisionEvidence(
-        internalEvidence as unknown as DocumentAutosaveRevisionEvidence,
-      );
-      if (detachedEvidence === null) return createInvalidDurableSaveSentinel();
+      const evidence =
+        internalEvidence as unknown as DocumentAutosaveRevisionEvidence;
       const result = await validatedOptions.save(
         Object.freeze({
-          evidence: detachedEvidence,
+          evidence,
           ifMatchStrongEntityTag: durableStrongEntityTag,
         }),
       );
