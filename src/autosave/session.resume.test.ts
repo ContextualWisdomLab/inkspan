@@ -3,6 +3,7 @@ import {
   createDocumentAutosaveSession,
   isStrongHttpEntityTag,
   type DocumentAutosaveDurableSaveResult,
+  type DocumentAutosaveQueueErrorCode,
   type DocumentAutosaveRevisionEvidence,
 } from './package.js';
 
@@ -52,6 +53,8 @@ describe('durable autosave recovery validator contract', () => {
   });
 
   it('rejects a malformed recovered validator in every lifecycle state', () => {
+    const recoveryErrorCode: DocumentAutosaveQueueErrorCode =
+      'invalid_recovery_validator';
     const session = createDocumentAutosaveSession({
       initialStrongEntityTag: '"server-one"',
       save: () => ({ status: 'conflict' }),
@@ -59,7 +62,7 @@ describe('durable autosave recovery validator contract', () => {
 
     expect(() => session.resume('W/"weak"')).toThrowError(
       expect.objectContaining({
-        code: 'invalid_recovery_validator',
+        code: recoveryErrorCode,
         message: 'The recovered durable strong entity tag is invalid.',
       }),
     );
