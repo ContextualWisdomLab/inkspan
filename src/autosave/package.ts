@@ -50,14 +50,15 @@ export type DocumentAutosaveQueueState =
 /** Reasons that require an explicit host recovery decision. */
 export type DocumentAutosaveBlockedReason = 'conflict' | 'failure';
 
-/** Stable machine-readable categories for autosave queue errors. */
+/** Stable machine-readable categories for redacted autosave errors. */
 export type DocumentAutosaveQueueErrorCode =
   | 'invalid_options'
   | 'invalid_revision_evidence'
+  | 'invalid_recovery_validator'
   | 'host_save_failed'
   | 'invalid_save_result';
 
-/** Public structural contract implemented by redacted autosave queue errors. */
+/** Public structural contract implemented by redacted autosave errors. */
 export interface DocumentAutosaveQueueError extends Error {
   /** Stable category that callers can branch on without parsing messages. */
   readonly code: DocumentAutosaveQueueErrorCode;
