@@ -1,7 +1,7 @@
 # Doctoring record: Durable autosave validator session
 
 **Date:** 2026-08-05  
-**Target release:** Unreleased after Inkspan 0.5.28  
+**Target release:** Inkspan 0.5.29  
 **Decision owner:** ContextualWisdomLab  
 **Scope:** Provider-neutral handoff of server-issued strong entity tags across the framework-independent single-flight autosave queue.
 
@@ -78,7 +78,7 @@ A test-first microtask-ordering regression proves that an internal blocked notif
 
 The exact packed npm artifact is executed through ESM and CommonJS and compiled as a strict TypeScript consumer in an isolated temporary package tree that contains no React, React DOM, TipTap, ProseMirror, or Yjs installation. The packed tests prove that the exported session supplies the initial server tag, adopts only the returned replacement tag, preserves framework independence, and exposes complete declarations.
 
-Repository acceptance remains 100% production statement, branch, function, and line coverage; TypeScript type checking; deterministic library and demo builds; isolated package-consumer verification; security and supply-chain scans; exact-current-head automated review; independent approval; and branch protection. A version bump or publication is prohibited until all integrated release-acceptance and provenance gates pass.
+Repository acceptance remains 100% production statement, branch, function, and line coverage; TypeScript type checking; deterministic library and demo builds; isolated package-consumer verification; security and supply-chain scans; exact-current-head automated review; independent approval; and branch protection. Source release 0.5.29 may merge only after those gates pass; tag creation, registry publication, provenance, and immutable release publication remain prohibited until the integrated merge commit is verified.
 
 ## References (APA 7th edition)
 
