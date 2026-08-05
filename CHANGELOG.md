@@ -6,11 +6,30 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Added
+- Added `createDocumentAutosaveSession()` to bind every single-flight save to the exact server-issued strong entity tag loaded or last committed by the host, without adding transport, persistence, credentials, tenancy, or provider coupling
+- Added `isStrongHttpEntityTag()` for fail-closed RFC 9110 quoted opaque-tag validation without trimming or repair
+- Added immutable durable save request, result, session, recovery, and document-free snapshot contracts to the framework-independent `autosave` package surface
+
+### Reliability
+- Successful durable writes advance the next `If-Match` base only from the host callback's validated server-selected replacement tag
+- Conflict, malformed result, hostile reflection, promise-assimilation failure, and transport failure preserve the previous durable validator until explicit authenticated recovery supplies a new strong tag
+- Retained work resumes only after `resume(nextStrongEntityTag)` installs the recovered durable base before the next callback begins
+
+### Security
+- Initial and replacement durable validators reject weak, unquoted, whitespace-containing, list, wildcard, control-character, and out-of-range values before they can enter host transport
+- Callback results are exact-shape validated through property descriptors; document bodies, validators, callback values, and private exceptions never enter public error messages
+- Session snapshots remain frozen and document-free; entity tags are still tenant-confidential equality metadata rather than authorization, signatures, tenant membership, or durable audit evidence
+
+### Tests
+- Added deterministic sequential validator handoff, conflict recovery, malformed option, malformed callback result, hostile reflection, promise assimilation, transport failure, frozen request, shutdown, and snapshot tests under repository-wide 100% production statement and branch coverage gates
+- Extended isolated packed-artifact ESM, CommonJS, and strict TypeScript consumers to prove the durable session and strong-tag validator work without React, React DOM, TipTap, ProseMirror, or Yjs installed
+
 ### Documentation
 - Added buyer-visible autosave onboarding, explicit `autosave` and `revision-evidence` distribution surfaces, and npm persistence discovery metadata without changing runtime behavior or package version
 - Corrected the autosave onboarding so initial and replacement validators are checked before use and come from the durable host's server-issued strong `ETag` rather than local revision evidence; missing, weak, or malformed validators now fail closed in the example
 - Added a deterministic repository contract test and APA 7th-style doctoring for README, npm-search, Node.js package-export discoverability, RFC 9110 validator ownership, and quoted opaque-tag syntax
-
+- Added operator and doctoring evidence for the durable autosave session, host ownership boundaries, exact-head verification, and acquisition-review scope
 
 ## [0.5.28] — 2026-08-05
 
