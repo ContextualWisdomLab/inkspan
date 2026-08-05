@@ -35,7 +35,13 @@ describe('buyer-visible package discovery', () => {
       "import { createDocumentAutosaveQueue } from '@contextualwisdomlab/cwl-editor/autosave';",
     );
     expect(readme).toContain(
-      'let durableStrongEntityTag = loadedStrongEntityTag;',
+      'const isStrongEntityTag = (candidate: string | null): candidate is string =>',
+    );
+    expect(readme).toContain(
+      '/^"[\\u0021\\u0023-\\u007e\\u0080-\\u00ff]*"$/.test(candidate);',
+    );
+    expect(readme).toContain(
+      "if (!isStrongEntityTag(loadedStrongEntityTag)) {\n  throw new Error('Loaded document response omitted a strong ETag');\n}\nlet durableStrongEntityTag = loadedStrongEntityTag;",
     );
     expect(readme).not.toContain('loadedRevision.strongEntityTag');
     expect(readme).toContain('if (!response.ok)');
@@ -43,13 +49,9 @@ describe('buyer-visible package discovery', () => {
     expect(readme).toContain(
       "const nextDurableStrongEntityTag = response.headers.get('ETag');",
     );
-    expect(readme).toContain('const isQuotedOpaqueTag =');
     expect(readme).toContain(
-      '/^"[\\u0021\\u0023-\\u007e\\u0080-\\u00ff]*"$/.test(',
+      'if (!isStrongEntityTag(nextDurableStrongEntityTag))',
     );
-    expect(readme).toContain('nextDurableStrongEntityTag === null');
-    expect(readme).toContain("nextDurableStrongEntityTag.startsWith('W/')");
-    expect(readme).toContain('!isQuotedOpaqueTag');
     expect(readme).toContain(
       "throw new Error('Durable save response omitted a strong ETag');",
     );
@@ -83,11 +85,13 @@ describe('buyer-visible package discovery', () => {
     );
 
     expect(changelog).toContain('buyer-visible autosave onboarding');
+    expect(changelog).toContain('initial and replacement validators');
     expect(changelog).toContain('missing, weak, or malformed validators');
     expect(doctoring).toContain('Node.js package subpath exports');
     expect(doctoring).toContain('npm search');
     expect(doctoring).toContain('GitHub repository README guidance');
     expect(doctoring).toContain('server-selected opaque validator');
+    expect(doctoring).toContain('initial and replacement validators');
     expect(doctoring).toContain('quoted opaque-tag syntax');
     expect(doctoring).toContain('RFC 9110');
   });
