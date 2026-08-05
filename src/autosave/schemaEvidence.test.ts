@@ -3,7 +3,7 @@ import type { CwlEditorDocumentRevisionEvidence } from '../documentRevisionEvide
 import {
   createDocumentAutosaveQueue,
   DocumentAutosaveQueueError,
-} from './index.js';
+} from './package.js';
 
 function createEvidence(
   schemaId: string,
