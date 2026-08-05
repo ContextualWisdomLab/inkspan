@@ -439,6 +439,21 @@ function pushChildren(
   }
 }
 
+/** Push only the first summary subtree rendered by one closed details element. */
+function pushClosedDetailsSummary(
+  stack: TraversalFrame[],
+  sourceElement: Element,
+  outputParent: globalThis.Node,
+  depth: number,
+): void {
+  for (let index = 0; index < sourceElement.children.length; index += 1) {
+    const child = sourceElement.children.item(index);
+    if (child?.localName.toLowerCase() !== 'summary') continue;
+    stack.push({ sourceNode: child, outputParent, depth });
+    return;
+  }
+}
+
 /**
  * Reconstruct bounded untrusted clipboard HTML into Inkspan's semantic allowlist.
  *
@@ -496,6 +511,18 @@ export function sanitizeRichClipboardHtml(
         DROPPED_SUBTREES.has(sourceName) ||
         isHiddenClipboardElement(sourceElement)
       ) {
+        continue;
+      }
+      if (sourceName === 'dialog' && !sourceElement.hasAttribute('open')) {
+        continue;
+      }
+      if (sourceName === 'details' && !sourceElement.hasAttribute('open')) {
+        pushClosedDetailsSummary(
+          stack,
+          sourceElement,
+          frame.outputParent,
+          frame.depth + 1,
+        );
         continue;
       }
 
