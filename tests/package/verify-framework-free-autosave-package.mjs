@@ -126,7 +126,12 @@ let calls = 0;
 const queue = createDocumentAutosaveQueue({
   async save(received) {
     calls += 1;
-    assert.equal(received, evidence);
+    assert.notEqual(received, evidence);
+    assert.deepEqual(received, evidence);
+    assert.equal(Object.isFrozen(received), true);
+    assert.equal(Object.isFrozen(received.envelope), true);
+    assert.equal(Object.isFrozen(received.envelope.documentJson), true);
+    assert.equal(Object.isFrozen(received.revision), true);
     return { status: 'saved' };
   },
 });
