@@ -1,7 +1,7 @@
 # Doctoring record: Durable autosave validator session
 
 **Date:** 2026-08-05  
-**Target release:** Inkspan 0.5.29  
+**Target release:** Unreleased after Inkspan 0.5.28  
 **Decision owner:** ContextualWisdomLab  
 **Scope:** Provider-neutral handoff of server-issued strong entity tags across the framework-independent single-flight autosave queue.
 
@@ -74,11 +74,11 @@ This boundary preserves standalone operation and allows naruon compose surfaces,
 
 Deterministic unit and integration tests cover strong-tag grammar, malformed options, hostile option getters, sequential server-validator handoff, frozen callback requests, conflict retention, explicit recovered-tag installation, invalid exact callback shapes, weak replacement validators, inaccessible reflection, promise-assimilation failure, thrown transport failure, flush, shutdown, and document-free snapshots.
 
-A test-first microtask-ordering regression proves that an internal blocked notification cannot escape as a stale lifecycle snapshot after a request continuation has already installed a recovered validator and restarted retained work. The red commit preserves the inconsistent `blocked` plus recovered-validator result; the implementation re-reads current queue state and waits for the resumed transition before returning one coherent terminal snapshot.
+Test-first microtask-ordering regressions prove that an internal blocked or idle notification cannot escape as a stale lifecycle snapshot after a request continuation has already installed a recovered validator, restarted retained work, or begun shutdown. The red recovery commit preserves the inconsistent `blocked` plus recovered-validator result; the implementation re-reads current queue state and waits for the resumed or closing transition before returning one coherent terminal snapshot.
 
 The exact packed npm artifact is executed through ESM and CommonJS and compiled as a strict TypeScript consumer in an isolated temporary package tree that contains no React, React DOM, TipTap, ProseMirror, or Yjs installation. The packed tests prove that the exported session supplies the initial server tag, adopts only the returned replacement tag, preserves framework independence, and exposes complete declarations.
 
-Repository acceptance remains 100% production statement, branch, function, and line coverage; TypeScript type checking; deterministic library and demo builds; isolated package-consumer verification; security and supply-chain scans; exact-current-head automated review; independent approval; and branch protection. Source release 0.5.29 may merge only after those gates pass; tag creation, registry publication, provenance, and immutable release publication remain prohibited until the integrated merge commit is verified.
+Repository acceptance remains 100% production statement, branch, function, and line coverage; TypeScript type checking; deterministic library and demo builds; isolated package-consumer verification; security and supply-chain scans; exact-current-head automated review; independent approval; and branch protection. A version bump, tag, registry publication, provenance, or immutable release publication is prohibited until all integrated release-acceptance gates pass on the exact merge candidate.
 
 ## References (APA 7th edition)
 
