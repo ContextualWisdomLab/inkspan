@@ -36,6 +36,20 @@ describe('buyer-visible package discovery', () => {
     );
     expect(readme).toContain('if (!response.ok)');
     expect(readme).toContain("throw new Error('Private transport failure');");
+    expect(readme).toContain(
+      "const nextDurableStrongEntityTag = response.headers.get('ETag');",
+    );
+    expect(readme).toContain('nextDurableStrongEntityTag === null');
+    expect(readme).toContain("nextDurableStrongEntityTag.startsWith('W/')");
+    expect(readme).toContain(
+      "throw new Error('Durable save response omitted a strong ETag');",
+    );
+    expect(readme).toContain(
+      'durableStrongEntityTag = nextDurableStrongEntityTag;',
+    );
+    expect(readme).not.toContain(
+      'durableStrongEntityTag = evidence.revision.strongEntityTag;',
+    );
     expect(readme).toContain('authorization, tenant isolation, persistence');
     expect(readme).toContain('RFC 9110 `If-Match`');
     expect(readme).toContain('[`docs/document-autosave.md`](docs/document-autosave.md)');
@@ -63,5 +77,7 @@ describe('buyer-visible package discovery', () => {
     expect(doctoring).toContain('Node.js package subpath exports');
     expect(doctoring).toContain('npm search');
     expect(doctoring).toContain('GitHub repository README guidance');
+    expect(doctoring).toContain('server-selected opaque validator');
+    expect(doctoring).toContain('RFC 9110');
   });
 });
