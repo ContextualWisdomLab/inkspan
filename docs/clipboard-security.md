@@ -102,14 +102,38 @@ cases. This prevents pasted source-only disclosure or dialog text from becoming
 ordinary visible editor content while retaining content that the source document
 actually exposed.
 
+## Native-widget and obsolete fallback content
+
+Current user agents render `<progress>` and `<meter>` as native progress and
+gauge widgets from their attributes, while descendant text is intended as a
+representation for user agents that do not support those elements. Inkspan does
+not preserve the attributes required to reconstruct an equivalent accessible
+widget. Unwrapping only the source element would therefore promote fallback text
+to ordinary visible editor prose and change the source document's rendering
+semantics.
+
+Inkspan drops complete `progress` and `meter` subtrees rather than inventing a
+partial conversion. It also drops complete `noframes` and `noembed` subtrees:
+both elements are obsolete, and their expected default rendering does not expose
+their descendants as ordinary page content. Ordinary content before and after
+these elements remains intact.
+
+This is a fail-closed default, not a claim that fallback text has no value. A
+host that owns a trusted document format may perform an explicitly reviewed,
+attribute-aware, accessible conversion before the content reaches the untrusted
+clipboard boundary. See
+`docs/doctoring/native-widget-fallback-content.md` for the decision record,
+test-first evidence, references, residual risk, and rollback boundary.
+
 ## Removed content
 
 The sanitizer discards complete active, embedded, form, metadata,
-resource-fetching, media, SVG, MathML, canvas, template, closed-dialog, and
-hidden subtrees. Closed disclosure widgets retain only the first rendered
-summary described above. It also removes comments, Office conditional metadata,
-event handlers, IDs, classes, arbitrary ARIA, proprietary Office/Google
-attributes, `data-*`, `contenteditable`, and unapproved link attributes.
+resource-fetching, media, SVG, MathML, canvas, template, closed-dialog,
+native-widget fallback, obsolete fallback, and hidden subtrees. Closed
+disclosure widgets retain only the first rendered summary described above. It
+also removes comments, Office conditional metadata, event handlers, IDs,
+classes, arbitrary ARIA, proprietary Office/Google attributes, `data-*`,
+`contenteditable`, and unapproved link attributes.
 
 Rich HTML `<img>` elements are always removed. This prevents remote tracking
 pixels, local-file references, and unvalidated data URIs. A binary image copied
