@@ -82,6 +82,24 @@ and properties such as `not-mso-hide`, remain visible and do not create false
 hidden-subtree matches. The complete hidden subtree is dropped, and the source
 style attribute is never copied to output.
 
+## Content containment hidden content
+
+Inkspan treats `content-visibility: hidden` as a complete hidden-subtree boundary
+because the source document intentionally skips those descendants rather than
+rendering them as ordinary content. Detection uses the same bounded raw `style`
+declaration parser rather than CSSOM exposure, so supported case, whitespace,
+terminal `!important`, CSS-comment, and CSS-escaped property or keyword forms
+are handled consistently across controlled DOM environments.
+
+Only the exact decoded property `content-visibility` and exact decoded value
+`hidden` match. Values such as `visible`, `auto`, and `hiddenly`, and prefixed
+properties such as `not-content-visibility`, remain visible. The source style
+attribute is discarded in every case. This policy prevents source-only text from
+being unwrapped into ordinary editor prose while avoiding false positives for
+content that the source leaves available or renders normally. The complete
+decision, standards basis, compatibility boundary, and rollback are recorded in
+`docs/doctoring/content-visibility-hidden-content.md`.
+
 ## Closed interactive content
 
 HTML disclosure and dialog elements can contain text that is present in source
