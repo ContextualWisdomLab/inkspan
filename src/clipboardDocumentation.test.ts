@@ -76,6 +76,32 @@ describe('safe rich clipboard documentation contract', () => {
     expect(doctoring).toContain('vulnerability-response obligation');
   });
 
+  it('records content visibility hidden as a complete hidden-subtree boundary', () => {
+    const operatorGuide = normalizedRepositoryDocument(
+      'docs/clipboard-security.md',
+    );
+    const doctoring = normalizedRepositoryDocument(
+      'docs/doctoring/content-visibility-hidden-content.md',
+    );
+    const changelog = normalizedRepositoryDocument('CHANGELOG.md');
+
+    expect(operatorGuide).toContain(
+      '`content-visibility: hidden` as a complete hidden-subtree boundary',
+    );
+    expect(operatorGuide).toContain(
+      'bounded raw `style` declaration parser rather than CSSOM exposure',
+    );
+    expect(doctoring).toContain('CSS Containment Module Level 2');
+    expect(doctoring).toContain(
+      'skipped contents must not be available to user-agent features',
+    );
+    expect(doctoring).toContain('`visible`, `auto`, and `hiddenly`');
+    expect(doctoring).toContain('Cross-engine Chromium, Firefox, and WebKit');
+    expect(changelog).toContain(
+      '`content-visibility: hidden` subtrees are removed',
+    );
+  });
+
   it('records visibility collapse as a hidden-content boundary', () => {
     const doctoring = normalizedRepositoryDocument(
       'docs/doctoring/visibility-collapse-hidden-content.md',
