@@ -19,6 +19,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ### Security
 - Active, embedded, form, metadata, media, SVG/MathML, template, resource-bearing, hidden, and HTML-image subtrees are removed before insertion
+- Exact `content-visibility: hidden` subtrees are removed from bounded raw style declarations, including case, whitespace, terminal `!important`, CSS-comment, and CSS-escaped forms, while `visible`, `auto`, `hiddenly`, and prefixed property names remain visible
 - Closed `details` elements preserve only their first rendered summary, closed `dialog` subtrees are removed, and open variants are unwrapped through the ordinary sanitizer so source-only interactive content cannot become visible editor text
 - Native `progress` and `meter` widget subtrees and obsolete `noframes` and `noembed` fallback subtrees are removed so stripping their wrappers cannot promote source fallback text into ordinary visible editor prose
 - Hidden `datalist` suggestion and down-level fallback subtrees are removed so stripping the suggestion-source wrapper cannot promote non-rendered descendants into ordinary visible editor prose
@@ -41,17 +42,25 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Added a test-first closed/open `details` and `dialog` regression that proves hidden additional or dialog content does not enter the sanitized fragment while rendered content remains
 - Added a test-first native-widget and obsolete-fallback regression proving ordinary visible text remains while `progress`, `meter`, `noframes`, and `noembed` descendants cannot surface after wrapper removal
 - Added a test-first `datalist` regression proving ordinary neighboring content remains while hidden suggestion and down-level fallback descendants cannot surface after wrapper removal
+- Added a test-first `content-visibility: hidden` regression covering ordinary, case, whitespace, terminal `!important`, CSS-comment, CSS-escaped, and false-positive declarations before the bounded raw-style parser repair
 - Added standalone and Yjs collaborative integration tests proving identical sanitizer behavior and latest-callback routing without editor or provider recreation
 - Kept repository-wide 100% production statement, branch, function, and line coverage as the merge gate
 - Recorded that current jsdom results are not cross-engine browser evidence; version-pinned Chromium, Firefox, and WebKit differential fixtures are a publication gate for 0.6.0
 
 ### Documentation
+- Added an authoritative standalone and modular MSA architecture contract with reviewable deployment, optimistic-concurrency, data-ownership, security, and acquisition-evidence diagrams and tables
+- Added a beginner-readable naruon compose and ui.panel integration guide covering narrow client hydration, server-selected strong validators, accessible conflict handling, host-owned Yjs lifecycle, contextual-orchestrator boundaries, and local-versus-shareable evidence
+- Added an opaque editing-context remount for the complete editor and autosave example, latest-generation asynchronous capture ordering, encoded document path segments, redacted recovery status, and lazy state-owned session identity to prevent cross-document state reuse
+- Bounded the host save example with a fresh abort deadline, exposed authenticated conflict recovery through `session.resume(...)`, generated an instance-unique accessible heading relationship, and strengthened fenced-TSX ordering contracts
+- Added stale-generation conflict recovery and operational save failure recovery through one reason-aware single-flight host workflow, so newer local edits cannot hide or duplicate recovery while retained work remains blocked; rejected or malformed resume attempts retain the same recovery surface until a valid resume succeeds or the editing context is disposed
+- Added exact-head read-only CI with fixed Ubuntu 24.04 runners, immutable action pins, explicit contributor-head checkout, disabled persisted Git credentials, and a documented merge-result compatibility boundary
+- Added deterministic documentation contract tests and APA 7th doctoring grounded in RFC 9110, WCAG 2.2, NIST SP 800-204, NIST SP 800-204D, OWASP ASVS 5.0.0, React, current Next.js App Router guidance, and GitHub Actions primary documentation
 - Documented preserved and removed clipboard content, Base64Image handoff, SSR behavior, error codes, modular ownership, performance bounds, rollback, and buyer integration
+- Documented `content-visibility: hidden` against CSS Containment Module Level 2, including exact raw-declaration matching, false-positive controls, test-first evidence, rollback, and the cross-engine assurance boundary
 - Documented closed interactive content against the WHATWG HTML Living Standard, including the source-rendering, accessibility, host-ownership, rollback, and cross-engine uncertainty boundaries
 - Documented native progress/gauge widgets and obsolete fallback elements against the WHATWG HTML Living Standard, including the fail-closed conversion decision, test-first evidence, residual risk, and rollback boundary
 - Documented hidden `datalist` suggestion and down-level fallback content against the WHATWG HTML Living Standard, including the linked-control, accessibility, host-ownership, rollback, and cross-engine uncertainty boundaries
 - Documented OWASP's DOMPurify recommendation, the bespoke sanitizer's vulnerability-response obligation, final-transform composition limits, and the current browser-assurance boundary
-- Added Mermaid architecture and trust-boundary diagrams to `ARCHITECTURE.md`
 
 ## [0.5.29] — 2026-08-05
 
