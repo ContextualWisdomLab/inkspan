@@ -15,7 +15,8 @@ A correct integration should:
 4. let Inkspan coordinate only deterministic local editing and save ordering;
 5. keep the host-created `Y.Doc` and collaboration provider lifecycle outside the
    editor module;
-6. expose an accessible conflict, recovery, and unsaved-state experience; and
+6. expose an accessible conflict, operational recovery, and unsaved-state
+   experience; and
 7. separate local evidence from shareable evidence used for operations or due
    diligence.
 
@@ -25,7 +26,7 @@ Use a server component or equivalent host loader to authorize the document and
 load its durable representation. Pass only serializable document data, a
 server-selected strong `ETag`, an opaque non-secret editing-context lifecycle
 identifier, and non-secret presentation options into one small host client
-boundary. That host client boundary creates the conflict-recovery callback; a
+boundary. That host client boundary creates the durable-recovery callback; a
 server component must not attempt to serialize a function prop.
 
 ```tsx
@@ -40,6 +41,7 @@ import {
 import {
   createDocumentAutosaveSession,
   isStrongHttpEntityTag,
+  type DocumentAutosaveBlockedReason,
   type DocumentAutosaveSession,
 } from '@contextualwisdomlab/cwl-editor/autosave';
 import '@contextualwisdomlab/cwl-editor/styles.css';
@@ -49,7 +51,8 @@ interface InkspanPanelProps {
   readonly documentId: string;
   readonly initialMarkdown: string;
   readonly initialStrongEntityTag: string;
-  readonly requestConflictRecovery: (
+  readonly requestDurableRecovery: (
+    blockedReason: DocumentAutosaveBlockedReason,
     resumeWithStrongEntityTag: (recoveredStrongEntityTag: string) => boolean,
   ) => void;
 }
@@ -62,12 +65,12 @@ function InkspanPanelSession({
   documentId,
   initialMarkdown,
   initialStrongEntityTag,
-  requestConflictRecovery,
+  requestDurableRecovery,
 }: InkspanPanelProps) {
   const titleId = useId();
   const editorRef = useRef<CwlEditorHandle>(null);
   const editGeneration = useRef(0);
-  const conflictRecoveryPending = useRef(false);
+  const durableRecoveryPending = useRef(false);
   const [saveMessage, setSaveMessage] = useState('Document loaded.');
   const [session] = useState<DocumentAutosaveSession>(() =>
     createDocumentAutosaveSession({
@@ -111,13 +114,19 @@ function InkspanPanelSession({
     [session],
   );
 
-  function requestDurableConflictRecovery(): void {
-    if (conflictRecoveryPending.current) return;
-    conflictRecoveryPending.current = true;
-    setSaveMessage('Saving paused. Resolve the durable document conflict.');
+  function requestBlockedSessionRecovery(
+    blockedReason: DocumentAutosaveBlockedReason,
+  ): void {
+    if (durableRecoveryPending.current) return;
+    durableRecoveryPending.current = true;
+    setSaveMessage(
+      blockedReason === 'conflict'
+        ? 'Saving paused. Resolve the durable document conflict.'
+        : 'Saving paused. Verify the durable document state before retrying.',
+    );
 
     try {
-      requestConflictRecovery((recoveredStrongEntityTag) => {
+      requestDurableRecovery(blockedReason, (recoveredStrongEntityTag) => {
         try {
           const resumed = session.resume(recoveredStrongEntityTag);
           if (resumed) {
@@ -134,11 +143,11 @@ function InkspanPanelSession({
           }
           return false;
         } finally {
-          conflictRecoveryPending.current = false;
+          durableRecoveryPending.current = false;
         }
       });
     } catch {
-      conflictRecoveryPending.current = false;
+      durableRecoveryPending.current = false;
       if (session.getSnapshot().state === 'blocked') {
         setSaveMessage('Saving paused. Use the host recovery action.');
       }
@@ -162,7 +171,7 @@ function InkspanPanelSession({
 
       const outcome = await session.enqueue(evidence);
       if (outcome.status === 'conflict') {
-        requestDurableConflictRecovery();
+        requestBlockedSessionRecovery('conflict');
         return;
       }
       if (capturedGeneration !== editGeneration.current) {
@@ -176,8 +185,10 @@ function InkspanPanelSession({
       }
     } catch {
       const snapshot = session.getSnapshot();
-      if (snapshot.state === 'blocked') {
-        setSaveMessage('Saving paused. Use the host recovery action.');
+      if (
+        snapshot.state === 'blocked' && snapshot.blockedReason !== null
+      ) {
+        requestBlockedSessionRecovery(snapshot.blockedReason);
       } else if (capturedGeneration === editGeneration.current) {
         setSaveMessage('Saving paused. Use the host recovery action.');
       }
@@ -232,19 +243,22 @@ edit has already retained pending work, the host must still receive the recovery
 request that can unblock the latest work. A production host may debounce before
 capture to reduce hashing frequency, but it must preserve both ordering rules.
 
-Multiple callers can share one active queue outcome. The
-`conflictRecoveryPending` ref therefore permits only one in-flight host recovery
-workflow for the blocked session. It does not authorize recovery and is not
-persisted or logged. The host should keep one accessible recovery surface active
-until the supplied callback returns `true`; a `false` result means the session
-was no longer blocked or the supplied validator was not accepted. A malformed
-recovery validator fails closed without replacing the durable base.
+A host callback exception, abort, timeout, or malformed success response rejects
+the active enqueue promise and blocks the same queue with reason `failure`.
+The catch path therefore reads only document-free lifecycle metadata and invokes
+the same host-owned recovery boundary with the exact stable blocked reason. It
+does this even when the request that observed the failure belongs to an older
+edit generation, preventing retained newer work from remaining blocked behind a
+misleading saving state.
 
-The catch path reads only document-free session lifecycle metadata. It surfaces a
-blocked queue even when the request that observed the failure belongs to an older
-edit generation, preventing a newer retained save from leaving the UI stuck on a
-misleading saving state. Private callback exceptions, document bodies, and
-validators remain outside the generic status message.
+Multiple callers can share one active queue outcome. The
+`durableRecoveryPending` ref therefore permits only one in-flight host recovery
+workflow for the blocked session, whether the reason is `conflict` or `failure`.
+It does not authorize recovery and is not persisted or logged. The host should
+keep one accessible recovery surface active until the supplied callback returns
+`true`; a `false` result means the session was no longer blocked or the supplied
+validator was not accepted. A malformed recovery validator fails closed without
+replacing the durable base.
 
 The example applies a fresh ten-second `AbortSignal` to each host-owned save
 request so one unresolved callback cannot retain the single-flight queue forever.
@@ -253,22 +267,27 @@ host must select a bounded deadline from its own latency and reliability policy,
 and an aborted or timed-out write remains ambiguous: do not claim success,
 advance the validator, or retry automatically without idempotency evidence.
 
-The `requestConflictRecovery` function is created by the host client composition,
-not passed across the server-component serialization boundary. It should open an
-accessible compare, merge, fork, or discard workflow. Only after that workflow
-performs an authenticated durable reload or equivalent confirmed decision may it
-invoke the supplied callback with the recovered server-selected strong `ETag`.
+The `requestDurableRecovery` function is created by the host client composition,
+not passed across the server-component serialization boundary. For `conflict`,
+it should open an accessible compare, merge, fork, discard, or authenticated
+reload workflow. For `failure`, it must first determine whether the ambiguous
+write committed, then obtain the authoritative current representation and
+server-selected strong `ETag`; it must not blindly retry the rejected evidence.
+Only after either workflow reaches a confirmed durable decision may it invoke
+the supplied callback with that recovered validator.
+
 The callback delegates to `session.resume(...)`, which validates and installs the
 new durable base immediately before retained work continues. The host may invoke
 the same supplied callback again after a `false` result, but it must not open a
-second competing recovery workflow while the first remains active.
+second competing recovery workflow while the first remains active. The stable
+blocked reason is control metadata, not authorization or proof of persistence.
 
-The example is intentionally transport-neutral beyond ordinary host `fetch()`.
-A production naruon composition should place authentication, tenant resolution,
-request deadlines, retry budgets, idempotency, telemetry, and error translation
-inside the host API layer rather than the editor module. It should translate
-redacted failure states into explicit recovery actions rather than expose private
-callback errors or document bodies.
+Private callback exceptions, document bodies, response values, and validators
+remain outside the generic status message. The example is intentionally
+transport-neutral beyond ordinary host `fetch()`. A production naruon
+composition should place authentication, tenant resolution, request deadlines,
+retry budgets, idempotency, telemetry, and error translation inside the host API
+layer rather than the editor module.
 
 ## compose contract
 
@@ -282,7 +301,7 @@ or other CWL services, but it must preserve these ownership rules:
   panel receives a document.
 - The composition root issues a fresh opaque editing-context lifecycle value for
   every authorized load and context transition.
-- The host client composition creates conflict and recovery callbacks; server
+- The host client composition creates durable recovery callbacks; server
   components pass only serializable, non-secret data into that boundary.
 - The composition root decides whether model use is allowed and which reviewed
   contextual-orchestrator policy applies.
@@ -296,26 +315,29 @@ or other CWL services, but it must preserve these ownership rules:
 Inkspan must not read provider credentials, model credentials, database
 credentials, or host authorization tokens. It also must not infer tenant
 identity from a document body, revision digest, collaboration room name, editing
-context value, or server validator.
+context value, blocked reason, or server validator.
 
 ## ui.panel contract
 
 A naruon `ui.panel` host should provide the surrounding product experience:
 
 - document title, owner, workspace, and classification labels;
-- save, offline, reconnecting, conflict, recovery, and read-only status;
+- save, offline, reconnecting, conflict, operational recovery, and read-only
+  status;
 - accessible conflict actions such as compare, merge, fork, discard, and retry;
+- accessible operational-failure actions such as verify, reload, resume, or
+  abandon after determining the durable state;
 - confirmation before destructive replacement;
 - model-use disclosure and user controls required by host policy;
 - navigation and focus restoration when the panel opens or closes; and
 - a support-safe error reference that excludes the document body and credentials.
 
 Use `role="status"` or another appropriate live-region pattern for asynchronous
-save state. Do not announce every keystroke. When a conflict occurs, move focus
-to a labelled conflict region or dialog and provide a deterministic path back to
+save state. Do not announce every keystroke. When the queue blocks, move focus to
+a labelled recovery region or dialog and provide a deterministic path back to
 the editor. Every panel heading and `aria-labelledby` target must be unique in the
 rendered page. A newer keystroke must not dismiss, duplicate, or hide a durable
-conflict workflow that still blocks retained work.
+recovery workflow that still blocks retained work.
 
 ## Durable autosave and conflict handling
 
@@ -329,8 +351,8 @@ Treat outcomes as follows:
 | --- | --- |
 | Saved with replacement strong validator | Install the returned validator before the next save begins |
 | `412 Precondition Failed` | Pause automatic progression and show exactly one accessible conflict workflow, even when a newer local edit already exists |
-| Timeout, disconnect, abort, or malformed response | Treat as ambiguous; do not claim saved or advance the validator; expose the blocked recovery action without private callback detail |
-| Authenticated recovery load | Supply the newly loaded server validator through the recovery callback so `session.resume(...)` installs it before retained work continues |
+| Timeout, disconnect, abort, callback exception, or malformed response | Treat as ambiguous; do not claim saved, advance the validator, or retry automatically; show exactly one operational recovery workflow |
+| Authenticated recovery load | Supply the newly confirmed server validator and original blocked reason through the recovery callback so `session.resume(...)` installs the validator before retained work continues |
 | Route or panel shutdown | Stop new work, let any active transport settle according to host policy, then discard private in-memory evidence |
 
 A local Inkspan SHA-256 revision is equality evidence for deterministic local
@@ -399,13 +421,16 @@ Before enabling the panel in production, verify that:
 - aborts and timeouts remain ambiguous rather than being reported as saved;
 - blocking conflict outcomes are processed before stale-generation status
   suppression so a newer edit cannot hide the required recovery workflow;
-- only one conflict-recovery workflow is requested for one blocked session;
-- authenticated conflict recovery installs its strong validator through
+- a blocked operational save failure also invokes the host recovery workflow,
+  including when an older request first observes the failure;
+- exactly one durable recovery workflow is requested for one blocked session;
+- the stable `conflict` or `failure` reason is passed without private error data;
+- authenticated recovery installs its confirmed strong validator through
   `session.resume(...)` before retained work continues;
-- blocked operational failures remain visible even when an older request first
-  observes the failure;
+- operational recovery verifies the durable state instead of automatically
+  retrying an ambiguous write;
 - every panel instance has a unique accessible heading relationship;
-- conflict UI is keyboard-operable and announced without exposing document text
+- recovery UI is keyboard-operable and announced without exposing document text
   in generic telemetry;
 - provider and model credentials never enter client props, document envelopes,
   error messages, or collaboration awareness state;
