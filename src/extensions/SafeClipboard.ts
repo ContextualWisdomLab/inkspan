@@ -348,9 +348,11 @@ function isHiddenClipboardElement(element: Element): boolean {
     return true;
   }
   const style = (element as HTMLElement).style;
+  const visibility = style.visibility.trim().toLowerCase();
   return (
     style.display.trim().toLowerCase() === 'none' ||
-    style.visibility.trim().toLowerCase() === 'hidden' ||
+    visibility === 'hidden' ||
+    visibility === 'collapse' ||
     hasOfficeHiddenDeclaration(element)
   );
 }
