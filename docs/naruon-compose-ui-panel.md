@@ -67,6 +67,7 @@ function InkspanPanelSession({
   const titleId = useId();
   const editorRef = useRef<CwlEditorHandle>(null);
   const editGeneration = useRef(0);
+  const conflictRecoveryPending = useRef(false);
   const [saveMessage, setSaveMessage] = useState('Document loaded.');
   const [session] = useState<DocumentAutosaveSession>(() =>
     createDocumentAutosaveSession({
@@ -110,6 +111,40 @@ function InkspanPanelSession({
     [session],
   );
 
+  function requestDurableConflictRecovery(): void {
+    if (conflictRecoveryPending.current) return;
+    conflictRecoveryPending.current = true;
+    setSaveMessage('Saving paused. Resolve the durable document conflict.');
+
+    try {
+      requestConflictRecovery((recoveredStrongEntityTag) => {
+        try {
+          const resumed = session.resume(recoveredStrongEntityTag);
+          if (resumed) {
+            setSaveMessage(
+              'Recovered changes resumed with a durable validator.',
+            );
+          }
+          return resumed;
+        } catch {
+          if (session.getSnapshot().state === 'blocked') {
+            setSaveMessage(
+              'Recovery requires a valid server-selected strong ETag.',
+            );
+          }
+          return false;
+        } finally {
+          conflictRecoveryPending.current = false;
+        }
+      });
+    } catch {
+      conflictRecoveryPending.current = false;
+      if (session.getSnapshot().state === 'blocked') {
+        setSaveMessage('Saving paused. Use the host recovery action.');
+      }
+    }
+  }
+
   async function captureAndQueueLatestDocument(): Promise<void> {
     const capturedGeneration = ++editGeneration.current;
     setSaveMessage('Saving changes.');
@@ -126,29 +161,24 @@ function InkspanPanelSession({
       }
 
       const outcome = await session.enqueue(evidence);
+      if (outcome.status === 'conflict') {
+        requestDurableConflictRecovery();
+        return;
+      }
       if (capturedGeneration !== editGeneration.current) {
         return;
       }
 
-      if (outcome.status === 'conflict') {
-        setSaveMessage('Saving paused. Resolve the durable document conflict.');
-        requestConflictRecovery((recoveredStrongEntityTag) => {
-          const resumed = session.resume(recoveredStrongEntityTag);
-          if (
-            resumed &&
-            capturedGeneration === editGeneration.current
-          ) {
-            setSaveMessage('Recovered changes resumed with a durable validator.');
-          }
-          return resumed;
-        });
-      } else if (outcome.status === 'closed') {
+      if (outcome.status === 'closed') {
         setSaveMessage('Saving is unavailable because this session closed.');
       } else {
         setSaveMessage('All current changes are saved or queued.');
       }
     } catch {
-      if (capturedGeneration === editGeneration.current) {
+      const snapshot = session.getSnapshot();
+      if (snapshot.state === 'blocked') {
+        setSaveMessage('Saving paused. Use the host recovery action.');
+      } else if (capturedGeneration === editGeneration.current) {
         setSaveMessage('Saving paused. Use the host recovery action.');
       }
     }
@@ -194,10 +224,27 @@ one page retain distinct heading relationships. The opaque editing-context key
 controls lifecycle replacement; the generated heading ID controls only the
 local accessible-name relationship and is not an authorization or audit value.
 
-The generation guard prevents an older, slower asynchronous envelope digest from
-being enqueued after a newer edit. A production host may debounce before capture
-to reduce hashing frequency, but it must preserve the same latest-generation
-ordering rule.
+The first generation guard prevents an older, slower asynchronous envelope
+digest from being enqueued after a newer edit. The second guard suppresses only
+stale non-blocking status updates after queue settlement. A blocking conflict is
+handled before that second guard: if an older active save conflicts after a newer
+edit has already retained pending work, the host must still receive the recovery
+request that can unblock the latest work. A production host may debounce before
+capture to reduce hashing frequency, but it must preserve both ordering rules.
+
+Multiple callers can share one active queue outcome. The
+`conflictRecoveryPending` ref therefore permits only one in-flight host recovery
+workflow for the blocked session. It does not authorize recovery and is not
+persisted or logged. The host should keep one accessible recovery surface active
+until the supplied callback returns `true`; a `false` result means the session
+was no longer blocked or the supplied validator was not accepted. A malformed
+recovery validator fails closed without replacing the durable base.
+
+The catch path reads only document-free session lifecycle metadata. It surfaces a
+blocked queue even when the request that observed the failure belongs to an older
+edit generation, preventing a newer retained save from leaving the UI stuck on a
+misleading saving state. Private callback exceptions, document bodies, and
+validators remain outside the generic status message.
 
 The example applies a fresh ten-second `AbortSignal` to each host-owned save
 request so one unresolved callback cannot retain the single-flight queue forever.
@@ -212,7 +259,9 @@ accessible compare, merge, fork, or discard workflow. Only after that workflow
 performs an authenticated durable reload or equivalent confirmed decision may it
 invoke the supplied callback with the recovered server-selected strong `ETag`.
 The callback delegates to `session.resume(...)`, which validates and installs the
-new durable base immediately before retained work continues.
+new durable base immediately before retained work continues. The host may invoke
+the same supplied callback again after a `false` result, but it must not open a
+second competing recovery workflow while the first remains active.
 
 The example is intentionally transport-neutral beyond ordinary host `fetch()`.
 A production naruon composition should place authentication, tenant resolution,
@@ -265,7 +314,8 @@ Use `role="status"` or another appropriate live-region pattern for asynchronous
 save state. Do not announce every keystroke. When a conflict occurs, move focus
 to a labelled conflict region or dialog and provide a deterministic path back to
 the editor. Every panel heading and `aria-labelledby` target must be unique in the
-rendered page.
+rendered page. A newer keystroke must not dismiss, duplicate, or hide a durable
+conflict workflow that still blocks retained work.
 
 ## Durable autosave and conflict handling
 
@@ -278,8 +328,8 @@ Treat outcomes as follows:
 | Outcome | Host behavior |
 | --- | --- |
 | Saved with replacement strong validator | Install the returned validator before the next save begins |
-| `412 Precondition Failed` | Pause automatic progression and show the accessible conflict workflow |
-| Timeout, disconnect, abort, or malformed response | Treat as ambiguous; do not claim saved or advance the validator |
+| `412 Precondition Failed` | Pause automatic progression and show exactly one accessible conflict workflow, even when a newer local edit already exists |
+| Timeout, disconnect, abort, or malformed response | Treat as ambiguous; do not claim saved or advance the validator; expose the blocked recovery action without private callback detail |
 | Authenticated recovery load | Supply the newly loaded server validator through the recovery callback so `session.resume(...)` installs it before retained work continues |
 | Route or panel shutdown | Stop new work, let any active transport settle according to host policy, then discard private in-memory evidence |
 
@@ -347,8 +397,13 @@ Before enabling the panel in production, verify that:
 - missing, weak, malformed, or stale validators fail closed;
 - request timeouts and cancellation are host-owned and bounded;
 - aborts and timeouts remain ambiguous rather than being reported as saved;
+- blocking conflict outcomes are processed before stale-generation status
+  suppression so a newer edit cannot hide the required recovery workflow;
+- only one conflict-recovery workflow is requested for one blocked session;
 - authenticated conflict recovery installs its strong validator through
   `session.resume(...)` before retained work continues;
+- blocked operational failures remain visible even when an older request first
+  observes the failure;
 - every panel instance has a unique accessible heading relationship;
 - conflict UI is keyboard-operable and announced without exposing document text
   in generic telemetry;
@@ -360,6 +415,8 @@ Before enabling the panel in production, verify that:
 - rollback restores a previously verified package rather than bypassing
   validation, security, or review gates.
 
-See [`../ARCHITECTURE.md`](../ARCHITECTURE.md) for the system diagrams and
+See [`../ARCHITECTURE.md`](../ARCHITECTURE.md) for the system diagrams,
 [`doctoring/naruon-modular-architecture.md`](doctoring/naruon-modular-architecture.md)
-for standards and decision evidence.
+for the architecture decision, and
+[`doctoring/stale-generation-conflict-recovery.md`](doctoring/stale-generation-conflict-recovery.md)
+for the concurrency repair evidence.
