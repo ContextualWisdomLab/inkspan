@@ -8,7 +8,8 @@ describe('SafeClipboard popover security regression', () => {
        <div popover>default popover secret</div>
        <aside popover="auto">auto popover secret</aside>
        <section popover="manual">manual popover secret</section>
-       <article popover="hint">hint popover secret</article>`,
+       <article popover="hint">hint popover secret</article>
+       <nav popover="unexpected">invalid-value popover secret</nav>`,
       {},
       document,
     );
@@ -20,5 +21,6 @@ describe('SafeClipboard popover security regression', () => {
     expect(container).not.toHaveTextContent('auto popover secret');
     expect(container).not.toHaveTextContent('manual popover secret');
     expect(container).not.toHaveTextContent('hint popover secret');
+    expect(container).not.toHaveTextContent('invalid-value popover secret');
   });
 });
