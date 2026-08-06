@@ -1,0 +1,457 @@
+# Naruon compose and ui.panel integration
+
+This guide shows how to embed Inkspan in a naruon composition without making
+Inkspan depend on naruon. The same editor package remains usable in a standalone
+React application, while naruon owns product routing, authenticated service
+calls, tenant context, persistence, credentials, conflict UX, and model policy.
+
+## Integration goals
+
+A correct integration should:
+
+1. keep the interactive editor in a narrow browser boundary;
+2. keep provider credentials and authorization decisions outside Inkspan;
+3. use server-selected strong `ETag` values for durable optimistic concurrency;
+4. let Inkspan coordinate only deterministic local editing and save ordering;
+5. keep the host-created `Y.Doc` and collaboration provider lifecycle outside the
+   editor module;
+6. expose an accessible conflict, operational recovery, and unsaved-state
+   experience; and
+7. separate local evidence from shareable evidence used for operations or due
+   diligence.
+
+## Recommended composition
+
+Use a server component or equivalent host loader to authorize the document and
+load its durable representation. Pass only serializable document data, a
+server-selected strong `ETag`, an opaque non-secret editing-context lifecycle
+identifier, and non-secret presentation options into one small host client
+boundary. That host client boundary creates the durable-recovery callback; a
+server component must not attempt to serialize a function prop.
+
+```tsx
+// app/documents/[documentId]/inkspan-panel.tsx
+'use client';
+
+import { useEffect, useId, useRef, useState } from 'react';
+import {
+  CwlEditor,
+  type CwlEditorHandle,
+} from '@contextualwisdomlab/cwl-editor';
+import {
+  createDocumentAutosaveSession,
+  isStrongHttpEntityTag,
+  type DocumentAutosaveBlockedReason,
+  type DocumentAutosaveSession,
+} from '@contextualwisdomlab/cwl-editor/autosave';
+import '@contextualwisdomlab/cwl-editor/styles.css';
+
+interface InkspanPanelProps {
+  readonly editingContextId: string;
+  readonly documentId: string;
+  readonly initialMarkdown: string;
+  readonly initialStrongEntityTag: string;
+  readonly requestDurableRecovery: (
+    blockedReason: DocumentAutosaveBlockedReason,
+    resumeWithStrongEntityTag: (recoveredStrongEntityTag: string) => boolean,
+  ) => void;
+}
+
+export function InkspanPanel(props: InkspanPanelProps) {
+  return <InkspanPanelSession key={props.editingContextId} {...props} />;
+}
+
+function InkspanPanelSession({
+  documentId,
+  initialMarkdown,
+  initialStrongEntityTag,
+  requestDurableRecovery,
+}: InkspanPanelProps) {
+  const titleId = useId();
+  const editorRef = useRef<CwlEditorHandle>(null);
+  const editGeneration = useRef(0);
+  const durableRecoveryPending = useRef(false);
+  const [saveMessage, setSaveMessage] = useState('Document loaded.');
+  const [session] = useState<DocumentAutosaveSession>(() =>
+    createDocumentAutosaveSession({
+      initialStrongEntityTag,
+      async save(request) {
+        const encodedDocumentId = encodeURIComponent(documentId);
+        const response = await fetch(`/api/documents/${encodedDocumentId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'If-Match': request.ifMatchStrongEntityTag,
+          },
+          body: JSON.stringify(request.evidence.envelope),
+          signal: AbortSignal.timeout(10_000),
+        });
+
+        if (response.status === 412) {
+          return { status: 'conflict' };
+        }
+        if (!response.ok) {
+          throw new Error('Document save failed without durable proof');
+        }
+
+        const nextStrongEntityTag = response.headers.get('ETag');
+        if (!isStrongHttpEntityTag(nextStrongEntityTag)) {
+          throw new Error('Document save omitted a valid strong ETag');
+        }
+        return {
+          status: 'saved',
+          nextStrongEntityTag,
+        };
+      },
+    }),
+  );
+
+  useEffect(
+    () => () => {
+      editGeneration.current += 1;
+      void session.close();
+    },
+    [session],
+  );
+
+  function requestBlockedSessionRecovery(
+    blockedReason: DocumentAutosaveBlockedReason,
+  ): void {
+    if (durableRecoveryPending.current) return;
+    durableRecoveryPending.current = true;
+    setSaveMessage(
+      blockedReason === 'conflict'
+        ? 'Saving paused. Resolve the durable document conflict.'
+        : 'Saving paused. Verify the durable document state before retrying.',
+    );
+
+    try {
+      requestDurableRecovery(blockedReason, (recoveredStrongEntityTag) => {
+        try {
+          const resumed = session.resume(recoveredStrongEntityTag);
+          if (resumed) {
+            durableRecoveryPending.current = false;
+            setSaveMessage(
+              'Recovered changes resumed with a durable validator.',
+            );
+          }
+          return resumed;
+        } catch {
+          if (session.getSnapshot().state === 'blocked') {
+            setSaveMessage(
+              'Recovery requires a valid server-selected strong ETag.',
+            );
+          }
+          return false;
+        }
+      });
+    } catch {
+      durableRecoveryPending.current = false;
+      if (session.getSnapshot().state === 'blocked') {
+        setSaveMessage('Saving paused. Use the host recovery action.');
+      }
+    }
+  }
+
+  async function captureAndQueueLatestDocument(): Promise<void> {
+    const capturedGeneration = ++editGeneration.current;
+    setSaveMessage('Saving changes.');
+
+    try {
+      const evidence =
+        await editorRef.current?.getDocumentEnvelopeRevisionEvidence();
+      if (
+        evidence === undefined ||
+        evidence === null ||
+        capturedGeneration !== editGeneration.current
+      ) {
+        return;
+      }
+
+      const outcome = await session.enqueue(evidence);
+      if (outcome.status === 'conflict') {
+        requestBlockedSessionRecovery('conflict');
+        return;
+      }
+      if (capturedGeneration !== editGeneration.current) {
+        return;
+      }
+
+      if (outcome.status === 'closed') {
+        setSaveMessage('Saving is unavailable because this session closed.');
+      } else {
+        setSaveMessage('All current changes are saved or queued.');
+      }
+    } catch {
+      const snapshot = session.getSnapshot();
+      if (
+        snapshot.state === 'blocked' && snapshot.blockedReason !== null
+      ) {
+        requestBlockedSessionRecovery(snapshot.blockedReason);
+      } else if (capturedGeneration === editGeneration.current) {
+        setSaveMessage('Saving paused. Use the host recovery action.');
+      }
+    }
+  }
+
+  return (
+    <section aria-labelledby={titleId}>
+      <h2 id={titleId}>Document editor</h2>
+      <CwlEditor
+        ref={editorRef}
+        mode="markdown"
+        defaultValue={initialMarkdown}
+        onChange={() => {
+          void captureAndQueueLatestDocument();
+        }}
+      />
+      <p role="status" aria-live="polite">
+        {saveMessage}
+      </p>
+    </section>
+  );
+}
+```
+
+The host must issue a new opaque `editingContextId` for every authorized document load
+and whenever the authorized workspace, tenant, or document context changes. The
+value is a UI lifecycle key only: it is not an authorization grant, tenant
+identifier, durable validator, or audit identifier, and it should not be logged.
+Keying the complete client session prevents React from reusing an uncontrolled
+editor, autosave validator, pending digest, or status state for a different
+document. Keying only `CwlEditor` is insufficient because the autosave session
+and asynchronous capture state must be replaced in the same lifecycle boundary.
+
+The session uses lazy component state rather than `useMemo`. The keyed child owns
+that state for one authorized editing context, and changing the key discards the
+whole session subtree. Memoization is an optimization and must not be treated as
+the semantic identity or disposal boundary for a mutable autosave coordinator.
+The session constructor performs no transport, timer, credential, or storage
+side effect; the retained session is closed by the component cleanup.
+
+Each panel instance creates its own React `useId()` value, so multiple editors on
+one page retain distinct heading relationships. The opaque editing-context key
+controls lifecycle replacement; the generated heading ID controls only the
+local accessible-name relationship and is not an authorization or audit value.
+
+The first generation guard prevents an older, slower asynchronous envelope
+digest from being enqueued after a newer edit. The second guard suppresses only
+stale non-blocking status updates after queue settlement. A blocking conflict is
+handled before that second guard: if an older active save conflicts after a newer
+edit has already retained pending work, the host must still receive the recovery
+request that can unblock the latest work. A production host may debounce before
+capture to reduce hashing frequency, but it must preserve both ordering rules.
+
+A host callback exception, abort, timeout, or malformed success response rejects
+the active enqueue promise and blocks the same queue with reason `failure`.
+The catch path therefore reads only document-free lifecycle metadata and invokes
+the same host-owned recovery boundary with the exact stable blocked reason. It
+does this even when the request that observed the failure belongs to an older
+edit generation, preventing retained newer work from remaining blocked behind a
+misleading saving state.
+
+Multiple callers can share one active queue outcome. The
+`durableRecoveryPending` ref therefore permits only one host recovery workflow
+for the blocked session, whether the reason is `conflict` or `failure`. It stays
+set when the supplied callback returns `false` or rejects a malformed validator,
+so a newer edit cannot open a second competing workflow while the original host
+recovery surface remains authoritative. It clears only after
+`session.resume(...)` succeeds, when opening the host workflow itself throws, or
+when the keyed editing context is disposed. The flag does not authorize recovery
+and is not persisted or logged.
+
+The host should keep one accessible recovery surface active until the supplied
+callback returns `true`; a `false` result means the session was no longer blocked
+or the supplied validator was not accepted. The host may correct its durable
+recovery decision and invoke the same callback again. A malformed recovery
+validator fails closed without replacing the durable base or releasing local
+single-flight ownership.
+
+The example applies a fresh ten-second `AbortSignal` to each host-owned save
+request so one unresolved callback cannot retain the single-flight queue forever.
+Ten seconds is illustrative rather than a universal service-level objective. The
+host must select a bounded deadline from its own latency and reliability policy,
+and an aborted or timed-out write remains ambiguous: do not claim success,
+advance the validator, or retry automatically without idempotency evidence.
+
+The `requestDurableRecovery` function is created by the host client composition,
+not passed across the server-component serialization boundary. For `conflict`,
+it should open an accessible compare, merge, fork, discard, or authenticated
+reload workflow. For `failure`, it must first determine whether the ambiguous
+write committed, then obtain the authoritative current representation and
+server-selected strong `ETag`; it must not blindly retry the rejected evidence.
+Only after either workflow reaches a confirmed durable decision may it invoke
+the supplied callback with that recovered validator.
+
+The callback delegates to `session.resume(...)`, which validates and installs the
+new durable base immediately before retained work continues. The host may invoke
+the same supplied callback again after a `false` result, but it must not open a
+second competing recovery workflow while the first remains active. The stable
+blocked reason is control metadata, not authorization or proof of persistence.
+
+Private callback exceptions, document bodies, response values, and validators
+remain outside the generic status message. The example is intentionally
+transport-neutral beyond ordinary host `fetch()`. A production naruon
+composition should place authentication, tenant resolution, request deadlines,
+retry budgets, idempotency, telemetry, and error translation inside the host API
+layer rather than the editor module.
+
+## compose contract
+
+A naruon `compose` layer should treat Inkspan as one bounded capability module.
+It may combine editor output with templates, workflows, contextual-orchestrator,
+or other CWL services, but it must preserve these ownership rules:
+
+- Inkspan receives only the document state and non-secret behavior options needed
+  for editing.
+- The composition root resolves authorization and tenant context before the
+  panel receives a document.
+- The composition root issues a fresh opaque editing-context lifecycle value for
+  every authorized load and context transition.
+- The host client composition creates durable recovery callbacks; server
+  components pass only serializable, non-secret data into that boundary.
+- The composition root decides whether model use is allowed and which reviewed
+  contextual-orchestrator policy applies.
+- Model output returns as untrusted content and enters Inkspan through validated
+  insertion or revision-guarded restore paths.
+- Durable save success is established only by the host persistence transaction
+  and its replacement strong validator.
+- The composition root owns shutdown and cancellation when a route, workspace,
+  or application session ends.
+
+Inkspan must not read provider credentials, model credentials, database
+credentials, or host authorization tokens. It also must not infer tenant
+identity from a document body, revision digest, collaboration room name, editing
+context value, blocked reason, or server validator.
+
+## ui.panel contract
+
+A naruon `ui.panel` host should provide the surrounding product experience:
+
+- document title, owner, workspace, and classification labels;
+- save, offline, reconnecting, conflict, operational recovery, and read-only
+  status;
+- accessible conflict actions such as compare, merge, fork, discard, and retry;
+- accessible operational-failure actions such as verify, reload, resume, or
+  abandon after determining the durable state;
+- confirmation before destructive replacement;
+- model-use disclosure and user controls required by host policy;
+- navigation and focus restoration when the panel opens or closes; and
+- a support-safe error reference that excludes the document body and credentials.
+
+Use `role="status"` or another appropriate live-region pattern for asynchronous
+save state. Do not announce every keystroke. When the queue blocks, move focus to
+a labelled recovery region or dialog and provide a deterministic path back to
+the editor. Every panel heading and `aria-labelledby` target must be unique in the
+rendered page. A newer keystroke must not dismiss, duplicate, or hide a durable
+recovery workflow that still blocks retained work.
+
+## Durable autosave and conflict handling
+
+The initial validator and every successful replacement must be a server-selected
+strong `ETag`. The host persistence service must atomically compare `If-Match`
+inside the same transaction that writes the new document representation.
+
+Treat outcomes as follows:
+
+| Outcome | Host behavior |
+| --- | --- |
+| Saved with replacement strong validator | Install the returned validator before the next save begins |
+| `412 Precondition Failed` | Pause automatic progression and show exactly one accessible conflict workflow, even when a newer local edit already exists |
+| Timeout, disconnect, abort, callback exception, or malformed response | Treat as ambiguous; do not claim saved, advance the validator, or retry automatically; show exactly one operational recovery workflow |
+| Authenticated recovery load | Supply the newly confirmed server validator and original blocked reason through the recovery callback so `session.resume(...)` installs the validator before retained work continues |
+| Rejected or malformed recovery validator | Keep the same recovery surface and callback authoritative; do not release single-flight ownership or open a second workflow |
+| Route or panel shutdown | Stop new work, let any active transport settle according to host policy, then discard private in-memory evidence |
+
+A local Inkspan SHA-256 revision is equality evidence for deterministic local
+operations. It is not a durable server validator and must never replace the
+host's `ETag`.
+
+## Collaboration lifecycle
+
+For real-time editing, create the `Y.Doc`, provider, room authorization, and
+awareness policy in the host composition. Inkspan may bind the supplied document
+to the editor, but it must not create or destroy the host provider.
+
+This matters when one provider is shared by multiple panels, presence surfaces,
+or background synchronization tasks. Unmounting an editor panel must not
+silently terminate collaboration used elsewhere. The host should explicitly
+destroy the provider only when the owning workspace or application lifecycle
+ends.
+
+## contextual-orchestrator integration
+
+The host may call `ContextualWisdomLab/contextual-orchestrator` for insertion,
+rewrite, review, or structured document generation. Keep the integration
+provider-neutral:
+
+1. capture one immutable Inkspan envelope and local revision;
+2. let the host authorize and dispatch the model operation;
+3. validate the returned content through Inkspan's ordinary safe-content path;
+4. apply a delayed result only with revision-guarded restore or an explicit
+   compare/merge/fork decision; and
+5. store only host-approved audit metadata, never private intermediate reasoning.
+
+The editor package does not select reasoning effort, models, credentials, prompt
+retention, or provider regions. Those decisions remain with the host and
+contextual-orchestrator policy.
+
+## Local evidence and shareable evidence
+
+**Local evidence** may contain full envelopes, conflict bodies, Yjs updates,
+awareness state, prompts, model output, tenant identifiers, server validators,
+or deployment-specific security findings. Keep it within the authorized product
+boundary and retention policy.
+
+**Shareable evidence** for support, release acceptance, procurement, or
+acquisition review should be deliberately produced from non-customer fixtures.
+Examples include exact-head CI results, package hashes, SBOMs, provenance,
+license inventories, deterministic conversion fixtures, accessibility test
+results, public API declarations, and redacted operator runbooks.
+
+Never promote local evidence to shareable evidence merely because it is hashed,
+canonicalized, encrypted, or attached to a successful CI run.
+
+## Failure checklist
+
+Before enabling the panel in production, verify that:
+
+- the server rejects unauthorized document IDs before returning content;
+- the host issues a fresh opaque editing-context lifecycle value for every
+  authorized document load and context transition;
+- the complete editor and autosave session remount together when that lifecycle
+  value changes;
+- document path segments are encoded before transport and revalidated by the
+  authorized server route;
+- every durable write uses an authenticated atomic `If-Match` transaction;
+- missing, weak, malformed, or stale validators fail closed;
+- request timeouts and cancellation are host-owned and bounded;
+- aborts and timeouts remain ambiguous rather than being reported as saved;
+- blocking conflict outcomes are processed before stale-generation status
+  suppression so a newer edit cannot hide the required recovery workflow;
+- a blocked operational save failure also invokes the host recovery workflow,
+  including when an older request first observes the failure;
+- exactly one durable recovery workflow is requested for one blocked session;
+- unsuccessful or malformed resume attempts retain that single-flight recovery
+  ownership until a valid resume succeeds or the editing context is disposed;
+- the stable `conflict` or `failure` reason is passed without private error data;
+- authenticated recovery installs its confirmed strong validator through
+  `session.resume(...)` before retained work continues;
+- operational recovery verifies the durable state instead of automatically
+  retrying an ambiguous write;
+- every panel instance has a unique accessible heading relationship;
+- recovery UI is keyboard-operable and announced without exposing document text
+  in generic telemetry;
+- provider and model credentials never enter client props, document envelopes,
+  error messages, or collaboration awareness state;
+- the host provider survives panel remounts when it is shared;
+- release evidence excludes tenant data and is bound to the exact package and
+  source head; and
+- rollback restores a previously verified package rather than bypassing
+  validation, security, or review gates.
+
+See [`../ARCHITECTURE.md`](../ARCHITECTURE.md) for the system diagrams,
+[`doctoring/naruon-modular-architecture.md`](doctoring/naruon-modular-architecture.md)
+for the architecture decision, and
+[`doctoring/stale-generation-conflict-recovery.md`](doctoring/stale-generation-conflict-recovery.md)
+for the concurrency repair evidence.
