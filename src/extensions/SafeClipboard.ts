@@ -319,8 +319,8 @@ function decodeCssEscapes(source: string): string | null {
   return decoded;
 }
 
-/** Detect Office's hidden-subtree declaration from bounded raw style text. */
-function hasOfficeHiddenDeclaration(element: Element): boolean {
+/** Detect hidden-subtree declarations from bounded raw style text. */
+function hasHiddenStyleDeclaration(element: Element): boolean {
   const rawStyle = element.getAttribute('style');
   if (rawStyle === null) return false;
   const withoutComments = rawStyle.replace(/\/\*[\s\S]*?(?:\*\/|$)/gu, '');
@@ -330,14 +330,16 @@ function hasOfficeHiddenDeclaration(element: Element): boolean {
     const propertyName = decodeCssEscapes(
       declaration.slice(0, separator).trim(),
     )?.toLowerCase();
-    if (propertyName !== 'mso-hide') return false;
     const propertyValue = decodeCssEscapes(
       declaration
         .slice(separator + 1)
         .replace(/\s*!important\s*$/iu, '')
         .trim(),
     )?.toLowerCase();
-    return propertyValue === 'all';
+    return (
+      (propertyName === 'mso-hide' && propertyValue === 'all') ||
+      (propertyName === 'content-visibility' && propertyValue === 'hidden')
+    );
   });
 }
 
@@ -353,7 +355,7 @@ function isHiddenClipboardElement(element: Element): boolean {
     style.display.trim().toLowerCase() === 'none' ||
     visibility === 'hidden' ||
     visibility === 'collapse' ||
-    hasOfficeHiddenDeclaration(element)
+    hasHiddenStyleDeclaration(element)
   );
 }
 
