@@ -9,6 +9,10 @@ import type {
   CwlEditorDocumentRevision,
   DocumentEnvelopeDigestProvider,
 } from './documentEnvelopeRevision.js';
+import type {
+  ClipboardConfig,
+  ClipboardSanitizationError,
+} from './extensions/SafeClipboard.js';
 
 /** Which document surface the editor reads from and writes to. */
 export type EditorMode = 'markdown' | 'html';
@@ -265,6 +269,19 @@ export interface CwlEditorProps {
    * silently swallowing failures on the commercial path.
    */
   onImageError?: (error: unknown) => void;
+  /**
+   * Bounded rich-HTML paste policy. Word, Google Docs, email, and web markup is
+   * rebuilt through Inkspan's strict semantic allowlist before insertion. The
+   * object is captured when `buildExtensions()` creates the editor; replacing it
+   * later does not update an existing extension, so remount the editor to apply a
+   * different policy.
+   */
+  clipboard?: ClipboardConfig;
+  /**
+   * Fired when rich clipboard HTML is rejected by a size, depth, node, DOM, or
+   * configuration boundary. Errors contain stable codes and no source content.
+   */
+  onClipboardError?: (error: ClipboardSanitizationError) => void;
   /** Placeholder shown when the document is empty. */
   placeholder?: string;
   /** Render read-only (no editing, no toolbar actions). */

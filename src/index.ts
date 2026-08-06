@@ -95,6 +95,19 @@ export {
 } from './extensions/Base64Image.js';
 export type { Base64ImageOptions } from './extensions/Base64Image.js';
 export {
+  ClipboardSanitizationError,
+  DEFAULT_CLIPBOARD_HTML_BYTES,
+  DEFAULT_CLIPBOARD_MAX_DEPTH,
+  DEFAULT_CLIPBOARD_MAX_NODES,
+  SafeClipboard,
+  sanitizeRichClipboardHtml,
+} from './extensions/SafeClipboard.js';
+export type {
+  ClipboardConfig,
+  ClipboardSanitizationErrorCode,
+  SafeClipboardOptions,
+} from './extensions/SafeClipboard.js';
+export {
   SafeLink,
   SafeLinkHrefError,
   isSafeLinkHref,

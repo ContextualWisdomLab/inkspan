@@ -10,6 +10,11 @@ import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
 import type { Extensions } from '@tiptap/react';
 import { Base64Image } from './Base64Image.js';
+import {
+  SafeClipboard,
+  type ClipboardConfig,
+  type ClipboardSanitizationError,
+} from './SafeClipboard.js';
 import { SafeLink, isSafeLinkHref } from './SafeLink.js';
 import type { ImageConfig } from '../types.js';
 
@@ -17,10 +22,14 @@ import type { ImageConfig } from '../types.js';
 export interface BuildExtensionsOptions {
   placeholder?: string;
   image?: ImageConfig;
+  /** Bounded rich-HTML paste policy shared by all editor surfaces. */
+  clipboard?: ClipboardConfig;
   /**
    * Forwarded to {@link Base64Image} so paste/drop failures reach the host.
    */
   onImageError?: (error: Error) => void;
+  /** Redacted rich-clipboard rejection observer. */
+  onClipboardError?: (error: ClipboardSanitizationError) => void;
   /** Disable StarterKit history when a CRDT owns undo/redo semantics. */
   disableHistory?: boolean;
   /** Additional host or product extensions appended after the shared kit. */
@@ -50,6 +59,10 @@ export function buildExtensions(
       linkOnPaste: true,
       isAllowedUri: (href) => isSafeLinkHref(href),
       HTMLAttributes: { rel: 'noopener noreferrer nofollow' },
+    }),
+    SafeClipboard.configure({
+      config: options.clipboard,
+      onError: options.onClipboardError,
     }),
     Placeholder.configure({
       placeholder: options.placeholder ?? 'Start writing…',
