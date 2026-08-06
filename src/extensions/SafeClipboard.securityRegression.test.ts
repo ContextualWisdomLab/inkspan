@@ -67,6 +67,32 @@ describe('SafeClipboard security regressions', () => {
     expect(container).toHaveTextContent('newline escape remains visible');
   });
 
+  it('drops content-visibility hidden subtrees from bounded raw style declarations', () => {
+    const sanitized = sanitizeRichClipboardHtml(
+      `<p style="content-visibility: hidden">ordinary containment secret</p>
+       <p style="CONTENT-VISIBILITY : HIDDEN !important">case containment secret</p>
+       <p style="content-/*containment*/visibility: h/*skip*/idden">comment containment secret</p>
+       <p style="content-\\76 isibility: \\68 idden">escaped containment secret</p>
+       <p style="content-visibility: visible">visible value remains visible</p>
+       <p style="content-visibility: auto">auto value remains visible</p>
+       <p style="content-visibility: hiddenly">hiddenly value remains visible</p>
+       <p style="not-content-visibility: hidden">prefixed property remains visible</p>`,
+      {},
+      document,
+    );
+    const container = document.createElement('div');
+    container.innerHTML = sanitized;
+
+    expect(container).not.toHaveTextContent('ordinary containment secret');
+    expect(container).not.toHaveTextContent('case containment secret');
+    expect(container).not.toHaveTextContent('comment containment secret');
+    expect(container).not.toHaveTextContent('escaped containment secret');
+    expect(container).toHaveTextContent('visible value remains visible');
+    expect(container).toHaveTextContent('auto value remains visible');
+    expect(container).toHaveTextContent('hiddenly value remains visible');
+    expect(container).toHaveTextContent('prefixed property remains visible');
+  });
+
   it('drops visibility-collapse subtrees that browsers do not render', () => {
     const sanitized = sanitizeRichClipboardHtml(
       `<table>
