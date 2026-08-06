@@ -343,8 +343,9 @@ function hasHiddenStyleDeclaration(element: Element): boolean {
   });
 }
 
-/** Return true when the element marks its complete subtree as hidden. */
+/** Return true when static clipboard markup marks its subtree as non-rendered. */
 function isHiddenClipboardElement(element: Element): boolean {
+  if (element.hasAttribute('popover')) return true;
   if (element.hasAttribute('hidden')) return true;
   if (element.getAttribute('aria-hidden')?.trim().toLowerCase() === 'true') {
     return true;
