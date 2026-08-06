@@ -120,6 +120,25 @@ cases. This prevents pasted source-only disclosure or dialog text from becoming
 ordinary visible editor content while retaining content that the source document
 actually exposed.
 
+## Popover hidden content
+
+The HTML Living Standard defines `popover` as a global attribute whose element is
+not rendered until a separate runtime visibility state becomes showing. Static
+clipboard HTML retains the attribute but does not preserve whether the source
+popover was showing when the content was copied. Removing the attribute and
+unwrapping its descendants would therefore promote content hidden by default
+into ordinary visible editor prose without evidence that the user saw it.
+
+Inkspan drops the complete subtree of every element that carries a `popover`
+attribute. This includes the empty-value Auto state, the defined `auto`, `manual`,
+and `hint` keywords, and unrecognized values because the standard maps an invalid
+value to the Manual state. Inkspan does not execute invokers or script, call
+`showPopover()`, or reconstruct top-layer state. A trusted host with stronger
+source provenance may convert a verified visible popover before the content
+reaches this untrusted boundary. The standards rationale, test-first evidence,
+compatibility limitation, and rollback policy are recorded in
+`docs/doctoring/popover-hidden-content.md`.
+
 ## Native-widget, suggestion-source, and obsolete fallback content
 
 Current user agents render `<progress>` and `<meter>` as native progress and
@@ -155,11 +174,11 @@ test-first evidence, references, residual risk, and rollback boundaries.
 
 The sanitizer discards complete active, embedded, form, metadata,
 resource-fetching, media, SVG, MathML, canvas, template, closed-dialog,
-native-widget fallback, hidden suggestion-source, obsolete fallback, and hidden
-subtrees. Closed disclosure widgets retain only the first rendered summary
-described above. It also removes comments, Office conditional metadata, event
-handlers, IDs, classes, arbitrary ARIA, proprietary Office/Google attributes,
-`data-*`, `contenteditable`, and unapproved link attributes.
+popover-hidden, native-widget fallback, hidden suggestion-source, obsolete
+fallback, and hidden subtrees. Closed disclosure widgets retain only the first
+rendered summary described above. It also removes comments, Office conditional
+metadata, event handlers, IDs, classes, arbitrary ARIA, proprietary Office/Google
+attributes, `data-*`, `contenteditable`, and unapproved link attributes.
 
 Rich HTML `<img>` elements are always removed. This prevents remote tracking
 pixels, local-file references, and unvalidated data URIs. A binary image copied
