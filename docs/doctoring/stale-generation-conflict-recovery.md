@@ -49,10 +49,10 @@ unchanged, superseded, or closed presentation updates are suppressed when their
 generation is stale.
 
 If `enqueue()` rejects, the example reads the document-free queue snapshot. When
-that snapshot is blocked and supplies a stable `blockedReason`, the host callback
-failure and a durable conflict both request recovery through the same bounded
-interface. The host receives only `conflict` or `failure`; it does not receive
-the document, validator, callback value, or private exception.
+that snapshot is blocked and supplies a stable `blockedReason`, the
+host callback failure and a durable conflict both request recovery through the
+same bounded interface. The host receives only `conflict` or `failure`; it does
+not receive the document, validator, callback value, or private exception.
 
 The panel keeps one local `durableRecoveryPending` ref and issues one
 single-flight recovery request for one blocked session. Multiple callers may
