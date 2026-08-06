@@ -107,6 +107,27 @@ describe('acquisition-ready modular architecture documentation', () => {
     expect(example).not.toContain('requestConflictRecovery');
     expect(example).not.toContain('conflictRecoveryPending');
 
+    const resumeDeclaration = markerPosition(
+      example,
+      'const resumed = session.resume(recoveredStrongEntityTag);',
+    );
+    const successfulResumeBranch = markerPosition(
+      example,
+      'if (resumed) {',
+      resumeDeclaration,
+    );
+    const pendingRecoveryRelease = markerPosition(
+      example,
+      'durableRecoveryPending.current = false;',
+      successfulResumeBranch,
+    );
+    const resumeReturn = markerPosition(
+      example,
+      'return resumed;',
+      successfulResumeBranch,
+    );
+    expect(pendingRecoveryRelease).toBeLessThan(resumeReturn);
+
     const capture = markerPosition(
       example,
       'const capturedGeneration = ++editGeneration.current;',
