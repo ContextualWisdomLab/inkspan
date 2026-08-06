@@ -67,6 +67,28 @@ describe('SafeClipboard security regressions', () => {
     expect(container).toHaveTextContent('newline escape remains visible');
   });
 
+  it('drops visibility-collapse subtrees that browsers do not render', () => {
+    const sanitized = sanitizeRichClipboardHtml(
+      `<table>
+         <tbody>
+           <tr style="visibility: collapse"><td>collapsed row secret</td></tr>
+           <tr><td style="visibility: collapse">collapsed cell secret</td></tr>
+           <tr><td>visible table content</td></tr>
+         </tbody>
+       </table>
+       <p style="visibility: collapse">collapsed ordinary secret</p>`,
+      {},
+      document,
+    );
+    const container = document.createElement('div');
+    container.innerHTML = sanitized;
+
+    expect(container).not.toHaveTextContent('collapsed row secret');
+    expect(container).not.toHaveTextContent('collapsed cell secret');
+    expect(container).not.toHaveTextContent('collapsed ordinary secret');
+    expect(container).toHaveTextContent('visible table content');
+  });
+
   it('drops metadata titles instead of surfacing document metadata as editor text', () => {
     const sanitized = sanitizeRichClipboardHtml(
       '<p>visible</p><title>metadata title secret</title>',
