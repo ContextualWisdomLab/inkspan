@@ -250,24 +250,28 @@ function resolveClipboardConfig(
   }
 }
 
-/** Resolve one DOM-capable document without touching DOM globals at import time. */
+/** Resolve one DOM-capable document without leaking hostile capability access. */
 function resolveClipboardDocument(
   documentOverride: Document | null | undefined,
 ): Document {
-  const candidate =
-    documentOverride === undefined
-      ? typeof document === 'undefined'
-        ? null
-        : document
-      : documentOverride;
-  if (
-    candidate === null ||
-    typeof candidate.createElement !== 'function' ||
-    typeof candidate.implementation?.createHTMLDocument !== 'function'
-  ) {
+  try {
+    const candidate =
+      documentOverride === undefined
+        ? typeof document === 'undefined'
+          ? null
+          : document
+        : documentOverride;
+    if (
+      candidate === null ||
+      typeof candidate.createElement !== 'function' ||
+      typeof candidate.implementation?.createHTMLDocument !== 'function'
+    ) {
+      throw new ClipboardSanitizationError('dom_unavailable');
+    }
+    return candidate;
+  } catch {
     throw new ClipboardSanitizationError('dom_unavailable');
   }
-  return candidate;
 }
 
 /** Decode the CSS escapes needed for exact hidden-property comparisons. */
