@@ -130,6 +130,7 @@ function InkspanPanelSession({
         try {
           const resumed = session.resume(recoveredStrongEntityTag);
           if (resumed) {
+            durableRecoveryPending.current = false;
             setSaveMessage(
               'Recovered changes resumed with a durable validator.',
             );
@@ -142,8 +143,6 @@ function InkspanPanelSession({
             );
           }
           return false;
-        } finally {
-          durableRecoveryPending.current = false;
         }
       });
     } catch {
@@ -252,13 +251,21 @@ edit generation, preventing retained newer work from remaining blocked behind a
 misleading saving state.
 
 Multiple callers can share one active queue outcome. The
-`durableRecoveryPending` ref therefore permits only one in-flight host recovery
-workflow for the blocked session, whether the reason is `conflict` or `failure`.
-It does not authorize recovery and is not persisted or logged. The host should
-keep one accessible recovery surface active until the supplied callback returns
-`true`; a `false` result means the session was no longer blocked or the supplied
-validator was not accepted. A malformed recovery validator fails closed without
-replacing the durable base.
+`durableRecoveryPending` ref therefore permits only one host recovery workflow
+for the blocked session, whether the reason is `conflict` or `failure`. It stays
+set when the supplied callback returns `false` or rejects a malformed validator,
+so a newer edit cannot open a second competing workflow while the original host
+recovery surface remains authoritative. It clears only after
+`session.resume(...)` succeeds, when opening the host workflow itself throws, or
+when the keyed editing context is disposed. The flag does not authorize recovery
+and is not persisted or logged.
+
+The host should keep one accessible recovery surface active until the supplied
+callback returns `true`; a `false` result means the session was no longer blocked
+or the supplied validator was not accepted. The host may correct its durable
+recovery decision and invoke the same callback again. A malformed recovery
+validator fails closed without replacing the durable base or releasing local
+single-flight ownership.
 
 The example applies a fresh ten-second `AbortSignal` to each host-owned save
 request so one unresolved callback cannot retain the single-flight queue forever.
@@ -353,6 +360,7 @@ Treat outcomes as follows:
 | `412 Precondition Failed` | Pause automatic progression and show exactly one accessible conflict workflow, even when a newer local edit already exists |
 | Timeout, disconnect, abort, callback exception, or malformed response | Treat as ambiguous; do not claim saved, advance the validator, or retry automatically; show exactly one operational recovery workflow |
 | Authenticated recovery load | Supply the newly confirmed server validator and original blocked reason through the recovery callback so `session.resume(...)` installs the validator before retained work continues |
+| Rejected or malformed recovery validator | Keep the same recovery surface and callback authoritative; do not release single-flight ownership or open a second workflow |
 | Route or panel shutdown | Stop new work, let any active transport settle according to host policy, then discard private in-memory evidence |
 
 A local Inkspan SHA-256 revision is equality evidence for deterministic local
@@ -424,6 +432,8 @@ Before enabling the panel in production, verify that:
 - a blocked operational save failure also invokes the host recovery workflow,
   including when an older request first observes the failure;
 - exactly one durable recovery workflow is requested for one blocked session;
+- unsuccessful or malformed resume attempts retain that single-flight recovery
+  ownership until a valid resume succeeds or the editing context is disposed;
 - the stable `conflict` or `failure` reason is passed without private error data;
 - authenticated recovery installs its confirmed strong validator through
   `session.resume(...)` before retained work continues;
