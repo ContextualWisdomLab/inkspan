@@ -75,7 +75,7 @@ describe('acquisition-ready modular architecture documentation', () => {
     expect(integration).toContain('must not create or destroy the host provider');
   });
 
-  it('validates fenced autosave structure and rejects out-of-order capture completion', () => {
+  it('validates fenced autosave structure, generation ordering, and conflict recovery', () => {
     const integration = repositoryFile('docs/naruon-compose-ui-panel.md');
     const example = fencedCodeBlock(integration, 'tsx');
 
@@ -88,9 +88,13 @@ describe('acquisition-ready modular architecture documentation', () => {
     expect(example).not.toContain('request.ifMatch,');
     expect(example).not.toContain('strongEntityTag: nextStrongEntityTag');
     expect(example).toContain('const editGeneration = useRef(0);');
+    expect(example).toContain('const conflictRecoveryPending = useRef(false);');
     expect(example).toContain(
       'readonly requestConflictRecovery: (\n    resumeWithStrongEntityTag: (recoveredStrongEntityTag: string) => boolean,\n  ) => void;',
     );
+    expect(example).toContain('function requestDurableConflictRecovery(): void {');
+    expect(example).toContain('if (conflictRecoveryPending.current) return;');
+    expect(example).toContain('conflictRecoveryPending.current = true;');
     expect(example).toContain(
       'requestConflictRecovery((recoveredStrongEntityTag) => {',
     );
@@ -117,10 +121,20 @@ describe('acquisition-ready modular architecture documentation', () => {
       'const outcome = await session.enqueue(evidence);',
       firstGenerationGuard,
     );
+    const conflictBranch = markerPosition(
+      example,
+      "if (outcome.status === 'conflict') {",
+      enqueue,
+    );
+    markerPosition(
+      example,
+      'requestDurableConflictRecovery();',
+      conflictBranch,
+    );
     markerPosition(
       example,
       'capturedGeneration !== editGeneration.current',
-      enqueue,
+      conflictBranch,
     );
 
     expect(example).toContain('void captureAndQueueLatestDocument();');
