@@ -123,6 +123,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Unsafe and credential-bearing links are unwrapped while visible text remains; approved links retain only exact `href` and fixed `noopener noreferrer nofollow`
 - IDs, classes, styles, event handlers, `data-*`, arbitrary ARIA, `contenteditable`, remote resources, local-file references, and Office/Google attributes never reach the output fragment
 - UTF-8 bytes, traversed nodes, source depth, and configuration reflection are bounded and fail closed with static redacted errors
+- Hostile direct-API `Document` accessors, proxies, and revoked proxies now fail closed as the stable `dom_unavailable` error before parsing, without exposing private capability exceptions
 
 ### Performance
 - Accepted clipboard traversal is iterative and linear in the bounded source tree; defaults are 1 MiB, 10,000 nodes, and 64 levels
@@ -131,6 +132,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 ### Tests
 - Added realistic Word-like and Google-Docs-like fixtures, Office conditional comments, semantic conversion, structural, malformed, active-content, hidden-data, unsafe-link, resource-bound, hostile-configuration, DOM-unavailable, callback-failure, and error-redaction cases
 - Added test-first regressions for closed interactive content, hidden popover state, native-widget fallback content, hidden `datalist` suggestions, `visibility: collapse`, and `content-visibility: hidden`
+- Added a test-first direct-API regression proving hostile `createElement` and `implementation` property reads cannot leak arbitrary exception text
 - Added standalone and Yjs integration tests, a 3,000-paragraph capacity fixture, final-transform ordering evidence, and repository-wide 100% production statement, branch, function, and line coverage gates
 - Current jsdom results are not cross-engine browser evidence; version-pinned Chromium, Firefox, and WebKit differential fixtures remain a publication gate for 0.6.0
 
@@ -139,3 +141,4 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Documented `content-visibility: hidden` against CSS Containment Module Level 2, including exact raw-declaration matching, false-positive controls, test-first evidence, rollback, and the cross-engine assurance boundary
 - Documented hidden popover content against the WHATWG runtime visibility-state model, including invalid-value behavior, deterministic loss boundary, test-first evidence, rollback, and cross-engine limitations
 - Documented closed interactive, native-widget fallback, hidden suggestion-source, CSS escape, Office hidden-content, and final-transform composition decisions against primary specifications and official documentation
+- Added an APA 7th doctoring record for DOM capability reflection redaction grounded in ECMAScript 2026 proxy abrupt-completion semantics, the WHATWG DOM capability surface, and OWASP generic-error guidance
