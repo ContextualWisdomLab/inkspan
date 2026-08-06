@@ -6,47 +6,6 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
-### Added
-- Added a default `SafeClipboard` TipTap extension and `sanitizeRichClipboardHtml()` API that reconstruct browser-provided `text/html` through a strict semantic allowlist before ProseMirror parsing
-- Added `clipboard` byte/node/depth limits and a live `onClipboardError` observer to standalone and provider-neutral Yjs editor surfaces
-- Added root architecture, operator guidance, design, implementation-plan, and APA 7th doctoring records for the clipboard trust boundary
-
-### Changed
-- Rich HTML pasted from Word, Google Docs, email, and web pages now keeps supported structure and narrowly mapped bold/italic/underline/strike semantics while discarding arbitrary source styling and proprietary metadata
-- Standalone and collaborative editors now use exactly one shared clipboard policy through `buildExtensions()`
-- Nested clipboard policy objects are preserved without accessor evaluation during editor construction and use accessor-safe paste-time configuration validation at the exact rich-paste boundary
-- Because default rich-HTML paste behavior changes, the integrated feature targets the next minor release, **0.6.0**, only after a separate verified release PR
-
-### Security
-- Active, embedded, form, metadata, media, SVG/MathML, template, resource-bearing, hidden, and HTML-image subtrees are removed before insertion
-- Exact `content-visibility: hidden` subtrees are removed from bounded raw style declarations, including case, whitespace, terminal `!important`, CSS-comment, and CSS-escaped forms, while `visible`, `auto`, `hiddenly`, and prefixed property names remain visible
-- Closed `details` elements preserve only their first rendered summary, closed `dialog` subtrees are removed, and open variants are unwrapped through the ordinary sanitizer so source-only interactive content cannot become visible editor text
-- Native `progress` and `meter` widget subtrees and obsolete `noframes` and `noembed` fallback subtrees are removed so stripping their wrappers cannot promote source fallback text into ordinary visible editor prose
-- Hidden `datalist` suggestion and down-level fallback subtrees are removed so stripping the suggestion-source wrapper cannot promote non-rendered descendants into ordinary visible editor prose
-- Raw `mso-hide` declarations are parsed with exact case-insensitive property/value matching, closed and EOF-terminated CSS-comment removal, optional terminal `!important`, and false-positive guards instead of relying on browser CSSOM support for the proprietary Office property
-- CSS-escaped property and keyword forms of `mso-hide: all` are decoded for exact comparison, while invalid code points, escaped newlines, prefixes, and longer look-alike values remain visible instead of producing false-positive subtree removal
-- SafeClipboard uses the lowest-practical extension priority as the final ordinary TipTap paste transform, with an integration regression proving a prior host transform cannot reintroduce scripts or tracking images before parsing
-- A host-installed lower-priority transform or post-parse mutation is explicitly outside the supported safety contract and requires an independently verified equivalent validation boundary
-- Unsafe and credential-bearing links are unwrapped while visible text remains; SafeLink-approved links retain only exact `href` and fixed `noopener noreferrer nofollow`
-- IDs, classes, styles, event handlers, `data-*`, arbitrary ARIA, `contenteditable`, remote resources, local-file references, and Office/Google attributes never reach the output fragment
-- UTF-8 bytes, traversed nodes, and source depth are bounded; configuration accessors, symbols, unknown fields, invalid numbers, and reflection failures fail closed with static redacted error codes
-- Host error observers cannot weaken the rejection result and no rejected source HTML, URL, attribute, document text, tenant identifier, or parser exception enters public errors
-
-### Performance
-- Accepted clipboard traversal is iterative and linear in the bounded source tree; defaults are 1 MiB, 10,000 nodes, and 64 levels with documented hard ceilings
-- The feature adds no runtime dependency and performs no network, storage, clipboard-permission, model, provider, credential, or database operation
-
-### Tests
-- Added realistic Word-like and Google-Docs-like fixtures, Office conditional comments, style-to-semantic conversion, tables and lists, malformed HTML, active/embedded/resource content, hidden data, remote images, unsafe links, UTF-8 byte limits, breadth/depth limits, hostile configuration, DOM-unavailable execution, callback failure, and error-redaction cases
-- Added raw Office hidden-style variants including EOF-terminated CSS comments, false-positive cases, structural removed-element assertions, real TipTap transform-chain ordering, and standalone/Yjs regressions proving configuration accessors are not evaluated before paste
-- Added a test-first closed/open `details` and `dialog` regression that proves hidden additional or dialog content does not enter the sanitized fragment while rendered content remains
-- Added a test-first native-widget and obsolete-fallback regression proving ordinary visible text remains while `progress`, `meter`, `noframes`, and `noembed` descendants cannot surface after wrapper removal
-- Added a test-first `datalist` regression proving ordinary neighboring content remains while hidden suggestion and down-level fallback descendants cannot surface after wrapper removal
-- Added a test-first `content-visibility: hidden` regression covering ordinary, case, whitespace, terminal `!important`, CSS-comment, CSS-escaped, and false-positive declarations before the bounded raw-style parser repair
-- Added standalone and Yjs collaborative integration tests proving identical sanitizer behavior and latest-callback routing without editor or provider recreation
-- Kept repository-wide 100% production statement, branch, function, and line coverage as the merge gate
-- Recorded that current jsdom results are not cross-engine browser evidence; version-pinned Chromium, Firefox, and WebKit differential fixtures are a publication gate for 0.6.0
-
 ### Documentation
 - Added an authoritative standalone and modular MSA architecture contract with reviewable deployment, optimistic-concurrency, data-ownership, security, and acquisition-evidence diagrams and tables
 - Added a beginner-readable naruon compose and ui.panel integration guide covering narrow client hydration, server-selected strong validators, accessible conflict handling, host-owned Yjs lifecycle, contextual-orchestrator boundaries, and local-versus-shareable evidence
@@ -55,12 +14,6 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Added stale-generation conflict recovery and operational save failure recovery through one reason-aware single-flight host workflow, so newer local edits cannot hide or duplicate recovery while retained work remains blocked; rejected or malformed resume attempts retain the same recovery surface until a valid resume succeeds or the editing context is disposed
 - Added exact-head read-only CI with fixed Ubuntu 24.04 runners, immutable action pins, explicit contributor-head checkout, disabled persisted Git credentials, and a documented merge-result compatibility boundary
 - Added deterministic documentation contract tests and APA 7th doctoring grounded in RFC 9110, WCAG 2.2, NIST SP 800-204, NIST SP 800-204D, OWASP ASVS 5.0.0, React, current Next.js App Router guidance, and GitHub Actions primary documentation
-- Documented preserved and removed clipboard content, Base64Image handoff, SSR behavior, error codes, modular ownership, performance bounds, rollback, and buyer integration
-- Documented `content-visibility: hidden` against CSS Containment Module Level 2, including exact raw-declaration matching, false-positive controls, test-first evidence, rollback, and the cross-engine assurance boundary
-- Documented closed interactive content against the WHATWG HTML Living Standard, including the source-rendering, accessibility, host-ownership, rollback, and cross-engine uncertainty boundaries
-- Documented native progress/gauge widgets and obsolete fallback elements against the WHATWG HTML Living Standard, including the fail-closed conversion decision, test-first evidence, residual risk, and rollback boundary
-- Documented hidden `datalist` suggestion and down-level fallback content against the WHATWG HTML Living Standard, including the linked-control, accessibility, host-ownership, rollback, and cross-engine uncertainty boundaries
-- Documented OWASP's DOMPurify recommendation, the bespoke sanitizer's vulnerability-response obligation, final-transform composition limits, and the current browser-assurance boundary
 
 ## [0.5.29] — 2026-08-05
 
@@ -143,3 +96,44 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 ### Documentation
 - Added the autosave architecture and doctoring record with APA 7th references to RFC 9110, RFC 8785, Herlihy and Wing (1990), and ISO/IEC 25010:2023
 - Added an operator guide covering correct durable-base `If-Match` usage, local versus durable ownership, SSR/worker compatibility, observability minimization, and CWL/naruon modular integration boundaries
+
+## Pending 0.6.0 — Safe rich clipboard ingestion
+
+### Added
+- Added a default `SafeClipboard` TipTap extension and `sanitizeRichClipboardHtml()` API that reconstruct browser-provided `text/html` through a strict semantic allowlist before ProseMirror parsing
+- Added `clipboard` byte/node/depth limits and a live `onClipboardError` observer to standalone and provider-neutral Yjs editor surfaces
+- Added operator guidance, design, implementation-plan, and APA 7th doctoring records for the clipboard trust boundary
+
+### Changed
+- Rich HTML pasted from Word, Google Docs, email, and web pages keeps supported structure and narrowly mapped bold/italic/underline/strike semantics while discarding arbitrary source styling and proprietary metadata
+- Standalone and collaborative editors use one shared clipboard policy through `buildExtensions()`
+- Nested clipboard policy objects use accessor-safe paste-time configuration validation at the exact rich-paste boundary
+- Because default rich-HTML paste behavior changes, publication targets **0.6.0** only after a separate verified release pull request
+
+### Security
+- Active, embedded, form, metadata, media, SVG/MathML, template, resource-bearing, hidden, and HTML-image subtrees are removed before insertion
+- Exact `content-visibility: hidden` subtrees are removed from bounded raw style declarations, including case, whitespace, terminal `!important`, CSS-comment, and CSS-escaped forms, while `visible`, `auto`, `hiddenly`, and prefixed property names remain visible
+- Closed `details` elements preserve only their first rendered summary, closed `dialog` subtrees are removed, and open variants are unwrapped through the ordinary sanitizer
+- Native `progress` and `meter` widget subtrees and obsolete `noframes` and `noembed` fallback subtrees are removed
+- Hidden `datalist` suggestion and down-level fallback subtrees are removed
+- Raw `mso-hide` declarations are parsed with exact case-insensitive property/value matching, closed and EOF-terminated CSS-comment removal, optional terminal `!important`, and false-positive guards
+- CSS-escaped property and keyword forms of `mso-hide: all` are decoded for exact comparison, while invalid or look-alike declarations remain visible
+- SafeClipboard is the final ordinary TipTap paste transform; later hostile transforms remain outside the supported safety contract
+- Unsafe and credential-bearing links are unwrapped while visible text remains; approved links retain only exact `href` and fixed `noopener noreferrer nofollow`
+- IDs, classes, styles, event handlers, `data-*`, arbitrary ARIA, `contenteditable`, remote resources, local-file references, and Office/Google attributes never reach the output fragment
+- UTF-8 bytes, traversed nodes, source depth, and configuration reflection are bounded and fail closed with static redacted errors
+
+### Performance
+- Accepted clipboard traversal is iterative and linear in the bounded source tree; defaults are 1 MiB, 10,000 nodes, and 64 levels
+- The feature adds no runtime dependency and performs no network, storage, clipboard-permission, model, provider, credential, or database operation
+
+### Tests
+- Added realistic Word-like and Google-Docs-like fixtures, Office conditional comments, semantic conversion, structural, malformed, active-content, hidden-data, unsafe-link, resource-bound, hostile-configuration, DOM-unavailable, callback-failure, and error-redaction cases
+- Added test-first regressions for closed interactive content, native-widget fallback content, hidden `datalist` suggestions, `visibility: collapse`, and `content-visibility: hidden`
+- Added standalone and Yjs integration tests, a 3,000-paragraph capacity fixture, final-transform ordering evidence, and repository-wide 100% production statement, branch, function, and line coverage gates
+- Current jsdom results are not cross-engine browser evidence; version-pinned Chromium, Firefox, and WebKit differential fixtures remain a publication gate for 0.6.0
+
+### Documentation
+- Documented preserved and removed clipboard content, Base64Image handoff, SSR behavior, error codes, modular ownership, performance bounds, rollback, and buyer integration
+- Documented `content-visibility: hidden` against CSS Containment Module Level 2, including exact raw-declaration matching, false-positive controls, test-first evidence, rollback, and the cross-engine assurance boundary
+- Documented closed interactive, native-widget fallback, hidden suggestion-source, CSS escape, Office hidden-content, and final-transform composition decisions against primary specifications and official documentation
