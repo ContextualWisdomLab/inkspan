@@ -75,7 +75,7 @@ describe('acquisition-ready modular architecture documentation', () => {
     expect(integration).toContain('must not create or destroy the host provider');
   });
 
-  it('validates fenced autosave structure, generation ordering, and conflict recovery', () => {
+  it('validates fenced autosave structure, generation ordering, and durable recovery', () => {
     const integration = repositoryFile('docs/naruon-compose-ui-panel.md');
     const example = fencedCodeBlock(integration, 'tsx');
 
@@ -88,19 +88,24 @@ describe('acquisition-ready modular architecture documentation', () => {
     expect(example).not.toContain('request.ifMatch,');
     expect(example).not.toContain('strongEntityTag: nextStrongEntityTag');
     expect(example).toContain('const editGeneration = useRef(0);');
-    expect(example).toContain('const conflictRecoveryPending = useRef(false);');
+    expect(example).toContain('type DocumentAutosaveBlockedReason,');
+    expect(example).toContain('const durableRecoveryPending = useRef(false);');
     expect(example).toContain(
-      'readonly requestConflictRecovery: (\n    resumeWithStrongEntityTag: (recoveredStrongEntityTag: string) => boolean,\n  ) => void;',
+      'readonly requestDurableRecovery: (\n    blockedReason: DocumentAutosaveBlockedReason,\n    resumeWithStrongEntityTag: (recoveredStrongEntityTag: string) => boolean,\n  ) => void;',
     );
-    expect(example).toContain('function requestDurableConflictRecovery(): void {');
-    expect(example).toContain('if (conflictRecoveryPending.current) return;');
-    expect(example).toContain('conflictRecoveryPending.current = true;');
     expect(example).toContain(
-      'requestConflictRecovery((recoveredStrongEntityTag) => {',
+      'function requestBlockedSessionRecovery(\n    blockedReason: DocumentAutosaveBlockedReason,\n  ): void {',
+    );
+    expect(example).toContain('if (durableRecoveryPending.current) return;');
+    expect(example).toContain('durableRecoveryPending.current = true;');
+    expect(example).toContain(
+      'requestDurableRecovery(blockedReason, (recoveredStrongEntityTag) => {',
     );
     expect(example).toContain(
       'const resumed = session.resume(recoveredStrongEntityTag);',
     );
+    expect(example).not.toContain('requestConflictRecovery');
+    expect(example).not.toContain('conflictRecoveryPending');
 
     const capture = markerPosition(
       example,
@@ -128,13 +133,24 @@ describe('acquisition-ready modular architecture documentation', () => {
     );
     markerPosition(
       example,
-      'requestDurableConflictRecovery();',
+      "requestBlockedSessionRecovery('conflict');",
       conflictBranch,
     );
-    markerPosition(
+    const secondGenerationGuard = markerPosition(
       example,
       'capturedGeneration !== editGeneration.current',
       conflictBranch,
+    );
+    const catchBlock = markerPosition(example, '} catch {', secondGenerationGuard);
+    const blockedSnapshot = markerPosition(
+      example,
+      "snapshot.state === 'blocked' && snapshot.blockedReason !== null",
+      catchBlock,
+    );
+    markerPosition(
+      example,
+      'requestBlockedSessionRecovery(snapshot.blockedReason);',
+      blockedSnapshot,
     );
 
     expect(example).toContain('void captureAndQueueLatestDocument();');
@@ -196,10 +212,14 @@ describe('acquisition-ready modular architecture documentation', () => {
     expect(conflictDoctoring).toContain(
       'blocking outcomes before stale-generation status suppression',
     );
+    expect(conflictDoctoring).toContain(
+      'host callback failure and a durable conflict both request recovery',
+    );
     expect(changelog).toContain(
       'authoritative standalone and modular MSA architecture contract',
     );
     expect(changelog).toContain('naruon compose and ui.panel integration');
     expect(changelog).toContain('stale-generation conflict recovery');
+    expect(changelog).toContain('operational save failure');
   });
 });
