@@ -176,6 +176,9 @@ describe('acquisition-ready modular architecture documentation', () => {
     const doctoring = repositoryFile(
       'docs/doctoring/naruon-modular-architecture.md',
     );
+    const conflictDoctoring = repositoryFile(
+      'docs/doctoring/stale-generation-conflict-recovery.md',
+    );
     const changelog = repositoryFile('CHANGELOG.md');
 
     expect(doctoring).toContain('APA 7 references');
@@ -186,9 +189,17 @@ describe('acquisition-ready modular architecture documentation', () => {
     expect(doctoring).toContain('OWASP ASVS 5.0.0');
     expect(doctoring).toContain('React hydrateRoot');
     expect(doctoring).toContain('Next.js App Router');
+    expect(conflictDoctoring).toContain(
+      '# Doctoring record: stale-generation conflict recovery',
+    );
+    expect(conflictDoctoring).toContain('single-flight recovery request');
+    expect(conflictDoctoring).toContain(
+      'blocking outcomes before stale-generation status suppression',
+    );
     expect(changelog).toContain(
       'authoritative standalone and modular MSA architecture contract',
     );
     expect(changelog).toContain('naruon compose and ui.panel integration');
+    expect(changelog).toContain('stale-generation conflict recovery');
   });
 });
