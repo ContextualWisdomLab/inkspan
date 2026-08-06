@@ -30,9 +30,19 @@ the same queue with reason `failure`. The example displayed a generic action
 message but did not actually invoke a host recovery workflow, so pending newer
 work could remain blocked indefinitely.
 
+A further single-flight defect existed after recovery began. The example cleared
+its `durableRecoveryPending` guard in a `finally` block after every callback
+attempt. When `session.resume(...)` returned `false` or rejected a malformed
+strong validator, the durable queue remained blocked and the original host
+recovery surface was still authoritative, but a subsequent edit could open a
+second competing recovery workflow. Two workflows could then race to install
+different durable bases or present inconsistent decisions.
+
 A generation guard is appropriate for superseded local presentation work. It is
 not authority to discard a queue-wide blocking outcome whose recovery is needed
-by newer retained work. A status message alone is not a recovery mechanism.
+by newer retained work. A status message alone is not a recovery mechanism, and
+an unsuccessful resume attempt is not permission to release local single-flight
+ownership.
 
 ## Decision
 
@@ -60,6 +70,13 @@ share the active queue outcome, so this ref prevents duplicate dialogs or
 competing authenticated reloads without becoming persistence, authorization, or
 a durable lock.
 
+The ref remains set while the queue is blocked and the original host recovery
+surface remains active. A callback result of `false` or a malformed validator
+does not clear it. Only a successful `session.resume(...)`, a synchronous failure
+to open the host workflow, or disposal of the keyed editing context releases the
+local guard. The host may correct its durable decision and invoke the same
+callback again without creating another workflow.
+
 For `conflict`, the host may compare, merge, fork, discard, or perform an
 authenticated reload. For `failure`, the host must first determine whether an
 ambiguous write committed and obtain the authoritative current representation
@@ -67,9 +84,9 @@ and server-selected strong `ETag`; it must not blindly retry the failed evidence
 
 The recovery callback calls `session.resume(recoveredStrongEntityTag)`. Inkspan
 validates the strong entity tag and installs it before retained work starts. A
-malformed validator fails closed, preserves the previous durable base, and
-returns a generic recovery status without exposing the supplied value or private
-exception.
+malformed validator fails closed, preserves the previous durable base, retains
+the existing recovery surface and single-flight guard, and returns a generic
+recovery status without exposing the supplied value or private exception.
 
 Operational callback failures are handled from the document-free session
 snapshot. If the queue is blocked, the host recovery action remains active even
@@ -101,7 +118,7 @@ The repair prevents a newer keystroke from hiding a durable conflict that still
 blocks newer work. It also prevents an operational save failure from leaving
 retained work blocked behind a message that offers no callable recovery path.
 Several shared callers cannot open parallel recovery workflows for the same
-blocked session.
+blocked session, including after a rejected or malformed recovery validator.
 
 Generic status text contains no document body, server validator, callback value,
 tenant metadata, credential, or private exception. The panel never retries an
@@ -112,10 +129,10 @@ authenticated durable reload or equivalent confirmed host decision.
 
 A blocked queue remains represented by one accessible recovery surface until the
 supplied recovery callback succeeds or the host deliberately abandons the
-editing context. New local edits must not dismiss, duplicate, or obscure that
-surface. The host remains responsible for focus movement, keyboard operation,
-labelling, reason-appropriate actions, and restoration to the editor after
-resolution.
+editing context. New local edits and unsuccessful callback attempts must not
+dismiss, duplicate, or obscure that surface. The host remains responsible for
+focus movement, keyboard operation, labelling, reason-appropriate actions, and
+restoration to the editor after resolution.
 
 ## Test-first evidence
 
@@ -140,11 +157,20 @@ conflict recovery before stale status suppression, and a catch path that invokes
 host recovery from a blocked snapshot rather than merely changing text.
 
 Commit `dd8edbe8e4b8953ed5ef91fe864c052879b79b07` then implemented the
-reason-aware host boundary. The final integrated head must still pass
-repository-wide TypeScript, 100% production statement/branch/function/line
-coverage, package consumers, Office, security, SAST, review, and
-branch-protection gates. Red runs and commits are historical TDD evidence and are
-not merge evidence.
+reason-aware host boundary.
+
+Commit `dc42dc29096eeeb554f72bd892252341720bedc5` added the permanent
+single-flight-lifetime contract before the guide repair. Exact-head CI run
+`31070180643` failed as intended while Security Scan `31070180702` and SAST
+Semgrep `31070180657` passed. Commit
+`cfd3c5df7fd74daf631e30d508b0c5feebfecdf4` then moved guard release into the
+successful-resume branch and documented retry through the same host callback.
+The failing predecessor run is TDD history only and is not merge evidence.
+
+The final integrated head must still pass repository-wide TypeScript, 100%
+production statement/branch/function/line coverage, package consumers, Office,
+security, SAST, review, and branch-protection gates. Red runs and commits are
+historical TDD evidence and are not merge evidence.
 
 ## Rejected alternatives
 
@@ -158,6 +184,12 @@ whole queue into a blocked state while newer work remains pending.
 Rejected because the queue remains blocked and newer retained work cannot start.
 A visible message that has no associated host recovery workflow is not actionable
 reliability behavior.
+
+### Clear the recovery guard after every callback attempt
+
+Rejected because `false` or a malformed validator leaves the queue blocked and
+the original accessible recovery workflow active. Clearing the guard lets a
+newer edit create a competing workflow before the first decision is resolved.
 
 ### Resume automatically with the previous validator
 
@@ -186,10 +218,10 @@ reason is sufficient for control flow.
 
 Rollback restores the prior example and removes the expanded documentation
 contract. Such a rollback also restores the known risks that a newer edit can
-hide a queue-wide conflict and an operational failure can block retained work
-without invoking recovery. A production host should not adopt that rollback
-unless it already provides an independently verified equivalent recovery
-coordinator.
+hide a queue-wide conflict, an operational failure can block retained work
+without invoking recovery, and a failed recovery attempt can permit duplicate
+host workflows. A production host should not adopt that rollback unless it
+already provides an independently verified equivalent recovery coordinator.
 
 No package version, runtime dependency, database object, migration, credential,
 network client, provider, scheduler, or release publication is introduced by
