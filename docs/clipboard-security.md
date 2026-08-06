@@ -240,6 +240,24 @@ globals at module import time. SSR can import Inkspan safely; invoke this API in
 a browser, a jsdom-like controlled environment, or pass an explicit `Document`
 as the third argument.
 
+## DOM capability failures
+
+The optional explicit `Document` is a runtime capability, not a trusted type
+assertion. Inkspan treats property access itself as executable behavior:
+accessors, proxies, revoked proxies, or reflection failures while selecting the
+ambient document or reading `createElement` or
+`implementation.createHTMLDocument` fail closed with `dom_unavailable`. The
+original exception is not returned, logged, persisted, or forwarded to the host
+observer.
+
+After those capabilities have been resolved safely, unexpected inert-document
+creation, parsing, reconstruction, DOM mutation, or serialization failures remain
+`invalid_html`. This preserves a stable operator distinction between unavailable
+or hostile DOM capability and a failure after parsing begins without exposing
+which property, adapter, proxy, tenant, or private exception caused rejection.
+See `docs/doctoring/dom-capability-reflection-redaction.md` for test-first
+evidence, standards interpretation, residual risk, and rollback.
+
 ## Browser evidence boundary
 
 The current deterministic corpus runs in jsdom and proves the repository's
