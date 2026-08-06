@@ -35,11 +35,11 @@ Use two guards with separate responsibilities.
 The first guard remains between digest completion and enqueue. It rejects a stale
 capture before that document can enter the durable queue.
 
-After enqueue settles, process blocking outcomes before stale-generation status
-suppression. A conflict therefore opens one host-owned recovery workflow even
-when the request that first observed it belongs to an older generation. Only
-non-blocking saved, unchanged, superseded, or closed presentation updates are
-suppressed when their generation is stale.
+The invariant is: blocking outcomes before stale-generation status suppression.
+A conflict therefore opens one host-owned recovery workflow even when the request
+that first observed it belongs to an older generation. Only non-blocking saved,
+unchanged, superseded, or closed presentation updates are suppressed when their
+generation is stale.
 
 The panel keeps one local `conflictRecoveryPending` ref and issues one
 single-flight recovery request for one blocked session. Multiple callers may
@@ -55,9 +55,8 @@ exception.
 
 Operational callback failures are handled from the document-free session
 snapshot. If the queue is blocked, the host recovery action remains visible even
-when an older edit generation observed the failure. Blocking outcomes before
-stale-generation status suppression is therefore an explicit integration
-invariant.
+when an older edit generation observed the failure. The ordering invariant is
+therefore queue-wide rather than generation-local.
 
 ## Ownership boundary
 
@@ -99,10 +98,11 @@ labelling, and restoration to the editor after resolution.
 ## Test-first evidence
 
 Commit `43a211b0818636016e2e80d9ceaaad5ab7af1fd7` added the ordering and
-single-flight recovery contract before the guide implemented it. Exact workflow
-run `31065769175` produced the intended red result: the new documentation test
-failed while 549 other JavaScript tests and both Office Python package jobs
-passed.
+single-flight recovery contract before the guide implemented it. Pull-request
+workflow run `31065769175` produced the intended red result: the new documentation
+test failed while 549 other JavaScript tests and both Office Python package jobs
+passed. That workflow checked GitHub's synthetic pull-request merge ref, so it is
+historical TDD evidence rather than exact-head acceptance evidence.
 
 Commit `984a35b3dfb140b8f1099e0413f80fc4d1103e9b` extended the red contract to
 require this doctoring record and `CHANGELOG.md` evidence. Commit
