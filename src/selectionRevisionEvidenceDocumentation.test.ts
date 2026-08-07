@@ -16,7 +16,7 @@ describe('selection revision evidence documentation', () => {
     expect(publicTypes).toContain('getSelectionRevisionEvidence');
     expect(rootIndex).toContain('CwlEditorSelectionRevisionEvidence');
     expect(selectionGuide).toContain('getSelectionRevisionEvidence');
-    expect(selectionGuide).toContain('exact document revision');
+    expect(selectionGuide).toMatch(/exact document\s+revision/);
     expect(selectionGuide).toContain('TextPositionSelector');
     expect(selectionGuide).toContain('re-anchor');
     expect(selectionGuide).toContain('does not copy selected text');
