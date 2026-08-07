@@ -310,9 +310,8 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
 
       <div className="cwl-tb-group">
         <ToolbarButton
-          title="Insert/edit link (Ctrl/Cmd+K)"
+          title="Insert/edit link"
           label="🔗"
-          keyShortcuts="Control+K Meta+K"
           active={editor.isActive('link')}
           onClick={setLink}
         />
