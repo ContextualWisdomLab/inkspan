@@ -38,6 +38,8 @@ describe('document transition evidence documentation', () => {
     expect(doctoring).toContain('RFC 8785');
     expect(doctoring).toContain('RFC 9110');
     expect(doctoring).toContain('FIPS PUB 180-4');
+    expect(doctoring).toContain('NIST Policy on Hash Functions');
+    expect(doctoring).toContain('Retrieved August 7, 2026');
     expect(doctoring).toContain(
       'does not prove who caused a transition, when it occurred, or whether it was durably accepted',
     );
