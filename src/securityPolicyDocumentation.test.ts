@@ -87,6 +87,10 @@ describe('security disclosure and vulnerability-handling documentation', () => {
     expect(doctoring).toContain('GitHub private vulnerability reporting');
     expect(doctoring).toContain('APA 7 references');
     expect(doctoring).toContain(
+      'Booth, H., Ogata, M., Kent, K., Souppaya, M., & Dodson, D. (2025).',
+    );
+    expect(doctoring).toContain('https://doi.org/10.6028/NIST.SP.800-218r1.ipd');
+    expect(doctoring).toContain(
       'does not claim ISO certification or complete SSDF conformance',
     );
     expect(changelog).toContain(
