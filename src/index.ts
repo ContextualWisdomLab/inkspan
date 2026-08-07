@@ -99,14 +99,17 @@ export {
   DEFAULT_CLIPBOARD_HTML_BYTES,
   DEFAULT_CLIPBOARD_MAX_DEPTH,
   DEFAULT_CLIPBOARD_MAX_NODES,
-  SafeClipboard,
   sanitizeRichClipboardHtml,
 } from './extensions/SafeClipboard.js';
 export type {
   ClipboardConfig,
   ClipboardSanitizationErrorCode,
-  SafeClipboardOptions,
 } from './extensions/SafeClipboard.js';
+export {
+  SafeClipboard,
+  safeClipboardPluginKey,
+} from './extensions/SafeClipboardExtension.js';
+export type { SafeClipboardOptions } from './extensions/SafeClipboardExtension.js';
 export {
   SafeLink,
   SafeLinkHrefError,
