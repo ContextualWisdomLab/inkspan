@@ -6,6 +6,10 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Accessibility
+- Added programmatic toolbar shortcut discoverability with WAI-ARIA `aria-keyshortcuts` for the existing bold, italic, link, undo, and redo commands, preserving the same native-button behavior, visible labels, roving focus model, and host-owned shortcut-conflict policy
+- Added deterministic regression and documentation contracts plus APA 7th doctoring for exact `Control`/`Meta` shortcut alternatives and the descriptive-only accessibility boundary
+
 ### Documentation
 - Added an authoritative standalone and modular MSA architecture contract with reviewable deployment, optimistic-concurrency, data-ownership, security, and acquisition-evidence diagrams and tables
 - Added a beginner-readable naruon compose and ui.panel integration guide covering narrow client hydration, server-selected strong validators, accessible conflict handling, host-owned Yjs lifecycle, contextual-orchestrator boundaries, and local-versus-shareable evidence
