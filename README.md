@@ -257,9 +257,9 @@ contract and host responsibilities.
 
 ### Safe hyperlink boundary
 
-Inkspan applies one link policy to initial content, toolbar and Ctrl/Cmd+K
-commands, pasted/autolinked URLs, direct ProseMirror transactions, collaborative
-changes, and HTML output. Accepted targets are credential-free HTTP(S),
+Inkspan applies one link policy to initial content, toolbar commands,
+pasted/autolinked URLs, direct ProseMirror transactions, collaborative changes,
+and HTML output. Accepted targets are credential-free HTTP(S),
 non-empty `mailto:` and `tel:`, ordinary document-relative paths, query-only
 references, and fragments.
 
