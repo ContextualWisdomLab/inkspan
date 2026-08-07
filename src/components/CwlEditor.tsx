@@ -60,6 +60,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     ref,
   ) {
     const isControlled = value !== undefined;
+    const selectedDocumentValue = value ?? defaultValue ?? '';
     const emittingRef = useRef(false);
     const editorInstanceRef = useRef<Editor | null>(null);
     const modeRef = useLatestRef(mode);
@@ -111,7 +112,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         image,
         onImageError: reportImageError,
       }),
-      content: editorValueToHtml(value ?? defaultValue ?? '', mode),
+      content: editorValueToHtml(selectedDocumentValue, mode),
       editorProps: {
         attributes: editorAttributes,
       },
@@ -223,6 +224,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         formFieldName={formFieldName}
         formId={formId}
         formFieldDisabled={formFieldDisabled}
+        formFieldInitialValue={selectedDocumentValue}
         onFormReset={editor && observesFormReset ? handleFormReset : undefined}
       />
     );

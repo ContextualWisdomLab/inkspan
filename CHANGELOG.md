@@ -6,6 +6,17 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Fixed
+- Added the selected standalone Markdown or HTML value to an explicitly configured SSR native form field, preserving controlled-value precedence, external form association, React attribute escaping, and the synchronous post-hydration TipTap transaction mirror
+
+### Security
+- Kept SSR document disclosure opt-in through `formFieldName`; hidden-field values remain client-controlled submission data and do not replace host authentication, authorization, tenant isolation, CSRF defenses, server validation, durable concurrency, or persistence controls
+- Kept collaborative Yjs document content out of server markup until the host-owned client collaboration lifecycle is bound
+
+### Tests
+- Added test-first Node `renderToString` evidence for the missing SSR native value, controlled-over-default selection, escaping, external form ownership, no ProseMirror server construction, and opt-out non-disclosure
+- Added browser-DOM handoff tests proving the field retains and updates the selected value before TipTap exists while reset-only unnamed fields remain empty
+
 ### Documentation
 - Added an authoritative standalone and modular MSA architecture contract with reviewable deployment, optimistic-concurrency, data-ownership, security, and acquisition-evidence diagrams and tables
 - Added a beginner-readable naruon compose and ui.panel integration guide covering narrow client hydration, server-selected strong validators, accessible conflict handling, host-owned Yjs lifecycle, contextual-orchestrator boundaries, and local-versus-shareable evidence
@@ -14,6 +25,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Added stale-generation conflict recovery and operational save failure recovery through one reason-aware single-flight host workflow, so newer local edits cannot hide or duplicate recovery while retained work remains blocked; rejected or malformed resume attempts retain the same recovery surface until a valid resume succeeds or the editing context is disposed
 - Added exact-head read-only CI with fixed Ubuntu 24.04 runners, immutable action pins, explicit contributor-head checkout, disabled persisted Git credentials, and a documented merge-result compatibility boundary
 - Added deterministic documentation contract tests and APA 7th doctoring grounded in RFC 9110, WCAG 2.2, NIST SP 800-204, NIST SP 800-204D, OWASP ASVS 5.0.0, React, current Next.js App Router guidance, and GitHub Actions primary documentation
+- Added APA 7th doctoring for the SSR native form field, including the WHATWG hidden-input/form-entry contract, React server/hydration continuity, client-controlled-data boundary, host-owned CSRF and acceptance controls, collaboration exclusion, and rollback
 
 ## [0.5.29] — 2026-08-05
 
