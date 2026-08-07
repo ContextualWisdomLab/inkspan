@@ -49,8 +49,9 @@ describe('release draft asset inventory contract', () => {
     expect(publishIndex).toBeGreaterThan(inventoryIndex);
 
     const inventoryStep = workflow.slice(inventoryIndex, publishIndex);
+    expect(inventoryStep).toContain('gh api');
     expect(inventoryStep).toContain(
-      'gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME"',
+      'repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME',
     );
     expect(inventoryStep).toContain("release_state='.draft'");
     expect(inventoryStep).toContain("asset_state='.assets[].state'");
