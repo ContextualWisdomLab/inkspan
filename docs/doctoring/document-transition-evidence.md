@@ -117,11 +117,14 @@ a local operation shareable or audit-grade by itself.
 ### Algorithm basis and lifecycle
 
 The revision contract uses SHA-256 as specified by FIPS PUB 180-4. NIST has
-announced that FIPS 180-4 will be revised, while SHA-256 remains a current secure
-hash algorithm used in NIST cryptographic validation programs. Inkspan keeps the
-algorithm literal and schema version explicit so a future standards-driven
-migration can add a new contract rather than silently changing existing
-revision semantics.
+announced that FIPS 180-4 will be revised. Its current Hash Functions project
+still lists SHA-256 in the approved SHA-2 family, the NIST Policy on Hash
+Functions permits SHA-2 for applications that employ secure hash algorithms and
+encourages SHA-256 at minimum for interoperability, and the Cryptographic
+Algorithm Validation Program continues SHA2-256 validation testing. Inkspan
+keeps the algorithm literal and schema version explicit so a future
+standards-driven migration can add a new contract rather than silently changing
+existing revision semantics.
 
 ## Framework-independent and MSA boundary
 
@@ -236,9 +239,18 @@ National Institute of Standards and Technology. (2023, March 7). *Decision to
 revise FIPS 180-4, Secure Hash Standard*. U.S. Department of Commerce.
 https://csrc.nist.gov/News/2023/decision-to-revise-fips-180-4
 
-National Institute of Standards and Technology. (2026, April 13). *Secure
-hashing*. U.S. Department of Commerce.
+National Institute of Standards and Technology. (n.d.). *Cryptographic
+Algorithm Validation Program: Secure hashing*. U.S. Department of Commerce.
+Retrieved August 7, 2026, from
+https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing
+
+National Institute of Standards and Technology. (n.d.). *Hash functions*. U.S.
+Department of Commerce. Retrieved August 7, 2026, from
 https://csrc.nist.gov/projects/hash-functions
+
+National Institute of Standards and Technology. (2022, December 15). *NIST
+Policy on Hash Functions*. U.S. Department of Commerce.
+https://csrc.nist.gov/projects/hash-functions/nist-policy-on-hash-functions
 
 Rundgren, A., Jordan, B., & Erdtman, S. (2020). *JSON Canonicalization Scheme
 (JCS)* (RFC 8785). RFC Editor. https://doi.org/10.17487/RFC8785
