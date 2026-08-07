@@ -13,12 +13,48 @@ mismatches caused by constructing an editor view during server rendering.
   collaborative surface, the non-interactive connection-status region.
 - Server output does not contain a ProseMirror editable view or serialize the
   initial document into presentation markup.
-- The TipTap editor, event handlers, native-form mirror, toolbar, and Yjs binding
-  become available after client hydration.
+- When a standalone host explicitly supplies `formFieldName`, the selected
+  Markdown or HTML prop value is present in one server-rendered hidden field so
+  native form submission does not depend on TipTap having hydrated.
+- Without `formFieldName`, server output contains no document-bearing native
+  field. Reset-only unnamed fields remain empty.
+- The TipTap editor, event handlers, toolbar, and Yjs binding become available
+  after client hydration. A configured native field then follows editor
+  transactions synchronously.
 - `onReady` and the imperative `CwlEditorHandle` remain client lifecycle
   surfaces. Hosts must not expect either during server rendering.
 - The server-rendered shell does not perform network requests, open a
   collaboration provider, persist content, or destroy a host-owned `Y.Doc`.
+
+## Native form serialization before hydration
+
+`CwlEditor` selects a controlled `value` before `defaultValue`, exactly as it
+does for the initial editor document. If `formFieldName` is configured, that
+selected value is supplied through React's `defaultValue` contract to the hidden
+input. React escapes HTML attribute syntax; HTML-mode content remains an
+ordinary string value rather than becoming page markup.
+
+The same selected value is rendered on the server and during the first client
+render, satisfying React's requirement that initial hydration output match.
+Until TipTap exists, the native field retains that value. Once the editor is
+created, Inkspan's transaction listener serializes the authoritative document
+directly into `HTMLInputElement.value` before each document-changing transaction
+returns, preserving immediate `FormData` construction and browser submission.
+
+A hidden field is not a secrecy control. Its content is visible in the response,
+page source, DOM, browser tools, and submitted request. Treat it as
+client-controlled submission data. Hosts must authenticate and authorize the
+request, validate the submitted document and limits, apply CSRF protection,
+enforce tenant isolation, and perform durable concurrency and persistence checks
+server-side. Do not enable `formFieldName` when the document body must be absent
+from server markup or intermediate caches.
+
+`CollaborativeCwlEditor` does not serialize Yjs content into the server shell.
+The host-owned `Y.Doc` and provider become authoritative only in the client
+collaboration lifecycle; its native form mirror is populated after that binding
+exists. See
+[`docs/doctoring/ssr-native-form-serialization.md`](doctoring/ssr-native-form-serialization.md)
+for the test-first rationale, security limits, rollback, and APA 7 references.
 
 ## Next.js App Router
 
@@ -61,8 +97,9 @@ and document workspaces have different layout contracts.
   through server boundaries.
 - Instantiate browser transports, credentials, collaboration providers, and
   `Y.Doc` ownership within the authorized client/service integration layer.
-- Treat initial editor content as client presentation state; authorize and
-  validate all persisted mutations at the service boundary.
+- Treat initial editor content and native form values as client presentation and
+  submission state; authorize and validate all persisted mutations at the
+  service boundary.
 - Do not embed secrets in editor props, server-rendered markup, collaboration
   awareness, hidden form fields, or inline diagnostics.
 - Preserve descriptive nonnumeric identifiers across document, user, session,
@@ -72,13 +109,17 @@ and document workspaces have different layout contracts.
 
 Repository tests run standalone and collaborative components through
 `react-dom/server` in a Node environment and assert that the stable shell is
-emitted without a ProseMirror view or document-body leakage. The normal browser
-suite then verifies client initialization, editing, accessibility, forms,
-collaboration, and the repository-wide 100% coverage gate.
+emitted without a ProseMirror view. They additionally prove opt-in controlled-
+value precedence, React attribute escaping, external form association, and
+opt-out document non-disclosure. The normal browser suite verifies the
+SSR-to-editor field handoff, synchronous transaction mirroring, editing,
+accessibility, forms, collaboration, and the repository-wide 100% coverage gate.
 
 ## References
 
 - TipTap React SSR guidance: <https://tiptap.dev/docs/editor/getting-started/install/react>
 - TipTap performance and `immediatelyRender`: <https://tiptap.dev/docs/guides/performance>
 - React `renderToString`: <https://react.dev/reference/react-dom/server/renderToString>
+- React `hydrateRoot`: <https://react.dev/reference/react-dom/client/hydrateRoot>
 - Next.js client components: <https://nextjs.org/docs/app/getting-started/server-and-client-components>
+- WHATWG HTML form controls: <https://html.spec.whatwg.org/multipage/form-control-infrastructure.html>
