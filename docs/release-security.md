@@ -71,6 +71,8 @@ Immediately after upload and before the draft is published, the workflow therefo
 - every remote asset reports the `uploaded` state; and
 - every GitHub release-asset `sha256:` digest exactly equals a newly computed SHA-256 digest of the corresponding transferred local file.
 
+The draft lookup deliberately uses the authenticated, paginated **List releases** REST endpoint and filters its complete result for the exact tag. GitHub documents that authenticated callers with repository push access receive draft releases from this endpoint. The `Get a release by tag name` endpoint is documented for a **published** release, so it is not used as evidence for this pre-publication gate. The publish job fails unless the paginated listing contains exactly one release matching the tag and that object still reports `draft: true`.
+
 An unexpected stale asset is not deleted automatically. The workflow stops before the draft is published and directs an operator to remove the stale draft or unexpected asset, then rerun from the reviewed tag. This avoids silently deleting an operator-created draft artifact while ensuring that unrelated content cannot become part of an immutable Inkspan release by persistence across retries.
 
 The exact-inventory comparison names only public release artifacts and does not expose source files, credentials, tenant data, document content, or local absolute paths. The gate also does not claim to prevent a repository administrator from deliberately mutating a draft in the narrow interval between validation and publication; repository administration remains a higher authority boundary. Tag-scoped workflow concurrency prevents competing release-workflow runs for the same tag.
@@ -139,7 +141,8 @@ The release pipeline does not add runtime coupling. The npm package remains a ho
 
 - GitHub immutable releases and draft-first publication: <https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository>
 - GitHub immutable-release repository API and required permissions: <https://docs.github.com/en/rest/repos/repos?apiVersion=2026-03-10#check-if-immutable-releases-are-enabled-for-a-repository>
-- GitHub release object, asset `digest`, and immutable state: <https://docs.github.com/en/rest/releases/releases?apiVersion=2026-03-10>
+- GitHub List releases behavior, including authenticated draft visibility, release objects, asset `digest`, and immutable state: <https://docs.github.com/en/rest/releases/releases?apiVersion=2026-03-10#list-releases>
+- GitHub Get a release by tag name published-release contract: <https://docs.github.com/en/rest/releases/releases?apiVersion=2026-03-10#get-a-release-by-tag-name>
 - GitHub CLI release upload and same-name `--clobber` behavior: <https://cli.github.com/manual/gh_release_upload>
 - GitHub release attestation verification: <https://cli.github.com/manual/gh_release_verify>
 - GitHub artifact attestations: <https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations>
