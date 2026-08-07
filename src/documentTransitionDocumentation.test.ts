@@ -15,6 +15,10 @@ describe('document transition evidence documentation', () => {
     );
 
     expect(readme).toContain('createDocumentEnvelopeTransitionEvidence');
+    expect(readme).toContain('accepts envelope objects or JSON text');
+    expect(readme).not.toContain(
+      'createDocumentEnvelopeTransitionEvidenceJson',
+    );
     expect(readme).toContain('content-lineage evidence');
     expect(operatorGuide).toContain(
       'createDocumentEnvelopeTransitionEvidenceBytes',
