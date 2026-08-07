@@ -6,6 +6,13 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Added
+- Added one optional construction-time `onSnapshotChange` callback to the framework-free autosave queue and durable autosave session so hosts can observe saving, pending, blocked, recovery, idle, and shutdown state without polling or introducing a subscriber collection
+
+### Reliability
+- Lifecycle observers receive only distinct frozen document-free snapshots; observer exceptions cannot alter save ordering, conflict/failure recovery, queue outcomes, or durable-validator handoff
+- Durable-session notifications expose a newly committed server validator only after it is coherent with the emitted lifecycle state, preserving host-owned atomic RFC 9110 `If-Match` semantics
+
 ### Documentation
 - Added an authoritative standalone and modular MSA architecture contract with reviewable deployment, optimistic-concurrency, data-ownership, security, and acquisition-evidence diagrams and tables
 - Added a beginner-readable naruon compose and ui.panel integration guide covering narrow client hydration, server-selected strong validators, accessible conflict handling, host-owned Yjs lifecycle, contextual-orchestrator boundaries, and local-versus-shareable evidence
@@ -14,6 +21,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Added stale-generation conflict recovery and operational save failure recovery through one reason-aware single-flight host workflow, so newer local edits cannot hide or duplicate recovery while retained work remains blocked; rejected or malformed resume attempts retain the same recovery surface until a valid resume succeeds or the editing context is disposed
 - Added exact-head read-only CI with fixed Ubuntu 24.04 runners, immutable action pins, explicit contributor-head checkout, disabled persisted Git credentials, and a documented merge-result compatibility boundary
 - Added deterministic documentation contract tests and APA 7th doctoring grounded in RFC 9110, WCAG 2.2, NIST SP 800-204, NIST SP 800-204D, OWASP ASVS 5.0.0, React, current Next.js App Router guidance, and GitHub Actions primary documentation
+- Added lifecycle-observation doctoring covering bounded callback retention, local-versus-shareable evidence, durable-validator coherence, WCAG 2.2 status-message responsibilities, rollback, and APA 7 references to RFC 9110, WCAG 2.2, and optimistic concurrency research
 
 ## [0.5.29] — 2026-08-05
 
