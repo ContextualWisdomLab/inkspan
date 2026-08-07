@@ -28,14 +28,16 @@ export interface EditorFormFieldProps {
  * synchronously before returning from each document transaction, so immediate
  * `FormData` construction or browser submission cannot observe a React-batched
  * stale value. During SSR-to-client handoff, the selected server value remains
- * the native field's default until TipTap reports that its document has been
+ * the controlled native value until TipTap reports that its document has been
  * initialized; the create event then establishes editor authority without a
- * transient empty submission value. Every named field restores its live
- * serialized value after the browser's native reset algorithm so a reset cannot
- * silently desynchronize FormData from an editor that the host chose not to
- * reset. Reset-only unnamed fields skip document serialization entirely. A
- * configured host reset observer is invoked in the same next-task boundary,
- * after native dispatch and reset processing.
+ * transient empty submission value. The same serialized-value ref also backs
+ * React renders so a TipTap transaction-triggered parent render cannot restore
+ * an older server/default value after the synchronous DOM write. Every named
+ * field restores its live serialized value after the browser's native reset
+ * algorithm so a reset cannot silently desynchronize FormData from an editor
+ * that the host chose not to reset. Reset-only unnamed fields skip document
+ * serialization entirely. A configured host reset observer is invoked in the
+ * same next-task boundary, after native dispatch and reset processing.
  */
 export function EditorFormField({
   editor,
@@ -117,13 +119,19 @@ export function EditorFormField({
 
   return (
     <input
-      key={editor ? 'live-editor-field' : 'pre-editor-field'}
       ref={fieldRef}
       type="hidden"
       name={name}
       form={formId}
       disabled={disabled}
-      defaultValue={name === undefined ? undefined : initialValue}
+      readOnly
+      value={
+        name === undefined
+          ? ''
+          : editor
+            ? serializedValueRef.current
+            : initialValue
+      }
       data-inkspan-form-field=""
     />
   );
