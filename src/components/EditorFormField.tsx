@@ -29,10 +29,11 @@ export interface EditorFormFieldProps {
  * `FormData` construction or browser submission cannot observe a React-batched
  * stale value. Before hydration creates the editor, an explicitly configured
  * standalone field retains the selected prop value rendered by the server.
- * Reset-only unnamed fields skip document serialization entirely. When
- * configured, the field observes the associated form's cancelable reset event
- * and schedules editor work in the next task, after native dispatch and the
- * reset algorithm have completed.
+ * Every named field restores its live serialized value after the browser's
+ * native reset algorithm so a reset cannot silently desynchronize FormData from
+ * an editor that the host chose not to reset. Reset-only unnamed fields skip
+ * document serialization entirely. A configured host reset observer is invoked
+ * in the same next-task boundary, after native dispatch and reset processing.
  */
 export function EditorFormField({
   editor,
@@ -82,7 +83,7 @@ export function EditorFormField({
   }, [editor, initialValue, mode, name]);
 
   useEffect(() => {
-    if (!onFormReset) return;
+    if (name === undefined && !onFormReset) return;
     const field = fieldRef.current;
     /* v8 ignore next -- the effect runs only after the rendered field mounts. */
     if (!field) return;
@@ -95,7 +96,7 @@ export function EditorFormField({
         pendingResetTasks.delete(pendingTask);
         if (event.defaultPrevented) return;
         if (name !== undefined) field.value = serializedValueRef.current;
-        onFormReset(event);
+        onFormReset?.(event);
       }, 0);
       pendingResetTasks.add(pendingTask);
     };
