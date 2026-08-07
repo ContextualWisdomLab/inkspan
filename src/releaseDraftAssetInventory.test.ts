@@ -1,5 +1,15 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
@@ -9,6 +19,123 @@ function repositoryFile(path: string): string {
 }
 
 const workflow = repositoryFile('.github/workflows/release.yml');
+
+interface ReleaseAssetFixture {
+  name: string;
+  state: string;
+  digest: string;
+}
+
+interface ReleaseFixture {
+  tag_name: string;
+  draft: boolean;
+  assets: ReleaseAssetFixture[];
+}
+
+/** Extract the exact Linux shell body used to validate a draft release. */
+function releaseInventoryScript(): string {
+  const inventoryIndex = workflow.indexOf(
+    '- name: Verify exact draft release asset inventory',
+  );
+  const publishIndex = workflow.indexOf(
+    '- name: Publish immutable GitHub release',
+    inventoryIndex,
+  );
+  if (inventoryIndex < 0 || publishIndex < 0) {
+    throw new Error('Release inventory or publication step is missing.');
+  }
+
+  const inventoryStep = workflow.slice(inventoryIndex, publishIndex);
+  const runMarker = '        run: |\n';
+  const runIndex = inventoryStep.indexOf(runMarker);
+  if (runIndex < 0) {
+    throw new Error('Release inventory step has no shell body.');
+  }
+
+  return inventoryStep
+    .slice(runIndex + runMarker.length)
+    .split('\n')
+    .map((line) => (line.startsWith('          ') ? line.slice(10) : line))
+    .join('\n')
+    .trimEnd();
+}
+
+/** Return a GitHub-compatible SHA-256 asset digest for deterministic fixtures. */
+function releaseDigest(content: string): string {
+  return `sha256:${createHash('sha256').update(content).digest('hex')}`;
+}
+
+/** Execute the exact release inventory shell with a local fake GitHub API. */
+function runReleaseInventory(
+  mutate?: (pages: ReleaseFixture[][]) => void,
+): { status: number | null; stdout: string; stderr: string } {
+  const root = mkdtempSync(join(tmpdir(), 'inkspan-release-inventory-'));
+  try {
+    const releaseDirectory = join(root, 'release');
+    const binDirectory = join(root, 'bin');
+    mkdirSync(releaseDirectory);
+    mkdirSync(binDirectory);
+
+    const localFiles = {
+      'inkspan.tgz': 'npm-package',
+      'inkspan_office.whl': 'office-wheel',
+      SHA256SUMS: 'checksums',
+    } as const;
+    for (const [name, content] of Object.entries(localFiles)) {
+      writeFileSync(join(releaseDirectory, name), content);
+    }
+
+    const release: ReleaseFixture = {
+      tag_name: 'v0.6.0',
+      draft: true,
+      assets: Object.entries(localFiles).map(([name, content]) => ({
+        name,
+        state: 'uploaded',
+        digest: releaseDigest(content),
+      })),
+    };
+    const pages: ReleaseFixture[][] = [[release]];
+    mutate?.(pages);
+
+    const fixturePath = join(root, 'release-pages.json');
+    writeFileSync(fixturePath, JSON.stringify(pages));
+
+    const fakeGhPath = join(binDirectory, 'gh');
+    writeFileSync(
+      fakeGhPath,
+      [
+        '#!/usr/bin/env bash',
+        'set -euo pipefail',
+        'if [[ "${1:-}" != "api" ]]; then',
+        '  echo "unsupported gh command" >&2',
+        '  exit 64',
+        'fi',
+        'cat "$INKSPAN_RELEASE_FIXTURE"',
+        '',
+      ].join('\n'),
+    );
+    chmodSync(fakeGhPath, 0o755);
+
+    const result = spawnSync('bash', ['-c', releaseInventoryScript()], {
+      cwd: root,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: `${binDirectory}:${process.env.PATH ?? ''}`,
+        GITHUB_REF_NAME: 'v0.6.0',
+        GITHUB_REPOSITORY: 'ContextualWisdomLab/inkspan',
+        INKSPAN_RELEASE_FIXTURE: fixturePath,
+      },
+    });
+    return {
+      status: result.status,
+      stdout: result.stdout,
+      stderr: result.stderr,
+    };
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
 
 describe('release draft asset inventory contract', () => {
   it('rejects an unexpected local artifact before attestation or upload', () => {
@@ -97,3 +224,54 @@ describe('release draft asset inventory contract', () => {
     expect(changelog).toContain('draft release asset inventory');
   });
 });
+
+if (process.platform === 'linux') {
+  describe('release draft asset inventory Linux execution', () => {
+    it('accepts only the exact uploaded draft and matching digests', () => {
+      const result = runReleaseInventory();
+
+      expect(result.status).toBe(0);
+      expect(result.stderr).toBe('');
+    });
+
+    it('fails closed when a stale remote asset remains attached', () => {
+      const result = runReleaseInventory((pages) => {
+        pages[0]![0]!.assets.push({
+          name: 'stale.zip',
+          state: 'uploaded',
+          digest: `sha256:${'0'.repeat(64)}`,
+        });
+      });
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain('Unexpected draft release asset inventory');
+    });
+
+    it('fails closed when GitHub reports a different asset digest', () => {
+      const result = runReleaseInventory((pages) => {
+        pages[0]![0]!.assets[0]!.digest = `sha256:${'0'.repeat(64)}`;
+      });
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain('Draft release asset digest mismatch');
+    });
+
+    it('fails closed when any remote asset is not fully uploaded', () => {
+      const result = runReleaseInventory((pages) => {
+        pages[0]![0]!.assets[0]!.state = 'new';
+      });
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain('not fully uploaded');
+    });
+
+    it('fails closed if the selected release is no longer a draft', () => {
+      const result = runReleaseInventory((pages) => {
+        pages[0]![0]!.draft = false;
+      });
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain('Release must remain a draft');
+    });
+  });
+}
