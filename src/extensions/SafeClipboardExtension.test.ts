@@ -5,6 +5,7 @@ import {
   DEFAULT_CLIPBOARD_HTML_BYTES,
   DEFAULT_CLIPBOARD_MAX_DEPTH,
   DEFAULT_CLIPBOARD_MAX_NODES,
+  type ClipboardSanitizationError,
 } from './SafeClipboard.js';
 import {
   SafeClipboard,
@@ -21,9 +22,12 @@ function transformFromExtension(
   const addPlugins = extension.config.addProseMirrorPlugins;
   if (!addPlugins) throw new Error('SafeClipboard plugin factory is unavailable');
   const plugins = addPlugins.call({ options: extension.options } as never);
-  const transform = plugins[0]?.props.transformPastedHTML;
-  if (!transform) throw new Error('SafeClipboard paste transform is unavailable');
-  return transform(html, {} as never);
+  const plugin = plugins[0];
+  const transform = plugin?.props.transformPastedHTML;
+  if (!plugin || !transform) {
+    throw new Error('SafeClipboard paste transform is unavailable');
+  }
+  return transform.call(plugin, html, {} as never);
 }
 
 describe('SafeClipboard TipTap v2 adapter', () => {
@@ -64,7 +68,7 @@ describe('SafeClipboard TipTap v2 adapter', () => {
   });
 
   it('reports configured sanitizer failures without disclosing source HTML', () => {
-    const onError = vi.fn();
+    const onError = vi.fn((_error: ClipboardSanitizationError) => undefined);
     const configured = SafeClipboard.configure({
       config: { maxHtmlBytes: 1 },
       onError,
@@ -79,7 +83,7 @@ describe('SafeClipboard TipTap v2 adapter', () => {
   });
 
   it('contains hostile option access and a throwing host observer', () => {
-    const onError = vi.fn(() => {
+    const onError = vi.fn((_error: ClipboardSanitizationError) => {
       throw new Error('private observer failure');
     });
     const hostileOptions = {
@@ -95,11 +99,18 @@ describe('SafeClipboard TipTap v2 adapter', () => {
     const addPlugins = SafeClipboard.config.addProseMirrorPlugins;
     if (!addPlugins) throw new Error('SafeClipboard plugin factory is unavailable');
     const plugins = addPlugins.call({ options: hostileOptions } as never);
-    const transform = plugins[0]?.props.transformPastedHTML;
-    if (!transform) throw new Error('SafeClipboard paste transform is unavailable');
+    const plugin = plugins[0];
+    const transform = plugin?.props.transformPastedHTML;
+    if (!plugin || !transform) {
+      throw new Error('SafeClipboard paste transform is unavailable');
+    }
 
-    expect(() => transform('<p>private source</p>', {} as never)).not.toThrow();
-    expect(transform('<p>private source</p>', {} as never)).toBe('');
+    expect(() =>
+      transform.call(plugin, '<p>private source</p>', {} as never),
+    ).not.toThrow();
+    expect(
+      transform.call(plugin, '<p>private source</p>', {} as never),
+    ).toBe('');
     expect(onError).toHaveBeenCalledWith(
       expect.objectContaining({
         code: 'invalid_html',
