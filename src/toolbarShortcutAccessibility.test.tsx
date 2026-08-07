@@ -27,7 +27,7 @@ afterEach(() => {
 });
 
 describe('toolbar shortcut accessibility semantics', () => {
-  it('exposes every advertised cross-platform editor shortcut to assistive technology', () => {
+  it('exposes implemented cross-platform editor shortcuts to assistive technology', () => {
     const editor = makeEditor();
     editor.chain().focus().insertContent(' history').run();
     editor.commands.undo();
@@ -42,10 +42,6 @@ describe('toolbar shortcut accessibility semantics', () => {
       'aria-keyshortcuts',
       'Control+I Meta+I',
     );
-    expect(screen.getByRole('button', { name: /Insert\/edit link/ })).toHaveAttribute(
-      'aria-keyshortcuts',
-      'Control+K Meta+K',
-    );
     expect(screen.getByRole('button', { name: /Undo/ })).toHaveAttribute(
       'aria-keyshortcuts',
       'Control+Z Meta+Z',
@@ -58,5 +54,15 @@ describe('toolbar shortcut accessibility semantics', () => {
     expect(screen.getByRole('button', { name: /Strikethrough/ })).not.toHaveAttribute(
       'aria-keyshortcuts',
     );
+  });
+
+  it('does not advertise a link shortcut that the configured Link extension does not implement', () => {
+    const editor = makeEditor();
+
+    render(<Toolbar editor={editor} />);
+
+    const linkButton = screen.getByRole('button', { name: /Insert\/edit link/ });
+    expect(linkButton).not.toHaveAttribute('aria-keyshortcuts');
+    expect(linkButton).not.toHaveAttribute('title', expect.stringContaining('Ctrl/Cmd+K'));
   });
 });
