@@ -5,6 +5,7 @@ const doctoringPath = 'docs/doctoring/tiptap-v2-prosemirror-paste-adapter.md';
 const adapterPath = 'src/extensions/SafeClipboardExtension.ts';
 const kitPath = 'src/extensions/kit.ts';
 const lockPath = 'pnpm-lock.yaml';
+const changelogPath = 'CHANGELOG.md';
 
 /** Read one authoritative repository artifact for deterministic contract tests. */
 function readRepositoryText(path: string): string {
@@ -17,6 +18,7 @@ describe('TipTap v2 SafeClipboard adapter doctoring', () => {
     const adapter = readRepositoryText(adapterPath);
     const kit = readRepositoryText(kitPath);
     const lock = readRepositoryText(lockPath);
+    const changelog = readRepositoryText(changelogPath);
 
     expect(lock).toContain("'@tiptap/core':");
     expect(lock).toContain('version: 2.27.2');
@@ -29,9 +31,12 @@ describe('TipTap v2 SafeClipboard adapter doctoring', () => {
     expect(adapter).toContain('addProseMirrorPlugins()');
     expect(adapter).toContain('transformPastedHTML:');
     expect(kit).toContain("from './SafeClipboardExtension.js'");
+    expect(changelog).toContain(
+      'registered TipTap v2.27.2 ProseMirror plugin adapter',
+    );
   });
 
-  it('binds the test-first evidence and forbids a mutable-documentation claim', () => {
+  it('binds test-first evidence and distinguishes mutable documentation', () => {
     const doctoring = readRepositoryText(doctoringPath);
 
     expect(doctoring).toContain('2e1d634bd819686b298256f9bac161e4f6e90067');
