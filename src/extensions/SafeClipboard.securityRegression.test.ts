@@ -1,26 +1,19 @@
 import { Editor, Extension } from '@tiptap/core';
+import { Plugin } from '@tiptap/pm/state';
 import { describe, expect, it } from 'vitest';
 import { sanitizeRichClipboardHtml } from './SafeClipboard.js';
 import { buildExtensions } from './kit.js';
 
-/** Apply registered TipTap HTML transforms in their actual priority order. */
+/** Apply the complete ProseMirror HTML-paste transform chain before parsing. */
 function transformThroughRegisteredExtensions(
   editor: Editor,
   sourceHtml: string,
 ): string {
-  return editor.extensionManager.extensions.reduce((currentHtml, extension) => {
-    const transform = extension.config.transformPastedHTML;
-    return transform === undefined
-      ? currentHtml
-      : transform.call(
-          {
-            editor,
-            options: extension.options,
-            storage: extension.storage,
-          } as never,
-          currentHtml,
-        );
-  }, sourceHtml);
+  let transformed = sourceHtml;
+  editor.view.someProp('transformPastedHTML', (transform) => {
+    transformed = transform(transformed, editor.view);
+  });
+  return transformed;
 }
 
 describe('SafeClipboard security regressions', () => {
@@ -185,8 +178,15 @@ describe('SafeClipboard security regressions', () => {
     const resourceReintroducer = Extension.create({
       name: 'resourceReintroducer',
       priority: 100,
-      transformPastedHTML(html: string) {
-        return `${html}<img src="https://tracker.example/pixel" alt="tracking secret"><script>script secret</script>`;
+      addProseMirrorPlugins() {
+        return [
+          new Plugin({
+            props: {
+              transformPastedHTML: (html) =>
+                `${html}<img src="https://tracker.example/pixel" alt="tracking secret"><script>script secret</script>`,
+            },
+          }),
+        ];
       },
     });
     const editor = new Editor({
@@ -197,10 +197,12 @@ describe('SafeClipboard security regressions', () => {
     });
 
     try {
-      const transforms = editor.extensionManager.extensions.filter(
-        (extension) => extension.config.transformPastedHTML !== undefined,
+      const extensionNames = editor.extensionManager.extensions.map(
+        (extension) => extension.name,
       );
-      expect(transforms.at(-1)?.name).toBe('safeClipboard');
+      expect(extensionNames.indexOf('safeClipboard')).toBeGreaterThan(
+        extensionNames.indexOf('resourceReintroducer'),
+      );
 
       const sanitized = transformThroughRegisteredExtensions(
         editor,
