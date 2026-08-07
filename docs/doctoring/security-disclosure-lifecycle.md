@@ -111,6 +111,6 @@ International Organization for Standardization. (2018). *Information technology�
 
 International Organization for Standardization. (2019). *Information technology—Security techniques—Vulnerability handling processes (ISO/IEC Standard No. 30111:2019).* https://www.iso.org/standard/69725.html
 
-National Institute of Standards and Technology. (2025). *Secure Software Development Framework (SSDF) Version 1.2: Recommendations for mitigating the risk of software vulnerabilities (NIST SP 800-218 Rev. 1, Initial Public Draft).* https://csrc.nist.gov/pubs/sp/800/218/r1/ipd
+Booth, H., Ogata, M., Kent, K., Souppaya, M., & Dodson, D. (2025). *Secure Software Development Framework (SSDF) Version 1.2: Recommendations for mitigating the risk of software vulnerabilities* (NIST Special Publication 800-218 Rev. 1, Initial Public Draft). National Institute of Standards and Technology. https://doi.org/10.6028/NIST.SP.800-218r1.ipd
 
 Scarfone, K., Souppaya, M., & Dodson, D. (2022). *Secure Software Development Framework (SSDF) Version 1.1: Recommendations for mitigating the risk of software vulnerabilities* (NIST Special Publication 800-218). National Institute of Standards and Technology. https://doi.org/10.6028/NIST.SP.800-218
