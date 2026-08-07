@@ -1,5 +1,6 @@
+import type { Editor } from '@tiptap/react';
 import { cleanup, render } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EditorFormField } from './EditorFormField.js';
 
 afterEach(cleanup);
@@ -36,6 +37,46 @@ describe('EditorFormField SSR-to-editor handoff', () => {
     );
 
     expect(nativeField(container).value).toBe('# Updated before hydration');
+  });
+
+  it('restores the live editor value after an unhandled native form reset', async () => {
+    let editorHtml = '<p>Initial</p>';
+    let transactionListener:
+      | ((event: { transaction: { docChanged: boolean } }) => void)
+      | undefined;
+    const editor = {
+      getHTML: vi.fn(() => editorHtml),
+      on: vi.fn(
+        (
+          event: string,
+          listener: (event: { transaction: { docChanged: boolean } }) => void,
+        ) => {
+          if (event === 'transaction') transactionListener = listener;
+        },
+      ),
+      off: vi.fn(),
+    } as unknown as Editor;
+    const { container } = render(
+      <form>
+        <EditorFormField
+          editor={editor}
+          mode="html"
+          name="message_body"
+          initialValue="<p>Initial</p>"
+        />
+      </form>,
+    );
+    const form = container.querySelector('form');
+    if (!form) throw new Error('Focused form fixture was not rendered');
+
+    editorHtml = '<p>Current</p>';
+    transactionListener?.({ transaction: { docChanged: true } });
+    expect(nativeField(container).value).toBe('<p>Current</p>');
+
+    form.reset();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    expect(nativeField(container).value).toBe('<p>Current</p>');
   });
 
   it('does not retain a document value for an unnamed reset-only field', () => {
