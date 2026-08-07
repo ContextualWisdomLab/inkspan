@@ -11,6 +11,30 @@ function repositoryFile(path: string): string {
 const workflow = repositoryFile('.github/workflows/release.yml');
 
 describe('release draft asset inventory contract', () => {
+  it('rejects an unexpected local artifact before attestation or upload', () => {
+    const localValidationIndex = workflow.indexOf(
+      '- name: Verify bounded local release artifact set',
+    );
+    const attestIndex = workflow.indexOf('- name: Attest release artifacts');
+    const uploadIndex = workflow.indexOf('gh release upload "$GITHUB_REF_NAME"');
+
+    expect(localValidationIndex).toBeGreaterThan(-1);
+    expect(attestIndex).toBeGreaterThan(localValidationIndex);
+    expect(uploadIndex).toBeGreaterThan(attestIndex);
+
+    const localValidationStep = workflow.slice(
+      localValidationIndex,
+      attestIndex,
+    );
+    expect(localValidationStep).toContain('expected_asset_count=3');
+    expect(localValidationStep).toContain('*.tgz');
+    expect(localValidationStep).toContain('*.whl');
+    expect(localValidationStep).toContain('SHA256SUMS');
+    expect(localValidationStep).toContain(
+      'Unexpected local release artifact set',
+    );
+  });
+
   it('validates the exact uploaded draft inventory before publishing', () => {
     const uploadIndex = workflow.indexOf('gh release upload "$GITHUB_REF_NAME"');
     const inventoryIndex = workflow.indexOf(
@@ -45,9 +69,9 @@ describe('release draft asset inventory contract', () => {
     );
     const inventoryStep = workflow.slice(inventoryIndex, publishIndex);
 
-    expect(inventoryStep).toContain("expected_asset_count=3");
-    expect(inventoryStep).toContain("*.tgz");
-    expect(inventoryStep).toContain("*.whl");
+    expect(inventoryStep).toContain('expected_asset_count=3');
+    expect(inventoryStep).toContain('*.tgz');
+    expect(inventoryStep).toContain('*.whl');
     expect(inventoryStep).toContain('SHA256SUMS');
     expect(inventoryStep).toContain('Unexpected local release artifact set');
     expect(inventoryStep).toContain("asset_name='.assets[].name'");
