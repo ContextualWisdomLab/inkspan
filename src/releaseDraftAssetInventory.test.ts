@@ -36,6 +36,23 @@ describe('release draft asset inventory contract', () => {
     expect(inventoryStep).toContain('Draft release asset digest mismatch');
   });
 
+  it('admits only the expected npm, wheel, and checksum artifact set', () => {
+    const inventoryIndex = workflow.indexOf(
+      '- name: Verify exact draft release asset inventory',
+    );
+    const publishIndex = workflow.indexOf(
+      'gh release edit "$GITHUB_REF_NAME"',
+    );
+    const inventoryStep = workflow.slice(inventoryIndex, publishIndex);
+
+    expect(inventoryStep).toContain("expected_asset_count=3");
+    expect(inventoryStep).toContain("*.tgz");
+    expect(inventoryStep).toContain("*.whl");
+    expect(inventoryStep).toContain('SHA256SUMS');
+    expect(inventoryStep).toContain('Unexpected local release artifact set');
+    expect(inventoryStep).toContain("asset_name='.assets[].name'");
+  });
+
   it('documents fail-closed stale-draft handling and provenance scope', () => {
     const releaseSecurity = repositoryFile('docs/release-security.md');
     const changelog = repositoryFile('CHANGELOG.md');
