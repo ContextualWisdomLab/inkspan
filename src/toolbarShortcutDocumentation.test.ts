@@ -15,7 +15,9 @@ describe('toolbar shortcut accessibility documentation', () => {
     expect(accessibility).toContain('`Control+I Meta+I`');
     expect(accessibility).not.toContain('`Control+K Meta+K`');
     expect(accessibility).toContain('`Control+Z Meta+Z`');
-    expect(accessibility).toContain('`Control+Shift+Z Meta+Shift+Z`');
+    expect(accessibility).toContain(
+      '`Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y`',
+    );
     expect(accessibility).toContain(
       'describes shortcuts that Inkspan already implements; it does not create keyboard behavior',
     );
@@ -52,10 +54,13 @@ describe('toolbar shortcut accessibility documentation', () => {
     );
     expect(doctoring).toContain('buyer-facing README');
     expect(doctoring).toContain('Tiptap. (n.d.). *Link extension*');
+    expect(doctoring).toContain('Tiptap. (n.d.). *Undo/Redo extension*');
+    expect(doctoring).toContain('Control+Y Meta+Y');
     expect(doctoring).toContain('57f5ef8e21f8351fa04c122e700b43777c9ea57e');
     expect(doctoring).toContain('e89f51e87e84552247c7080aa61800c7da813e40');
     expect(changelog).toContain('programmatic toolbar shortcut discoverability');
     expect(changelog).toContain('unimplemented link shortcut claim');
     expect(changelog).toContain('buyer-facing README guidance');
+    expect(changelog).toContain('Control+Y Meta+Y');
   });
 });
