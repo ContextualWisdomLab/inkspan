@@ -13,11 +13,14 @@ describe('toolbar shortcut accessibility documentation', () => {
     expect(accessibility).toContain('`aria-keyshortcuts`');
     expect(accessibility).toContain('`Control+B Meta+B`');
     expect(accessibility).toContain('`Control+I Meta+I`');
-    expect(accessibility).toContain('`Control+K Meta+K`');
+    expect(accessibility).not.toContain('`Control+K Meta+K`');
     expect(accessibility).toContain('`Control+Z Meta+Z`');
     expect(accessibility).toContain('`Control+Shift+Z Meta+Shift+Z`');
     expect(accessibility).toContain(
       'describes shortcuts that Inkspan already implements; it does not create keyboard behavior',
+    );
+    expect(accessibility).toContain(
+      'The link control intentionally does not advertise a keyboard shortcut',
     );
   });
 
@@ -35,8 +38,13 @@ describe('toolbar shortcut accessibility documentation', () => {
     expect(doctoring).toContain('## APA 7 references');
     expect(doctoring).toContain('Accessible Rich Internet Applications (WAI-ARIA) 1.2');
     expect(doctoring).toContain('Toolbar pattern');
-    expect(doctoring).toContain('303149b4d3e586ba32c1306d1a7d98542142d9d3');
-    expect(doctoring).toContain('29d8c156e40eb0975687ee83053bedf3de7d77a5');
+    expect(doctoring).toContain(
+      'The configured Tiptap Link extension does not bind a keyboard shortcut',
+    );
+    expect(doctoring).toContain('Tiptap. (n.d.). *Link extension*');
+    expect(doctoring).toContain('57f5ef8e21f8351fa04c122e700b43777c9ea57e');
+    expect(doctoring).toContain('e89f51e87e84552247c7080aa61800c7da813e40');
     expect(changelog).toContain('programmatic toolbar shortcut discoverability');
+    expect(changelog).toContain('unimplemented link shortcut claim');
   });
 });
