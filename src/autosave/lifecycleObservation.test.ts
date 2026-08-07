@@ -216,4 +216,30 @@ describe('autosave lifecycle observation', () => {
       durableStrongEntityTag: '"server-two"',
     });
   });
+
+  it('deduplicates the coherent durable-session shutdown snapshot', async () => {
+    const snapshots: DocumentAutosaveSessionSnapshot[] = [];
+    const session = createDocumentAutosaveSession({
+      initialStrongEntityTag: '"server-one"',
+      save: () => ({
+        status: 'saved',
+        nextStrongEntityTag: '"server-two"',
+      }),
+      onSnapshotChange(snapshot) {
+        snapshots.push(snapshot);
+      },
+    });
+
+    await expect(session.close()).resolves.toMatchObject({
+      state: 'closed',
+      durableStrongEntityTag: '"server-one"',
+    });
+    expect(snapshots).toEqual([
+      expect.objectContaining({
+        state: 'closed',
+        durableStrongEntityTag: '"server-one"',
+      }),
+    ]);
+    snapshots.forEach(expectDocumentFreeSnapshot);
+  });
 });
