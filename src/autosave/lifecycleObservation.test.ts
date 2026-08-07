@@ -132,7 +132,7 @@ describe('autosave lifecycle observation', () => {
     expect(states[states.length - 1]).toBe('closed:-:-');
   });
 
-  it('observes a redacted failure state without changing the rejected request', async () => {
+  it('observes a redacted synchronous failure state without changing the rejected request', async () => {
     const snapshots: DocumentAutosaveQueueSnapshot[] = [];
     const queue = createDocumentAutosaveQueue({
       save() {
@@ -148,7 +148,6 @@ describe('autosave lifecycle observation', () => {
       message: 'The host save operation failed.',
     });
     expect(snapshots.map((snapshot) => [snapshot.state, snapshot.blockedReason])).toEqual([
-      ['saving', null],
       ['blocked', 'failure'],
     ]);
     snapshots.forEach(expectDocumentFreeSnapshot);
