@@ -27,7 +27,7 @@ describe('security disclosure and vulnerability-handling documentation', () => {
       'Do not include vulnerability details, proof-of-concept payloads, secrets, or customer data in a public issue.',
     );
     expect(policy).toContain(
-      'ask for a private security contact without disclosing the vulnerability',
+      'asks for a private security contact without disclosing the vulnerability',
     );
   });
 
