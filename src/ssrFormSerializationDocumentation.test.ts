@@ -21,6 +21,14 @@ describe('SSR native form serialization doctoring', () => {
     expect(doctoring).toContain('fb37cd9a4344a3b369553c49eb4bf557c082c7da');
     expect(doctoring).toContain('31177509823');
     expect(doctoring).toContain('defaultValue');
+    expect(doctoring).toContain('readOnly');
+    expect(doctoring).toContain('controlled React input');
+    expect(doctoring).not.toContain(
+      'uses React `defaultValue` for the server and hydration render',
+    );
+    expect(serverRendering).not.toContain(
+      "supplied through React's `defaultValue` contract",
+    );
     expect(doctoring).toContain('hydrateRoot');
     expect(doctoring).toContain('WHATWG');
     expect(doctoring).toContain('OWASP Foundation');
