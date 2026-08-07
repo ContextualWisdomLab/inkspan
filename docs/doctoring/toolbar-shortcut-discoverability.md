@@ -9,9 +9,9 @@ The exact built-in shortcut alternatives are:
 - bold: `Control+B Meta+B`;
 - italic: `Control+I Meta+I`;
 - undo: `Control+Z Meta+Z`; and
-- redo: `Control+Shift+Z Meta+Shift+Z`.
+- redo: `Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y`.
 
-The link control intentionally has no `aria-keyshortcuts` value. The configured Tiptap Link extension does not bind a keyboard shortcut, and Inkspan's `SafeLink` extension adds URI validation plus transaction filtering without adding an `addKeyboardShortcuts` implementation. The toolbar therefore no longer labels link editing as `Ctrl/Cmd+K`. Controls for which Inkspan does not implement a stable keyboard shortcut do not emit `aria-keyshortcuts`.
+The redo metadata intentionally exposes both shortcut families implemented by the configured Tiptap history behavior: `Ctrl/Cmd+Shift+Z` and `Ctrl/Cmd+Y`. The link control intentionally has no `aria-keyshortcuts` value. The configured Tiptap Link extension does not bind a keyboard shortcut, and Inkspan's `SafeLink` extension adds URI validation plus transaction filtering without adding an `addKeyboardShortcuts` implementation. The toolbar therefore no longer labels link editing as `Ctrl/Cmd+K`. Controls for which Inkspan does not implement a stable keyboard shortcut do not emit `aria-keyshortcuts`.
 
 ## Buyer-visible gap and bounded scope
 
@@ -20,6 +20,8 @@ Before this slice, implemented bold, italic, undo, and redo shortcuts appeared i
 The first implementation pass also treated the pre-existing `Ctrl/Cmd+K` link title as proof that a link shortcut existed. Current authoritative Tiptap documentation explicitly identifies the Link extension as having no keyboard shortcut, and repository inspection confirms `SafeLink` does not add one. Advertising `Control+K Meta+K` would therefore have created false accessibility metadata and retained a misleading visible tooltip. The repair removes that false claim rather than inventing a new keyboard behavior inside an accessibility-metadata change.
 
 A follow-up exact-head documentation sweep found the buyer-facing README still described Inkspan's link policy as covering `Ctrl/Cmd+K` commands even after the unsupported toolbar claim had been removed. RED commit `9c8a6b0c0332c4f6a3bd0c5e373be87eb79ac50b` bound the README to the implemented-shortcut boundary, and GREEN commit `a6c472e9b2aa3ec0f4cbf9663613243ed410faab` removed that stale behavioral claim while preserving the link-policy description itself. This closes the same buyer-visible truthfulness defect across UI metadata and product documentation; it does not add a link shortcut.
+
+Exact dependency review after current-head automated feedback found a second asymmetry: Inkspan advertised only `Ctrl/Cmd+Shift+Z` for redo even though the configured Tiptap history and collaboration behavior also implements `Ctrl/Cmd+Y`. Current official Tiptap Undo/Redo and Collaboration documentation independently lists both redo alternatives. RED commit `11439733245d76c6dc3b58f4fb9bf2105ac94b43` bound the toolbar to both alternatives before production changed; GREEN commit `bc634bf2f3237e58156ad68691b140ab90718992` then added only the missing redo metadata and visible title alternative. No new keyboard behavior was invented.
 
 This repair changes only the editor-owned presentation and accessibility surface. It does not alter document semantics, implemented shortcut execution, transport, authorization, tenant isolation, persistence, credentials, migration, retention, audit policy, model-use policy, collaboration ownership, or release authority. Hosts still own application-level shortcut conflict management and any host-added link shortcut.
 
@@ -36,6 +38,10 @@ The slice was implemented test-first from protected `main` `ca49a3249403be88ba3c
 7. Buyer-facing documentation RED commit `9c8a6b0c0332c4f6a3bd0c5e373be87eb79ac50b` required the README to stop presenting the unimplemented `Ctrl/Cmd+K` behavior as part of Inkspan's link-policy command surface.
 8. Buyer-facing documentation GREEN commit `a6c472e9b2aa3ec0f4cbf9663613243ed410faab` corrected the README without changing the underlying safe-link policy or link command.
 9. Release-evidence RED commit `8ffa71914ec7cdb62176db19045378e30a075ee2` requires both this doctoring record and the active changelog to retain the README correction as acquisition-review evidence.
+10. Redo-alternative RED commit `11439733245d76c6dc3b58f4fb9bf2105ac94b43` required the redo button to expose the already-implemented `Control+Y Meta+Y` alternative and corresponding visible title before production was changed.
+11. Redo-alternative GREEN commit `bc634bf2f3237e58156ad68691b140ab90718992` added the missing redo alternative without modifying editor command behavior.
+12. Redo documentation RED commit `52d38471cbc24be5792d7a32bf2319a039668622` bound public accessibility guidance, doctoring, release traceability, and the official Tiptap Undo/Redo source before documentation was updated.
+13. Accessibility documentation GREEN commit `877ee37ecb1d97fa447db77869f2193530e45a31` records both redo alternatives and the current official Tiptap history/collaboration basis.
 
 All exact-head CI, 100% production statement/branch/function/line coverage, security, packaging, review, and branch-protection evidence remains release-gated; no predecessor-head or local-only result is acceptance evidence.
 
@@ -44,6 +50,8 @@ All exact-head CI, 100% production statement/branch/function/line coverage, secu
 WAI-ARIA 1.2 defines `aria-keyshortcuts` as a way to indicate keyboard shortcuts that an author has implemented. Its value is a space-separated list of shortcuts; each shortcut combines zero or more modifier keys and exactly one non-modifier key with plus signs. The normative modifier token is `Control`; `Meta` represents the Meta key and maps to Command on macOS. This supports expressing Windows/Linux and macOS alternatives without inventing the presentation-only `Ctrl/Cmd` abbreviation inside accessibility metadata.
 
 The ARIA Authoring Practices Guide toolbar pattern recommends a single toolbar tab stop with directional movement among controls, with Home/End available as optional navigation. Inkspan already implements that composite interaction. Adding shortcut metadata is therefore complementary: it improves command discoverability without disturbing roving focus, native button activation, disabled-control behavior, or `aria-pressed` state.
+
+Tiptap's official Undo/Redo documentation lists redo as `Shift+Control+Z` or `Control+Y` on Windows/Linux and `Shift+Cmd+Z` or `Cmd+Y` on macOS. Its Collaboration extension documents the same two redo alternatives for collaborative history. Because Inkspan uses the corresponding configured Tiptap history mechanisms rather than a custom redo keymap, `Control+Y Meta+Y` is shipped behavior that must be represented alongside `Control+Shift+Z Meta+Shift+Z` in descriptive accessibility metadata.
 
 Tiptap's official Link extension documentation states that the extension provides no keyboard shortcut and suggests that applications may choose to open custom link UI from their own `Mod-k` binding. Inkspan does not currently implement such a binding. Descriptive ARIA metadata must follow the shipped behavior rather than imply a future or host-specific shortcut.
 
@@ -55,7 +63,7 @@ Inkspan does not use shortcut metadata as an authorization signal. A host that d
 
 ## Compatibility and rollback
 
-The property is optional within Inkspan's internal toolbar-button contract and serializes to an ordinary ARIA attribute only on the four mapped built-in shortcut buttons. Browsers or assistive technologies that do not surface the state continue to receive the same native button labels, focus behavior, and command implementation as before. Link editing retains its existing button and prompt-driven command; only the unsupported shortcut claim is removed.
+The property is optional within Inkspan's internal toolbar-button contract and serializes to an ordinary ARIA attribute only on the four mapped built-in shortcut buttons. Browsers or assistive technologies that do not surface the state continue to receive the same native button labels, focus behavior, and command implementation as before. Redo retains the same TipTap command while exposing both existing key bindings; link editing retains its existing button and prompt-driven command while omitting an unsupported link shortcut claim.
 
 Rollback is bounded: remove the four `keyShortcuts` assignments, the optional property and emitted `aria-keyshortcuts` state, the focused regression tests, and this doctoring entry. No persisted document, schema, migration, host protocol, or package subpath requires conversion.
 
@@ -65,7 +73,11 @@ Shareable evidence may include the static shortcut values, committed tests and d
 
 ## APA 7 references
 
+Tiptap. (n.d.). *Collaboration extension*. Tiptap Editor Docs. Retrieved August 8, 2026, from https://tiptap.dev/docs/editor/extensions/functionality/collaboration
+
 Tiptap. (n.d.). *Link extension*. Tiptap Editor Docs. Retrieved August 8, 2026, from https://tiptap.dev/docs/editor/extensions/marks/link
+
+Tiptap. (n.d.). *Undo/Redo extension*. Tiptap Editor Docs. Retrieved August 8, 2026, from https://tiptap.dev/docs/editor/extensions/functionality/undo-redo
 
 World Wide Web Consortium. (2023, June 6). *Accessible Rich Internet Applications (WAI-ARIA) 1.2* (W3C Recommendation). https://www.w3.org/TR/wai-aria-1.2/
 
