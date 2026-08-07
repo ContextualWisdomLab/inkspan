@@ -10,11 +10,11 @@ import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
 import type { Extensions } from '@tiptap/react';
 import { Base64Image } from './Base64Image.js';
-import {
-  SafeClipboard,
-  type ClipboardConfig,
-  type ClipboardSanitizationError,
+import type {
+  ClipboardConfig,
+  ClipboardSanitizationError,
 } from './SafeClipboard.js';
+import { SafeClipboard } from './SafeClipboardExtension.js';
 import { SafeLink, isSafeLinkHref } from './SafeLink.js';
 import type { ImageConfig } from '../types.js';
 
