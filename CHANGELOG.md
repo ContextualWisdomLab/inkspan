@@ -6,6 +6,9 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Added
+- Added privacy-minimized document transition evidence for validated previous and resulting canonical revisions through the framework-independent `revision-evidence` subpath, with object/JSON and strict UTF-8 entry points, deterministic previous-then-resulting SHA-256 derivation, frozen revision-only results, and no document body, actor, tenant, time, authorization, signature, transport, model, or durable-write claim
+
 ### Documentation
 - Added an authoritative standalone and modular MSA architecture contract with reviewable deployment, optimistic-concurrency, data-ownership, security, and acquisition-evidence diagrams and tables
 - Added a beginner-readable naruon compose and ui.panel integration guide covering narrow client hydration, server-selected strong validators, accessible conflict handling, host-owned Yjs lifecycle, contextual-orchestrator boundaries, and local-versus-shareable evidence
