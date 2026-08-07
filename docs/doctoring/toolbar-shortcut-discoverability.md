@@ -19,6 +19,8 @@ Before this slice, implemented bold, italic, undo, and redo shortcuts appeared i
 
 The first implementation pass also treated the pre-existing `Ctrl/Cmd+K` link title as proof that a link shortcut existed. Current authoritative Tiptap documentation explicitly identifies the Link extension as having no keyboard shortcut, and repository inspection confirms `SafeLink` does not add one. Advertising `Control+K Meta+K` would therefore have created false accessibility metadata and retained a misleading visible tooltip. The repair removes that false claim rather than inventing a new keyboard behavior inside an accessibility-metadata change.
 
+A follow-up exact-head documentation sweep found the buyer-facing README still described Inkspan's link policy as covering `Ctrl/Cmd+K` commands even after the unsupported toolbar claim had been removed. RED commit `9c8a6b0c0332c4f6a3bd0c5e373be87eb79ac50b` bound the README to the implemented-shortcut boundary, and GREEN commit `a6c472e9b2aa3ec0f4cbf9663613243ed410faab` removed that stale behavioral claim while preserving the link-policy description itself. This closes the same buyer-visible truthfulness defect across UI metadata and product documentation; it does not add a link shortcut.
+
 This repair changes only the editor-owned presentation and accessibility surface. It does not alter document semantics, implemented shortcut execution, transport, authorization, tenant isolation, persistence, credentials, migration, retention, audit policy, model-use policy, collaboration ownership, or release authority. Hosts still own application-level shortcut conflict management and any host-added link shortcut.
 
 ## Test-first evidence
@@ -31,6 +33,9 @@ The slice was implemented test-first from protected `main` `ca49a3249403be88ba3c
 4. Independent source verification then found that the link shortcut assumption was invalid: Tiptap's Link extension does not bind a shortcut, and Inkspan's configured `SafeLink` adds none. RED commit `57f5ef8e21f8351fa04c122e700b43777c9ea57e` changed the accessibility regression to reject `aria-keyshortcuts` and `Ctrl/Cmd+K` on the link button while production still advertised both.
 5. GREEN production commit `e89f51e87e84552247c7080aa61800c7da813e40` removed only the false link shortcut metadata and visible shortcut label while preserving the link button's existing prompt-driven command.
 6. Documentation RED commit `251d660ed9b0aebbffaa0ca715b33eb39aa93729` bound the public contract to the implemented-shortcut boundary and official Tiptap Link documentation before the explanatory documents were corrected.
+7. Buyer-facing documentation RED commit `9c8a6b0c0332c4f6a3bd0c5e373be87eb79ac50b` required the README to stop presenting the unimplemented `Ctrl/Cmd+K` behavior as part of Inkspan's link-policy command surface.
+8. Buyer-facing documentation GREEN commit `a6c472e9b2aa3ec0f4cbf9663613243ed410faab` corrected the README without changing the underlying safe-link policy or link command.
+9. Release-evidence RED commit `8ffa71914ec7cdb62176db19045378e30a075ee2` requires both this doctoring record and the active changelog to retain the README correction as acquisition-review evidence.
 
 All exact-head CI, 100% production statement/branch/function/line coverage, security, packaging, review, and branch-protection evidence remains release-gated; no predecessor-head or local-only result is acceptance evidence.
 
