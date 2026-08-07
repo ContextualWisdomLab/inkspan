@@ -8,12 +8,13 @@ function repositoryFile(path: string): string {
 }
 
 describe('selection revision evidence documentation', () => {
-  it('makes the revision-scoped review primitive discoverable to adopters', () => {
-    const readme = repositoryFile('README.md');
+  it('makes the revision-scoped review primitive discoverable through the public contract', () => {
+    const publicTypes = repositoryFile('src/types.ts');
+    const rootIndex = repositoryFile('src/index.ts');
     const selectionGuide = repositoryFile('docs/selection-lifecycle.md');
 
-    expect(readme).toContain('getSelectionRevisionEvidence');
-    expect(readme).toContain('revision-scoped selection evidence');
+    expect(publicTypes).toContain('getSelectionRevisionEvidence');
+    expect(rootIndex).toContain('CwlEditorSelectionRevisionEvidence');
     expect(selectionGuide).toContain('getSelectionRevisionEvidence');
     expect(selectionGuide).toContain('exact document revision');
     expect(selectionGuide).toContain('TextPositionSelector');
