@@ -46,9 +46,14 @@ describe('toolbar shortcut accessibility semantics', () => {
       'aria-keyshortcuts',
       'Control+Z Meta+Z',
     );
-    expect(screen.getByRole('button', { name: /Redo/ })).toHaveAttribute(
+    const redoButton = screen.getByRole('button', { name: /Redo/ });
+    expect(redoButton).toHaveAttribute(
       'aria-keyshortcuts',
-      'Control+Shift+Z Meta+Shift+Z',
+      'Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y',
+    );
+    expect(redoButton).toHaveAttribute(
+      'title',
+      'Redo (Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y)',
     );
 
     expect(screen.getByRole('button', { name: /Strikethrough/ })).not.toHaveAttribute(
