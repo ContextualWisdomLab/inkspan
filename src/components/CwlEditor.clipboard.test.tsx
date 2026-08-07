@@ -6,14 +6,16 @@ import { CwlEditor } from './CwlEditor.js';
 
 afterEach(cleanup);
 
-/** Invoke the installed SafeClipboard transform exactly as TipTap does. */
+/** Invoke the complete ProseMirror HTML-paste transform chain before parsing. */
 function transformRichClipboard(editor: Editor, html: string): string {
-  const extension = editor.extensionManager.extensions.find(
-    (candidate) => candidate.name === 'safeClipboard',
-  );
-  const transform = extension?.config.transformPastedHTML;
-  if (!extension || !transform) throw new Error('SafeClipboard is not installed');
-  return transform.call({ options: extension.options } as never, html);
+  let transformed = html;
+  let applied = false;
+  editor.view.someProp('transformPastedHTML', (transform) => {
+    applied = true;
+    transformed = transform(transformed, editor.view);
+  });
+  if (!applied) throw new Error('SafeClipboard paste transform is not installed');
+  return transformed;
 }
 
 describe('CwlEditor safe rich clipboard integration', () => {
