@@ -237,10 +237,22 @@ jobs:
             exit 1
           fi
 
-          release_json="$(gh api \
+          release_pages="$(gh api \
+            --paginate \
+            --slurp \
             -H 'Accept: application/vnd.github+json' \
             -H 'X-GitHub-Api-Version: 2026-03-10' \
-            "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME")"
+            "repos/$GITHUB_REPOSITORY/releases?per_page=100")"
+          release_match_count="$(jq -r --arg tag "$GITHUB_REF_NAME" \
+            '[.[][] | select(.tag_name == $tag)] | length' \
+            <<< "$release_pages")"
+          if [[ "$release_match_count" != '1' ]]; then
+            echo "::error::Expected exactly one draft release for tag $GITHUB_REF_NAME; found $release_match_count."
+            exit 1
+          fi
+          release_json="$(jq -ce --arg tag "$GITHUB_REF_NAME" \
+            '[.[][] | select(.tag_name == $tag)][0]' \
+            <<< "$release_pages")"
           release_state='.draft'
           asset_name='.assets[].name'
           asset_state='.assets[].state'
