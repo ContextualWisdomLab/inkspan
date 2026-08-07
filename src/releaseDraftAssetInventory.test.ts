@@ -49,13 +49,17 @@ describe('release draft asset inventory contract', () => {
     expect(publishIndex).toBeGreaterThan(inventoryIndex);
 
     const inventoryStep = workflow.slice(inventoryIndex, publishIndex);
-    expect(inventoryStep).toContain('gh release view "$GITHUB_REF_NAME"');
-    expect(inventoryStep).toContain('--json apiUrl,isDraft,tagName');
-    expect(inventoryStep).toContain("--jq '.apiUrl'");
-    expect(inventoryStep).toContain('gh api "$release_api_url"');
+    expect(inventoryStep).toContain('gh api');
+    expect(inventoryStep).toContain('--paginate');
+    expect(inventoryStep).toContain('--slurp');
+    expect(inventoryStep).toContain(
+      'repos/$GITHUB_REPOSITORY/releases?per_page=100',
+    );
+    expect(inventoryStep).toContain('select(.tag_name == $tag)');
     expect(inventoryStep).not.toContain(
       'releases/tags/$GITHUB_REF_NAME',
     );
+    expect(inventoryStep).toContain('Expected exactly one draft release for tag');
     expect(inventoryStep).toContain("release_state='.draft'");
     expect(inventoryStep).toContain("asset_state='.assets[].state'");
     expect(inventoryStep).toContain("asset_digest='.assets[].digest'");
@@ -89,6 +93,7 @@ describe('release draft asset inventory contract', () => {
     expect(releaseSecurity).toContain('unexpected stale asset');
     expect(releaseSecurity).toContain('before the draft is published');
     expect(releaseSecurity).toContain('sha256:');
+    expect(releaseSecurity).toContain('List releases');
     expect(changelog).toContain('draft release asset inventory');
   });
 });
