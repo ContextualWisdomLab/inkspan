@@ -8,7 +8,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ### Accessibility
 - Added programmatic toolbar shortcut discoverability with WAI-ARIA `aria-keyshortcuts` for the implemented bold, italic, undo, and redo commands, preserving the same native-button behavior, visible labels, roving focus model, and host-owned shortcut-conflict policy
-- Removed the unimplemented link shortcut claim from both `aria-keyshortcuts` and the visible link tooltip after authoritative Tiptap Link documentation and the configured `SafeLink` extension confirmed that Inkspan does not bind `Ctrl/Cmd+K`
+- Removed the unimplemented link shortcut claim from `aria-keyshortcuts`, the visible link tooltip, and buyer-facing README guidance after authoritative Tiptap Link documentation and the configured `SafeLink` extension confirmed that Inkspan does not bind `Ctrl/Cmd+K`
 - Added deterministic regression and documentation contracts plus APA 7th doctoring for exact `Control`/`Meta` shortcut alternatives, the descriptive-only accessibility boundary, and omission of unsupported shortcut claims
 
 ### Documentation
