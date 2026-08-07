@@ -9,13 +9,14 @@ field in the server-generated shell. A controlled `value` takes precedence over
 construction. React owns attribute escaping, so source HTML is serialized as an
 ordinary form-control value rather than injected as markup.
 
-The field uses React `defaultValue` for the server and hydration render instead
-of remaining a controlled React input. Until TipTap exists, an effect retains
-the selected prop value. After hydration, the editor becomes authoritative and
-the existing transaction subscriber writes the current serialization directly
-to `HTMLInputElement.value` before a transaction returns. This preserves
-synchronous `FormData` and native-submission behavior without waiting for a
-React state update.
+The field is rendered as a `readOnly` controlled React input. Before TipTap is
+authoritative, its controlled value is the selected server/client prop value.
+After TipTap becomes authoritative, the existing transaction subscriber stores
+the current serialization in the shared value ref and writes it directly to
+`HTMLInputElement.value` before a transaction returns. Subsequent React renders
+read that same serialization rather than restoring an older server/default
+value. This preserves synchronous `FormData` and native-submission behavior
+without waiting for a React state update.
 
 If `formFieldName` is absent, no document-bearing hidden input is rendered. A
 reset-only unnamed field remains empty. `CollaborativeCwlEditor` does not place
@@ -37,6 +38,13 @@ association but omitted the escaped `value` attribute. The implementation then
 added the explicit pre-hydration handoff and focused browser-DOM tests for
 initial-value retention, pre-editor prop updates, and reset-only non-disclosure.
 
+A later review found that this doctoring record described the field as an
+uncontrolled `defaultValue` input even though the implementation deliberately
+uses a `readOnly` controlled `value` backed by the same serialization ref that
+serves synchronous DOM writes. A deterministic documentation contract was added
+first to reject that mismatch, then this record was corrected without changing
+runtime behavior.
+
 ## HTML and hydration contract
 
 The WHATWG HTML Standard defines a hidden input as a submittable
@@ -46,11 +54,13 @@ and its value supplies the submitted value unless the control is disabled or
 otherwise excluded by the form-data construction algorithm.
 
 React server APIs generate the initial HTML representation. `hydrateRoot`
-expects the first client render to match that server output, so Inkspan passes
-the same selected prop value on the server and during hydration. Once hydrated,
-imperative field synchronization deliberately takes over; `defaultValue` avoids
-turning the hidden control into a React-controlled mirror that could lag a
-TipTap transaction.
+expects the first client render to match that server output, so Inkspan renders
+the same controlled value on the server and during hydration. The field is
+`readOnly`: user editing is not an input path. Before TipTap initialization, prop
+updates remain authoritative. Once the editor is initialized, synchronous
+imperative writes and the shared serialization ref keep the native field aligned
+with editor transactions; a later React render therefore consumes the latest
+serialized value rather than a stale initial prop.
 
 This contract applies to `renderToString` and to streaming React server APIs
 because the component tree emits the same input element. It does not claim that
@@ -101,6 +111,7 @@ default, or a valid ecosystem-required CamelCase/PascalCase form.
 Exact-head tests require:
 
 - controlled `value` precedence over `defaultValue` in server markup;
+- `readOnly` controlled-field semantics across SSR, hydration, and rerenders;
 - safe HTML-attribute escaping by React;
 - preservation of native `name` and external `form` association;
 - no TipTap/ProseMirror server construction;
