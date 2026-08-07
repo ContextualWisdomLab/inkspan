@@ -50,10 +50,12 @@ describe('toolbar shortcut accessibility documentation', () => {
     expect(doctoring).toContain(
       'The configured Tiptap Link extension does not bind a keyboard shortcut',
     );
+    expect(doctoring).toContain('buyer-facing README');
     expect(doctoring).toContain('Tiptap. (n.d.). *Link extension*');
     expect(doctoring).toContain('57f5ef8e21f8351fa04c122e700b43777c9ea57e');
     expect(doctoring).toContain('e89f51e87e84552247c7080aa61800c7da813e40');
     expect(changelog).toContain('programmatic toolbar shortcut discoverability');
     expect(changelog).toContain('unimplemented link shortcut claim');
+    expect(changelog).toContain('buyer-facing README guidance');
   });
 });
