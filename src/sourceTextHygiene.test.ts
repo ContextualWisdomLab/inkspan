@@ -1,18 +1,15 @@
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const TEXT_HYGIENE_TARGETS = [
-  ['root public entrypoint', new URL('./index.ts', import.meta.url)],
-  [
-    'revision-evidence entrypoint test',
-    new URL('./revision-evidence/index.test.ts', import.meta.url),
-  ],
+  ['root public entrypoint', 'src/index.ts'],
+  ['revision-evidence entrypoint test', 'src/revision-evidence/index.test.ts'],
 ] as const;
 
 describe('source text hygiene', () => {
-  it.each(TEXT_HYGIENE_TARGETS)('%s ends with one line feed', (_label, sourceUrl) => {
-    const source = readFileSync(fileURLToPath(sourceUrl), 'utf8');
+  it.each(TEXT_HYGIENE_TARGETS)('%s ends with one line feed', (_label, relativePath) => {
+    const source = readFileSync(resolve(process.cwd(), relativePath), 'utf8');
 
     expect(source.endsWith('\n')).toBe(true);
     expect(source.endsWith('\n\n')).toBe(false);
