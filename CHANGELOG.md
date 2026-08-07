@@ -6,7 +6,12 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Added
+- Added privacy-minimized revision-scoped selection evidence through `getSelectionRevisionEvidence()`, binding frozen ProseMirror coordinates to the SHA-256 strong revision of the exact same immutable editor state before asynchronous hashing begins
+
 ### Documentation
+- Documented that revision-scoped selection evidence contains no selected text or complete document envelope, remains valid only for its exact document revision, is not a W3C `TextPositionSelector`, and leaves durable comments, authorization, persistence, collaborative anchoring, and cross-revision re-anchoring to the host
+- Added an APA 7th doctoring record for the selection/revision atomicity, privacy, rollback, and interoperability boundaries grounded in ProseMirror, RFC 9110, and the W3C Web Annotation Data Model
 - Added an authoritative standalone and modular MSA architecture contract with reviewable deployment, optimistic-concurrency, data-ownership, security, and acquisition-evidence diagrams and tables
 - Added a beginner-readable naruon compose and ui.panel integration guide covering narrow client hydration, server-selected strong validators, accessible conflict handling, host-owned Yjs lifecycle, contextual-orchestrator boundaries, and local-versus-shareable evidence
 - Added an opaque editing-context remount for the complete editor and autosave example, latest-generation asynchronous capture ordering, encoded document path segments, redacted recovery status, and lazy state-owned session identity to prevent cross-document state reuse
