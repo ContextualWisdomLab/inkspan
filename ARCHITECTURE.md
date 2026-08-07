@@ -35,9 +35,9 @@ platform services.
 
 Document transition evidence proves only deterministic local revision equality
 and ordering of the supplied previous and resulting envelopes. Host-owned
-occurrence provenance—including actor identity, authenticated server time,
-operation attribution, authorization, signatures, and durable acceptance—must
-be recorded separately by the adopting service.
+systems must record host-owned occurrence provenance—including actor identity,
+authenticated server time, operation attribution, authorization, signatures,
+and durable acceptance—separately from Inkspan's local content evidence.
 
 ## Modular MSA composition
 
