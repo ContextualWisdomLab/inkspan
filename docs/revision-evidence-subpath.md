@@ -108,8 +108,7 @@ Equivalent noncanonical JSON inputs therefore classify identically. The result
 contains no envelope or document body and is suitable for embedding inside a
 host-owned authenticated event without duplicating author content.
 
-Transition evidence is local content-lineage evidence. It does not prove that a
-durable write occurred. It also does not prove actor identity, tenant authority,
+Transition evidence is local content-lineage evidence and does not prove that a durable write occurred. It also does not prove actor identity, tenant authority,
 operation type, time, authorization, signature, review acceptance, transport
 success, model execution, or non-repudiation. Hosts must add and authenticate
 those occurrence facts under their own event schema and persistence transaction.
