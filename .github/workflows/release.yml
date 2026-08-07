@@ -153,6 +153,26 @@ jobs:
           set -euo pipefail
           cd release
           sha256sum --check SHA256SUMS
+      - name: Verify bounded local release artifact set
+        run: |
+          set -euo pipefail
+          expected_asset_count=3
+          mapfile -t local_assets < <(
+            find release -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort
+          )
+          mapfile -t npm_assets < <(
+            printf '%s\n' "${local_assets[@]}" | grep -E '\.tgz$' || true
+          )
+          mapfile -t wheel_assets < <(
+            printf '%s\n' "${local_assets[@]}" | grep -E '\.whl$' || true
+          )
+          if [[ ${#local_assets[@]} -ne $expected_asset_count \
+            || ${#npm_assets[@]} -ne 1 \
+            || ${#wheel_assets[@]} -ne 1 \
+            || ! -f release/SHA256SUMS ]]; then
+            echo "::error::Unexpected local release artifact set; require exactly one *.tgz, one *.whl, and SHA256SUMS."
+            exit 1
+          fi
       - name: Attest release artifacts
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
