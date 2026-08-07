@@ -16,6 +16,7 @@ import { applyEditorFormReset } from '../components/editorFormReset.js';
 import { editorHtmlToValue } from '../components/editorSerialization.js';
 import { useEditorHandle } from '../components/useEditorHandle.js';
 import { useLatestRef } from '../components/useLatestRef.js';
+import type { ClipboardSanitizationError } from '../extensions/SafeClipboard.js';
 import { buildExtensions } from '../extensions/kit.js';
 import type { CwlEditorHandle } from '../types.js';
 import {
@@ -70,6 +71,8 @@ export const CollaborativeCwlEditor = forwardRef<
     onBlur,
     onSelectionChange,
     onImageError,
+    clipboard,
+    onClipboardError,
     placeholder = 'Start writing…',
     editable = true,
     hideToolbar = false,
@@ -127,12 +130,19 @@ export const CollaborativeCwlEditor = forwardRef<
   const onBlurRef = useLatestRef(onBlur);
   const onSelectionChangeRef = useLatestRef(onSelectionChange);
   const onImageErrorRef = useLatestRef(onImageError);
+  const onClipboardErrorRef = useLatestRef(onClipboardError);
   const onReadyRef = useLatestRef(onReady);
   const onDestroyRef = useLatestRef(onDestroy);
   const onFormResetRef = useLatestRef(onFormReset);
   const reportImageError = useCallback((error: Error) => {
     onImageErrorRef.current?.(error);
   }, [onImageErrorRef]);
+  const reportClipboardError = useCallback(
+    (error: ClipboardSanitizationError) => {
+      onClipboardErrorRef.current?.(error);
+    },
+    [onClipboardErrorRef],
+  );
   const editorAttributes = useMemo(
     () =>
       buildEditorAccessibilityAttributes({
@@ -167,7 +177,9 @@ export const CollaborativeCwlEditor = forwardRef<
       extensions: buildExtensions({
         placeholder,
         image,
+        clipboard,
         onImageError: reportImageError,
+        onClipboardError: reportClipboardError,
         disableHistory: true,
         additionalExtensions: [
           Collaboration.configure({

@@ -23,6 +23,10 @@ describe('package entry point', () => {
     expect(api.base64ImagePluginKey).toBeTruthy();
     expect(typeof api.downscaleDataUri).toBe('function');
     expect(typeof api.imageFileToInlineDataUri).toBe('function');
+    expect(api.SafeClipboard).toBeTruthy();
+    expect(api.safeClipboardPluginKey).toBeTruthy();
+    expect(typeof api.ClipboardSanitizationError).toBe('function');
+    expect(typeof api.sanitizeRichClipboardHtml).toBe('function');
     expect(api.SafeLink).toBeTruthy();
     expect(api.safeLinkPluginKey).toBeTruthy();
     expect(typeof api.SafeLinkHrefError).toBe('function');
