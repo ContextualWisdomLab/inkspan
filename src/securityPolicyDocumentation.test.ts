@@ -31,7 +31,7 @@ describe('security disclosure and vulnerability-handling documentation', () => {
     );
   });
 
-  it('keeps supported release lines synchronized with both package manifests', () => {
+  it('keeps each supported release row synchronized with its package manifest', () => {
     const policy = repositoryFile('SECURITY.md');
     const packageManifest = JSON.parse(repositoryFile('package.json')) as {
       version: string;
@@ -49,10 +49,10 @@ describe('security disclosure and vulnerability-handling documentation', () => {
     }
 
     expect(policy).toContain(
-      `latest released \`${releasedMinorLine(packageManifest.version)}\``,
+      `| \`@contextualwisdomlab/cwl-editor\` | latest released \`${releasedMinorLine(packageManifest.version)}\` |`,
     );
     expect(policy).toContain(
-      `latest released \`${releasedMinorLine(officeVersion)}\``,
+      `| \`inkspan-office\` | latest released \`${releasedMinorLine(officeVersion)}\` |`,
     );
   });
 
