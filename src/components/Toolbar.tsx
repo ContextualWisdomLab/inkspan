@@ -385,9 +385,9 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
           onClick={() => editor.chain().focus().undo().run()}
         />
         <ToolbarButton
-          title="Redo (Ctrl/Cmd+Shift+Z)"
+          title="Redo (Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y)"
           label="↷"
-          keyShortcuts="Control+Shift+Z Meta+Shift+Z"
+          keyShortcuts="Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y"
           disabled={!editor.can().redo()}
           onClick={() => editor.chain().focus().redo().run()}
         />
