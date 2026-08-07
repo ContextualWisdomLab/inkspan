@@ -10,6 +10,11 @@ export interface EditorFormFieldProps {
   name?: string;
   formId?: string;
   disabled?: boolean;
+  /**
+   * Selected standalone document value emitted in SSR markup and retained until
+   * the hydrated TipTap editor becomes authoritative for the native field.
+   */
+  initialValue?: string;
   onFormReset?: (event: Event) => void;
 }
 
@@ -22,10 +27,12 @@ export interface EditorFormFieldProps {
  * higher-level TipTap update event. The field's native value is written
  * synchronously before returning from each document transaction, so immediate
  * `FormData` construction or browser submission cannot observe a React-batched
- * stale value. Reset-only unnamed fields skip document serialization entirely.
- * When configured, the field observes the associated form's cancelable reset
- * event and schedules editor work in the next task, after native dispatch and
- * the reset algorithm have completed.
+ * stale value. Before hydration creates the editor, an explicitly configured
+ * standalone field retains the selected prop value rendered by the server.
+ * Reset-only unnamed fields skip document serialization entirely. When
+ * configured, the field observes the associated form's cancelable reset event
+ * and schedules editor work in the next task, after native dispatch and the
+ * reset algorithm have completed.
  */
 export function EditorFormField({
   editor,
@@ -33,18 +40,24 @@ export function EditorFormField({
   name,
   formId,
   disabled,
+  initialValue = '',
   onFormReset,
 }: EditorFormFieldProps) {
   const fieldRef = useRef<HTMLInputElement | null>(null);
-  const serializedValueRef = useRef('');
+  const serializedValueRef = useRef(initialValue);
 
   useEffect(() => {
     const field = fieldRef.current;
     /* v8 ignore next -- the effect runs only after the rendered field mounts. */
     if (!field) return;
-    if (!editor || name === undefined) {
+    if (name === undefined) {
       serializedValueRef.current = '';
       field.value = '';
+      return;
+    }
+    if (!editor) {
+      serializedValueRef.current = initialValue;
+      field.value = initialValue;
       return;
     }
 
@@ -66,7 +79,7 @@ export function EditorFormField({
     return () => {
       editor.off('transaction', handleTransaction);
     };
-  }, [editor, mode, name]);
+  }, [editor, initialValue, mode, name]);
 
   useEffect(() => {
     if (!onFormReset) return;
@@ -104,6 +117,7 @@ export function EditorFormField({
       name={name}
       form={formId}
       disabled={disabled}
+      defaultValue={name === undefined ? undefined : initialValue}
       data-inkspan-form-field=""
     />
   );
