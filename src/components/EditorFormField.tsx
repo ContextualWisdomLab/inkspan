@@ -65,6 +65,10 @@ export function EditorFormField({
       field.value = initialValue;
       return;
     }
+    if (editor.isInitialized === false) {
+      serializedValueRef.current = initialValue;
+      field.value = initialValue;
+    }
 
     const synchronizeValue = () => {
       const nextValue = editorHtmlToValue(editor.getHTML(), mode);
@@ -128,9 +132,11 @@ export function EditorFormField({
       value={
         name === undefined
           ? ''
-          : editor
-            ? serializedValueRef.current
-            : initialValue
+          : editor?.isInitialized === false
+            ? initialValue
+            : editor
+              ? serializedValueRef.current
+              : initialValue
       }
       data-inkspan-form-field=""
     />
