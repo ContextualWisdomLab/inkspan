@@ -118,7 +118,7 @@ export function EditorFormField({
       name={name}
       form={formId}
       disabled={disabled}
-      defaultValue={name === undefined ? undefined : initialValue}
+      defaultValue={name === undefined || editor ? undefined : initialValue}
       data-inkspan-form-field=""
     />
   );
