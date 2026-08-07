@@ -113,6 +113,7 @@ export function EditorFormField({
 
   return (
     <input
+      key={editor ? 'live-editor-field' : 'pre-editor-field'}
       ref={fieldRef}
       type="hidden"
       name={name}
