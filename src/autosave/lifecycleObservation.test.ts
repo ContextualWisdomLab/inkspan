@@ -132,6 +132,28 @@ describe('autosave lifecycle observation', () => {
     expect(states[states.length - 1]).toBe('closed:-:-');
   });
 
+  it('observes a redacted failure state without changing the rejected request', async () => {
+    const snapshots: DocumentAutosaveQueueSnapshot[] = [];
+    const queue = createDocumentAutosaveQueue({
+      save() {
+        throw new Error('private transport failure');
+      },
+      onSnapshotChange(snapshot) {
+        snapshots.push(snapshot);
+      },
+    });
+
+    await expect(queue.enqueue(createObservationEvidence('45'))).rejects.toMatchObject({
+      code: 'host_save_failed',
+      message: 'The host save operation failed.',
+    });
+    expect(snapshots.map((snapshot) => [snapshot.state, snapshot.blockedReason])).toEqual([
+      ['saving', null],
+      ['blocked', 'failure'],
+    ]);
+    snapshots.forEach(expectDocumentFreeSnapshot);
+  });
+
   it('publishes the committed durable validator in the same session snapshot transition', async () => {
     let completeSave!: (result: DocumentAutosaveDurableSaveResult) => void;
     const saveResult = new Promise<DocumentAutosaveDurableSaveResult>((resolve) => {
@@ -169,5 +191,30 @@ describe('autosave lifecycle observation', () => {
       }),
     );
     snapshots.forEach(expectDocumentFreeSnapshot);
+  });
+
+  it('ignores durable-session observer failures after coherent validator handoff', async () => {
+    let observerCalls = 0;
+    const session = createDocumentAutosaveSession({
+      initialStrongEntityTag: '"server-one"',
+      save: () => ({
+        status: 'saved',
+        nextStrongEntityTag: '"server-two"',
+      }),
+      onSnapshotChange(snapshot) {
+        observerCalls += 1;
+        expectDocumentFreeSnapshot(snapshot);
+        throw new Error('private durable observer failure');
+      },
+    });
+
+    await expect(session.enqueue(createObservationEvidence('46'))).resolves.toMatchObject({
+      status: 'saved',
+    });
+    expect(observerCalls).toBeGreaterThanOrEqual(2);
+    expect(session.getSnapshot()).toMatchObject({
+      state: 'idle',
+      durableStrongEntityTag: '"server-two"',
+    });
   });
 });
