@@ -35,8 +35,9 @@ Office Open XML renderer for DOCX, XLSX, and PPTX.
 - **Provider-neutral collaboration** — opt-in Yjs/TipTap real-time editing with
   host-owned transport, persistence, authorization, and lifecycle boundaries.
 - **Deterministic persistence coordination** — immutable revision evidence,
-  local `If-Match` restore guards, and a bounded single-flight autosave queue are
-  available without React, TipTap, ProseMirror, or Yjs runtime coupling.
+  privacy-minimized content-lineage evidence, local `If-Match` restore guards,
+  and a bounded single-flight autosave queue are available without React,
+  TipTap, ProseMirror, or Yjs runtime coupling.
 - **Email output** — Markdown-to-email HTML conversion preserves accepted inline
   base64 figures, emits only safe clickable links, and can return either a
   fragment or a complete HTML document.
@@ -62,7 +63,7 @@ runtime.
 | React editor | `@contextualwisdomlab/cwl-editor` | Markdown/HTML WYSIWYG component and serializers |
 | Collaboration | `@contextualwisdomlab/cwl-editor/collaboration` | Provider-neutral Yjs collaborative editing |
 | Converter | `@contextualwisdomlab/cwl-editor/converter` | Framework-independent base64/data-URI utilities |
-| Revision evidence | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent canonical envelope and strong revision evidence |
+| Revision evidence | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent canonical envelope, strong revision, and transition evidence |
 | Autosave | `@contextualwisdomlab/cwl-editor/autosave` | Provider-neutral bounded single-flight persistence coordination |
 | Styles | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
 | Full fonts | `@contextualwisdomlab/cwl-editor/fonts.css` | KR/EN/JP/SC/TC/VI offline font bundle |
@@ -283,6 +284,45 @@ const href = validateSafeLinkHref('/documents/current');
 
 See [`docs/link-security.md`](docs/link-security.md) for enforcement points,
 CWL/naruon host responsibilities, standards references, and verification.
+
+## Framework-independent document transition evidence
+
+A host can create privacy-minimized content-lineage evidence that binds two
+validated document envelopes without copying either complete document into an
+audit event, telemetry record, or review message:
+
+```ts
+import {
+  createDocumentEnvelopeTransitionEvidence,
+} from '@contextualwisdomlab/cwl-editor/revision-evidence';
+
+const transition = await createDocumentEnvelopeTransitionEvidence(
+  previousEnvelope,
+  resultingEnvelope,
+);
+
+if (transition.changed) {
+  recordLocalContentTransition({
+    previousRevision: transition.previousRevision,
+    resultingRevision: transition.resultingRevision,
+  });
+}
+```
+
+`createDocumentEnvelopeTransitionEvidence` validates and hashes the previous
+envelope first and the resulting envelope second. It returns a frozen schema
+object containing only the two local SHA-256 revision contracts and `changed`.
+Use `createDocumentEnvelopeTransitionEvidenceJson()` for envelope JSON text or
+`createDocumentEnvelopeTransitionEvidenceBytes()` for strict UTF-8 bytes.
+
+This evidence proves deterministic local canonical-content equality only. It
+does not identify an actor, establish authorization, authenticate server time,
+prove that a durable write occurred, or replace a server-selected strong `ETag`.
+Standalone hosts and CWL/naruon services retain occurrence provenance,
+signatures, tenant isolation, persistence, audit storage, retention, and durable
+result claims. See
+[`docs/revision-evidence-subpath.md`](docs/revision-evidence-subpath.md) and
+[`docs/doctoring/document-transition-evidence.md`](docs/doctoring/document-transition-evidence.md).
 
 ## Provider-neutral autosave
 
