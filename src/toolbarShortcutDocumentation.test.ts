@@ -24,6 +24,15 @@ describe('toolbar shortcut accessibility documentation', () => {
     );
   });
 
+  it('keeps buyer-facing README link guidance within the implemented shortcut boundary', () => {
+    const readme = repositoryFile('README.md').replace(/\s+/g, ' ');
+
+    expect(readme).toContain(
+      'Inkspan applies one link policy to initial content, toolbar commands, pasted/autolinked URLs',
+    );
+    expect(readme).not.toContain('toolbar and Ctrl/Cmd+K commands');
+  });
+
   it('records current standards evidence and release traceability', () => {
     const accessibility = repositoryFile('docs/accessibility.md');
     const doctoring = repositoryFile(
