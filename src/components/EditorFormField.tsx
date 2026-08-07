@@ -27,13 +27,15 @@ export interface EditorFormFieldProps {
  * higher-level TipTap update event. The field's native value is written
  * synchronously before returning from each document transaction, so immediate
  * `FormData` construction or browser submission cannot observe a React-batched
- * stale value. Before hydration creates the editor, an explicitly configured
- * standalone field retains the selected prop value rendered by the server.
- * Every named field restores its live serialized value after the browser's
- * native reset algorithm so a reset cannot silently desynchronize FormData from
- * an editor that the host chose not to reset. Reset-only unnamed fields skip
- * document serialization entirely. A configured host reset observer is invoked
- * in the same next-task boundary, after native dispatch and reset processing.
+ * stale value. During SSR-to-client handoff, the selected server value remains
+ * the native field's default until TipTap reports that its document has been
+ * initialized; the create event then establishes editor authority without a
+ * transient empty submission value. Every named field restores its live
+ * serialized value after the browser's native reset algorithm so a reset cannot
+ * silently desynchronize FormData from an editor that the host chose not to
+ * reset. Reset-only unnamed fields skip document serialization entirely. A
+ * configured host reset observer is invoked in the same next-task boundary,
+ * after native dispatch and reset processing.
  */
 export function EditorFormField({
   editor,
@@ -75,9 +77,11 @@ export function EditorFormField({
       if (transaction.docChanged) synchronizeValue();
     };
 
-    synchronizeValue();
+    if (editor.isInitialized !== false) synchronizeValue();
+    editor.on('create', synchronizeValue);
     editor.on('transaction', handleTransaction);
     return () => {
+      editor.off('create', synchronizeValue);
       editor.off('transaction', handleTransaction);
     };
   }, [editor, initialValue, mode, name]);
@@ -119,7 +123,7 @@ export function EditorFormField({
       name={name}
       form={formId}
       disabled={disabled}
-      defaultValue={name === undefined || editor ? undefined : initialValue}
+      defaultValue={name === undefined ? undefined : initialValue}
       data-inkspan-form-field=""
     />
   );
