@@ -80,6 +80,8 @@ Disabled table, image, undo, and redo controls are skipped by directional naviga
 
 Toggle controls expose `aria-pressed`; one-shot command buttons do not claim a pressed state. The toolbar declares horizontal orientation and ships visible `:focus-visible` styling, including a forced-colors fallback.
 
+Shortcuts that the editor already implements are also exposed programmatically with `aria-keyshortcuts` so assistive technology can discover the same commands that appear in the button titles. Inkspan publishes `Control+B Meta+B` for bold, `Control+I Meta+I` for italic, `Control+K Meta+K` for link editing, `Control+Z Meta+Z` for undo, and `Control+Shift+Z Meta+Shift+Z` for redo. `aria-keyshortcuts` describes shortcuts that Inkspan already implements; it does not create keyboard behavior, replace the visible button label, or authorize hosts to intercept those combinations. The explicit values remain `Control` and `Meta` rather than a presentation-only `Ctrl/Cmd` abbreviation because WAI-ARIA defines those modifier tokens and permits a space-separated list of alternatives.
+
 ## Host responsibilities
 
 Inkspan cannot determine the complete accessibility of an embedding application. Hosts remain responsible for:
@@ -95,8 +97,8 @@ Inkspan cannot determine the complete accessibility of an embedding application.
 - identifying errors in text, supplying known correction guidance, and synchronizing `ariaInvalid` with the visible validation state;
 - preserving sufficient contrast when overriding Inkspan CSS variables;
 - announcing persistence and network failures in an appropriate live region;
-- ensuring surrounding dialogs, forms, and application shortcuts do not trap or steal focus;
-- testing the integrated workflow with representative browsers, screen readers, zoom levels, scripts, writing directions, and input methods.
+- ensuring surrounding dialogs, forms, and application shortcuts do not trap or steal focus, suppress Inkspan's advertised shortcuts, or bind conflicting actions without an equivalent accessible command;
+- testing the integrated workflow with representative browsers, screen readers, zoom levels, scripts, writing directions, input methods, and advertised keyboard shortcuts.
 
 ## Standards basis
 
@@ -107,10 +109,11 @@ Inkspan cannot determine the complete accessibility of an embedding application.
 - [HTML Living Standard: resetting a form](https://html.spec.whatwg.org/multipage/form-control-infrastructure.html#resetting-a-form) — the bubbling, cancelable reset event and resettable-control algorithm.
 - [React: queueing state updates](https://react.dev/learn/queueing-a-series-of-state-updates) — state setters request a later render and React batches updates until event handling completes.
 - [WAI-ARIA 1.2 textbox role](https://www.w3.org/TR/wai-aria/#textbox) — accessible name, multiline, readonly, required, invalid, description, and error-message states.
+- [WAI-ARIA 1.2 `aria-keyshortcuts`](https://www.w3.org/TR/wai-aria-1.2/#aria-keyshortcuts) — programmatic exposure of implemented shortcuts, exact modifier tokens, plus-separated key combinations, and space-separated alternatives.
 - [WAI-ARIA APG: Accessible names and descriptions](https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions/) — visible-label preference and `aria-labelledby`/`aria-describedby` relationships.
 - [WCAG 2.2, Guideline 3.3 Input Assistance](https://www.w3.org/TR/WCAG22/#input-assistance) — labels or instructions, textual error identification, and correction suggestions.
 - [ARIA in HTML](https://www.w3.org/TR/html-aria/) — valid readonly semantics for custom contenteditable textboxes.
 
 ## Verification
 
-The TypeScript test suite verifies the single-tab-stop invariant, remembered focus, disabled-control fallback, wrapping arrow navigation, Home/End behavior, toggle semantics, toolbar orientation, accessible-name precedence, blank language and ID-reference omission, `lang`/`dir` propagation, validation states, read-only semantics, native form submission, same-task form-entry synchronization, disabled/external form behavior, live serialization-mode changes, imperative replacement, allowed and canceled standalone resets, reset-only form ownership, unrelated-form isolation, callback-only reset handling, queued-reset cleanup, collaborative automatic-reset rejection, collaborative callback-only observation without shared-state mutation, collaborative updates, and live prop updates for standalone and collaborative surfaces under the repository-wide 100% statement/branch/function/line coverage gate.
+The TypeScript test suite verifies the single-tab-stop invariant, remembered focus, disabled-control fallback, wrapping arrow navigation, Home/End behavior, toggle semantics, toolbar orientation, exact `aria-keyshortcuts` exposure for every advertised cross-platform formatting/history shortcut, omission of shortcut metadata from controls without a defined shortcut, accessible-name precedence, blank language and ID-reference omission, `lang`/`dir` propagation, validation states, read-only semantics, native form submission, same-task form-entry synchronization, disabled/external form behavior, live serialization-mode changes, imperative replacement, allowed and canceled standalone resets, reset-only form ownership, unrelated-form isolation, callback-only reset handling, queued-reset cleanup, collaborative automatic-reset rejection, collaborative callback-only observation without shared-state mutation, collaborative updates, and live prop updates for standalone and collaborative surfaces under the repository-wide 100% statement/branch/function/line coverage gate.
