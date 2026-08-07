@@ -8,9 +8,15 @@ function repositoryFile(path: string): string {
   return readFileSync(resolve(process.cwd(), path), 'utf8');
 }
 
+/** Collapse prose whitespace so documentation wrapping does not weaken contracts. */
+function normalizeProse(value: string): string {
+  return value.replace(/\s+/gu, ' ').trim();
+}
+
 describe('autosave lifecycle observation documentation', () => {
   it('documents the bounded observer, privacy boundary, accessibility duty, and rollback', () => {
     const guide = repositoryFile('docs/document-autosave.md');
+    const normalizedGuide = normalizeProse(guide);
     const doctoring = repositoryFile(
       'docs/doctoring/autosave-lifecycle-observation.md',
     );
@@ -18,10 +24,10 @@ describe('autosave lifecycle observation documentation', () => {
 
     expect(guide).toContain('## Observe lifecycle without polling');
     expect(guide).toContain('onSnapshotChange');
-    expect(guide).toContain('does not invoke it during construction');
-    expect(guide).toContain('observer is not a durable audit log');
-    expect(guide).toContain('accessible status-message pattern');
-    expect(guide).toContain('high-cardinality public metric labels');
+    expect(normalizedGuide).toContain('does not invoke it during construction');
+    expect(normalizedGuide).toContain('observer is not a durable audit log');
+    expect(normalizedGuide).toContain('accessible status-message pattern');
+    expect(normalizedGuide).toContain('high-cardinality public metric labels');
     expect(doctoring).toContain('## Evidence boundary');
     expect(doctoring).toContain('## Accessibility boundary');
     expect(doctoring).toContain('## Rollback');
