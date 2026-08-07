@@ -39,6 +39,43 @@ describe('EditorFormField SSR-to-editor handoff', () => {
     expect(nativeField(container).value).toBe('# Updated before hydration');
   });
 
+  it('keeps the server value until a delayed TipTap create event becomes authoritative', () => {
+    let editorHtml = '';
+    let createListener: (() => void) | undefined;
+    const editor = {
+      isInitialized: false,
+      getHTML: vi.fn(() => editorHtml),
+      on: vi.fn((event: string, listener: () => void) => {
+        if (event === 'create') createListener = listener;
+      }),
+      off: vi.fn(),
+    } as unknown as Editor;
+    const { container, rerender } = render(
+      <EditorFormField
+        editor={null}
+        mode="markdown"
+        name="message_body"
+        initialValue="# Server draft"
+      />,
+    );
+
+    rerender(
+      <EditorFormField
+        editor={editor}
+        mode="markdown"
+        name="message_body"
+        initialValue="# Server draft"
+      />,
+    );
+
+    expect(nativeField(container).value).toBe('# Server draft');
+
+    editorHtml = '<h1>Client draft</h1>';
+    createListener?.();
+
+    expect(nativeField(container).value).toContain('# Client draft');
+  });
+
   it('restores the live editor value after an unhandled native form reset', async () => {
     let editorHtml = '<p>Initial</p>';
     let transactionListener:
