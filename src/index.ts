@@ -73,6 +73,13 @@ export {
 } from './documentRevisionEvidence.js';
 export type { CwlEditorDocumentRevisionEvidence } from './documentRevisionEvidence.js';
 export {
+  DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_ID,
+  DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_VERSION,
+  createDocumentEnvelopeTransitionEvidence,
+  createDocumentEnvelopeTransitionEvidenceBytes,
+} from './documentTransitionEvidence.js';
+export type { CwlEditorDocumentTransitionEvidence } from './documentTransitionEvidence.js';
+export {
   DocumentEnvelopeRestoreError,
   restoreDocumentEnvelope,
   restoreDocumentEnvelopeBytes,
