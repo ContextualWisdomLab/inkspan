@@ -39,6 +39,52 @@ describe('EditorFormField SSR-to-editor handoff', () => {
     expect(nativeField(container).value).toBe('# Updated before hydration');
   });
 
+  it('keeps prop updates authoritative while a TipTap instance is not initialized', async () => {
+    let editorHtml = '';
+    let createListener: (() => void) | undefined;
+    const editor = {
+      isInitialized: false,
+      getHTML: vi.fn(() => editorHtml),
+      on: vi.fn((event: string, listener: () => void) => {
+        if (event === 'create') createListener = listener;
+      }),
+      off: vi.fn(),
+    } as unknown as Editor;
+    const { container, rerender } = render(
+      <form>
+        <EditorFormField
+          editor={editor}
+          mode="markdown"
+          name="message_body"
+          initialValue="# Server draft"
+        />
+      </form>,
+    );
+
+    rerender(
+      <form>
+        <EditorFormField
+          editor={editor}
+          mode="markdown"
+          name="message_body"
+          initialValue="# Updated before create"
+        />
+      </form>,
+    );
+
+    expect(nativeField(container).value).toBe('# Updated before create');
+
+    const form = container.querySelector('form');
+    if (!form) throw new Error('Focused form fixture was not rendered');
+    form.reset();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    expect(nativeField(container).value).toBe('# Updated before create');
+
+    editorHtml = '<h1>Client draft</h1>';
+    createListener?.();
+    expect(nativeField(container).value).toContain('# Client draft');
+  });
+
   it('keeps the server value until a delayed TipTap create event becomes authoritative', () => {
     let editorHtml = '';
     let createListener: (() => void) | undefined;
