@@ -309,10 +309,10 @@ if (transition.changed) {
 }
 ```
 
-`createDocumentEnvelopeTransitionEvidence` validates and hashes the previous
-envelope first and the resulting envelope second. It returns a frozen schema
-object containing only the two local SHA-256 revision contracts and `changed`.
-Use `createDocumentEnvelopeTransitionEvidenceJson()` for envelope JSON text or
+`createDocumentEnvelopeTransitionEvidence` accepts envelope objects or JSON text,
+validates both sources before hashing, and derives the previous revision before
+the resulting revision. It returns a frozen schema object containing only the
+two local SHA-256 revision contracts and `changed`. Use
 `createDocumentEnvelopeTransitionEvidenceBytes()` for strict UTF-8 bytes.
 
 This evidence proves deterministic local canonical-content equality only. It
