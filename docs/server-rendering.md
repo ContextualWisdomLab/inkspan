@@ -30,16 +30,19 @@ mismatches caused by constructing an editor view during server rendering.
 
 `CwlEditor` selects a controlled `value` before `defaultValue`, exactly as it
 does for the initial editor document. If `formFieldName` is configured, that
-selected value is supplied through React's `defaultValue` contract to the hidden
-input. React escapes HTML attribute syntax; HTML-mode content remains an
-ordinary string value rather than becoming page markup.
+selected value is supplied to a `readOnly` controlled hidden input. React escapes
+HTML attribute syntax; HTML-mode content remains an ordinary string value rather
+than becoming page markup.
 
-The same selected value is rendered on the server and during the first client
+The same controlled value is rendered on the server and during the first client
 render, satisfying React's requirement that initial hydration output match.
-Until TipTap exists, the native field retains that value. Once the editor is
-created, Inkspan's transaction listener serializes the authoritative document
-directly into `HTMLInputElement.value` before each document-changing transaction
-returns, preserving immediate `FormData` construction and browser submission.
+Until TipTap exists, prop updates remain authoritative for the native field. Once
+the editor is initialized, Inkspan's transaction listener records the current
+serialization in the shared value ref and writes it directly into
+`HTMLInputElement.value` before each document-changing transaction returns.
+Subsequent React renders consume that same serialized value, preserving immediate
+`FormData` construction and browser submission without restoring stale initial
+content.
 
 A hidden field is not a secrecy control. Its content is visible in the response,
 page source, DOM, browser tools, and submitted request. Treat it as
