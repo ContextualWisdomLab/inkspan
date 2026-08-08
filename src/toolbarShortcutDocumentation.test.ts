@@ -26,14 +26,14 @@ describe('toolbar shortcut accessibility documentation', () => {
     );
   });
 
-  it('keeps buyer-facing README link guidance aligned with the implemented shortcut boundary', () => {
+  it('keeps buyer-facing README link guidance within the validated command boundary', () => {
     const readme = repositoryFile('README.md').replace(/\s+/g, ' ');
 
     expect(readme).toContain(
       'Inkspan applies one link policy to initial content, toolbar commands, pasted/autolinked URLs',
     );
-    expect(readme).toContain(
-      'Ctrl/Cmd+K opens the same validated link command from the editor surface',
+    expect(readme).not.toContain(
+      'Tiptap Link extension implements Ctrl/Cmd+K',
     );
   });
 
@@ -54,7 +54,7 @@ describe('toolbar shortcut accessibility documentation', () => {
     expect(doctoring).toContain(
       'Inkspan implements `Control+K Meta+K` at the editor-surface level',
     );
-    expect(doctoring).toContain('buyer-facing README');
+    expect(doctoring).toContain('buyer-facing documentation');
     expect(doctoring).toContain('Tiptap. (n.d.). *Link extension*');
     expect(doctoring).toContain('Tiptap. (n.d.). *Undo/Redo extension*');
     expect(doctoring).toContain('Control+Y Meta+Y');
