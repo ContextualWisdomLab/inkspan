@@ -61,13 +61,13 @@ describe('toolbar shortcut accessibility semantics', () => {
     );
   });
 
-  it('does not advertise a link shortcut that the configured Link extension does not implement', () => {
+  it('exposes the editor-surface link shortcut implemented by EditorFrame', () => {
     const editor = makeEditor();
 
     render(<Toolbar editor={editor} />);
 
     const linkButton = screen.getByRole('button', { name: /Insert\/edit link/ });
-    expect(linkButton).not.toHaveAttribute('aria-keyshortcuts');
-    expect(linkButton).not.toHaveAttribute('title', expect.stringContaining('Ctrl/Cmd+K'));
+    expect(linkButton).toHaveAttribute('aria-keyshortcuts', 'Control+K Meta+K');
+    expect(linkButton).toHaveAttribute('title', 'Insert/edit link (Ctrl/Cmd+K)');
   });
 });
