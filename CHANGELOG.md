@@ -6,6 +6,13 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Accessibility
+- Added programmatic toolbar shortcut discoverability with WAI-ARIA `aria-keyshortcuts` for the implemented bold, italic, link, undo, and redo commands, preserving the same native-button behavior, visible labels, roving focus model, and host-owned shortcut-conflict policy
+- Completed redo shortcut metadata with `Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y`, matching the configured Tiptap history and collaboration behavior and exposing both `Ctrl/Cmd+Shift+Z` and `Ctrl/Cmd+Y` alternatives without adding new key handling
+- Corrected extension-scoped review evidence after exact-head repository review found the existing editor-surface `Ctrl/Cmd+K` link binding in `EditorFrame`; the link button now truthfully exposes `Control+K Meta+K` while the Tiptap Link extension itself remains documented as having no default shortcut
+- Preserved buyer-facing README guidance within the same validated safe-link command boundary and moved the shortcut-specific behavior contract to the authoritative accessibility and doctoring records so it is not misattributed to Tiptap
+- Added deterministic regression and documentation contracts plus APA 7th doctoring for exact `Control`/`Meta` shortcut alternatives, the descriptive-only accessibility boundary, repository-level shortcut verification, and omission of unsupported shortcut claims
+
 ### Documentation
 - Added an authoritative standalone and modular MSA architecture contract with reviewable deployment, optimistic-concurrency, data-ownership, security, and acquisition-evidence diagrams and tables
 - Added a beginner-readable naruon compose and ui.panel integration guide covering narrow client hydration, server-selected strong validators, accessible conflict handling, host-owned Yjs lifecycle, contextual-orchestrator boundaries, and local-versus-shareable evidence
