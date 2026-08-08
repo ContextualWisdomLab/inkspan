@@ -349,7 +349,7 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
           title="Delete row"
           label="┼↑✕"
           disabled={!inTable}
-          onClick={() => editor.chain().focus().deleteRowAfter().run()}
+          onClick={() => editor.chain().focus().deleteRow().run()}
         />
         <ToolbarButton
           title="Delete table"
