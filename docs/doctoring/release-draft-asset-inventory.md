@@ -1,6 +1,6 @@
 # Doctoring record: exact draft release asset inventory
 
-**Decision date:** 2026-08-07  
+**Decision date:** 2026-08-07
 **Scope:** GitHub Release publication only; no Inkspan runtime, editor, persistence, collaboration, provider, tenant, credential, or database behavior changes.
 
 ## Problem
