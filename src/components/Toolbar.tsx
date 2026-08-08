@@ -310,8 +310,9 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
 
       <div className="cwl-tb-group">
         <ToolbarButton
-          title="Insert/edit link"
+          title="Insert/edit link (Ctrl/Cmd+K)"
           label="🔗"
+          keyShortcuts="Control+K Meta+K"
           active={editor.isActive('link')}
           onClick={setLink}
         />
@@ -348,7 +349,7 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
           title="Delete row"
           label="┼↑✕"
           disabled={!inTable}
-          onClick={() => editor.chain().focus().deleteRow().run()}
+          onClick={() => editor.chain().focus().deleteRowAfter().run()}
         />
         <ToolbarButton
           title="Delete table"
