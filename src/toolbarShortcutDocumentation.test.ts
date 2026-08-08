@@ -13,7 +13,7 @@ describe('toolbar shortcut accessibility documentation', () => {
     expect(accessibility).toContain('`aria-keyshortcuts`');
     expect(accessibility).toContain('`Control+B Meta+B`');
     expect(accessibility).toContain('`Control+I Meta+I`');
-    expect(accessibility).not.toContain('`Control+K Meta+K`');
+    expect(accessibility).toContain('`Control+K Meta+K`');
     expect(accessibility).toContain('`Control+Z Meta+Z`');
     expect(accessibility).toContain(
       '`Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y`',
@@ -22,17 +22,19 @@ describe('toolbar shortcut accessibility documentation', () => {
       'describes shortcuts that Inkspan already implements; it does not create keyboard behavior',
     );
     expect(accessibility).toContain(
-      'The link control intentionally does not advertise a keyboard shortcut',
+      'The link shortcut is implemented by Inkspan\'s editor surface',
     );
   });
 
-  it('keeps buyer-facing README link guidance within the implemented shortcut boundary', () => {
+  it('keeps buyer-facing README link guidance aligned with the implemented shortcut boundary', () => {
     const readme = repositoryFile('README.md').replace(/\s+/g, ' ');
 
     expect(readme).toContain(
       'Inkspan applies one link policy to initial content, toolbar commands, pasted/autolinked URLs',
     );
-    expect(readme).not.toContain('toolbar and Ctrl/Cmd+K commands');
+    expect(readme).toContain(
+      'Ctrl/Cmd+K opens the same validated link command from the editor surface',
+    );
   });
 
   it('records current standards evidence and release traceability', () => {
@@ -50,16 +52,16 @@ describe('toolbar shortcut accessibility documentation', () => {
     expect(doctoring).toContain('Accessible Rich Internet Applications (WAI-ARIA) 1.2');
     expect(doctoring).toContain('Toolbar pattern');
     expect(doctoring).toContain(
-      'The configured Tiptap Link extension does not bind a keyboard shortcut',
+      'Inkspan implements `Control+K Meta+K` at the editor-surface level',
     );
     expect(doctoring).toContain('buyer-facing README');
     expect(doctoring).toContain('Tiptap. (n.d.). *Link extension*');
     expect(doctoring).toContain('Tiptap. (n.d.). *Undo/Redo extension*');
     expect(doctoring).toContain('Control+Y Meta+Y');
-    expect(doctoring).toContain('57f5ef8e21f8351fa04c122e700b43777c9ea57e');
-    expect(doctoring).toContain('e89f51e87e84552247c7080aa61800c7da813e40');
+    expect(doctoring).toContain('8790b4e50bced266b38763c6301097aaeb775e4b');
+    expect(doctoring).toContain('920fdb25c21022186acdf9782da6a16bb160a41d');
     expect(changelog).toContain('programmatic toolbar shortcut discoverability');
-    expect(changelog).toContain('unimplemented link shortcut claim');
+    expect(changelog).toContain('editor-surface `Ctrl/Cmd+K` link binding');
     expect(changelog).toContain('buyer-facing README guidance');
     expect(changelog).toContain('Control+Y Meta+Y');
   });
