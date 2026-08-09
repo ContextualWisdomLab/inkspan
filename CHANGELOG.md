@@ -10,6 +10,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Added the selected standalone Markdown or HTML value to an explicitly configured SSR native form field, preserving controlled-value precedence, external form association, React attribute escaping, and the synchronous post-hydration TipTap transaction mirror
 
 ### Security
+- Added a fail-closed draft release asset inventory gate that requires exactly one npm tarball, one Office wheel, and `SHA256SUMS`, rejects stale or unexpected draft assets before immutable publication, and verifies every GitHub-reported `sha256:` asset digest against the transferred local file
 - Kept SSR document disclosure opt-in through `formFieldName`; hidden-field values remain client-controlled submission data and do not replace host authentication, authorization, tenant isolation, CSRF defenses, server validation, durable concurrency, or persistence controls
 - Kept collaborative Yjs document content out of server markup until the host-owned client collaboration lifecycle is bound
 
