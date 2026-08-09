@@ -106,7 +106,9 @@ python -m pip wheel . --no-deps --wheel-dir dist
 
 The suite re-opens every rendered format with its native library and verifies
 byte-for-byte deterministic output. CI installs runtime and test dependencies
-from `requirements-ci.txt` with wheel hashes on minimum Python 3.11 and current
-stable Python 3.14, enforces 100% statement/branch and shipped-symbol docstring
-coverage, then builds and inspects the distributable wheel. Code and all three
-direct runtime dependencies are MIT-licensed.
+from `requirements-ci.txt` with wheel hashes and executes the complete Office
+matrix on Python 3.11, Python 3.12, Python 3.13, and Python 3.14. The package
+metadata rejects unverified Python 3.15+ installs until that runtime is added to
+the tested support matrix. CI enforces 100% statement/branch and shipped-symbol
+docstring coverage, then builds and inspects the distributable wheel. Code and
+all three direct runtime dependencies are MIT-licensed.
