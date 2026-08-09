@@ -16,6 +16,10 @@ This index records durable architectural decisions. Protected-main implementatio
 | [0008](0008-deterministic-office-rendering.md) | Proposed | Deterministic Office rendering boundary |
 | [0009](0009-naruon-modular-composition.md) | Proposed | Naruon modular composition without product coupling |
 | [0010](0010-release-evidence-authority.md) | Proposed | Release evidence authority |
+| [0011](0011-deterministic-vs-model-assisted-authoring.md) | Proposed | Deterministic conversion versus model-assisted authoring |
+| [0012](0012-spreadsheet-formula-injection.md) | Proposed | Spreadsheet formula-injection handling |
+| [0013](0013-atomic-file-publication.md) | Proposed | Atomic file publication and explicit overwrite semantics |
+| [0014](0014-local-assets-font-licensing.md) | Proposed | Local assets and font-licensing boundary |
 
 ## Decision discipline
 
@@ -27,13 +31,16 @@ An ADR cannot promote an unmerged feature to shipped behavior. When a decision c
 
 ## ADR quality requirements
 
-Every material ADR records:
+Every material ADR records explicit sections for:
 
 1. context and the problem boundary;
-2. the selected decision and rejected authority expansion or alternative where material;
-3. consequences and ownership trade-offs;
-4. failure and recovery semantics;
-5. verification/acceptance evidence; and
-6. rollback or explicit supersession conditions.
+2. materially distinct alternatives considered;
+3. the selected decision;
+4. consequences and ownership trade-offs;
+5. failure and recovery semantics;
+6. security and privacy impact;
+7. compatibility and migration behavior;
+8. verification/acceptance evidence; and
+9. rollback or explicit supersession conditions.
 
-Security/privacy, compatibility, migration, accessibility, operability, and release implications belong in those sections when relevant. Canonical PRD, TRD, Architecture, UML, data/evidence model, threat model, test strategy, operability, and traceability documents must remain synchronized with Accepted decisions.
+Accessibility, operability, research/standards traceability, and release implications are included wherever the decision affects them. Canonical PRD, TRD, Architecture, contracts, UML, data/evidence model, threat model, test strategy, operability, and traceability documents must remain synchronized with Accepted decisions.
