@@ -243,20 +243,21 @@ as the third argument.
 ## DOM capability failures
 
 The optional explicit `Document` is a runtime capability, not a trusted type
-assertion. Inkspan treats property access itself as executable behavior:
-accessors, proxies, revoked proxies, or reflection failures while selecting the
-ambient document or reading `createElement` or
-`implementation.createHTMLDocument` fail closed with `dom_unavailable`. The
-original exception is not returned, logged, persisted, or forwarded to the host
-observer.
+assertion. Inkspan treats property access and inert-document establishment as
+executable behavior: accessors, proxies, revoked proxies, reflection failures
+while selecting the ambient document or reading `createElement` or
+`implementation.createHTMLDocument`, and failures while invoking
+`createHTMLDocument()` fail closed with `dom_unavailable`. The original exception
+is not returned, logged, persisted, or forwarded to the host observer.
 
-After those capabilities have been resolved safely, unexpected inert-document
-creation, parsing, reconstruction, DOM mutation, or serialization failures remain
+Inert-document creation failures remain `dom_unavailable` because parsing cannot
+begin until that capability has succeeded. Once a usable inert document exists,
+parsing, reconstruction, DOM mutation, or serialization failures remain
 `invalid_html`. This preserves a stable operator distinction between unavailable
-or hostile DOM capability and a failure after parsing begins without exposing
-which property, adapter, proxy, tenant, or private exception caused rejection.
-See `docs/doctoring/dom-capability-reflection-redaction.md` for test-first
-evidence, standards interpretation, residual risk, and rollback.
+or hostile DOM capability and failure while processing clipboard HTML, without
+exposing which property, adapter, proxy, factory, tenant, or private exception
+caused rejection. See `docs/doctoring/dom-capability-reflection-redaction.md` for
+test-first evidence, standards interpretation, residual risk, and rollback.
 
 ## Browser evidence boundary
 
