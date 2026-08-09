@@ -82,4 +82,21 @@ describe('canonical architecture decision coverage', () => {
     expect(dataModel).toContain('does **not** own an application database');
     expect(dataModel).toContain('physical database ERD');
   });
+
+  it('keeps autonomous maintenance work-conserving without making it product runtime', () => {
+    const agents = repositoryFile('AGENTS.md');
+    const claude = repositoryFile('CLAUDE.md');
+    const fitness = repositoryFile('docs/DOCUMENTATION_FITNESS.md');
+
+    for (const guidance of [agents, claude]) {
+      expect(guidance).toContain('work-conserving');
+      expect(guidance).toContain('blocked PR blocks only that lane');
+      expect(guidance).toContain('status report');
+      expect(guidance).toContain('external scheduler');
+    }
+
+    expect(fitness).toContain('Autonomous maintenance governance');
+    expect(fitness).toContain('out_of_scope');
+    expect(fitness).toContain('external scheduler');
+  });
 });
