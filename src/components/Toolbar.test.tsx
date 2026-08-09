@@ -119,7 +119,7 @@ describe('Toolbar', () => {
       ).filter((button) => !button.disabled);
       const lastEnabled = enabledButtons[enabledButtons.length - 1]!;
 
-      bold.focus();
+      fireEvent.focus(bold);
       fireEvent.keyDown(bold, { key: 'ArrowRight' });
       expect(italic).toHaveFocus();
 
@@ -135,7 +135,7 @@ describe('Toolbar', () => {
       fireEvent.keyDown(lastEnabled, { key: 'Home' });
       expect(bold).toHaveFocus();
 
-      insertTable.focus();
+      fireEvent.focus(insertTable);
       fireEvent.keyDown(insertTable, { key: 'ArrowRight' });
       expect(insertImage).toHaveFocus();
 
@@ -151,7 +151,7 @@ describe('Toolbar', () => {
       const insertImage = screen.getByRole('button', {
         name: /Insert inline \(base64\) image/,
       });
-      insertImage.focus();
+      fireEvent.focus(insertImage);
       expect(insertImage).toHaveAttribute('tabindex', '0');
       expect(bold).toHaveAttribute('tabindex', '-1');
 
@@ -169,7 +169,7 @@ describe('Toolbar', () => {
       });
       const deleteTable = screen.getByRole('button', { name: /Delete table/ });
       await waitFor(() => expect(deleteTable).not.toBeDisabled());
-      deleteTable.focus();
+      fireEvent.focus(deleteTable);
       expect(deleteTable).toHaveAttribute('tabindex', '0');
 
       await act(async () => {
