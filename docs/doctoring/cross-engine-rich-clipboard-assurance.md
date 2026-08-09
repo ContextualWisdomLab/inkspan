@@ -6,7 +6,7 @@ Status: Implemented on active PR
 
 Inkspan's SafeClipboard runtime is already integrated on protected `main`, but HTML fragment parsing, DOM reconstruction, CSS interpretation, serialization, and ProseMirror parsing are browser semantics. jsdom remains useful deterministic unit evidence; it is not real-engine conformance. The 0.6.0 rich-clipboard publication boundary therefore requires the same committed synthetic fixtures to execute through the supported TipTap/ProseMirror paste path in real Chromium, Firefox, and WebKit on one exact source head.
 
-This active implementation uses **Playwright 1.62.0** from the isolated `tests/browser/pnpm-lock.yaml`. That pinned Playwright release identifies Chromium 151.0.7922.34, Firefox 153, and WebKit 26.5 as its bundled browser versions. The CI evidence records the actual `browser.version()` value for each engine, the Playwright version, operating-system identity, corpus version, SHA-256 of the browser-test `pnpm-lock.yaml`, the exact source head, one fresh browser-run identity, and—on the release path—the SHA-256 of the exact packed npm artifact under test. Those observed values, rather than this prose, are the release evidence when a browser revision changes.
+This active implementation uses **Playwright 1.62.0** from the isolated `tests/browser/pnpm-lock.yaml`. The official Playwright **Release notes: Version 1.62** identify Chromium 151.0.7922.34, Mozilla Firefox 153.0, and WebKit 26.5 as the bundled browser versions for that release. The CI evidence records the actual `browser.version()` value for each engine, the Playwright version, operating-system identity, corpus version, SHA-256 of the browser-test `pnpm-lock.yaml`, the exact source head, one fresh browser-run identity, and—on the release path—the SHA-256 of the exact packed npm artifact under test. Those observed values, rather than this prose, are the release evidence when a browser revision changes.
 
 ## Test-first evidence
 
@@ -51,6 +51,8 @@ Passing these projects proves the committed SafeClipboard corpus and supported p
 ## References
 
 Microsoft. (2026). *Playwright Test 1.62.0*. npm. https://www.npmjs.com/package/@playwright/test/v/1.62.0
+
+Microsoft. (2026). *Release notes: Version 1.62*. Playwright. Retrieved August 10, 2026, from https://playwright.dev/docs/release-notes
 
 Microsoft. (n.d.-a). *Browsers*. Playwright documentation. Retrieved August 10, 2026, from https://playwright.dev/docs/browsers
 
