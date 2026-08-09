@@ -1,11 +1,8 @@
+import { Editor } from '@tiptap/core';
 import { describe, expect, it } from 'vitest';
-import {
-  DEFAULT_CLIPBOARD_HTML_BYTES,
-  DEFAULT_CLIPBOARD_MAX_DEPTH,
-  DEFAULT_CLIPBOARD_MAX_NODES,
-  SafeClipboard,
-  sanitizeRichClipboardHtml,
-} from './SafeClipboard.js';
+import { sanitizeRichClipboardHtml } from './SafeClipboard.js';
+import { safeClipboardPluginKey } from './SafeClipboardExtension.js';
+import { buildExtensions } from './kit.js';
 
 /**
  * Build the smallest DOM-capable test double whose source text node reports a
@@ -78,19 +75,30 @@ describe('SafeClipboard residual fail-closed branches', () => {
     ).toBe('');
   });
 
-  it('validates a preserved nested configuration at transform time', () => {
-    const configured = SafeClipboard.configure({
-      config: { maxHtmlBytes: 10 },
-      maxHtmlBytes: DEFAULT_CLIPBOARD_HTML_BYTES,
-      maxNodes: DEFAULT_CLIPBOARD_MAX_NODES,
-      maxDepth: DEFAULT_CLIPBOARD_MAX_DEPTH,
-      document,
+  it('validates preserved nested configuration through the real ProseMirror path', () => {
+    const editor = new Editor({
+      element: document.createElement('div'),
+      extensions: buildExtensions({
+        clipboard: { maxHtmlBytes: 10 },
+      }),
+      content: '',
     });
-    const transform = configured.config.transformPastedHTML?.bind({
-      options: configured.options,
-    } as never);
 
-    expect(transform?.('<b>x</b>')).toBe('<strong>x</strong>');
-    expect(transform?.('<p>this is too large</p>')).toBe('');
+    try {
+      let transformed = '<b>x</b>';
+      editor.view.someProp('transformPastedHTML', (transform) => {
+        transformed = transform(transformed, editor.view);
+      });
+      expect(transformed).toBe('<strong>x</strong>');
+
+      transformed = '<p>this is too large</p>';
+      editor.view.someProp('transformPastedHTML', (transform) => {
+        transformed = transform(transformed, editor.view);
+      });
+      expect(transformed).toBe('');
+      expect(safeClipboardPluginKey.get(editor.state)).toBeTruthy();
+    } finally {
+      editor.destroy();
+    }
   });
 });
