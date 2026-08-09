@@ -64,6 +64,17 @@ describe('cross-engine clipboard documentation contract', () => {
     expect(doctoring).toContain('no tenant document');
   });
 
+  it('documents operator-verifiable packed artifact and retained evidence semantics', () => {
+    const operability = documentText('docs/OPERABILITY.md');
+
+    expect(operability).toContain('packed npm artifact');
+    expect(operability).toContain('SHA-256');
+    expect(operability).toContain('.browser-evidence');
+    expect(operability).toContain('fresh run identity');
+    expect(operability).toContain('Playwright screenshots');
+    expect(operability).toContain('test-results');
+  });
+
   it('records browser maturity in the exact canonical and changelog entries', () => {
     const fitness = repositoryFile('docs/DOCUMENTATION_FITNESS.md');
     const changelog = repositoryFile('CHANGELOG.md');
