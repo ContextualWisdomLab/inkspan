@@ -47,7 +47,8 @@ Document fitness and implementation maturity are independent. A `present_current
 | TEST_STRATEGY | `docs/TEST_STRATEGY.md` | `present_current` | Current deterministic evidence plus `planned` cross-engine acceptance where dependency order requires it | Test authority and claim limits are explicit rather than inferred from CI badges. |
 | OPERABILITY | `docs/OPERABILITY.md` | `present_current` | Current local/product responsibilities plus host-owned recovery boundaries | Conflict, collaboration, conversion and release recovery/rollback ownership are explicit. |
 | Release / rollback / provenance | TRD, OPERABILITY and release ADRs | `present_current` | Mix of `implemented_on_protected_main` and active hardening | Exact-source release authority, stale-evidence rejection and rollback are reconstructable. |
-| Migration/version routing | envelope contracts, TRD, DATA_MODEL and tracked migration-routing work | `partial` | Current parser is strict; bounded identity-only migration routing is `planned` | Host migration ownership is clear, but the public migration-routing aid remains a product gap until implemented and integrated. |
+| Envelope schema identity / migration routing | ADR 0015, PRD, TRD, DATA_MODEL and Issue #74 | `present_current` | Identity-only routing capability is `planned`; strict current-schema parsing and host migration ownership remain authoritative | The architecture now distinguishes bounded schema identification from host-owned migration execution without calling the planned API shipped. |
+| Cross-engine browser-semantic release assurance | ADR 0016, UML, TEST_STRATEGY, TRACEABILITY and Issue #66 | `present_current` | Differential Chromium/Firefox/WebKit release gate is `planned` behind PR #65 | Browser-realistic security assurance is a durable release decision even though its implementation remains dependency-ordered future work. |
 | TRACEABILITY | `docs/TRACEABILITY.md` | `present_current` | Links standards/research/requirements to decisions and evidence with scoped claims | Acquisition reviewers can distinguish evidence from aspiration. |
 | Contributor/agent authority | `AGENTS.md`, `CLAUDE.md`, `docs/README.md` | `present_current` | Protected-main-first decision discipline | Agents are directed back to the same canonical graph rather than parallel private memory. |
 
@@ -63,8 +64,12 @@ The canonical graph must retain durable product decisions from the project conve
 - naruon `compose` / `ui.panel` modular integration without making naruon a standalone runtime dependency;
 - model assistance as untrusted proposed content rather than conversion or persistence authority;
 - accessibility, keyboard, print/export and document-fidelity evidence boundaries;
-- host ownership of transport, identity, authorization, tenancy, persistence, credentials, migration, retention, deployment, durable audit and model policy; and
+- host ownership of transport, identity, authorization, tenancy, persistence, credentials, migration, retention, deployment, durable audit and model policy;
+- strict current-schema parsing plus planned identity-only envelope routing, while migration execution remains host-owned;
+- real Chromium/Firefox/WebKit differential evidence as a release gate for browser-semantic clipboard security rather than a jsdom conformance claim; and
 - exact-head/package/security/provenance/release evidence as separate authorities from comments, model verdicts and historical checks.
+
+Autonomous commercial-maintenance scheduling and the no-early-stop execution discipline are **control-plane governance, not a shipped Inkspan product capability**. The scheduler prompt is the execution authority for that loop; repository guidance records writer leases, evidence hierarchy and protected-main authority without pretending the automation prompt is a runtime API or architectural feature.
 
 Where an older conversation, PR body, or plan conflicts with Protected `main`, it is historical rather than canonical. Where a requirement is only on an active PR, this documentation may describe it as `implemented_on_active_pr` but never as shipped.
 
@@ -73,13 +78,13 @@ Where an older conversation, PR body, or plan conflicts with Protected `main`, i
 The documentation pack itself is substantially complete for acquisition review, but **repository closure is not documentation closure**. The remaining gaps are intentionally represented rather than hidden:
 
 1. The security disclosure policy remains `owned_by_separate_active_pr`; after protected merge, this graph must be reconciled against the actual root `SECURITY.md`.
-2. Migration/version routing remains `partial` because the safe identity-only routing API is still `planned`; its implementation requires the existing strict envelope parser to remain current-schema-only.
-3. Cross-engine rich-clipboard assurance is `planned` behind the safe-clipboard integration dependency; browser-semantic claims must not be promoted from jsdom-only evidence.
+2. Issue #74 remains `planned`: the identity-only migration-routing API must still be implemented test-first while the current parser remains strict. Its architectural decision is now present rather than hidden in issue prose.
+3. Issue #66 remains `planned` behind PR #65: the dependency-locked Chromium/Firefox/WebKit differential suite must still be implemented before the rich-clipboard release line. Its release-assurance decision is now present rather than hidden in issue prose.
 4. Active feature branches for autosave observation, revision evidence, SSR/native forms, accessibility, release hardening and runtime compatibility remain `implemented_on_active_pr` until protected integration.
 5. Documentation becoming mergeable or protected-merged is not a reason for the commercial loop to stop; the next safe product, release, security, accessibility or interoperability lane must continue.
 
 ## Sufficiency decision
 
-For this active documentation branch, PRD, TRD, Architecture, ADR, UML, conceptual ERD/data model, contracts, threat model, test strategy, operability and traceability are `present_current`. A physical relational ERD is `not_applicable` because Inkspan deliberately owns no application persistence. The repository security disclosure policy is separately owned and therefore `owned_by_separate_active_pr` rather than duplicated.
+For this active documentation branch, PRD, TRD, Architecture, ADR, UML, conceptual ERD/data model, contracts, threat model, test strategy, operability and traceability are `present_current` for the durable product and accepted/planned architecture decisions reconstructed from the conversation and live repository. Envelope migration routing and cross-engine browser assurance are now explicit Proposed ADR decisions while their implementations remain `planned`. A physical relational ERD is `not_applicable` because Inkspan deliberately owns no application persistence. The repository security disclosure policy is separately owned and therefore `owned_by_separate_active_pr` rather than duplicated.
 
-Accordingly, the **documentation design is sufficient as a proposed acquisition baseline**, but the repository is **not yet a protected-main canonical baseline** until this graph and the separately owned security policy pass their exact-head checks/reviews and normal protected integration. Product/release readiness must continue to be evaluated independently of documentation completeness.
+No material product architecture decision identified by this review remains only in chat or issue prose. Accordingly, the **documentation design is sufficient as a proposed acquisition baseline**, but the repository is **not yet a protected-main canonical baseline** until this graph and the separately owned security policy pass their exact-head checks/reviews and normal protected integration. Product/release readiness must continue to be evaluated independently of documentation completeness.
