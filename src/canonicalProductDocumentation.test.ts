@@ -12,6 +12,7 @@ const requiredFiles = [
   'ARCHITECTURE.md',
   'CHANGELOG.md',
   'docs/README.md',
+  'docs/DOCUMENTATION_FITNESS.md',
   'docs/PRD.md',
   'docs/TRD.md',
   'docs/CONTRACTS.md',
@@ -63,6 +64,7 @@ describe('canonical product documentation graph', () => {
     }
     for (const marker of [
       '../ARCHITECTURE.md',
+      'DOCUMENTATION_FITNESS.md',
       'PRD.md',
       'TRD.md',
       'CONTRACTS.md',
@@ -163,6 +165,42 @@ describe('canonical product documentation graph', () => {
     expect(contracts).toContain('No secret');
     expect(contracts).toContain('No database');
     expect(contracts).toContain('degraded');
+  });
+
+  it('keeps documentation completeness and implementation maturity explicit', () => {
+    const fitness = repositoryFile('docs/DOCUMENTATION_FITNESS.md');
+
+    for (const documentFamily of [
+      'PRD',
+      'TRD',
+      'ARCHITECTURE',
+      'ADR',
+      'UML',
+      'DATA_MODEL / ERD',
+      'SECURITY',
+      'THREAT_MODEL',
+      'TEST_STRATEGY',
+      'OPERABILITY',
+      'TRACEABILITY',
+    ]) {
+      expect(fitness).toContain(documentFamily);
+    }
+
+    for (const status of [
+      'present_current',
+      'owned_by_separate_active_pr',
+      'implemented_on_protected_main',
+      'implemented_on_active_pr',
+      'planned',
+      'not_applicable',
+    ]) {
+      expect(fitness).toContain(status);
+    }
+
+    expect(fitness).toContain('physical relational ERD');
+    expect(fitness).toContain('not_applicable');
+    expect(fitness).toContain('Protected `main`');
+    expect(fitness).toContain('not yet a protected-main canonical baseline');
   });
 
   it('keeps offline font provenance and network-free asset contracts explicit', () => {
