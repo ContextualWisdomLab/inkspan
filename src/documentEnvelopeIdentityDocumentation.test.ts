@@ -29,9 +29,11 @@ describe('document envelope identity documentation', () => {
     expect(adr).toContain('`parseDocumentEnvelope()` remains strict');
     expect(guide).toContain('@contextualwisdomlab/cwl-editor/envelope-identity');
     expect(guide).toMatch(/host[- ]owned|Migration execution remains host-owned/i);
-    expect(doctoring).toContain('Status: Implemented on active PR');
+    expect(doctoring).toContain('Status: Implemented on protected main');
+    expect(doctoring).not.toContain('Status: Implemented on active PR');
     expect(doctoring).toContain('Issue #74');
     expect(adr).toContain('Issue #74');
+    expect(adr).toContain('Status: Accepted');
   });
 
   it('keeps the identity result document-free and migration authority outside Inkspan', () => {
