@@ -19,6 +19,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Added browser-DOM handoff tests proving the field retains and updates the selected value before TipTap exists while reset-only unnamed fields remain empty
 
 ### Documentation
+- Added a repository-native security disclosure and vulnerability-handling policy with supported pre-1.0 release lines, private GitHub Security Advisory routing and safe public fallback, minimized evidence guidance, explicit Inkspan-versus-host ownership boundaries, no-SLA and non-conformance claim limits, deterministic documentation tests, and APA 7th doctoring grounded in current ISO/IEC 29147:2018, ISO/IEC 30111:2019, final NIST SP 800-218 SSDF 1.1, the draft-status boundary for SSDF 1.2, and GitHub primary documentation
 - Added an authoritative standalone and modular MSA architecture contract with reviewable deployment, optimistic-concurrency, data-ownership, security, and acquisition-evidence diagrams and tables
 - Added a beginner-readable naruon compose and ui.panel integration guide covering narrow client hydration, server-selected strong validators, accessible conflict handling, host-owned Yjs lifecycle, contextual-orchestrator boundaries, and local-versus-shareable evidence
 - Added an opaque editing-context remount for the complete editor and autosave example, latest-generation asynchronous capture ordering, encoded document path segments, redacted recovery status, and lazy state-owned session identity to prevent cross-document state reuse
