@@ -14,10 +14,12 @@ describe('document envelope identity documentation', () => {
     const doctoring = read('docs/doctoring/envelope-identity-routing.md');
     const adr = read('docs/adr/0015-envelope-schema-migration-routing.md');
 
-    for (const source of [guide, doctoring, adr]) {
+    for (const source of [guide, doctoring]) {
       expect(source).toContain('inspectDocumentEnvelopeIdentity');
       expect(source).toContain('parseDocumentEnvelope');
     }
+    expect(adr).toMatch(/identity inspector/i);
+    expect(adr).toContain('`parseDocumentEnvelope()` remains strict');
     expect(guide).toContain('@contextualwisdomlab/cwl-editor/envelope-identity');
     expect(guide).toMatch(/host[- ]owned|Migration execution remains host-owned/i);
     expect(doctoring).toContain('Status: Implemented on active PR');
