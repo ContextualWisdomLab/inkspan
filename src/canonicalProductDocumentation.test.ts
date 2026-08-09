@@ -36,6 +36,10 @@ const requiredFiles = [
   'docs/adr/0012-spreadsheet-formula-injection.md',
   'docs/adr/0013-atomic-file-publication.md',
   'docs/adr/0014-local-assets-font-licensing.md',
+  'src/fonts/OFL.txt',
+  'src/fonts/NOTICE',
+  'src/fonts/fonts.css',
+  'src/fonts/fonts-latin.css',
 ] as const;
 
 describe('canonical product documentation graph', () => {
@@ -147,6 +151,31 @@ describe('canonical product documentation graph', () => {
     expect(contracts).toContain('No secret');
     expect(contracts).toContain('No database');
     expect(contracts).toContain('degraded');
+  });
+
+  it('keeps offline font provenance and network-free asset contracts explicit', () => {
+    const license = repositoryFile('src/fonts/OFL.txt');
+    const notice = repositoryFile('src/fonts/NOTICE');
+    const fullFonts = repositoryFile('src/fonts/fonts.css');
+    const latinFonts = repositoryFile('src/fonts/fonts-latin.css');
+
+    expect(license).toContain('SIL Open Font License, Version 1.1');
+    expect(license).toContain('Reserved Font Name "Noto"');
+    for (const marker of [
+      'Noto Sans',
+      'Noto Sans KR',
+      'Noto Sans JP',
+      'Noto Sans SC',
+      'Noto Sans TC',
+      'air-gapped',
+      'OFL-1.1',
+    ]) {
+      expect(notice).toContain(marker);
+    }
+    for (const stylesheet of [fullFonts, latinFonts]) {
+      expect(stylesheet).toContain("url('./files/");
+      expect(stylesheet).not.toMatch(/https?:\/\//u);
+    }
   });
 
   it('keeps detailed ADRs indexed and complete enough for acquisition review', () => {
