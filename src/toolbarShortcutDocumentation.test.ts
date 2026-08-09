@@ -37,6 +37,19 @@ describe('toolbar shortcut accessibility documentation', () => {
     );
   });
 
+  it('keeps public doctoring terminology consistent with the Tiptap references', () => {
+    const doctoring = repositoryFile(
+      'docs/doctoring/toolbar-shortcut-discoverability.md',
+    );
+
+    expect(doctoring).toContain(
+      'Redo retains the same Tiptap command while exposing both existing key bindings.',
+    );
+    expect(doctoring).not.toContain(
+      'Redo retains the same TipTap command while exposing both existing key bindings.',
+    );
+  });
+
   it('records current standards evidence and release traceability', () => {
     const accessibility = repositoryFile('docs/accessibility.md');
     const doctoring = repositoryFile(
