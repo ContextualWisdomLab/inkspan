@@ -1,0 +1,95 @@
+# Inkspan Operability and Recovery
+
+Status: Proposed canonical baseline
+
+## Operational model
+
+Inkspan is a library/product module, not a host control plane. It owns deterministic editor, conversion, evidence, local autosave ordering, package, and provider-neutral adapter behavior. A host owns network transport, authentication, authorization, tenant isolation, persistence, credentials, migrations, retention, deployment, durable audit storage, collaboration-provider lifecycle, and model-use policy.
+
+This distinction controls incident ownership: an Inkspan incident is a deterministic package/editor/conversion/evidence defect or a violated public boundary. A host outage, database failure, provider outage, tenant authorization failure, or model-provider failure is a host incident unless Inkspan caused or amplified it through an explicit adapter contract.
+
+Protected `main` is the shipped implementation authority. Open PRs are not operational authority until protected integration.
+
+## Health and evidence
+
+Inkspan itself does not expose a network health endpoint. Operational health is proven through exact-head CI and package-consumer evidence, deterministic runtime outcomes, bounded public errors, security scans, package/release verification, and host-observable local state.
+
+Hosts may derive UI or local telemetry from document-free lifecycle snapshots, but must not expose document bodies, revision/entity tags, provider metadata, tenant identifiers, prompts, or model outputs as public metric dimensions or unauthenticated logs. High-cardinality tenant-confidential equality metadata remains local/private unless a host policy explicitly authorizes sharing.
+
+## Autosave operations
+
+The local autosave queue is single-flight with bounded pending work. Durable sessions use a host/server-selected strong HTTP entity tag for compare-and-swap. A local SHA-256 document revision is not a durable validator.
+
+Operational states are `idle`, `saving`, `blocked`, `closing`, and `closed`. Blocked conflict or ambiguous failure requires explicit recovery. No-op lifecycle operations do not manufacture synthetic state changes. Observer exceptions are presentation/telemetry failures and must not change persistence ordering.
+
+Host operators should treat:
+
+- conflict as a durable concurrency event requiring authenticated compare/merge/fork/reload policy;
+- ambiguous transport failure as unknown durable state until the host proves the result;
+- malformed or missing strong validators as a fail-closed host integration defect;
+- repeated blocked state as a host-visible error requiring user/operator recovery rather than automatic silent retries.
+
+## Collaboration operations
+
+The host creates, authorizes, monitors, and destroys the Yjs-compatible provider. Inkspan must not own provider credentials, reconnect policy, room authorization, awareness retention, tenant admission, or durable update storage. When the provider is unavailable, the embedding host decides whether local editing remains available, becomes read-only, or blocks. Inkspan does not invent durable collaboration success.
+
+## Deterministic conversion operations
+
+Markdown/HTML/editor conversion and Office rendering are deterministic local operations. Office rendering runs without model, external network, macro, or Desktop Office authority. Inputs are bounded and validated before publication. On validation or publication failure, the operation fails with bounded diagnostics; operators must not reuse a partial artifact as successful output.
+
+File publication must follow the documented atomic/non-overwrite behavior. A caller-requested overwrite remains explicit. A failed write or validation does not authorize cleanup of unrelated host files.
+
+## Release operations
+
+Release publication occurs only from an exact integrated protected head. Release evidence includes package artifacts, deterministic checksums, CI/security/package/provenance results, required review, zero valid unresolved findings, and repository-policy acceptance.
+
+Before publication:
+
+1. build the exact expected artifact inventory;
+2. verify local entries and digests;
+3. verify any resumed remote draft has exactly the expected uploaded asset names and digests;
+4. fail closed on stale/unexpected/incomplete assets rather than deleting them automatically;
+5. verify SBOM/provenance/signing or attestation gates where configured;
+6. verify package/wheel consumers and supported runtime matrix;
+7. publish only after exact-head required review and protection gates pass.
+
+After publication, verify artifact availability, checksums/provenance, package metadata, install/consumer smoke evidence, and release notes. Rollback of a bad release uses a new reviewed corrective release or repository-supported withdrawal/yank policy; immutable published evidence is not rewritten to pretend the release never existed.
+
+## Incident classes and first response
+
+### Security input bypass
+
+Stop publication of affected versions, reproduce on exact source, preserve a minimized synthetic regression, classify whether the defect is inside Inkspan or host policy, patch test-first, rerun security/package/release evidence, and follow `SECURITY.md` disclosure handling once it is protected-main authority. Do not publish proof-of-concept customer data.
+
+### Data-loss or false durable-success risk
+
+Fail closed. Preserve the host's last known durable validator and local evidence. Do not mark an ambiguous write as saved. Require authenticated host reconciliation before resuming. Never substitute a content digest for server durable state.
+
+### Package or conversion corruption
+
+Do not publish or reuse the artifact. Rebuild from exact source with deterministic dependencies, verify the package tree and digest, and compare to the known-good contract. If a published artifact is affected, use the release recovery procedure rather than silently replacing immutable evidence.
+
+### Browser/parser divergence
+
+When a browser-specific clipboard/security difference is found, add it to the cross-engine corpus. Accept a difference only with explicit standards basis and threat analysis. Do not normalize a security-relevant difference away solely to regain parity.
+
+### Dependency or workflow incident
+
+Treat central `.github` or other dedicated-loop defects as read-only dependencies. Do not create an Inkspan workaround that weakens exact-head evidence, coverage, security, approval, or release policy. Continue independent Inkspan work that does not rely on the defective dependency.
+
+## Backup, migration, and retention
+
+Inkspan owns no application database on the current architecture, so database backup/restore and tenant retention are host responsibilities. Versioned document envelopes and public package schemas must remain backward/migration-aware; host migration implementation and schema registry remain host-owned. If Inkspan later owns durable persistence, that is a material architecture change requiring a physical ERD, migration/rollback design, backup/restore runbook, retention model, threat review, and ADR.
+
+## Rollback
+
+Rollback is boundary-specific:
+
+- editor feature: remove or revert the feature while preserving canonical document readability;
+- autosave/observer feature: fall back to explicit `getSnapshot()`/host coordination without rewriting durable state;
+- collaboration adapter: detach the adapter without destroying the host provider or Yjs document;
+- Office renderer change: revert the deterministic renderer behavior and rebuild artifacts; do not modify host files outside the explicit output target;
+- documentation: supersede inaccurate decisions with an ADR and synchronized canonical docs rather than deleting history;
+- release: issue a verified corrective release or supported withdrawal action; preserve provenance and incident evidence.
+
+Every rollback requires fresh exact-head tests and must not weaken authorization, tenant isolation, release provenance, or host ownership boundaries.
