@@ -78,6 +78,18 @@ describe('canonical product documentation graph', () => {
     }
   });
 
+  it('does not promote active-PR product requirements to protected-main implementation', () => {
+    const prd = repositoryFile('docs/PRD.md');
+    const productDefinition = prd.slice(
+      prd.indexOf('## Product definition'),
+      prd.indexOf('## Users and buyers'),
+    );
+
+    expect(productDefinition).toContain('Protected `main`');
+    expect(productDefinition).toContain('Active PR / Proposed');
+    expect(productDefinition).toContain('not shipped claims');
+  });
+
   it('records host ownership and deterministic Inkspan authority consistently', () => {
     const prd = repositoryFile('docs/PRD.md');
     const trd = repositoryFile('docs/TRD.md');
