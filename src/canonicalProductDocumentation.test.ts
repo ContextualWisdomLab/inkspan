@@ -112,7 +112,7 @@ describe('canonical product documentation graph', () => {
     expect(trd).toMatch(/Envelope identity routing is `implemented_on_active_pr`/u);
     expect(fitness).toContain('Autosave lifecycle observation');
     expect(fitness).toMatch(/Autosave lifecycle observation[^\n]*implemented_on_protected_main/u);
-    expect(fitness).toMatch(/Envelope schema identity \/ migration routing[^\n]*implemented_on_active_pr/u);
+    expect(fitness).toMatch(/Envelope schema identity \/ migration routing[^\n]*implemented_on_protected_main/u);
   });
 
   it('records host ownership and deterministic Inkspan authority consistently', () => {
