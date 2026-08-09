@@ -103,18 +103,32 @@ const resolvedEntry = fileURLToPath(
 assert.ok(resolvedEntry.endsWith('/dist/cwl-revision-evidence.js'));
 assert.equal(typeof evidence.createDocumentEnvelopeRevisionEvidence, 'function');
 assert.equal(typeof evidence.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
+assert.equal(typeof evidence.createDocumentEnvelopeTransitionEvidence, 'function');
+assert.equal(typeof evidence.createDocumentEnvelopeTransitionEvidenceBytes, 'function');
+assert.equal(
+  evidence.DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_ID,
+  'https://inkspan.io/schemas/document-transition-evidence/v1',
+);
+assert.equal(evidence.DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_VERSION, 1);
 const source = {
   schemaId: evidence.DOCUMENT_ENVELOPE_SCHEMA_ID,
   schemaVersion: evidence.DOCUMENT_ENVELOPE_SCHEMA_VERSION,
   documentJson: { type: 'doc' },
 };
+const resultingSource = {
+  ...source,
+  documentJson: { type: 'doc', content: [{ type: 'paragraph' }] },
+};
+const fills = [0x42, 0x42, 0x43, 0x44];
 let calls = 0;
 const provider = {
   async digest(algorithm, bytes) {
     assert.equal(algorithm, 'SHA-256');
     assert.ok(ArrayBuffer.isView(bytes));
+    const fill = fills[calls];
+    assert.notEqual(fill, undefined);
     calls += 1;
-    return new Uint8Array(32).fill(0x42).buffer;
+    return new Uint8Array(32).fill(fill).buffer;
   },
 };
 const objectEvidence = await evidence.createDocumentEnvelopeRevisionEvidence(
@@ -127,9 +141,22 @@ const byteEvidence = await evidence.createDocumentEnvelopeRevisionEvidenceBytes(
   undefined,
   provider,
 );
+const transition = await evidence.createDocumentEnvelopeTransitionEvidence(
+  source,
+  resultingSource,
+  undefined,
+  provider,
+);
 assert.deepEqual(objectEvidence.envelope, byteEvidence.envelope);
 assert.equal(objectEvidence.revision.digestHex, '42'.repeat(32));
-assert.equal(calls, 2);
+assert.equal(transition.previousRevision.digestHex, '43'.repeat(32));
+assert.equal(transition.resultingRevision.digestHex, '44'.repeat(32));
+assert.equal(transition.changed, true);
+assert.equal('envelope' in transition, false);
+assert.equal(Object.isFrozen(transition), true);
+assert.equal(Object.isFrozen(transition.previousRevision), true);
+assert.equal(Object.isFrozen(transition.resultingRevision), true);
+assert.equal(calls, 4);
 `,
     'utf8',
   );
@@ -146,21 +173,47 @@ assert.ok(
 );
 assert.equal(typeof evidence.createDocumentEnvelopeRevisionEvidence, 'function');
 assert.equal(typeof evidence.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
-void evidence.createDocumentEnvelopeRevisionEvidence(
-  {
+assert.equal(typeof evidence.createDocumentEnvelopeTransitionEvidence, 'function');
+assert.equal(typeof evidence.createDocumentEnvelopeTransitionEvidenceBytes, 'function');
+
+void (async () => {
+  const source = {
     schemaId: evidence.DOCUMENT_ENVELOPE_SCHEMA_ID,
     schemaVersion: evidence.DOCUMENT_ENVELOPE_SCHEMA_VERSION,
     documentJson: { type: 'doc' },
-  },
-  undefined,
-  {
-    async digest() {
-      return new ArrayBuffer(32);
+  };
+  const captured = await evidence.createDocumentEnvelopeRevisionEvidence(
+    source,
+    undefined,
+    {
+      async digest() {
+        return new ArrayBuffer(32);
+      },
     },
-  },
-).then((captured) => {
+  );
   assert.equal(captured.revision.digestHex, '00'.repeat(32));
-}).catch((error) => {
+
+  let calls = 0;
+  const transition = await evidence.createDocumentEnvelopeTransitionEvidence(
+    source,
+    {
+      ...source,
+      documentJson: { type: 'doc', attrs: { reviewed: true } },
+    },
+    undefined,
+    {
+      async digest() {
+        calls += 1;
+        return new Uint8Array(32).fill(calls).buffer;
+      },
+    },
+  );
+  assert.equal(transition.previousRevision.digestHex, '01'.repeat(32));
+  assert.equal(transition.resultingRevision.digestHex, '02'.repeat(32));
+  assert.equal(transition.changed, true);
+  assert.equal('envelope' in transition, false);
+  assert.equal(Object.isFrozen(transition), true);
+})().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
@@ -180,22 +233,36 @@ function verifyDeclarationConsumer() {
     sourcePath,
     `import {
   createDocumentEnvelopeRevisionEvidence,
+  createDocumentEnvelopeTransitionEvidence,
   type CwlEditorDocumentRevisionEvidence,
+  type CwlEditorDocumentTransitionEvidence,
   type DocumentEnvelopeDigestProvider,
 } from '${packageJson.name}/revision-evidence';
 
 declare const digestProvider: DocumentEnvelopeDigestProvider;
+const source = {
+  schemaId: 'https://inkspan.io/schemas/document-envelope/v1' as const,
+  schemaVersion: 1 as const,
+  documentJson: { type: 'doc' },
+};
 const captured: Promise<CwlEditorDocumentRevisionEvidence> =
   createDocumentEnvelopeRevisionEvidence(
+    source,
+    undefined,
+    digestProvider,
+  );
+const transition: Promise<CwlEditorDocumentTransitionEvidence> =
+  createDocumentEnvelopeTransitionEvidence(
+    source,
     {
-      schemaId: 'https://inkspan.io/schemas/document-envelope/v1',
-      schemaVersion: 1,
-      documentJson: { type: 'doc' },
+      ...source,
+      documentJson: { type: 'doc', content: [{ type: 'paragraph' }] },
     },
     undefined,
     digestProvider,
   );
 void captured;
+void transition;
 `,
     'utf8',
   );

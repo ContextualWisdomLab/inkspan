@@ -18,6 +18,8 @@ The standalone package provides:
 - provider-neutral Yjs collaboration bindings;
 - canonical versioned document envelopes and strict UTF-8 bytes;
 - SHA-256 revision evidence and local revision-guarded restore;
+- compact content-lineage evidence that binds validated previous and resulting
+  revisions without embedding either document body;
 - bounded single-flight autosave coordination and durable strong-validator
   session helpers;
 - email serialization and framework-independent base64 conversion; and
@@ -30,6 +32,12 @@ tenant, stores a provider secret, creates a durable database transaction, decide
 a retention schedule, or authorizes an AI operation. A standalone adopter can
 provide those capabilities directly; a CWL host can provide them through shared
 platform services.
+
+Document transition evidence proves only deterministic local revision equality
+and ordering of the supplied previous and resulting envelopes. Host-owned
+systems must record host-owned occurrence provenance—including actor identity,
+authenticated server time, operation attribution, authorization, signatures,
+and durable acceptance—separately from Inkspan's local content evidence.
 
 ## Modular MSA composition
 
@@ -79,6 +87,7 @@ flowchart LR
 | Editor document | Validate and transform deterministically | Authorize access, persist, encrypt, migrate, retain | Private unless host policy explicitly permits sharing |
 | Canonical envelope | Produce and validate exact schema/version bytes | Store, sign, classify, migrate, and apply retention | Usually private; contains the complete document |
 | Local SHA-256 revision | Detect local equality and guard local restore | Never treat as authorization or durable commit evidence | Metadata only under tenant policy |
+| Document transition evidence | Bind validated previous and resulting local revisions without document bodies | Add authenticated actor, time, operation, authorization, signature, and durable-result provenance | Metadata only under tenant policy; cryptographic digests can still be correlatable |
 | Server-selected strong `ETag` | Validate syntax before use in a session | Select atomically and enforce `If-Match` in the write transaction | Tenant-confidential concurrency metadata |
 | Yjs updates and awareness | Bind the supplied `Y.Doc` to the editor | Authorize rooms, transport, persist, redact, expire, and destroy providers | Host policy decides |
 | Model prompt and output | Insert or restore validated results | Approve model use, credentials, redaction, routing, logging, and retention | Host policy decides |

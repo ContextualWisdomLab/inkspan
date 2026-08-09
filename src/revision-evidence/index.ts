@@ -6,6 +6,12 @@ import {
   createDocumentEnvelopeRevisionEvidence as createRevisionEvidenceInternal,
   createDocumentEnvelopeRevisionEvidenceBytes as createRevisionEvidenceBytesInternal,
 } from '../documentRevisionEvidence.js';
+import {
+  DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_ID as INTERNAL_DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_ID,
+  DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_VERSION as INTERNAL_DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_VERSION,
+  createDocumentEnvelopeTransitionEvidence as createTransitionEvidenceInternal,
+  createDocumentEnvelopeTransitionEvidenceBytes as createTransitionEvidenceBytesInternal,
+} from '../documentTransitionEvidence.js';
 
 /**
  * Framework-independent Inkspan revision-evidence entrypoint.
@@ -13,8 +19,9 @@ import {
  * This subpath intentionally excludes React, TipTap, ProseMirror, Yjs, editor
  * components, and transport or persistence adapters. Server, worker, queue,
  * migration, and storage processes can normalize versioned envelopes and derive
- * paired SHA-256 revision evidence without loading the interactive editor
- * bundle. The root package retains equivalent exports for compatibility.
+ * paired SHA-256 revision or compact transition evidence without loading the
+ * interactive editor bundle. The root package retains equivalent exports for
+ * compatibility.
  */
 
 /** Canonical identifier for Inkspan's first portable document envelope. */
@@ -25,6 +32,15 @@ export const DOCUMENT_ENVELOPE_SCHEMA_ID:
 /** Current document-envelope schema version. */
 export const DOCUMENT_ENVELOPE_SCHEMA_VERSION: 1 =
   INTERNAL_DOCUMENT_ENVELOPE_SCHEMA_VERSION;
+
+/** Canonical identifier for Inkspan's first compact transition-evidence schema. */
+export const DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_ID:
+  'https://inkspan.io/schemas/document-transition-evidence/v1' =
+    INTERNAL_DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_ID;
+
+/** Current compact transition-evidence schema version. */
+export const DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_VERSION: 1 =
+  INTERNAL_DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_VERSION;
 
 /** Optional resource ceilings applied while inspecting one envelope. */
 export interface DocumentEnvelopeLimits {
@@ -105,6 +121,26 @@ export interface CwlEditorDocumentRevisionEvidence {
 }
 
 /**
+ * Privacy-minimized local lineage between two validated document revisions.
+ *
+ * This result binds content revisions only. It does not prove actor identity,
+ * tenant authority, time, operation type, signature, durable persistence,
+ * transport success, review acceptance, or model execution.
+ */
+export interface CwlEditorDocumentTransitionEvidence {
+  /** Stable identifier for the transition-evidence field contract. */
+  readonly schemaId: typeof DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_ID;
+  /** Integer schema version used for compatibility routing. */
+  readonly schemaVersion: typeof DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_VERSION;
+  /** SHA-256 revision derived from the validated previous envelope. */
+  readonly previousRevision: CwlEditorDocumentRevision;
+  /** SHA-256 revision derived from the validated resulting envelope. */
+  readonly resultingRevision: CwlEditorDocumentRevision;
+  /** Whether the two canonical envelope revisions differ. */
+  readonly changed: boolean;
+}
+
+/**
  * Create frozen revision evidence from an envelope object or JSON text.
  *
  * The source is parsed once through Inkspan's strict versioned-envelope
@@ -144,4 +180,50 @@ export function createDocumentEnvelopeRevisionEvidenceBytes(
       typeof createRevisionEvidenceBytesInternal
     >[2],
   ) as unknown as Promise<CwlEditorDocumentRevisionEvidence>;
+}
+
+/**
+ * Derive compact transition evidence from two envelope objects or JSON texts.
+ *
+ * Both sources are validated before hashing. Successful calls hash previous
+ * content first and resulting content second, then return only the frozen
+ * revision pair and deterministic changed classification.
+ */
+export function createDocumentEnvelopeTransitionEvidence(
+  previousSource: unknown,
+  resultingSource: unknown,
+  limits?: DocumentEnvelopeLimits,
+  digestProvider?: DocumentEnvelopeDigestProvider | null,
+): Promise<CwlEditorDocumentTransitionEvidence> {
+  return createTransitionEvidenceInternal(
+    previousSource,
+    resultingSource,
+    limits,
+    digestProvider as unknown as Parameters<
+      typeof createTransitionEvidenceInternal
+    >[3],
+  ) as unknown as Promise<CwlEditorDocumentTransitionEvidence>;
+}
+
+/**
+ * Derive compact transition evidence from two strict UTF-8 envelope byte views.
+ *
+ * Equivalent noncanonical JSON encodings normalize to the same revision pair.
+ * Invalid bytes, duplicate names, unsupported versions, and resource-limit
+ * violations fail before the digest provider runs.
+ */
+export function createDocumentEnvelopeTransitionEvidenceBytes(
+  previousSource: unknown,
+  resultingSource: unknown,
+  limits?: DocumentEnvelopeLimits,
+  digestProvider?: DocumentEnvelopeDigestProvider | null,
+): Promise<CwlEditorDocumentTransitionEvidence> {
+  return createTransitionEvidenceBytesInternal(
+    previousSource,
+    resultingSource,
+    limits,
+    digestProvider as unknown as Parameters<
+      typeof createTransitionEvidenceBytesInternal
+    >[3],
+  ) as unknown as Promise<CwlEditorDocumentTransitionEvidence>;
 }
