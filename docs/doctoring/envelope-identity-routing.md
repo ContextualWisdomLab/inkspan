@@ -1,6 +1,6 @@
 # Envelope identity-only migration routing
 
-Status: Implemented on active PR
+Status: Implemented on protected main
 Decision: ADR 0015
 Tracking: Issue #74
 
@@ -10,7 +10,7 @@ Inkspan's strict `parseDocumentEnvelope()` correctly rejects unknown schema iden
 
 ## Implemented decision
 
-The active implementation adds `inspectDocumentEnvelopeIdentity()` and `inspectDocumentEnvelopeIdentityBytes()` plus the framework-independent `@contextualwisdomlab/cwl-editor/envelope-identity` package subpath. Successful inspection returns only a frozen `schemaId` string and positive safe-integer `schemaVersion`.
+The protected implementation provides `inspectDocumentEnvelopeIdentity()` and `inspectDocumentEnvelopeIdentityBytes()` plus the framework-independent `@contextualwisdomlab/cwl-editor/envelope-identity` package subpath. Successful inspection returns only a frozen `schemaId` string and positive safe-integer `schemaVersion`.
 
 Inspection requires a complete syntactically valid envelope with `schemaId`, `schemaVersion`, and `documentJson`. It applies the established byte, text, value-count, string-length, nesting, duplicate-name, strict UTF-8, BOM, plain-object, dense-array, descriptor, accessor, proxy/reflection, and public-error boundaries where applicable. It deliberately does **not** require an unsupported `documentJson` to satisfy the current TipTap/ProseMirror schema before returning routing metadata.
 
@@ -32,11 +32,11 @@ If the host has no matching migration, it preserves the original source unchange
 
 The API is additive. Existing create/parse/encode/revision/restore behavior is unchanged. The dedicated `envelope-identity` subpath is built and consumed through ESM, CommonJS, and strict TypeScript without React, TipTap UI, ProseMirror view, Yjs, DOM globals, network clients, database clients, credentials, or model SDKs.
 
-Rollback before protected integration removes the new entry points/subpath and restores the prior host migration guidance. Any future widening of identity semantics or movement of migration/persistence authority into Inkspan requires explicit versioning and an ADR update or supersession.
+Because this API is now protected-main behavior, removal or semantic broadening is a compatibility change requiring version review, migration guidance, and explicit rollback/recovery evidence. Any future widening of identity semantics or movement of migration/persistence authority into Inkspan requires explicit versioning and an ADR update or supersession.
 
 ## Verification
 
-Acceptance is test-first and requires: current/legacy/future identity routing; proof that the strict parser still rejects unsupported schemas; JSON text and strict UTF-8 bytes including Buffer; duplicate/malformed/BOM input; invalid scalar versions; accessors and hostile proxies; resource ceilings; absence of document-bearing output; root and framework-independent public exports; packed ESM/CommonJS/strict-TypeScript consumers; exact owned production coverage; public docstrings; security scans; zero valid unresolved findings; and live repository policy on the unchanged exact head.
+Protected-main acceptance was test-first and covers: current/legacy/future identity routing; proof that the strict parser still rejects unsupported schemas; JSON text and strict UTF-8 bytes including Buffer; duplicate/malformed/BOM input; invalid scalar versions; accessors and hostile proxies; resource ceilings; absence of document-bearing output; root and framework-independent public exports; packed ESM/CommonJS/strict-TypeScript consumers; exact owned production coverage; public docstrings; security scans; zero valid unresolved findings; and repository policy on the integrated source generation.
 
 ## References
 
