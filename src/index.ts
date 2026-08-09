@@ -47,6 +47,7 @@ export type {
   CwlEditorTextPositionSelector,
   CwlEditorTextPositionSelectorEvidence,
   CwlEditorTextProjectionIdentity,
+  TextPositionSelectorEvidenceErrorCode,
 } from './textPositionSelectorEvidence.js';
 
 // Versioned, lossless persistence boundary.
