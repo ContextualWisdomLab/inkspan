@@ -26,6 +26,7 @@ server, worker, queue, or test code:
 ```ts
 import {
   createDocumentAutosaveSession,
+  isStrongHttpEntityTag,
   type DocumentAutosaveDurableSaveResult,
 } from '@contextualwisdomlab/cwl-editor/autosave';
 import {
@@ -75,8 +76,12 @@ or inaccessible validators fail closed before the session is created.
 const loadedResponse = await loadDocument();
 const loadedStrongEntityTag = loadedResponse.headers.get('ETag');
 
+if (!isStrongHttpEntityTag(loadedStrongEntityTag)) {
+  throw new Error('A strong durable entity tag is required before autosave starts');
+}
+
 const autosaveSession = createDocumentAutosaveSession({
-  initialStrongEntityTag: loadedStrongEntityTag ?? '',
+  initialStrongEntityTag: loadedStrongEntityTag,
   async save(request): Promise<DocumentAutosaveDurableSaveResult> {
     const response = await saveDocument({
       envelope: request.evidence.envelope,
@@ -90,9 +95,14 @@ const autosaveSession = createDocumentAutosaveSession({
       throw new Error('Private transport failure');
     }
 
+    const nextStrongEntityTag = response.headers.get('ETag');
+    if (!isStrongHttpEntityTag(nextStrongEntityTag)) {
+      throw new Error('The save response did not include a strong durable entity tag');
+    }
+
     return {
       status: 'saved',
-      nextStrongEntityTag: response.headers.get('ETag') ?? '',
+      nextStrongEntityTag,
     };
   },
 });
@@ -172,7 +182,7 @@ ordering.
 
 ```ts
 const autosaveSession = createDocumentAutosaveSession({
-  initialStrongEntityTag: loadedStrongEntityTag ?? '',
+  initialStrongEntityTag: loadedStrongEntityTag,
   save: saveDurableDocument,
   onSnapshotChange(snapshot) {
     updateLocalSaveStatus(snapshot.state, snapshot.blockedReason);
