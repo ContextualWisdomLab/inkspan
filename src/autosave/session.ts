@@ -346,6 +346,9 @@ export function createDocumentAutosaveSession(
   const validatedOptions = readDocumentAutosaveSessionOptions(options);
   let durableStrongEntityTag = validatedOptions.initialStrongEntityTag;
   let lastObservedSnapshotJson: string | null = null;
+  const observedRequestSettlements = new WeakSet<
+    Promise<DocumentAutosaveRequestOutcome>
+  >();
   const internalQueue = createInternalDocumentAutosaveQueue({
     async save(internalEvidence) {
       const evidence =
@@ -386,10 +389,12 @@ export function createDocumentAutosaveSession(
     }
   }
 
-  /** Observe eventual queue settlement without replacing the caller's promise. */
+  /** Observe eventual queue settlement at most once per shared promise. */
   function observeRequestSettlement(
     request: Promise<DocumentAutosaveRequestOutcome>,
   ): void {
+    if (observedRequestSettlements.has(request)) return;
+    observedRequestSettlements.add(request);
     void request.then(emitSnapshotChange, emitSnapshotChange);
   }
 
