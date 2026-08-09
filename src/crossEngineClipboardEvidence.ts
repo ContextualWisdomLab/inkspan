@@ -35,7 +35,7 @@ export interface CrossEngineClipboardObservation {
   readonly caseId: string;
   readonly engine: CrossEngineClipboardEngine;
   readonly sanitizedHtml: string | null;
-  readonly documentJson: unknown | null;
+  readonly documentJson: unknown;
   readonly errorCode: ClipboardSanitizationErrorCode | null;
 }
 
@@ -193,10 +193,12 @@ const REQUIRED_ENGINES: readonly CrossEngineClipboardEngine[] = Object.freeze([
 /**
  * Require exact rich-clipboard parity across one observation from every engine.
  *
- * The default gate intentionally contains no broad normalization or difference
- * allowlist. A future standards-permitted engine exception must first add a
- * focused corpus case, threat rationale, explicit comparison rule, and rollback
- * note rather than being silently normalized here.
+ * The gate compares JSON object semantics independent of member insertion order,
+ * because JSON object member order carries no document-structure authority. It
+ * otherwise contains no broad normalization or engine difference allowlist. A
+ * future standards-permitted engine exception must first add a focused corpus
+ * case, threat rationale, explicit comparison rule, and rollback note rather
+ * than being silently normalized here.
  */
 export function assertCrossEngineClipboardConsensus(
   observations: readonly CrossEngineClipboardObservation[],
@@ -242,6 +244,20 @@ export function assertCrossEngineClipboardConsensus(
   }
 }
 
+/** Serialize JSON values with recursively sorted object member names. */
 function canonicalJson(value: unknown): string {
-  return JSON.stringify(value);
+  return JSON.stringify(canonicalizeJson(value));
+}
+
+/** Preserve array order and values while normalizing unordered JSON object members. */
+function canonicalizeJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalizeJson);
+  if (value === null || typeof value !== 'object') return value;
+
+  const record = value as Record<string, unknown>;
+  return Object.fromEntries(
+    Object.keys(record)
+      .sort()
+      .map((key) => [key, canonicalizeJson(record[key])]),
+  );
 }
