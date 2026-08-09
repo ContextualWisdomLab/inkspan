@@ -56,4 +56,32 @@ describe('SafeClipboard DOM capability reflection boundary', () => {
       expect(String(observed)).not.toContain(testCase.secret);
     }
   });
+
+  it('classifies createHTMLDocument invocation failures as DOM capability failures', () => {
+    const secret = 'private createHTMLDocument invocation detail';
+    const hostileDocument = {
+      createElement: document.createElement.bind(document),
+      implementation: {
+        createHTMLDocument() {
+          throw new Error(secret);
+        },
+      },
+    } as unknown as Document;
+
+    let observed: unknown;
+    try {
+      sanitizeRichClipboardHtml('<p>safe</p>', {}, hostileDocument);
+    } catch (error) {
+      observed = error;
+    }
+
+    expect(observed).toBeInstanceOf(ClipboardSanitizationError);
+    expect(observed).toEqual(
+      expect.objectContaining({
+        code: 'dom_unavailable',
+        message: 'Rich clipboard sanitization requires a DOM-capable document.',
+      }),
+    );
+    expect(String(observed)).not.toContain(secret);
+  });
 });
