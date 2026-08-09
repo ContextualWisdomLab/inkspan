@@ -4,7 +4,7 @@ Status: Proposed canonical baseline
 
 ## Product definition
 
-Inkspan is a standalone Markdown/HTML rich-text authoring and deterministic document-conversion product that can also be embedded as a modular CWL component. Protected `main` is the implementation authority for what Inkspan actually provides today. Lifecycle observation is now implemented on protected `main`; this canonical PRD also records Active PR / Proposed requirements such as safe rich clipboard handling, revision-scoped selection/transition evidence, and SSR/native-form integration, which remain target requirements rather than shipped claims until protected integration. Across current and proposed scope, Inkspan keeps host transport, identity, authorization, tenancy, durable persistence, credentials, migrations, retention, deployment, audit storage, and model-use policy outside the product boundary unless a future accepted versioned contract explicitly changes that division.
+Inkspan is a standalone Markdown/HTML rich-text authoring and deterministic document-conversion product that can also be embedded as a modular CWL component. Protected `main` is the implementation authority for what Inkspan actually provides today. Lifecycle observation, security disclosure, toolbar shortcut accessibility metadata, and SSR/native-form serialization are implemented on protected `main`; this canonical PRD also records Active PR / Proposed requirements such as safe rich clipboard handling and revision-scoped selection/transition evidence, which remain target requirements rather than shipped claims until protected integration. Across current and proposed scope, Inkspan keeps host transport, identity, authorization, tenancy, durable persistence, credentials, migrations, retention, deployment, audit storage, and model-use policy outside the product boundary unless a future accepted versioned contract explicitly changes that division.
 
 The product promise is: **author, convert, collaborate, and prove document changes without hiding authority inside the editor.**
 
@@ -57,6 +57,7 @@ The product promise is: **author, convert, collaborate, and prove document chang
 
 - Server rendering never creates a browser editor view.
 - Optional native-form serialization survives SSR/hydration and remains synchronized once the editor is authoritative.
+- Controlled `value` precedes `defaultValue` for the explicitly configured server-rendered field, and the native value is restored from the editor after document-changing transactions and native reset processing.
 - Hidden/native field values are client-controlled data and never replace host authentication, authorization, CSRF controls, request validation, tenant isolation, or durable concurrency.
 
 ### Collaboration
@@ -80,7 +81,8 @@ The product promise is: **author, convert, collaborate, and prove document chang
 
 ### Accessibility, print, and export
 
-- Native controls, focus behavior, keyboard parity, shortcut metadata, non-color status semantics, and host-facing lifecycle state support WCAG-oriented embedding.
+- Native controls, focus behavior, keyboard parity, truthful `aria-keyshortcuts` metadata, non-color status semantics, and host-facing lifecycle state support WCAG-oriented embedding.
+- Toolbar shortcut metadata must reflect repository-level shipped behavior, including host/editor bindings such as link editing, rather than only extension-local defaults.
 - Application-visible saving/conflict/recovery messages must be derivable from programmatic state without Inkspan prescribing untranslated user-facing copy.
 - Export/print surfaces must not rely on color alone or inaccessible interaction-only state where the corresponding product surface exists.
 
@@ -127,4 +129,4 @@ Shareable acquisition evidence excludes production tenant content and credential
 
 Protected `main` is the sole implemented baseline. Open PRs may describe Proposed or Active work but are not shipped contracts until protected integration. Canonical documentation must state when a requirement is target architecture rather than current implementation.
 
-The root security disclosure lifecycle is implemented on protected `main`. Lifecycle observation is implemented on protected `main`. Current open development lines include richer browser-verified clipboard assurance, document-transition/revision evidence, SSR/native-form integration, accessibility metadata, and canonical documentation reconciliation. Their detail is useful design evidence but remains Proposed until merged. A future envelope-identity migration-routing API is tracked separately and must preserve host migration ownership.
+The root security disclosure lifecycle, lifecycle observation, toolbar shortcut accessibility metadata, and SSR/native-form serialization are implemented on protected `main`. Current open development lines include SafeClipboard, document-transition evidence, revision-scoped selection evidence, and canonical documentation reconciliation. Their detail is useful design evidence but remains Proposed until merged. Cross-engine browser assurance remains planned behind SafeClipboard, and a future envelope-identity migration-routing API is tracked separately and must preserve host migration ownership.
