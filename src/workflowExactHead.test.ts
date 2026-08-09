@@ -16,14 +16,14 @@ const CHECKOUT_PIN =
 describe('exact-head CI workflow contract', () => {
   it('uses a fixed runner and checks out the immutable current PR head', () => {
     expect(workflow).not.toContain('ubuntu-latest');
-    expect(workflow.match(/runs-on: ubuntu-24\.04/g)).toHaveLength(2);
-    expect(workflow.match(new RegExp(CHECKOUT_PIN, 'g'))).toHaveLength(2);
+    expect(workflow.match(/runs-on: ubuntu-24\.04/g)).toHaveLength(3);
+    expect(workflow.match(new RegExp(CHECKOUT_PIN, 'g'))).toHaveLength(3);
     expect(
       workflow.match(
         /ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/g,
       ),
-    ).toHaveLength(2);
-    expect(workflow.match(/persist-credentials: false/g)).toHaveLength(2);
+    ).toHaveLength(3);
+    expect(workflow.match(/persist-credentials: false/g)).toHaveLength(3);
   });
 
   it('keeps the workflow read-only and hash-pins every third-party action', () => {
