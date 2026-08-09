@@ -9,6 +9,7 @@ const repositoryFile = (path: string): string =>
 const requiredFiles = [
   'docs/PRD.md',
   'docs/TRD.md',
+  'docs/CONTRACTS.md',
   'docs/UML.md',
   'docs/DATA_MODEL.md',
   'docs/THREAT_MODEL.md',
@@ -38,10 +39,11 @@ describe('canonical product documentation graph', () => {
   it('records host ownership and deterministic Inkspan authority consistently', () => {
     const prd = repositoryFile('docs/PRD.md');
     const trd = repositoryFile('docs/TRD.md');
+    const contracts = repositoryFile('docs/CONTRACTS.md');
     const threatModel = repositoryFile('docs/THREAT_MODEL.md');
     const operability = repositoryFile('docs/OPERABILITY.md');
 
-    for (const document of [prd, trd, threatModel, operability]) {
+    for (const document of [prd, trd, contracts, threatModel, operability]) {
       expect(document).toContain('host');
       expect(document).toMatch(/transport|authorization|tenant|persistence/i);
     }
@@ -54,6 +56,7 @@ describe('canonical product documentation graph', () => {
   it('preserves the durable product decisions from the canonical conversation', () => {
     const prd = repositoryFile('docs/PRD.md');
     const trd = repositoryFile('docs/TRD.md');
+    const contracts = repositoryFile('docs/CONTRACTS.md');
     const uml = repositoryFile('docs/UML.md');
     const dataModel = repositoryFile('docs/DATA_MODEL.md');
 
@@ -62,6 +65,16 @@ describe('canonical product documentation graph', () => {
     }
     for (const marker of ['network-free', 'macro-free', 'formula', 'Office']) {
       expect(trd).toContain(marker);
+    }
+    for (const marker of [
+      'document envelope',
+      'autosave',
+      'collaboration',
+      'naruon',
+      'host-owned',
+      'versioned',
+    ]) {
+      expect(contracts).toContain(marker);
     }
     for (const marker of ['Office', 'naruon', 'Yjs', 'file publication']) {
       expect(uml).toContain(marker);
@@ -81,6 +94,7 @@ describe('canonical product documentation graph', () => {
     const threatModel = repositoryFile('docs/THREAT_MODEL.md');
     const testStrategy = repositoryFile('docs/TEST_STRATEGY.md');
     const traceability = repositoryFile('docs/TRACEABILITY.md');
+    const contracts = repositoryFile('docs/CONTRACTS.md');
 
     expect(threatModel).toContain('clipboard');
     expect(threatModel).toContain('formula');
@@ -92,6 +106,9 @@ describe('canonical product documentation graph', () => {
     expect(traceability).toContain('RFC 9110');
     expect(traceability).toContain('WCAG 2.2');
     expect(traceability).toContain('Protected `main`');
+    expect(contracts).toContain('No secret');
+    expect(contracts).toContain('No database');
+    expect(contracts).toContain('degraded');
   });
 
   it('keeps detailed ADRs indexed and explicit about failure and rollback', () => {
