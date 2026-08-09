@@ -22,6 +22,7 @@ This index records durable architectural decisions. Protected-main implementatio
 | [0014](0014-local-assets-font-licensing.md) | Proposed | Local assets and font-licensing boundary |
 | [0015](0015-envelope-schema-migration-routing.md) | Proposed | Envelope schema identity and host-owned migration routing |
 | [0016](0016-cross-engine-browser-assurance.md) | Proposed | Cross-engine browser-semantic release assurance |
+| [0017](0017-security-disclosure-lifecycle.md) | Proposed | Security disclosure lifecycle and coordinated vulnerability handling |
 
 ## Decision discipline
 
@@ -29,7 +30,7 @@ This index records durable architectural decisions. Protected-main implementatio
 - **Accepted**: integrated into protected `main` with the applicable verification evidence.
 - **Superseded**: retained for historical traceability but explicitly replaced by a later ADR.
 
-An ADR cannot promote an unmerged feature to shipped behavior. When a decision changes materially, add or supersede an ADR rather than silently rewriting history.
+An ADR cannot promote an unmerged feature to shipped behavior. When a decision changes materially, add or supersede an ADR rather than silently rewriting history. A Proposed ADR may document a decision whose underlying implementation already exists on protected `main`; its own status remains Proposed until this ADR file is integrated, while implementation maturity is recorded separately in the canonical fitness/traceability records.
 
 ## ADR quality requirements
 
