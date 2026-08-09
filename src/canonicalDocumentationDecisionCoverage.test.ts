@@ -67,4 +67,19 @@ describe('canonical architecture decision coverage', () => {
     expect(traceability).toContain('Cross-engine release assurance');
     expect(traceability).toContain('RFC 7493');
   });
+
+  it('keeps the conceptual ERD explicit without inventing Inkspan persistence', () => {
+    const dataModel = repositoryFile('docs/DATA_MODEL.md');
+
+    for (const marker of [
+      'document_schema_identity',
+      'browser_assurance_evidence',
+      'browser_difference_allowance',
+    ]) {
+      expect(dataModel).toContain(marker);
+    }
+    expect(dataModel).toContain('planned value and evidence objects');
+    expect(dataModel).toContain('does **not** own an application database');
+    expect(dataModel).toContain('physical database ERD');
+  });
 });
