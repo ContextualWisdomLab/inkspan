@@ -7,6 +7,11 @@ const repositoryFile = (path: string): string =>
   readFileSync(resolve(process.cwd(), path), 'utf8');
 
 const requiredFiles = [
+  'AGENTS.md',
+  'CLAUDE.md',
+  'ARCHITECTURE.md',
+  'CHANGELOG.md',
+  'docs/README.md',
   'docs/PRD.md',
   'docs/TRD.md',
   'docs/CONTRACTS.md',
@@ -33,6 +38,35 @@ describe('canonical product documentation graph', () => {
   it('keeps the acquisition-critical document graph discoverable', () => {
     for (const path of requiredFiles) {
       expect(existsSync(resolve(process.cwd(), path)), path).toBe(true);
+    }
+  });
+
+  it('keeps contributor guidance aligned with the canonical documentation spine', () => {
+    const agents = repositoryFile('AGENTS.md');
+    const claude = repositoryFile('CLAUDE.md');
+    const index = repositoryFile('docs/README.md');
+
+    for (const document of [agents, claude]) {
+      expect(document).toContain('docs/README.md');
+      expect(document).toContain('Protected `main`');
+      expect(document).toContain('docs/PRD.md');
+      expect(document).toContain('docs/TRD.md');
+      expect(document).toContain('docs/CONTRACTS.md');
+    }
+    for (const marker of [
+      '../ARCHITECTURE.md',
+      'PRD.md',
+      'TRD.md',
+      'CONTRACTS.md',
+      'UML.md',
+      'DATA_MODEL.md',
+      'THREAT_MODEL.md',
+      'TEST_STRATEGY.md',
+      'OPERABILITY.md',
+      'TRACEABILITY.md',
+      'adr/README.md',
+    ]) {
+      expect(index).toContain(marker);
     }
   });
 
