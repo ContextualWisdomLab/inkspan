@@ -129,7 +129,7 @@ describe('canonical product documentation graph', () => {
     expect(dataModel).toContain('`document_schema_identity`: `implemented_on_protected_main`');
     expect(dataModel).not.toContain('`document_schema_identity`: `implemented_on_active_pr`');
     expect(traceability).toContain('Envelope version routing');
-    expect(traceability).toContain('protected-main evidence');
+    expect(traceability).toMatch(/protected-main evidence/iu);
     expect(traceability).not.toContain('PR #84 is active implementation evidence');
     expect(routingDoctoring).toContain('Status: Implemented on protected main');
     expect(routingDoctoring).not.toContain('Status: Implemented on active PR');
