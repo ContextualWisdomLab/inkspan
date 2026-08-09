@@ -40,7 +40,8 @@ The release workflow repeats the merge gates against the tagged source rather th
 9. Office dependency consistency, 100% shipped-symbol docstring coverage, and 100% branch coverage;
 10. Office wheel construction and inspection for the bundled schema and license;
 11. SHA-256 checksum generation for every distributable artifact;
-12. checksum verification after the privilege boundary.
+12. checksum verification after the privilege boundary; and
+13. exact draft asset inventory and digest verification before publication.
 
 No release draft is created or modified unless every build gate succeeds on the tagged commit.
 
@@ -53,13 +54,32 @@ Publication follows GitHub's immutable-release sequence:
 1. reject an existing published release rather than replacing its assets;
 2. create or resume a draft release;
 3. attach the complete attested artifact set while the release is still mutable;
-4. publish the draft;
-5. require GitHub to report `isImmutable: true` for the published release;
-6. verify the release attestation and every uploaded asset through GitHub CLI.
+4. verify the exact draft asset inventory and GitHub-reported digests;
+5. publish the draft;
+6. require GitHub to report `isImmutable: true` for the published release;
+7. verify the release attestation and every expected uploaded asset through GitHub CLI.
+
+### Exact draft asset inventory
+
+A resumed draft is not assumed to contain only artifacts from the current workflow attempt. `gh release upload --clobber` replaces an existing asset with the same name, but an unexpected stale asset with a different name can otherwise remain attached to the draft. Once an immutable release is published, every attached asset is frozen with that release identity.
+
+Immediately after upload and before the draft is published, the workflow therefore fails closed unless all of these conditions hold:
+
+- the local release directory contains exactly one npm `*.tgz`, one Office `*.whl`, and `SHA256SUMS`;
+- the canonical GitHub Releases API still reports the release as a draft;
+- the sorted remote asset-name set exactly equals the sorted local artifact-name set;
+- every remote asset reports the `uploaded` state; and
+- every GitHub release-asset `sha256:` digest exactly equals a newly computed SHA-256 digest of the corresponding transferred local file.
+
+The draft lookup deliberately uses the authenticated, paginated **List releases** REST endpoint and filters its complete result for the exact tag. GitHub documents that authenticated callers with repository push access receive draft releases from this endpoint. The `Get a release by tag name` endpoint is documented for a **published** release, so it is not used as evidence for this pre-publication gate. The publish job fails unless the paginated listing contains exactly one release matching the tag and that object still reports `draft: true`.
+
+An unexpected stale asset is not deleted automatically. The workflow stops before the draft is published and directs an operator to remove the stale draft or unexpected asset, then rerun from the reviewed tag. This avoids silently deleting an operator-created draft artifact while ensuring that unrelated content cannot become part of an immutable Inkspan release by persistence across retries.
+
+The exact-inventory comparison names only public release artifacts and does not expose source files, credentials, tenant data, document content, or local absolute paths. The gate also does not claim to prevent a repository administrator from deliberately mutating a draft in the narrow interval between validation and publication; repository administration remains a higher authority boundary. Tag-scoped workflow concurrency prevents competing release-workflow runs for the same tag.
 
 If GitHub reports that the newly published release is mutable, the workflow immediately deletes that release and fails. This rollback leaves the tag available for a retry after an administrator enables release immutability; it does not treat a mutable publication as a successful product release. If rollback itself fails, the workflow emits an explicit high-severity error and remains failed for operator intervention.
 
-A failed rerun may repair an existing draft with `--clobber`, but it can never overwrite a published release. A new successful release identity therefore requires a new reviewed version and tag unless the previous attempt ended only as a deleted mutable release or an unpublished draft.
+A failed rerun may repair same-name assets in an existing draft with `--clobber`, but it can never overwrite a published release. A new successful release identity therefore requires a new reviewed version and tag unless the previous attempt ended only as a deleted mutable release or an unpublished draft. Any unrelated asset left in that unpublished draft is a hard pre-publication failure rather than silently retained content.
 
 Enabling immutable releases is an administrative repository control. Repository owners can enable it in GitHub settings or with the `PUT /repos/ContextualWisdomLab/inkspan/immutable-releases` endpoint using a credential with repository Administration write permission. The release workflow cannot weaken or silently enable the policy.
 
@@ -71,7 +91,7 @@ Each successful GitHub release contains:
 - the `inkspan-office` wheel built from `office/`;
 - `SHA256SUMS` covering both distributable artifacts.
 
-The workflow does not rebuild artifacts after the read-only build job. The same transferred files are checksum-verified, attested, and uploaded to the release.
+The workflow does not rebuild artifacts after the read-only build job. The same transferred files are checksum-verified, attested, uploaded, inventory-checked against the draft, and then published.
 
 ## Provenance and verification
 
@@ -99,6 +119,7 @@ Use the actual version and filenames from the selected release. A successful att
 - The default and build-job workflow tokens are read-only.
 - Write, OpenID Connect, and attestation permissions exist only in the source-free publish job.
 - Release tags must identify a commit already merged into `main`.
+- The draft asset set and every GitHub-reported SHA-256 asset digest must exactly match the transferred local release set before publication.
 - The published release must report an immutable state; a mutable outcome is deleted and rejected.
 - Existing published assets are never refreshed, replaced, or deleted by a successful workflow path.
 - No issue, pull-request body, comment, branch name, or other untrusted free text is interpolated into executable release commands.
@@ -120,7 +141,9 @@ The release pipeline does not add runtime coupling. The npm package remains a ho
 
 - GitHub immutable releases and draft-first publication: <https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository>
 - GitHub immutable-release repository API and required permissions: <https://docs.github.com/en/rest/repos/repos?apiVersion=2026-03-10#check-if-immutable-releases-are-enabled-for-a-repository>
-- GitHub release object and immutable state: <https://docs.github.com/en/rest/releases/releases?apiVersion=2026-03-10>
+- GitHub List releases behavior, including authenticated draft visibility, release objects, asset `digest`, and immutable state: <https://docs.github.com/en/rest/releases/releases?apiVersion=2026-03-10#list-releases>
+- GitHub Get a release by tag name published-release contract: <https://docs.github.com/en/rest/releases/releases?apiVersion=2026-03-10#get-a-release-by-tag-name>
+- GitHub CLI release upload and same-name `--clobber` behavior: <https://cli.github.com/manual/gh_release_upload>
 - GitHub release attestation verification: <https://cli.github.com/manual/gh_release_verify>
 - GitHub artifact attestations: <https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations>
 - GitHub artifact-attestation concepts: <https://docs.github.com/en/actions/concepts/security/artifact-attestations>
