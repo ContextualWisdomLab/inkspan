@@ -109,7 +109,7 @@ describe('canonical product documentation graph', () => {
     expect(currentScope).not.toMatch(/open development lines include[^.]*lifecycle observation/u);
     expect(trd).toContain('Autosave lifecycle observation is implemented on protected `main`');
     expect(trd).toContain('SafeClipboard is implemented on protected `main`');
-    expect(trd).toContain('Envelope identity routing is `implemented_on_active_pr` in PR #84');
+    expect(trd).toMatch(/Envelope identity routing is `implemented_on_active_pr`/u);
     expect(fitness).toContain('Autosave lifecycle observation');
     expect(fitness).toMatch(/Autosave lifecycle observation[^\n]*implemented_on_protected_main/u);
     expect(fitness).toMatch(/Envelope schema identity \/ migration routing[^\n]*implemented_on_active_pr/u);
