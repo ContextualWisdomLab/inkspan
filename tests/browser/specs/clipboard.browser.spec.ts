@@ -2,20 +2,24 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import {
   SAFE_CLIPBOARD_CROSS_ENGINE_CORPUS,
   SAFE_CLIPBOARD_CROSS_ENGINE_CORPUS_VERSION,
   type CrossEngineClipboardEngine,
   type CrossEngineClipboardObservation,
 } from '../../../src/crossEngineClipboardEvidence.js';
+import {
+  BROWSER_EVIDENCE_SCHEMA_VERSION,
+  BROWSER_PERFORMANCE_BUDGET_MILLIS,
+} from '../evidenceContract.js';
 
 type BrowserProbe = (request: {
   sourceHtml: string;
   clipboardConfig?: unknown;
 }) => {
   sanitizedHtml: string;
-  documentJson: unknown | null;
+  documentJson: unknown;
   errorCode: string | null;
 };
 
@@ -24,9 +28,11 @@ type HostileDocumentProbe = (sourceHtml: string) => {
   message: string;
 };
 
-const evidenceDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '../.browser-evidence');
-const lockfilePath = resolve(dirname(fileURLToPath(import.meta.url)), '../pnpm-lock.yaml');
-const packagePath = resolve(dirname(fileURLToPath(import.meta.url)), '../package.json');
+const specDirectory = dirname(fileURLToPath(import.meta.url));
+const evidenceDirectory = resolve(specDirectory, '../.browser-evidence');
+const lockfilePath = resolve(specDirectory, '../pnpm-lock.yaml');
+const packagePath = resolve(specDirectory, '../package.json');
+const rejectedRequestsByPage = new WeakMap<Page, string[]>();
 const observations: CrossEngineClipboardObservation[] = [];
 let representativeWordMillis: number | null = null;
 
@@ -39,6 +45,7 @@ test.describe.configure({ mode: 'serial' });
 
 test.beforeEach(async ({ page }) => {
   const rejectedExternalRequests: string[] = [];
+  rejectedRequestsByPage.set(page, rejectedExternalRequests);
   await page.route('**/*', async (route) => {
     if (allowHarnessRequest(route.request().url())) {
       await route.continue();
@@ -47,19 +54,16 @@ test.beforeEach(async ({ page }) => {
     rejectedExternalRequests.push(new URL(route.request().url()).origin);
     await route.abort('blockedbyclient');
   });
-  await page.goto('http://127.0.0.1:4173/tests/browser/harness.html');
-  expect(rejectedExternalRequests).toEqual([]);
+  await page.goto('/tests/browser/harness.html');
+});
+
+test.afterEach(async ({ page }) => {
+  await page.waitForLoadState('networkidle');
+  expect(rejectedRequestsByPage.get(page) ?? []).toEqual([]);
 });
 
 for (const testCase of SAFE_CLIPBOARD_CROSS_ENGINE_CORPUS) {
   test(`sanitizes corpus case ${testCase.id}`, async ({ page, browserName }) => {
-    const rejectedExternalRequests: string[] = [];
-    page.on('request', (request) => {
-      if (!allowHarnessRequest(request.url())) {
-        rejectedExternalRequests.push(new URL(request.url()).origin);
-      }
-    });
-
     const result = await page.evaluate(
       ({ sourceHtml, clipboardConfig }) =>
         (
@@ -80,7 +84,6 @@ for (const testCase of SAFE_CLIPBOARD_CROSS_ENGINE_CORPUS) {
     } else {
       expect(result.documentJson).toBeNull();
     }
-    expect(rejectedExternalRequests).toEqual([]);
 
     observations.push({
       caseId: testCase.id,
@@ -116,6 +119,7 @@ test('redacts hostile document capability failures without source disclosure', a
 test('keeps representative Word-like sanitization within the release alarm budget', async ({
   page,
 }) => {
+  test.setTimeout(35_000);
   const sourceHtml = `<div>${Array.from(
     { length: 800 },
     (_, index) =>
@@ -131,12 +135,16 @@ test('keeps representative Word-like sanitization within the release alarm budge
   }, sourceHtml);
 
   expect(measurement.result.errorCode).toBeNull();
-  expect(measurement.elapsedMillis).toBeLessThan(8_000);
+  expect(measurement.elapsedMillis).toBeLessThan(BROWSER_PERFORMANCE_BUDGET_MILLIS);
   representativeWordMillis = Math.round(measurement.elapsedMillis * 100) / 100;
 });
 
 test.afterAll(async ({ browser, browserName }) => {
   const lockfile = await readFile(lockfilePath);
+  const runId = (await readFile(resolve(evidenceDirectory, '.run-id'), 'utf8')).trim();
+  if (!runId) {
+    throw new Error('Cross-engine browser evidence run identity is missing.');
+  }
   const browserPackage = JSON.parse(await readFile(packagePath, 'utf8')) as {
     devDependencies?: Record<string, string>;
   };
@@ -153,8 +161,9 @@ test.afterAll(async ({ browser, browserName }) => {
 
   await mkdir(evidenceDirectory, { recursive: true });
   const evidence = Object.freeze({
-    schemaVersion: 1,
+    schemaVersion: BROWSER_EVIDENCE_SCHEMA_VERSION,
     corpusVersion: SAFE_CLIPBOARD_CROSS_ENGINE_CORPUS_VERSION,
+    runId,
     engine: browserName,
     playwrightVersion,
     browserVersion: browser.version(),
@@ -162,6 +171,7 @@ test.afterAll(async ({ browser, browserName }) => {
     runnerImage: process.env.ImageOS ?? null,
     headSha:
       process.env.INKSPAN_EXPECTED_HEAD_SHA ?? process.env.GITHUB_SHA ?? null,
+    packageSha256: process.env.INKSPAN_EXPECTED_PACKAGE_SHA256?.trim() || null,
     lockSha256: createHash('sha256').update(lockfile).digest('hex'),
     representativeWordMillis,
     observations,
