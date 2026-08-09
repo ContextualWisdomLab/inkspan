@@ -1,11 +1,11 @@
 import { Editor } from '@tiptap/core';
 import {
   ClipboardSanitizationError,
+  buildExtensions,
   sanitizeRichClipboardHtml,
   type ClipboardConfig,
   type ClipboardSanitizationErrorCode,
-} from '../../src/extensions/SafeClipboard.js';
-import { buildExtensions } from '../../src/extensions/kit.js';
+} from 'inkspan-browser-under-test';
 
 interface BrowserClipboardProbeRequest {
   readonly sourceHtml: string;
@@ -14,7 +14,7 @@ interface BrowserClipboardProbeRequest {
 
 interface BrowserClipboardProbeResult {
   readonly sanitizedHtml: string;
-  readonly documentJson: unknown | null;
+  readonly documentJson: unknown;
   readonly errorCode: ClipboardSanitizationErrorCode | null;
 }
 
