@@ -8,11 +8,11 @@ Inkspan already exposes revision-scoped ProseMirror selection evidence. That con
 
 ## Standards authority
 
-The W3C *Web Annotation Data Model* Recommendation defines `TextPositionSelector` using an inclusive `start` and exclusive `end` in a normalized text representation. Its text-position processing model counts Unicode code points rather than implementation code units and cautions that selection boundaries should not split grapheme clusters. Position-only selectors avoid copying quote text into the annotation graph, but they are sensitive to source changes; Inkspan therefore binds every selector to an exact revision rather than claiming durable cross-revision anchoring. citeturn651590search0
+The W3C *Web Annotation Data Model* Recommendation defines `TextPositionSelector` using an inclusive `start` and exclusive `end` in a normalized text representation. Its text-position processing model counts Unicode code points rather than implementation code units and cautions that selection boundaries should not split grapheme clusters. Position-only selectors avoid copying quote text into the annotation graph, but they are sensitive to source changes; Inkspan therefore binds every selector to an exact revision rather than claiming durable cross-revision anchoring.
 
-ProseMirror remains the editor-structure authority. Its document positions are tree-structural coordinates, and `Node.textBetween(from, to, blockSeparator, leafText)` is the primitive used by the versioned Inkspan projection. A ProseMirror position is never relabeled as a W3C position by identity. citeturn651590search2
+ProseMirror remains the editor-structure authority. Its document positions are tree-structural coordinates, and `Node.textBetween(from, to, blockSeparator, leafText)` is the primitive used by the versioned Inkspan projection. A ProseMirror position is never relabeled as a W3C position by identity.
 
-ECMA-402 13th edition, June 2026 is the current published ECMAScript internationalization standard. Inkspan uses `Intl.Segmenter` with `granularity: 'grapheme'` to reject selection boundaries that do not coincide with grapheme-cluster boundaries. A runtime lacking that capability fails closed with the stable `segmenter_unavailable` classification instead of silently weakening the evidence contract. citeturn694137search1
+ECMA-402 13th edition, June 2026 is the current published ECMAScript internationalization standard. Inkspan uses `Intl.Segmenter` with `granularity: 'grapheme'` to reject selection boundaries that do not coincide with grapheme-cluster boundaries. A runtime lacking that capability fails closed with the stable `segmenter_unavailable` classification instead of silently weakening the evidence contract.
 
 ## Projection version 1
 
