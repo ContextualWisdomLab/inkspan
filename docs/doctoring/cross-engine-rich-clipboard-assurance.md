@@ -20,7 +20,7 @@ The browser corpus covers active content, external-resource and form subtrees, h
 
 Pull-request CI may use the exact checked-out source entry through the browser harness alias to prove the current implementation before packaging. The release path is stricter: `build-release-artifacts` first builds, tests, packs, and transfers the npm `.tgz`; the browser job then downloads that artifact, verifies `SHA256SUMS`, unpacks the exact package into the isolated browser consumer, and points the harness alias at the packaged `dist/cwl-editor.js`. The browser release result therefore cannot be satisfied solely by an uninstalled source-tree module that differs from what will be published.
 
-The packed npm SHA-256 is carried into every engine evidence record and must agree with the expected release artifact digest. This package digest is release-integrity metadata, not a tenant, actor, authorization, or durable-document identifier.
+The packed npm SHA-256 is carried into every engine evidence record and is recomputed from the exact transferred `.tgz` bytes at evidence creation and consensus time. A propagated digest, when available, must match those bytes rather than replacing that calculation. This package digest is release-integrity metadata, not a tenant, actor, authorization, or durable-document identifier.
 
 ## Hermeticity and evidence minimization
 
@@ -32,7 +32,9 @@ The evidence files contain only public synthetic fixture identifiers, sanitized 
 
 ## Difference policy
 
-Security-relevant results must agree across Chromium, Firefox, and WebKit. The default comparator uses **no generic normalization** and no broad engine allowlist. A difference may be admitted only through a focused regression fixture and a reviewed rule that records the authoritative standards basis, exact affected engine/version, threat analysis, canonical interpretation, compatibility consequence, and rollback. An unexplained parser, sanitizer, error, or ProseMirror-structure difference must **fail closed**.
+Security-relevant results must agree across Chromium, Firefox, and WebKit. The comparator uses **no generic normalization** and no broad engine allowlist. The one structural canonicalization is limited to recursively sorting JSON object member names before comparing ProseMirror JSON, because JSON object member ordering is not part of the document structure; array order, primitive values, nulls, sanitized HTML, and rejection codes remain exact. This rule prevents a semantically irrelevant object insertion-order difference from becoming an engine exception while preserving all ordered document structure.
+
+Any other difference may be admitted only through a focused regression fixture and a reviewed rule that records the authoritative standards basis, exact affected engine/version, threat analysis, canonical interpretation, compatibility consequence, and rollback. An unexplained parser, sanitizer, error, ordered ProseMirror-structure, or value difference must **fail closed**.
 
 The same rule applies when one project is missing, skipped, cancelled, unable to provision, unable to emit current-run evidence, has a stale lock digest, or cannot prove the expected packed package: the rich-clipboard release lane remains blocked. Other Inkspan work may continue; the browser gate itself does not become optional.
 
@@ -40,7 +42,7 @@ The same rule applies when one project is missing, skipped, cancelled, unable to
 
 Playwright/browser upgrades are compatibility events. Update the immutable browser-test lock, rerun every engine and the complete corpus, review any difference against current standards, and accept the new evidence only on the unchanged exact head. Do not transfer browser evidence from a predecessor commit or prior workflow attempt.
 
-If the browser gate itself is faulty, rollback may revert the gate change while explicitly leaving the 0.6.0 rich-clipboard publication claim unaccepted. After protected integration, removing a required engine, weakening the corpus, broadening normalization, dropping packed-artifact binding/current-run identity/lock revalidation, or replacing the exact-head evidence contract requires a superseding ADR and new threat analysis. A sanitizer defect discovered by the gate is fixed at the runtime boundary test-first rather than hidden in an engine-specific expectation.
+If the browser gate itself is faulty, rollback may revert the gate change while explicitly leaving the 0.6.0 rich-clipboard publication claim unaccepted. After protected integration, removing a required engine, weakening the corpus, broadening normalization beyond unordered JSON object-member canonicalization, dropping packed-artifact binding/current-run identity/lock revalidation, or replacing the exact-head evidence contract requires a superseding ADR and new threat analysis. A sanitizer defect discovered by the gate is fixed at the runtime boundary test-first rather than hidden in an engine-specific expectation.
 
 ## Claim limits
 
