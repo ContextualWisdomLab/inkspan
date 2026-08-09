@@ -21,6 +21,17 @@ def _repository_text(relative_path: str) -> str:
     return (REPOSITORY_ROOT / relative_path).read_text(encoding="utf-8")
 
 
+def _workflow_job_block(workflow: str, job_name: str) -> str:
+    """Return one named top-level job block from a repository workflow."""
+
+    match = re.search(
+        rf"(?ms)^  {re.escape(job_name)}:\n(?P<body>.*?)(?=^  [A-Za-z0-9_-]+:\n|\Z)",
+        workflow,
+    )
+    assert match is not None, f"workflow job {job_name!r} is missing"
+    return f"  {job_name}:\n{match.group('body')}"
+
+
 def test_python_support_range_matches_classifiers_and_ci_matrix() -> None:
     """Require package metadata and the Office CI job to cover the same minors."""
 
