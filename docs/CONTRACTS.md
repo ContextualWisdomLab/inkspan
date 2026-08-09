@@ -49,7 +49,7 @@ Autosave is a local coordination surface. It provides bounded single-flight orde
 
 A server-selected strong validator is the durable concurrency authority. It advances only from a validated successful host result. Conflict, timeout ambiguity, malformed callback output, host failure, promise/reflection failure, or observer failure never fabricates durable success.
 
-Lifecycle observation emits only distinct externally visible document-free states. Construction and no-op operations do not manufacture events.
+Lifecycle observation emits only distinct externally visible document-free states. Construction and no-op operations do not manufacture events. The explicit local `getSnapshot()` coordination API may expose bounded active/pending/last-saved strong-validator fields defined by the autosave contract; those values remain confidential local concurrency metadata and are not generic diagnostics or telemetry.
 
 Degraded behavior: when host persistence is unavailable or ambiguous, Inkspan preserves local state and explicit blocked/failure evidence rather than inventing a durable save.
 
@@ -108,6 +108,8 @@ Expected degraded states are explicit rather than mapped to false success:
 
 A public release binds one exact integrated protected source head to package/artifact identity, applicable CI/security/accessibility/document-fidelity evidence, owned production coverage, public-docstring evidence, SBOM/provenance/reproducibility where configured, formal review requirements, rollback guidance, and post-publication smoke verification.
 
+Before immutable publication, the canonical draft inventory is **exactly three regular top-level files**: exactly one npm tarball, exactly one Inkspan Office wheel, and `SHA256SUMS`. Missing, stale, unexpected, duplicate, non-regular, incompletely uploaded, or digest-mismatched assets fail closed. After upload and before publication, the authenticated paginated GitHub Releases API inventory must equal the local release directory by exact asset name, every remote asset must report an uploaded state, and every GitHub-reported `sha256:` digest must equal the digest of the exact transferred local file. The workflow does not silently delete an unexpected remote asset to make an ambiguous draft look clean.
+
 Rollback must preserve readable canonical documents and must not require silently reinterpreting persisted schema semantics. Host-owned migrations, persistence rollback, tenant recovery, and deployment rollback remain host responsibilities unless a future versioned contract explicitly assigns them to Inkspan.
 
 ## Contract-to-authority map
@@ -121,7 +123,7 @@ Rollback must preserve readable canonical documents and must not require silentl
 | Office rendering | deterministic bounded JSON→artifact conversion | file destination policy, downstream distribution, tenant authorization |
 | naruon composition | stable local package/module boundary | authenticated compose transport, tenancy, provider/model policy |
 | model assistance | deterministic proposal acceptance boundary | provider, prompt/data policy, credentials, human approval |
-| release evidence | package/artifact verification and repository evidence | downstream deployment and operational rollout |
+| release evidence | exact three-file draft inventory, package/artifact/digest verification and repository evidence | downstream deployment and operational rollout |
 
 ## Related canonical documents
 
@@ -130,7 +132,7 @@ Rollback must preserve readable canonical documents and must not require silentl
 - `ARCHITECTURE.md` — protected-main implementation architecture.
 - `docs/UML.md` and `docs/DATA_MODEL.md` — interaction and conceptual data/evidence views.
 - `docs/THREAT_MODEL.md` — threat analysis and trust boundaries.
-- `docs/TEST_STRATEGY.md` — machine evidence required for these contracts.
-- `docs/OPERABILITY.md` — failure, recovery, rollback, and incident ownership.
+- `docs/TEST_STRATEGY.md` — machine evidence required for these contracts, including the exact release draft inventory/digest gate.
+- `docs/OPERABILITY.md` — failure, recovery, rollback, incident ownership, and release draft reconciliation.
 - `docs/TRACEABILITY.md` — standards, research, and implementation evidence traceability.
 - `docs/adr/README.md` — detailed architectural decisions.
