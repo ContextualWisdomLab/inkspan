@@ -165,12 +165,11 @@ export function assertCrossEngineClipboardConsensus(
     );
   }
 
-  const [reference, ...others] = observations;
-  if (!reference) {
-    throw new Error(
-      'Cross-engine clipboard evidence requires exactly one observation from chromium, firefox, and webkit.',
-    );
-  }
+  const [reference, ...others] = observations as readonly [
+    CrossEngineClipboardObservation,
+    CrossEngineClipboardObservation,
+    CrossEngineClipboardObservation,
+  ];
   if (others.some((item) => item.caseId !== reference.caseId)) {
     throw new Error(
       'Cross-engine clipboard evidence must describe the same corpus case.',
