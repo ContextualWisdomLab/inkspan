@@ -9,6 +9,7 @@ This directory is the discoverable index for Inkspan's product, technical, secur
 | Document | Authority |
 | --- | --- |
 | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | Current protected-main implementation architecture and bounded-context ownership |
+| [`DOCUMENTATION_FITNESS.md`](DOCUMENTATION_FITNESS.md) | Acquisition completeness matrix, implementation maturity, deliberate non-applicability and remaining canonical gaps |
 | [`PRD.md`](PRD.md) | Product users, jobs, buyer outcomes, non-goals, acceptance and claim boundaries |
 | [`TRD.md`](TRD.md) | Technical invariants, runtime boundaries, failure semantics and release evidence |
 | [`CONTRACTS.md`](CONTRACTS.md) | Public package/API/event/schema/plugin/collaboration and host-integration contracts |
@@ -33,6 +34,8 @@ Use these terms consistently:
 - **Research only** — evidence or alternatives under evaluation, not a product commitment.
 - **Superseded** — retained only for history; a newer decision or implementation is authoritative.
 - **Out of scope** — deliberately excluded from Inkspan ownership.
+
+The exact machine-oriented documentation-fitness and implementation-maturity vocabulary is defined in [`DOCUMENTATION_FITNESS.md`](DOCUMENTATION_FITNESS.md). Human-facing labels above must map to those states without combining evidence qualifiers, PR numbers, or temporary execution status into the status value itself.
 
 Never use a PR body, check status, model verdict, local test, or conversation as a substitute for protected-main implementation authority.
 
