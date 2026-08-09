@@ -11,6 +11,7 @@ const requiredFiles = [
   'CLAUDE.md',
   'ARCHITECTURE.md',
   'CHANGELOG.md',
+  'SECURITY.md',
   'docs/README.md',
   'docs/DOCUMENTATION_FITNESS.md',
   'docs/PRD.md',
@@ -37,6 +38,9 @@ const requiredFiles = [
   'docs/adr/0012-spreadsheet-formula-injection.md',
   'docs/adr/0013-atomic-file-publication.md',
   'docs/adr/0014-local-assets-font-licensing.md',
+  'docs/adr/0015-envelope-schema-migration-routing.md',
+  'docs/adr/0016-cross-engine-browser-assurance.md',
+  'docs/adr/0017-security-disclosure-lifecycle.md',
   'src/fonts/OFL.txt',
   'src/fonts/NOTICE',
   'src/fonts/fonts.css',
@@ -64,6 +68,7 @@ describe('canonical product documentation graph', () => {
     }
     for (const marker of [
       '../ARCHITECTURE.md',
+      '../SECURITY.md',
       'DOCUMENTATION_FITNESS.md',
       'PRD.md',
       'TRD.md',
@@ -147,11 +152,15 @@ describe('canonical product documentation graph', () => {
   });
 
   it('documents realistic security, test, and release evidence boundaries', () => {
+    const security = repositoryFile('SECURITY.md');
     const threatModel = repositoryFile('docs/THREAT_MODEL.md');
     const testStrategy = repositoryFile('docs/TEST_STRATEGY.md');
     const traceability = repositoryFile('docs/TRACEABILITY.md');
     const contracts = repositoryFile('docs/CONTRACTS.md');
 
+    expect(security).toContain('Report a vulnerability');
+    expect(security).toContain('private GitHub Security Advisory');
+    expect(security).toContain('does not promise a response-time SLA');
     expect(threatModel).toContain('clipboard');
     expect(threatModel).toContain('formula');
     expect(threatModel).toContain('Yjs');
@@ -188,7 +197,6 @@ describe('canonical product documentation graph', () => {
 
     for (const status of [
       'present_current',
-      'owned_by_separate_active_pr',
       'implemented_on_protected_main',
       'implemented_on_active_pr',
       'planned',
@@ -197,6 +205,7 @@ describe('canonical product documentation graph', () => {
       expect(fitness).toContain(status);
     }
 
+    expect(fitness).toContain('SECURITY disclosure policy');
     expect(fitness).toContain('physical relational ERD');
     expect(fitness).toContain('not_applicable');
     expect(fitness).toContain('Protected `main`');
