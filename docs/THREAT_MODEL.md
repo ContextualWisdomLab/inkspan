@@ -1,6 +1,6 @@
 # Inkspan Threat Model
 
-Status: Proposed canonical baseline
+Status: Protected-main canonical baseline
 
 ## Scope and trust boundary
 

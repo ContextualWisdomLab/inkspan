@@ -1,6 +1,6 @@
 # Inkspan Operability and Recovery
 
-Status: Proposed canonical baseline
+Status: Protected-main canonical baseline
 
 ## Operational model
 

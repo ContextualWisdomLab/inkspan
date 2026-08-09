@@ -1,6 +1,6 @@
 # Inkspan Technical Requirements
 
-Status: Proposed canonical baseline
+Status: Protected-main canonical baseline
 
 ## Authority and runtime boundary
 

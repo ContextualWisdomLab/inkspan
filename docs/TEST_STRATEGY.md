@@ -1,6 +1,6 @@
 # Inkspan Test Strategy
 
-Status: Proposed canonical baseline
+Status: Protected-main canonical baseline
 
 ## Purpose
 

@@ -1,6 +1,6 @@
 # Inkspan Runtime Diagrams
 
-Status: Proposed canonical baseline
+Status: Protected-main canonical baseline
 
 These diagrams describe the accepted product boundary. Protected `main` remains implementation authority; elements owned by open PRs are Proposed until integrated.
 

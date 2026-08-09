@@ -227,7 +227,8 @@ describe('canonical product documentation graph', () => {
     expect(fitness).toContain('physical relational ERD');
     expect(fitness).toContain('not_applicable');
     expect(fitness).toContain('Protected `main`');
-    expect(fitness).toContain('not yet a protected-main canonical baseline');
+    expect(fitness).toContain('documentation graph is a protected-main canonical baseline');
+    expect(fitness).not.toContain('not yet a protected-main canonical baseline');
   });
 
   it('keeps offline font provenance and network-free asset contracts explicit', () => {

@@ -1,6 +1,6 @@
 # Inkspan canonical documentation
 
-Status: Proposed canonical baseline
+Status: Protected-main canonical baseline
 
 This directory is the discoverable index for Inkspan's product, technical, security, operability, and architecture records. Protected `main` is the implementation authority. Proposed or active-PR behavior must remain labeled as such until it reaches protected `main` with the required evidence.
 
