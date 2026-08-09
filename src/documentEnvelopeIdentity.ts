@@ -426,11 +426,7 @@ function assertStringWithinLimit(
 }
 
 function hasUint8ArrayBrand(value: unknown): value is Uint8Array {
-  try {
-    return TYPED_ARRAY_TAG_GETTER.call(value) === 'Uint8Array';
-  } catch {
-    return false;
-  }
+  return TYPED_ARRAY_TAG_GETTER.call(value) === 'Uint8Array';
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
