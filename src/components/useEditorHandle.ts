@@ -96,6 +96,23 @@ export function useEditorHandle(
               digestProvider,
             )
           : Promise.resolve(null),
+      getSelectionRevisionEvidence: async (limits, digestProvider) => {
+        if (!editor) return null;
+        const state = editor.state;
+        const selection = Object.freeze({
+          anchor: state.selection.anchor,
+          head: state.selection.head,
+          from: state.selection.from,
+          to: state.selection.to,
+          empty: state.selection.empty,
+        });
+        const envelope = createDocumentEnvelope(state.doc.toJSON(), limits);
+        const revision = await createValidatedDocumentEnvelopeRevision(
+          envelope,
+          digestProvider,
+        );
+        return Object.freeze({ revision, selection });
+      },
       setValue: (next: string) => {
         if (!editor) return;
         editor.commands.setContent(
