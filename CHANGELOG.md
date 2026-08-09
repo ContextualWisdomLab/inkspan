@@ -6,13 +6,42 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Fixed
+- Added the selected standalone Markdown or HTML value to an explicitly configured SSR native form field, preserving controlled-value precedence, external form association, React attribute escaping, and the synchronous post-hydration TipTap transaction mirror
+
 ### Security
 - Added a fail-closed draft release asset inventory gate that requires exactly one npm tarball, one Office wheel, and `SHA256SUMS`, rejects stale or unexpected draft assets before immutable publication, and verifies every GitHub-reported `sha256:` asset digest against the transferred local file
+- Kept SSR document disclosure opt-in through `formFieldName`; hidden-field values remain client-controlled submission data and do not replace host authentication, authorization, tenant isolation, CSRF defenses, server validation, durable concurrency, or persistence controls
+- Kept collaborative Yjs document content out of server markup until the host-owned client collaboration lifecycle is bound
+
+### Added
+- Added one optional construction-time `onSnapshotChange` callback to the framework-free autosave queue and durable autosave session so hosts can observe saving, pending, blocked, recovery, idle, and shutdown state without polling or introducing a subscriber collection
+- Added privacy-minimized revision-scoped selection evidence through `getSelectionRevisionEvidence()`, binding frozen ProseMirror coordinates to the SHA-256 strong revision of the exact same immutable editor state before asynchronous hashing begins
+- Added privacy-minimized document transition evidence for validated previous and resulting canonical revisions through the framework-independent `revision-evidence` subpath, with object/JSON and strict UTF-8 entry points, deterministic previous-then-resulting SHA-256 derivation, frozen revision-only results, and no document body, actor, tenant, time, authorization, signature, transport, model, or durable-write claim
+
+### Reliability
+- Lifecycle observers receive only distinct frozen document-free snapshots; observer exceptions cannot alter save ordering, conflict/failure recovery, queue outcomes, or durable-validator handoff
+- Durable-session notifications expose a newly committed server validator only after it is coherent with the emitted lifecycle state, preserving host-owned atomic RFC 9110 `If-Match` semantics
+
+### Accessibility
+- Added programmatic toolbar shortcut discoverability with WAI-ARIA `aria-keyshortcuts` for the implemented bold, italic, link, undo, and redo commands, preserving the same native-button behavior, visible labels, roving focus model, and host-owned shortcut-conflict policy
+- Completed redo shortcut metadata with `Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y`, matching the configured Tiptap history and collaboration behavior and exposing both `Ctrl/Cmd+Shift+Z` and `Ctrl/Cmd+Y` alternatives without adding new key handling
+- Corrected extension-scoped review evidence after exact-head repository review found the existing editor-surface `Ctrl/Cmd+K` link binding in `EditorFrame`; the link button now truthfully exposes `Control+K Meta+K` while the Tiptap Link extension itself remains documented as having no default shortcut
+- Preserved buyer-facing README guidance within the same validated safe-link command boundary and moved the shortcut-specific behavior contract to the authoritative accessibility and doctoring records so it is not misattributed to Tiptap
+- Added deterministic regression and documentation contracts plus APA 7th doctoring for exact `Control`/`Meta` shortcut alternatives, the descriptive-only accessibility boundary, repository-level shortcut verification, and omission of unsupported shortcut claims
+
+### Tests
+- Added test-first Node `renderToString` evidence for the missing SSR native value, controlled-over-default selection, escaping, external form ownership, no ProseMirror server construction, and opt-out non-disclosure
+- Added browser-DOM handoff tests proving the field retains and updates the selected value before TipTap exists while reset-only unnamed fields remain empty
 
 ### Documentation
-- Added a canonical acquisition documentation spine covering product requirements, technical requirements, public interface/integration contracts, Mermaid UML, a conceptual data/evidence model, a threat model, test strategy, operability/recovery, standards/evidence traceability, and sixteen linked architecture decision records without inventing Inkspan-owned persistence or host authority; the newest decisions make envelope schema identity/host-owned migration routing and cross-engine browser-semantic release assurance first-class while keeping their implementations explicitly planned
-- Added machine-checkable canonical-documentation decision coverage that keeps required files, ADR index links and completeness, migration-routing and browser-assurance UML/data-model/traceability evidence, physical-ERD non-applicability, browser-security evidence, offline font provenance/no-runtime-font-egress, standards references, rollback sections, host-vs-Inkspan authority boundaries, and work-conserving autonomous-maintenance guidance synchronized
+- Added a canonical acquisition documentation spine covering product requirements, technical requirements, public interface/integration contracts, Mermaid UML, a conceptual data/evidence model, a threat model, test strategy, operability/recovery, standards/evidence traceability, and seventeen linked architecture decision records without inventing Inkspan-owned persistence or host authority; the newest decisions make envelope schema identity/host-owned migration routing, cross-engine browser-semantic release assurance, and the protected security-disclosure lifecycle first-class while keeping unimplemented capabilities explicitly planned
+- Added machine-checkable canonical-documentation decision coverage that keeps required files, ADR index links and completeness, migration-routing and browser-assurance UML/data-model/traceability evidence, physical-ERD non-applicability, browser-security evidence, offline font provenance/no-runtime-font-egress, standards references, rollback sections, host-vs-Inkspan authority boundaries, implemented-vs-active-PR status, and work-conserving autonomous-maintenance guidance synchronized
 - Documented work-conserving autonomous-maintenance governance in `AGENTS.md` and `CLAUDE.md`: a blocked PR blocks only its lane, status/report/prompt/documentation milestones are intermediate while safe work remains, and the external scheduler owns cadence rather than becoming an Inkspan runtime capability
+- Added a repository-native security disclosure and vulnerability-handling policy with supported pre-1.0 release lines, private GitHub Security Advisory routing and safe public fallback, minimized evidence guidance, explicit Inkspan-versus-host ownership boundaries, no-SLA and non-conformance claim limits, deterministic documentation tests, and APA 7th doctoring grounded in current ISO/IEC 29147:2018, ISO/IEC 30111:2019, final NIST SP 800-218 SSDF 1.1, the draft-status boundary for SSDF 1.2, and GitHub primary documentation
+- Documented that revision-scoped selection evidence contains no selected text or complete document envelope, remains valid only for its exact document revision, is not a W3C `TextPositionSelector`, and leaves durable comments, authorization, persistence, collaborative anchoring, and cross-revision re-anchoring to the host
+- Added an APA 7th doctoring record for the selection/revision atomicity, privacy, rollback, and interoperability boundaries grounded in ProseMirror, RFC 9110, and the W3C Web Annotation Data Model
+- Added transition-evidence operator guidance and APA 7th doctoring for content minimization, W3C PROV occurrence-provenance limits, RFC 8785 canonicalization, RFC 9110 durable-validator separation, SHA-256 lifecycle evidence, framework-free packaging, rollback, and host-owned authenticated audit semantics
 - Added an authoritative standalone and modular MSA architecture contract with reviewable deployment, optimistic-concurrency, data-ownership, security, and acquisition-evidence diagrams and tables
 - Added a beginner-readable naruon compose and ui.panel integration guide covering narrow client hydration, server-selected strong validators, accessible conflict handling, host-owned Yjs lifecycle, contextual-orchestrator boundaries, and local-versus-shareable evidence
 - Added an opaque editing-context remount for the complete editor and autosave example, latest-generation asynchronous capture ordering, encoded document path segments, redacted recovery status, and lazy state-owned session identity to prevent cross-document state reuse
@@ -20,6 +49,8 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Added stale-generation conflict recovery and operational save failure recovery through one reason-aware single-flight host workflow, so newer local edits cannot hide or duplicate recovery while retained work remains blocked; rejected or malformed resume attempts retain the same recovery surface until a valid resume succeeds or the editing context is disposed
 - Added exact-head read-only CI with fixed Ubuntu 24.04 runners, immutable action pins, explicit contributor-head checkout, disabled persisted Git credentials, and a documented merge-result compatibility boundary
 - Added deterministic documentation contract tests and APA 7th doctoring grounded in RFC 9110, WCAG 2.2, NIST SP 800-204, NIST SP 800-204D, OWASP ASVS 5.0.0, React, current Next.js App Router guidance, and GitHub Actions primary documentation
+- Added APA 7th doctoring for the SSR native form field, including the WHATWG hidden-input/form-entry contract, React server/hydration continuity, client-controlled-data boundary, host-owned CSRF and acceptance controls, collaboration exclusion, and rollback
+- Added lifecycle-observation doctoring covering bounded callback retention, local-versus-shareable evidence, durable-validator coherence, WCAG 2.2 status-message responsibilities, rollback, and APA 7 references to RFC 9110, WCAG 2.2, and optimistic concurrency research
 
 ## [0.5.29] — 2026-08-05
 
