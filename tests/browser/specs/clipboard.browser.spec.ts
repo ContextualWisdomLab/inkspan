@@ -12,6 +12,7 @@ import {
 import {
   BROWSER_EVIDENCE_SCHEMA_VERSION,
   BROWSER_PERFORMANCE_BUDGET_MILLIS,
+  packedPackageSha256,
 } from '../evidenceContract.js';
 
 type BrowserProbe = (request: {
@@ -29,6 +30,7 @@ type HostileDocumentProbe = (sourceHtml: string) => {
 };
 
 const specDirectory = dirname(fileURLToPath(import.meta.url));
+const repositoryRoot = resolve(specDirectory, '../../..');
 const evidenceDirectory = resolve(specDirectory, '../.browser-evidence');
 const lockfilePath = resolve(specDirectory, '../pnpm-lock.yaml');
 const packagePath = resolve(specDirectory, '../package.json');
@@ -171,7 +173,7 @@ test.afterAll(async ({ browser, browserName }) => {
     runnerImage: process.env.ImageOS ?? null,
     headSha:
       process.env.INKSPAN_EXPECTED_HEAD_SHA ?? process.env.GITHUB_SHA ?? null,
-    packageSha256: process.env.INKSPAN_EXPECTED_PACKAGE_SHA256?.trim() || null,
+    packageSha256: await packedPackageSha256(repositoryRoot),
     lockSha256: createHash('sha256').update(lockfile).digest('hex'),
     representativeWordMillis,
     observations,
