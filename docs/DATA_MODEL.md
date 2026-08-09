@@ -40,7 +40,7 @@ erDiagram
 ## Inkspan-owned in-memory or package value objects
 
 - `document_envelope`: versioned, strictly validated, canonicalizable complete document value. It can contain the complete document body. Inkspan constructs/validates it; a host may persist it under its own policy.
-- `document_schema_identity`: `implemented_on_active_pr` in PR #84 as a frozen identity-only routing value containing the complete envelope's bounded `schemaId` and positive safe-integer `schemaVersion`. It contains no document body and does not validate unsupported-version document semantics. The host owns migration selection/execution and persistence.
+- `document_schema_identity`: `implemented_on_protected_main` as a frozen identity-only routing value containing the complete envelope's bounded `schemaId` and positive safe-integer `schemaVersion`. It contains no document body and does not validate unsupported-version document semantics. The host owns migration selection/execution and persistence.
 - `document_revision`: SHA-256 equality evidence derived from one exact canonical envelope. It is not authorization, tenant identity, actor identity, timestamp, signature, or proof of a durable write.
 - `editor_session`: conceptual local editor/runtime lifetime. It binds one mounted editor state to local evidence and host callbacks. It is not a durable account/session record and has no authentication authority.
 - `document_transition`: previous/resulting revision pair plus changed classification. It deliberately omits the document body from ordinary evidence.
@@ -54,12 +54,12 @@ erDiagram
 - `release_artifact`: package/wheel/checksum or other expected artifact considered for release.
 - `release_evidence`: exact-source artifact inventory/digest/provenance/verification evidence used before publication.
 
-## Planned evidence objects
+## Active release-assurance evidence objects
 
-The following **planned evidence objects** make an accepted future release-assurance boundary visible in the conceptual ERD without claiming that its APIs or persistence exist on protected `main`:
+The following **active release-assurance evidence objects** make the current browser-assurance implementation visible in the conceptual ERD without claiming that an unmerged PR is protected-main authority or that either value requires an application database:
 
-- `browser_assurance_evidence`: proposed exact-head release evidence from the same committed rich-clipboard corpus executed in required Chromium, Firefox, and WebKit projects. It records bounded public fixture/corpus, browser-revision, package-lock, platform and source identity rather than tenant clipboard data.
-- `browser_difference_allowance`: proposed reviewed explanation for one standards-permitted browser serialization difference. It is attached only to focused evidence with threat analysis and rollback; it never acts as a generic normalization rule or approval substitute.
+- `browser_assurance_evidence`: `implemented_on_active_pr` as exact-head release evidence from the same committed rich-clipboard corpus executed in required Chromium, Firefox, and WebKit projects. It records bounded public fixture/corpus, browser-revision, package-lock, platform and source identity rather than tenant clipboard data.
+- `browser_difference_allowance`: `planned` unless and until a real standards-permitted browser serialization difference requires one focused reviewed explanation. It must be attached only to focused evidence with a standards basis, threat analysis, compatibility consequence, and rollback; it never acts as a generic normalization rule or approval substitute.
 
 These values may remain ephemeral or release-artifact metadata. Their presence in the logical model does not create an Inkspan application database or transfer host authority.
 
@@ -77,7 +77,7 @@ These values may remain ephemeral or release-artifact metadata. Their presence i
 | Entity | Current physical persistence owner | Typical lifecycle | Contains complete document body? | Authority claim |
 |---|---|---|---|---|
 | `document_envelope` | host if persisted | document revision | yes | deterministic document value only |
-| `document_schema_identity` | none required; `implemented_on_active_pr` | one routing inspection | no | schema-route metadata only |
+| `document_schema_identity` | none required; `implemented_on_protected_main` | one routing inspection | no | schema-route metadata only |
 | `document_revision` | local or host metadata by policy | derived per exact content | no | equality only |
 | `editor_session` | none required | mounted editor runtime | may reference local state | no auth/session authority |
 | `document_transition` | none required; host may store | change evidence | no | content-lineage evidence only |
@@ -92,7 +92,7 @@ These values may remain ephemeral or release-artifact metadata. Their presence i
 | `conversion_request` | none required | one deterministic conversion | may reference/contain requested source content | conversion intent only |
 | `conversion_artifact` | caller/host filesystem or artifact store | successful render/export | yes, rendered form | successful deterministic output only |
 | `render_warning` | none required; host may log under policy | conversion result | no by default | warning/limitation only |
-| `browser_assurance_evidence` | release system if retained; planned | one exact-head browser gate | public fixture metadata only | release assurance evidence only |
+| `browser_assurance_evidence` | release system if retained; `implemented_on_active_pr` | one exact-head browser gate | public fixture metadata only | release assurance evidence only |
 | `browser_difference_allowance` | release system if retained; planned | focused engine difference | no tenant content | reviewed safe-difference rationale only |
 | `audit_event` | host/release system | durable operational history | should avoid complete body unless policy requires | authenticated host/release evidence |
 | `release_artifact` | release system | build/release | package content | candidate artifact only |
@@ -103,11 +103,11 @@ These values may remain ephemeral or release-artifact metadata. Their presence i
 The current Inkspan runtime does not create a tenant database, but products embedding it depend on temporal/version provenance boundaries:
 
 - `document_envelope` carries an explicit schema/version contract; unknown versions require host-owned migration routing rather than permissive parsing.
-- active-PR `document_schema_identity` exposes only bounded routing metadata; it never validates or migrates the unsupported document body and never creates a durable version claim.
+- protected-main `document_schema_identity` exposes only bounded routing metadata; it never validates or migrates the unsupported document body and never creates a durable version claim.
 - `document_revision`, selection, transition, and autosave evidence bind to one exact content state; they do not add actor/time/tenant claims not present in the source contract.
 - `durable_validator` is temporally ordered by the host's atomic persistence service and must advance only after validated durable success.
 - `collaboration_document`, `provider_binding`, `awareness_state`, `host_capability`, and `audit_event` can be tenant-scoped in a host, but Inkspan does not define or infer that tenant key.
-- `browser_assurance_evidence` and any focused `browser_difference_allowance` bind to one exact source, corpus, package lock and browser revision set; predecessor or different-browser evidence does not transfer silently.
+- active-PR `browser_assurance_evidence` and any future focused `browser_difference_allowance` bind to one exact source, corpus, package lock and browser revision set; predecessor or different-browser evidence does not transfer silently.
 - `release_evidence` binds package artifacts to one exact protected source generation; predecessor evidence does not transfer after source movement.
 
 ## Privacy and minimum-disclosure rules
@@ -116,7 +116,7 @@ Ordinary lifecycle/selection/transition/schema-identity evidence should remain d
 
 ## Persistence non-applicability and future change
 
-No Inkspan-owned relational schema is required by the current architecture, so no physical database ERD or migration set is invented here merely to satisfy documentation completeness. Active identity-routing and planned browser-assurance values are logical API/evidence objects, not database tables. If Inkspan later introduces durable persistence, that is a material architecture change requiring:
+No Inkspan-owned relational schema is required by the current architecture, so no physical database ERD or migration set is invented here merely to satisfy documentation completeness. Protected identity-routing and active browser-assurance values are logical API/evidence objects, not database tables. If Inkspan later introduces durable persistence, that is a material architecture change requiring:
 
 1. an Accepted ADR defining why persistence moved into Inkspan;
 2. a physical database ERD with descriptive multiword `snake_case` object names;
