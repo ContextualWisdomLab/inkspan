@@ -79,6 +79,8 @@ describe('release cross-engine browser evidence contract', () => {
     expect(browserJob).toContain('path: tests/browser/.browser-evidence/');
     expect(browserJob).toContain('include-hidden-files: true');
     expect(browserJob).toContain('if-no-files-found: error');
+    expect(browserJob).toContain('if: always()');
+    expect(browserJob).toContain('retention-days: 14');
     expect(browserJob).not.toContain('path: tests/browser/test-results');
   });
 
