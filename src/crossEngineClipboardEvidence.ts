@@ -75,7 +75,7 @@ const CORPUS: readonly CrossEngineClipboardCase[] = [
     id: 'hidden-content-visibility-popover',
     riskFamily: 'hidden-content',
     sourceHtml:
-      '<div>one<span style="content-visibility: h\\69dden">two</span><span popover>three</span>four</div>',
+      '<div>one<span style="content-visibility: h\\69 dden">two</span><span popover>three</span>four</div>',
     expectedSanitizedHtml: '<div>onefour</div>',
     expectedErrorCode: null,
   },
