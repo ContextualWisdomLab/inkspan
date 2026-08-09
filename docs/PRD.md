@@ -4,7 +4,7 @@ Status: Proposed canonical baseline
 
 ## Product definition
 
-Inkspan is a standalone Markdown/HTML rich-text authoring and deterministic document-conversion product that can also be embedded as a modular CWL component. It gives hosts a TipTap/ProseMirror editor, safe rich clipboard handling, canonical document envelopes, revision-scoped evidence, SSR/native-form integration, bounded local autosave coordination, provider-neutral collaboration bindings, and deterministic Office conversion without taking ownership of host transport, identity, authorization, tenancy, durable persistence, credentials, migrations, retention, deployment, audit storage, or model-use policy.
+Inkspan is a standalone Markdown/HTML rich-text authoring and deterministic document-conversion product that can also be embedded as a modular CWL component. Protected `main` is the implementation authority for what Inkspan actually provides today. This canonical PRD also records Active PR / Proposed requirements such as safe rich clipboard handling, revision-scoped selection/transition evidence, SSR/native-form integration, and lifecycle observation; they are target requirements, not shipped claims, until protected integration. Across current and proposed scope, Inkspan keeps host transport, identity, authorization, tenancy, durable persistence, credentials, migrations, retention, deployment, audit storage, and model-use policy outside the product boundary unless a future accepted versioned contract explicitly changes that division.
 
 The product promise is: **author, convert, collaborate, and prove document changes without hiding authority inside the editor.**
 
