@@ -62,20 +62,20 @@ describe('cross-engine rich clipboard release oracle', () => {
         observation('chromium', {
           documentJson: {
             type: 'doc',
-            attrs: { zeta: 1, alpha: 2 },
+            attrs: { zeta: 1, optional: null, alpha: 2 },
             content: [{ type: 'paragraph', attrs: { beta: true, alpha: false } }],
           },
         }),
         observation('firefox', {
           documentJson: {
             content: [{ attrs: { alpha: false, beta: true }, type: 'paragraph' }],
-            attrs: { alpha: 2, zeta: 1 },
+            attrs: { alpha: 2, optional: null, zeta: 1 },
             type: 'doc',
           },
         }),
         observation('webkit', {
           documentJson: {
-            attrs: { zeta: 1, alpha: 2 },
+            attrs: { zeta: 1, alpha: 2, optional: null },
             content: [{ attrs: { beta: true, alpha: false }, type: 'paragraph' }],
             type: 'doc',
           },
