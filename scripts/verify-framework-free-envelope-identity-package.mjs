@@ -27,6 +27,8 @@ const packageDirectory = join(
   'node_modules',
   ...packageJson.name.split('/'),
 );
+const frameworkModulePattern =
+  /(?:['"](?:react(?:-dom)?(?:\/[^'"]*)?|@tiptap\/[^'"]+|prosemirror-[^'"]+|yjs(?:\/[^'"]*)?)['"])/u;
 
 function run(command, argumentsList, cwd = repositoryRoot) {
   return execFileSync(command, argumentsList, {
@@ -58,6 +60,21 @@ function preparePackage() {
     '{"name":"inkspan-envelope-identity-consumer","private":true,"type":"module"}\n',
     'utf8',
   );
+}
+
+function verifyFrameworkFreeBundles() {
+  for (const filename of [
+    'cwl-envelope-identity.js',
+    'cwl-envelope-identity.cjs',
+  ]) {
+    const bundlePath = join(packageDirectory, 'dist', filename);
+    const bundleSource = readFileSync(bundlePath, 'utf8');
+    assert.doesNotMatch(
+      bundleSource,
+      frameworkModulePattern,
+      `${filename} must not reference framework dependencies`,
+    );
+  }
 }
 
 function verifyRuntimeConsumers() {
@@ -168,6 +185,7 @@ void byteIdentity;
 
 try {
   preparePackage();
+  verifyFrameworkFreeBundles();
   verifyRuntimeConsumers();
   verifyDeclarationConsumer();
   console.log(
