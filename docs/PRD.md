@@ -105,7 +105,9 @@ Inkspan does not promise universal HTML/Office round-trip fidelity, arbitrary ex
 
 ## Security and privacy requirements
 
-- Untrusted HTML, DOM capabilities, clipboard configuration, form values, Office structures, host callbacks, collaboration updates, unsupported envelope generations, and model proposals fail closed at documented boundaries.
+- Untrusted HTML, DOM capabilities, clipboard configuration, form values, Office structures, host callbacks, collaboration updates, and model proposals fail closed at documented boundaries.
+- Malformed or unsafe envelope inputs fail closed without partial routing metadata.
+- Structurally valid unknown envelope identities return routing metadata only and do not prove current-schema compatibility or migration success.
 - Active or hidden rich content must not bypass the supported semantic clipboard policy.
 - Envelope identity output is routing metadata only and must not expose document-bearing source fields or become migration/authorization/durable-write evidence.
 - Spreadsheet formula-significant input must not silently become executable formulas unless a future explicit trusted formula contract says otherwise.
