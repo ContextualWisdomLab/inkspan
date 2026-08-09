@@ -1,10 +1,10 @@
 # Inkspan Documentation Fitness Matrix
 
-Status: Proposed canonical baseline
+Status: Protected-main canonical baseline
 
 This document answers a narrower acquisition question than the PRD or architecture: **can an independent reviewer reconstruct Inkspan's product, technical, security, data/evidence, operating, and release decisions from GitHub without relying on chat history or pull-request prose?**
 
-Protected `main` remains the implementation authority. This documentation branch is reviewable evidence, but it is **not yet a protected-main canonical baseline** until normal protected integration succeeds. Requirements implemented only on another active branch are not shipped merely because this matrix references them.
+The documentation graph is a protected-main canonical baseline. Protected `main` remains the implementation authority, while requirements implemented only on another active branch are not shipped merely because this matrix references them.
 
 ## Classification vocabulary
 
@@ -91,11 +91,11 @@ The documentation pack itself is substantially complete for acquisition review, 
 1. Issue #74 remains `planned`: the identity-only migration-routing API must still be implemented test-first while the current parser remains strict. Its architectural decision is now present rather than hidden in issue prose.
 2. Issue #66 remains `planned` behind PR #65: the dependency-locked Chromium/Firefox/WebKit differential suite must still be implemented before the rich-clipboard release line. Its release-assurance decision is now present rather than hidden in issue prose.
 3. SafeClipboard (PR #65) remains `implemented_on_active_pr` until protected integration. Autosave lifecycle observation, security disclosure, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, and document-transition evidence are now `implemented_on_protected_main` and must not be described as active-only work.
-4. The canonical documentation branch must still reconcile its ancestry with the latest protected `main` before protected merge; protected-main identity must be refetched rather than hard-coded as timeless architecture.
+4. The canonical documentation graph is already integrated on protected `main`; future reconciliation is required only when protected source, accepted decisions, or implementation maturity materially changes.
 5. Documentation becoming mergeable or protected-merged is not a reason for the commercial loop to stop; the next safe product, release, security, accessibility or interoperability lane must continue.
 
 ## Sufficiency decision
 
-For this active documentation branch, PRD, TRD, Architecture, ADR, UML, conceptual ERD/data model, contracts, threat model, test strategy, operability, security disclosure, and traceability are `present_current` for the durable product and accepted/planned architecture decisions reconstructed from the conversation and live repository. Autosave lifecycle observation, the security disclosure lifecycle, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, and document-transition evidence are `implemented_on_protected_main`. SafeClipboard remains active-PR work. Envelope migration routing and cross-engine browser assurance are explicit Proposed ADR decisions while their implementations remain `planned`. A physical relational ERD is `not_applicable` because Inkspan deliberately owns no application persistence.
+PRD, TRD, Architecture, ADR, UML, conceptual ERD/data model, contracts, threat model, test strategy, operability, security disclosure, and traceability are `present_current` for the durable product and accepted/planned architecture decisions reconstructed from the conversation and live repository. Autosave lifecycle observation, the security disclosure lifecycle, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, and document-transition evidence are `implemented_on_protected_main`. SafeClipboard remains active-PR work. Envelope migration routing and cross-engine browser assurance are explicit Proposed ADR decisions while their implementations remain `planned`. A physical relational ERD is `not_applicable` because Inkspan deliberately owns no application persistence.
 
-No material product architecture decision identified by this review remains only in chat or issue prose. Accordingly, the **documentation design is sufficient as a proposed acquisition baseline**, but the repository is **not yet a protected-main canonical baseline** until this graph is reconciled with the latest protected source generation and passes normal protected integration. Product/release readiness must continue to be evaluated independently of documentation completeness.
+No material product architecture decision identified by this review remains only in chat or issue prose. Accordingly, the **documentation graph is a protected-main canonical baseline** and is sufficient for acquisition reconstruction under the current product boundary. Product/release readiness must continue to be evaluated independently of documentation completeness.
