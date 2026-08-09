@@ -6,6 +6,13 @@ Status: Proposed
 
 Local editor revisions are useful equality evidence but cannot prove a durable server write. Autosave also must avoid concurrent duplicate writes, unbounded queued work, silent conflict recovery, and telemetry callbacks that alter persistence behavior.
 
+## Alternatives considered
+
+- Overlapping saves for every local edit: rejected because ordering and retained work become ambiguous.
+- A client content digest as the durable validator: rejected because local equality evidence is not durable server authority.
+- An unbounded FIFO of every intermediate revision: rejected because memory and write volume grow without a fixed ceiling.
+- One active save plus one replaceable pending revision, with explicit blocked recovery and a host/server-selected strong validator: selected.
+
 ## Decision
 
 Use a single-flight autosave queue with bounded active/pending work and explicit `idle`, `saving`, `blocked`, `closing`, and `closed` lifecycle state. A durable session accepts and advances only host/server-selected strong HTTP entity tags for compare-and-swap. Conflict or ambiguous save failure blocks progression until explicit recovery. Optional lifecycle observation emits only distinct document-free transitions; construction and no-op operations emit nothing, and observer exceptions are isolated.
@@ -17,6 +24,14 @@ Inkspan can coordinate deterministic local ordering while the host remains the o
 ## Failure and recovery
 
 Malformed or weak validators fail closed. Conflict preserves durable uncertainty and requires authenticated host recovery. Ambiguous transport failure never advances the validator. Recovery with no pending work may return to idle; unsuccessful/no-op recovery does not synthesize an observer event. Closing waits only for bounded retained work.
+
+## Security and privacy impact
+
+Autosave coordination does not grant authorization or tenant authority. Strong validators and local revisions can be tenant-confidential equality metadata, so snapshots and public diagnostics remain document-free and must not expose validators, credentials, complete document bodies, or private callback failures.
+
+## Compatibility and migration
+
+The public queue/session states, validator grammar, and result contracts are compatibility surfaces. Hosts adopting the durable session supply a valid server-selected strong validator and keep durable retry/conflict policy. Any future lifecycle-state or retention change requires compatibility tests, migration guidance, and a rollback that preserves host durable state.
 
 ## Verification
 
