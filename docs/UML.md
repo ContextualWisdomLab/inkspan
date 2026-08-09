@@ -59,6 +59,42 @@ sequenceDiagram
 
 Security-relevant browser fragment semantics require the same hostile corpus under Chromium, Firefox, and WebKit before the relevant release line.
 
+## Cross-engine browser-semantic release assurance
+
+```mermaid
+flowchart TB
+  Head[One exact protected-source candidate head]
+  Corpus[Committed synthetic adversarial clipboard corpus]
+  Lock[Immutable package lock and Playwright/browser revisions]
+  Chromium[Chromium project]
+  Firefox[Firefox project]
+  WebKit[WebKit project]
+  Semantic{Security-semantic result agrees?}
+  Difference{Serialization difference only?}
+  Basis[Focused standards basis + threat analysis + rollback note]
+  Repair[Repair sanitizer/integration test-first]
+  ReleaseGate[Rich-clipboard release assurance eligible]
+  Blocked[Release blocked; unrelated work may continue]
+
+  Head --> Corpus
+  Head --> Lock
+  Corpus --> Chromium
+  Corpus --> Firefox
+  Corpus --> WebKit
+  Lock --> Chromium
+  Lock --> Firefox
+  Lock --> WebKit
+  Chromium --> Semantic
+  Firefox --> Semantic
+  WebKit --> Semantic
+  Semantic -->|yes| ReleaseGate
+  Semantic -->|no| Difference
+  Difference -->|proven safe standards-permitted difference| Basis --> ReleaseGate
+  Difference -->|unsafe, unexplained, missing browser, skipped or failed| Repair --> Blocked
+```
+
+A queued, pending, skipped, cancelled, absent or failed required browser is not passing evidence. Differences are never normalized merely to make engines agree; any admitted difference is a reviewed compatibility artifact. ADR 0016 and Issue #66 own this planned release-assurance decision behind the SafeClipboard integration dependency.
+
 ## Author-to-model proposal sequence
 
 ```mermaid
@@ -105,6 +141,39 @@ flowchart LR
 ```
 
 Unsupported or lossy constructs are surfaced by the relevant contract instead of being advertised as lossless round-trip fidelity.
+
+## Envelope identity and host-owned migration routing
+
+```mermaid
+sequenceDiagram
+  participant Host
+  participant Inspector as Planned bounded identity inspector
+  participant Registry as Host migration registry
+  participant Migration as Host-owned version migration
+  participant StrictParser as Current-schema strict parser
+  participant Inkspan
+
+  Host->>Inspector: complete untrusted envelope
+  Inspector->>Inspector: bounded JSON/UTF-8/duplicate-name/descriptor validation
+  alt identity invalid
+    Inspector-->>Host: stable redacted failure
+  else identity valid
+    Inspector-->>Host: frozen schemaId + schemaVersion only
+    Host->>Registry: select authorized migration route
+    alt current supported identity
+      Host->>StrictParser: validate current envelope
+    else registered legacy/future route
+      Registry->>Migration: run version-specific host migration
+      Migration-->>Host: candidate current-schema envelope
+      Host->>StrictParser: strict current-schema validation
+    else no route
+      Registry-->>Host: unsupported version; preserve original source
+    end
+    StrictParser-->>Inkspan: canonical document only after strict success
+  end
+```
+
+The identity result does not contain the document body and does not prove migration, authorization, persistence or durable success. ADR 0015 and Issue #74 define this planned routing aid; the host continues to own schema registry, migration execution, persistence, audit and rollback.
 
 ## Office render and file publication sequence
 
