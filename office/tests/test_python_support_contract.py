@@ -48,3 +48,11 @@ def test_python_support_documentation_matches_the_fixed_ci_environment() -> None
     for version in SUPPORTED_PYTHON_VERSIONS:
         assert f"Python {version}" in office_readme
         assert f"Python {version}" in root_readme
+
+
+def test_release_workflow_uses_the_same_fixed_runner_contract() -> None:
+    """Prevent release verification from drifting onto a different runner image."""
+
+    release_workflow = _repository_text(".github/workflows/release.yml")
+    assert "runs-on: ubuntu-latest" not in release_workflow
+    assert release_workflow.count("runs-on: ubuntu-24.04") == 2
