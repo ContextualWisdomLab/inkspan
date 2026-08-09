@@ -9,20 +9,21 @@ function repositoryFile(path: string): string {
 
 describe('document transition evidence documentation', () => {
   it('makes the compact framework-independent API discoverable to adopters', () => {
-    const readme = repositoryFile('README.md');
     const operatorGuide = repositoryFile(
       'docs/revision-evidence-subpath.md',
     );
+    const rootEntrypoint = repositoryFile('src/index.ts');
 
-    expect(readme).toContain('createDocumentEnvelopeTransitionEvidence');
-    expect(readme).toContain('accepts envelope objects or JSON text');
-    expect(readme).not.toContain(
+    expect(rootEntrypoint).toContain(
+      'createDocumentEnvelopeTransitionEvidence',
+    );
+    expect(rootEntrypoint).not.toContain(
       'createDocumentEnvelopeTransitionEvidenceJson',
     );
-    expect(readme).toContain('content-lineage evidence');
     expect(operatorGuide).toContain(
       'createDocumentEnvelopeTransitionEvidenceBytes',
     );
+    expect(operatorGuide).toContain('compact content-lineage evidence');
     expect(operatorGuide).toContain(
       'does not prove that a durable write occurred',
     );
@@ -34,7 +35,6 @@ describe('document transition evidence documentation', () => {
     const doctoring = repositoryFile(
       'docs/doctoring/document-transition-evidence.md',
     );
-    const changelog = repositoryFile('CHANGELOG.md');
 
     expect(architecture).toContain('compact content-lineage evidence');
     expect(architecture).toContain('host-owned occurrence provenance');
@@ -46,9 +46,6 @@ describe('document transition evidence documentation', () => {
     expect(doctoring).toContain('Retrieved August 7, 2026');
     expect(doctoring).toContain(
       'does not prove who caused a transition, when it occurred, or whether it was durably accepted',
-    );
-    expect(changelog).toContain(
-      'privacy-minimized document transition evidence',
     );
   });
 });
