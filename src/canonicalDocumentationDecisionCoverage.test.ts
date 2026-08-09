@@ -12,22 +12,26 @@ const migrationAdr =
   'docs/adr/0015-envelope-schema-migration-routing.md';
 const browserAssuranceAdr =
   'docs/adr/0016-cross-engine-browser-assurance.md';
+const securityDisclosureAdr =
+  'docs/adr/0017-security-disclosure-lifecycle.md';
 
 describe('canonical architecture decision coverage', () => {
-  it('requires durable ADRs for migration routing and browser-semantic release assurance', () => {
-    for (const path of [migrationAdr, browserAssuranceAdr]) {
+  it('requires durable ADRs for migration routing, browser assurance, and security disclosure', () => {
+    for (const path of [migrationAdr, browserAssuranceAdr, securityDisclosureAdr]) {
       expect(existsSync(resolve(process.cwd(), path)), path).toBe(true);
     }
 
     const index = repositoryFile('docs/adr/README.md');
     expect(index).toContain('0015-envelope-schema-migration-routing.md');
     expect(index).toContain('0016-cross-engine-browser-assurance.md');
+    expect(index).toContain('0017-security-disclosure-lifecycle.md');
     expect(index).toContain('Envelope schema identity and host-owned migration routing');
     expect(index).toContain('Cross-engine browser-semantic release assurance');
+    expect(index).toContain('Security disclosure lifecycle and coordinated vulnerability handling');
   });
 
   it('keeps the new decisions complete enough for acquisition review', () => {
-    for (const path of [migrationAdr, browserAssuranceAdr]) {
+    for (const path of [migrationAdr, browserAssuranceAdr, securityDisclosureAdr]) {
       const adr = repositoryFile(path);
       expect(adr).toContain('Status: Proposed');
       for (const heading of [
@@ -47,17 +51,19 @@ describe('canonical architecture decision coverage', () => {
     }
   });
 
-  it('distinguishes documentation completeness from planned implementation maturity', () => {
+  it('distinguishes documentation completeness from implementation maturity', () => {
     const fitness = repositoryFile('docs/DOCUMENTATION_FITNESS.md');
     expect(fitness).toContain('Envelope schema identity / migration routing');
     expect(fitness).toContain('Cross-engine browser-semantic release assurance');
+    expect(fitness).toContain('SECURITY disclosure policy');
     expect(fitness).toContain('present_current');
+    expect(fitness).toContain('implemented_on_protected_main');
     expect(fitness).toContain('planned');
     expect(fitness).toContain('Issue #74');
     expect(fitness).toContain('Issue #66');
   });
 
-  it('makes both decision paths reviewable as diagrams and standards traceability', () => {
+  it('makes both planned decision paths reviewable as diagrams and standards traceability', () => {
     const uml = repositoryFile('docs/UML.md');
     const traceability = repositoryFile('docs/TRACEABILITY.md');
 
