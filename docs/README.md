@@ -9,6 +9,7 @@ This directory is the discoverable index for Inkspan's product, technical, secur
 | Document | Authority |
 | --- | --- |
 | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | Current protected-main implementation architecture and bounded-context ownership |
+| [`../SECURITY.md`](../SECURITY.md) | Protected-main private vulnerability reporting, supported security lines, coordinated disclosure, and claim limits |
 | [`DOCUMENTATION_FITNESS.md`](DOCUMENTATION_FITNESS.md) | Acquisition completeness matrix, implementation maturity, deliberate non-applicability and remaining canonical gaps |
 | [`PRD.md`](PRD.md) | Product users, jobs, buyer outcomes, non-goals, acceptance and claim boundaries |
 | [`TRD.md`](TRD.md) | Technical invariants, runtime boundaries, failure semantics and release evidence |
@@ -19,9 +20,9 @@ This directory is the discoverable index for Inkspan's product, technical, secur
 | [`TEST_STRATEGY.md`](TEST_STRATEGY.md) | Unit/integration/browser/Office/security/accessibility/package evidence strategy |
 | [`OPERABILITY.md`](OPERABILITY.md) | Failure handling, recovery, incident ownership, rollback and release operations |
 | [`TRACEABILITY.md`](TRACEABILITY.md) | Requirements/standards/research-to-decision/test evidence traceability |
-| [`adr/README.md`](adr/README.md) | Status-bearing architectural decision index |
+| [`adr/README.md`](adr/README.md) | Status-bearing architectural decision index, including ADR 0017 for the protected security-disclosure lifecycle |
 
-The root `SECURITY.md` is the disclosure-policy authority once that separately owned bounded change reaches protected `main`; this index must not duplicate or race an active security-policy branch. `CHANGELOG.md` records shipped/reviewable change history, while `AGENTS.md` and `CLAUDE.md` point contributors back to this canonical graph rather than becoming parallel architecture specifications.
+Root `SECURITY.md` is now implemented on protected `main` and remains the normative reporting/disclosure policy. ADR 0017 records the durable architecture/process decision and ownership/claim boundaries without duplicating policy prose. `CHANGELOG.md` records shipped/reviewable change history, while `AGENTS.md` and `CLAUDE.md` point contributors back to this canonical graph rather than becoming parallel architecture specifications.
 
 ## Status discipline
 
