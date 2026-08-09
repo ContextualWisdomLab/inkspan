@@ -14,13 +14,13 @@ Protected `main` is the shipped implementation authority. Open PRs are not opera
 
 Inkspan itself does not expose a network health endpoint. Operational health is proven through exact-head CI and package-consumer evidence, deterministic runtime outcomes, bounded public errors, security scans, package/release verification, and host-observable local state.
 
-Hosts may derive UI or local telemetry from document-free lifecycle snapshots, but must not expose document bodies, revision/entity tags, provider metadata, tenant identifiers, prompts, or model outputs as public metric dimensions or unauthenticated logs. High-cardinality tenant-confidential equality metadata remains local/private unless a host policy explicitly authorizes sharing.
+Hosts may derive UI or private local observability from bounded lifecycle/snapshot state, but complete document bodies, revision/entity tags, durable validators, provider metadata, awareness state, tenant identifiers, schema identity, browser evidence, prompts, model outputs, or comparable tenant-confidential/release-sensitive values must never become public high-cardinality metric labels or unauthenticated logs. Any separate sharing is authenticated, purpose-bound, minimum-disclosure, and host-authorized; that separate channel does not redefine public telemetry as safe.
 
 ## Autosave operations
 
 The local autosave queue is single-flight with bounded pending work. Durable sessions use a host/server-selected strong HTTP entity tag for compare-and-swap. A local SHA-256 document revision is not a durable validator.
 
-Operational states are `idle`, `saving`, `blocked`, `closing`, and `closed`. Blocked conflict or ambiguous failure requires explicit recovery. No-op lifecycle operations do not manufacture synthetic state changes. Observer exceptions are presentation/telemetry failures and must not change persistence ordering.
+Operational states are `idle`, `saving`, `blocked`, `closing`, and `closed`. Blocked conflict or ambiguous failure requires explicit recovery. No-op lifecycle operations do not manufacture synthetic state changes. Observer exceptions are presentation/telemetry failures and must not change persistence ordering. The explicit in-process `getSnapshot()` coordination surface may contain bounded active/pending/last-saved validator fields; operators must classify those values as confidential local concurrency metadata rather than generic diagnostics.
 
 Host operators should treat:
 
@@ -41,17 +41,18 @@ File publication must follow the documented atomic/non-overwrite behavior. A cal
 
 ## Release operations
 
-Release publication occurs only from an exact integrated protected head. Release evidence includes package artifacts, deterministic checksums, CI/security/package/provenance results, required review, zero valid unresolved findings, and repository-policy acceptance.
+Release publication occurs only from an exact integrated protected head. Release evidence includes package artifacts, deterministic checksums, CI/security/package/provenance results, required review, zero valid unresolved findings, and repository-policy acceptance. The normative inventory and digest rules are defined by the `docs/CONTRACTS.md` Release and rollback contract.
 
 Before publication:
 
-1. build the exact expected artifact inventory;
-2. verify local entries and digests;
-3. verify any resumed remote draft has exactly the expected uploaded asset names and digests;
-4. fail closed on stale/unexpected/incomplete assets rather than deleting them automatically;
-5. verify SBOM/provenance/signing or attestation gates where configured;
-6. verify package/wheel consumers and supported runtime matrix;
-7. publish only after exact-head required review and protection gates pass.
+1. build exactly three regular top-level release files: exactly one npm tarball, exactly one Inkspan Office wheel, and `SHA256SUMS`;
+2. reject missing, duplicate, non-regular, stale, or unexpected local entries and verify the local digests;
+3. after upload, query the authenticated paginated GitHub Releases API and require the resumed remote draft asset-name set to equal the local release directory exactly;
+4. require every remote asset state to be uploaded and every GitHub-reported `sha256:` digest to equal the exact transferred local file digest;
+5. fail closed on stale/unexpected/incomplete/digest-mismatched assets rather than deleting them automatically to manufacture a clean draft;
+6. verify SBOM/provenance/signing or attestation gates where configured;
+7. verify package/wheel consumers and the supported runtime matrix; and
+8. publish only after exact-head required review and protection gates pass.
 
 After publication, verify artifact availability, checksums/provenance, package metadata, install/consumer smoke evidence, and release notes. Rollback of a bad release uses a new reviewed corrective release or repository-supported withdrawal/yank policy; immutable published evidence is not rewritten to pretend the release never existed.
 
@@ -59,7 +60,7 @@ After publication, verify artifact availability, checksums/provenance, package m
 
 ### Security input bypass
 
-Stop publication of affected versions, reproduce on exact source, preserve a minimized synthetic regression, classify whether the defect is inside Inkspan or host policy, patch test-first, rerun security/package/release evidence, and follow `SECURITY.md` disclosure handling once it is protected-main authority. Do not publish proof-of-concept customer data.
+Stop publication of affected versions, reproduce on exact source, preserve a minimized synthetic regression, classify whether the defect is inside Inkspan or host policy, patch test-first, rerun security/package/release evidence, and follow the protected-main root `SECURITY.md` private-reporting and coordinated-disclosure lifecycle. Do not publish proof-of-concept customer data.
 
 ### Data-loss or false durable-success risk
 
