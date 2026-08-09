@@ -40,7 +40,7 @@ The hidden/native field is never authentication, authorization, CSRF protection,
 
 Selection evidence captures structural coordinates and canonical document state from the same immutable editor snapshot before asynchronous hashing. Transition evidence validates previous and resulting envelopes before sequential revision derivation. Ordinary evidence contains revision/coordinate/change metadata rather than document bodies and does not synthesize actor, tenant, time, model identity, signature, authorization, transport result, or durable-persistence claims.
 
-Selection and transition evidence remain active-PR capabilities until protected integration; these target requirements do not promote those branches to shipped runtime behavior.
+Selection and transition evidence are implemented on protected `main`; their local equality/lineage claims remain intentionally narrower than host-owned authorization, occurrence provenance, durable audit, re-anchoring, and persistence authority.
 
 ## Autosave state machine and durable concurrency
 
@@ -95,7 +95,7 @@ Toolbar shortcut metadata is implemented on protected `main`. Shipped keyboard b
 
 ## Packaging, compatibility, and release evidence
 
-The root package and framework-independent subpaths are verified from packed artifacts under ESM, CommonJS, and strict TypeScript consumers. Office Python surfaces are verified under the documented supported Python matrix, exact production statement/branch coverage, complete public docstrings, built wheel/package inspection, and license/dependency consistency.
+The root package and framework-independent subpaths are verified from packed artifacts under ESM, CommonJS, and strict TypeScript consumers. Office Python surfaces are verified under the documented supported Python matrix, exact production statement/branch/function/line coverage, complete public docstrings, built wheel/package inspection, and license/dependency consistency.
 
 Release publication verifies one exact integrated protected source head, expected artifact inventory and digests, package/runtime compatibility, security/coverage/accessibility/document-fidelity gates, SBOM/provenance/reproducibility where configured, zero valid unresolved findings, formal review/branch-protection requirements, and post-publication artifact smoke evidence.
 
@@ -107,4 +107,4 @@ Queued, cancelled, skipped-required, absent, stale-head, predecessor-head, statu
 
 ## Implemented versus proposed
 
-Protected `main` is the sole implemented baseline. The security disclosure lifecycle, autosave lifecycle observation, toolbar shortcut accessibility metadata, and SSR/native-form serialization are implemented on protected `main`. Requirements describing SafeClipboard and transition/selection evidence remain Proposed until merged; migration routing and cross-engine browser assurance remain planned according to their dependency order. Canonical docs distinguish target architecture from shipped behavior and must be updated when the protected implementation changes.
+Protected `main` is the sole implemented baseline. The security disclosure lifecycle, autosave lifecycle observation, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, and document-transition evidence are implemented on protected `main`. SafeClipboard remains Proposed until merged; migration routing and cross-engine browser assurance remain planned according to their dependency order. Canonical docs distinguish target architecture from shipped behavior and must be updated when the protected implementation changes.
