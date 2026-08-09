@@ -67,6 +67,23 @@ export interface CwlEditorSelectionSnapshot {
   readonly empty: boolean;
 }
 
+/**
+ * Privacy-minimized evidence binding one selection to one exact document revision.
+ *
+ * `selection` contains ProseMirror structural positions from the same immutable
+ * editor state whose canonical document envelope produced `revision`. The
+ * positions are meaningful only for that exact revision; they are not DOM,
+ * Markdown, Unicode-text, or W3C TextPositionSelector offsets, and the object is
+ * not authorization, durable-write, audit-identity, or cross-revision anchoring
+ * evidence. No selected text or complete document envelope is included.
+ */
+export interface CwlEditorSelectionRevisionEvidence {
+  /** SHA-256 strong revision for the exact document containing the selection. */
+  readonly revision: CwlEditorDocumentRevision;
+  /** Frozen ProseMirror positions captured from that exact document revision. */
+  readonly selection: CwlEditorSelectionSnapshot;
+}
+
 /** Local selection transition emitted by an Inkspan editable surface. */
 export interface CwlEditorSelectionEvent {
   /** Stable TipTap editor instance whose local selection changed. */
@@ -141,6 +158,18 @@ export interface CwlEditorHandle {
     limits?: DocumentEnvelopeLimits,
     digestProvider?: DocumentEnvelopeDigestProvider | null,
   ): Promise<CwlEditorDocumentRevision | null>;
+  /**
+   * Capture one selection and the strong revision of the exact same editor state.
+   *
+   * The frozen result contains only ProseMirror structural coordinates and the
+   * local document revision, not selected text or a document envelope. Hosts
+   * must verify the revision before reusing the positions and own any durable
+   * cross-revision re-anchoring. Returns `null` before editor creation.
+   */
+  getSelectionRevisionEvidence(
+    limits?: DocumentEnvelopeLimits,
+    digestProvider?: DocumentEnvelopeDigestProvider | null,
+  ): Promise<CwlEditorSelectionRevisionEvidence | null>;
   /** Replace the whole document from a string in the active `mode`. */
   setValue(value: string): void;
   /**
