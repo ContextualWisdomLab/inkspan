@@ -106,8 +106,10 @@ test('redacts hostile document capability failures without source disclosure', a
     privateSource,
   );
 
-  expect(result.errorCode).toBe('invalid_html');
-  expect(result.message).toBe('Rich clipboard HTML could not be sanitized.');
+  expect(result.errorCode).toBe('dom_unavailable');
+  expect(result.message).toBe(
+    'Rich clipboard sanitization requires a DOM-capable document.',
+  );
   expect(result.message).not.toContain('private source');
 });
 
