@@ -38,6 +38,10 @@ Office Open XML renderer for DOCX, XLSX, and PPTX.
   privacy-minimized content-lineage evidence, local `If-Match` restore guards,
   and a bounded single-flight autosave queue are available without React,
   TipTap, ProseMirror, or Yjs runtime coupling.
+- **Version-safe migration routing** — a framework-independent identity surface
+  validates a complete bounded document envelope and returns routing metadata
+  only, so hosts can select a host-owned migration without accepting unknown
+  document semantics as current Inkspan state.
 - **Email output** — Markdown-to-email HTML conversion preserves accepted inline
   base64 figures, emits only safe clickable links, and can return either a
   fragment or a complete HTML document.
@@ -63,6 +67,7 @@ runtime.
 | React editor | `@contextualwisdomlab/cwl-editor` | Markdown/HTML WYSIWYG component and serializers |
 | Collaboration | `@contextualwisdomlab/cwl-editor/collaboration` | Provider-neutral Yjs collaborative editing |
 | Converter | `@contextualwisdomlab/cwl-editor/converter` | Framework-independent base64/data-URI utilities |
+| Envelope identity | `@contextualwisdomlab/cwl-editor/envelope-identity` | Framework-independent bounded schema identity for host-owned migration routing |
 | Revision evidence | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent canonical envelope, strong revision, and transition evidence |
 | Autosave | `@contextualwisdomlab/cwl-editor/autosave` | Provider-neutral bounded single-flight persistence coordination |
 | Styles | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
@@ -323,6 +328,32 @@ signatures, tenant isolation, persistence, audit storage, retention, and durable
 result claims. See
 [`docs/revision-evidence-subpath.md`](docs/revision-evidence-subpath.md) and
 [`docs/doctoring/document-transition-evidence.md`](docs/doctoring/document-transition-evidence.md).
+
+## Framework-independent envelope identity routing
+
+Hosts can inspect the bounded identity of a complete document envelope before
+selecting their own version-specific migration path:
+
+```ts
+import {
+  inspectDocumentEnvelopeIdentity,
+  inspectDocumentEnvelopeIdentityBytes,
+} from '@contextualwisdomlab/cwl-editor/envelope-identity';
+
+const identity = inspectDocumentEnvelopeIdentity(untrustedEnvelope);
+routeMigration(identity.schemaId, identity.schemaVersion);
+```
+
+The inspectors validate a complete bounded input and return routing metadata only:
+`schemaId` and a positive safe-integer `schemaVersion`. They never return
+`documentJson`, accept an unknown document generation as current Inkspan
+semantics, execute a migration, authorize access, or prove durable persistence.
+Use `inspectDocumentEnvelopeIdentityBytes()` when the source is strict UTF-8
+bytes. Migration selection and execution remain a host-owned migration
+responsibility, and migrated output must pass Inkspan's strict current-schema
+parser before it can become canonical editor state. See
+[`docs/document-envelope.md`](docs/document-envelope.md) and
+[`docs/doctoring/envelope-identity-routing.md`](docs/doctoring/envelope-identity-routing.md).
 
 ## Provider-neutral autosave
 
