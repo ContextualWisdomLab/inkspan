@@ -10,4 +10,4 @@ export {
   inspectDocumentEnvelopeIdentityBytes,
 } from '../documentEnvelopeIdentity.js';
 export type { CwlEditorDocumentEnvelopeIdentity } from '../documentEnvelopeIdentity.js';
-export type { DocumentEnvelopeLimits } from '../documentEnvelope.js';
+export type { DocumentEnvelopeLimits } from '../documentEnvelopeLimits.js';
