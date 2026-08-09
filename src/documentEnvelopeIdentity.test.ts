@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   DOCUMENT_ENVELOPE_SCHEMA_ID,
   DocumentEnvelopeError,
-  inspectDocumentEnvelopeIdentity,
-  inspectDocumentEnvelopeIdentityBytes,
   parseDocumentEnvelope,
 } from './documentEnvelope.js';
+import {
+  inspectDocumentEnvelopeIdentity,
+  inspectDocumentEnvelopeIdentityBytes,
+} from './documentEnvelopeIdentity.js';
 
 const legacyEnvelope = {
   schemaId: 'https://inkspan.io/schemas/document-envelope/v0',
