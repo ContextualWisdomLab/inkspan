@@ -61,7 +61,7 @@ The link binding invokes the same SafeLink-governed command path as the toolbar 
 
 ## Compatibility and rollback
 
-The property is optional within Inkspan's internal toolbar-button contract and serializes to an ordinary ARIA attribute on mapped built-in shortcut buttons. Browsers or assistive technologies that do not surface the state continue to receive the same native button labels, focus behavior, and command implementation as before. Redo retains the same TipTap command while exposing both existing key bindings. Link editing retains the pre-existing `EditorFrame` `Ctrl/Cmd+K` execution path and the same prompt-driven toolbar command while restoring truthful metadata.
+The property is optional within Inkspan's internal toolbar-button contract and serializes to an ordinary ARIA attribute on mapped built-in shortcut buttons. Browsers or assistive technologies that do not surface the state continue to receive the same native button labels, focus behavior, and command implementation as before. Redo retains the same Tiptap command while exposing both existing key bindings. Link editing retains the pre-existing `EditorFrame` `Ctrl/Cmd+K` execution path and the same prompt-driven toolbar command while restoring truthful metadata.
 
 Rollback is bounded: remove the mapped `keyShortcuts` assignments, the optional property and emitted `aria-keyshortcuts` state, the focused regression tests, and this doctoring entry. Removing the link metadata alone would reintroduce an accessibility discoverability mismatch unless the `EditorFrame` binding were also intentionally removed in a separately reviewed behavior change. No persisted document, schema, migration, host protocol, or package subpath requires conversion.
 
