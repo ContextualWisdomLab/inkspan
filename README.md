@@ -183,6 +183,34 @@ Hosts retain authenticated atomic RFC 9110 `If-Match`, persistence, encryption,
 retention, redaction, and audit policy. See
 [`docs/imperative-envelope-persistence.md`](docs/imperative-envelope-persistence.md).
 
+### Revision-scoped selection evidence
+
+Review, annotation, and delayed AI workflows can bind the current structural
+selection to the same exact document revision before asynchronous hashing begins:
+
+```tsx
+const selectionEvidence =
+  await editorRef.current?.getSelectionRevisionEvidence();
+
+if (selectionEvidence && !selectionEvidence.selection.empty) {
+  openReview({
+    revision: selectionEvidence.revision,
+    from: selectionEvidence.selection.from,
+    to: selectionEvidence.selection.to,
+  });
+}
+```
+
+The frozen evidence contains ProseMirror structural positions and the local
+strong revision from one immutable editor state. It does not copy selected text
+or the complete document envelope. These coordinates are meaningful only for
+that revision; they are not DOM offsets, Markdown offsets, Unicode text offsets,
+or durable cross-revision anchors. Hosts must verify the revision before reuse
+and own authorization, durable annotation identifiers and comments, persistence,
+audit storage, collaborative anchoring, and any cross-revision re-anchoring
+policy. See [`docs/selection-lifecycle.md`](docs/selection-lifecycle.md) and
+[`docs/doctoring/selection-revision-evidence.md`](docs/doctoring/selection-revision-evidence.md).
+
 ### Revision-guarded restore
 
 Delayed autosave, AI, template, and review results can be applied under the
