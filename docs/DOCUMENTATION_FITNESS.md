@@ -51,6 +51,7 @@ Document fitness and implementation maturity are independent. A `present_current
 | Cross-engine browser-semantic release assurance | ADR 0016, UML, TEST_STRATEGY, TRACEABILITY and Issue #66 | `present_current` | Differential Chromium/Firefox/WebKit release gate is `planned` behind PR #65 | Browser-realistic security assurance is a durable release decision even though its implementation remains dependency-ordered future work. |
 | TRACEABILITY | `docs/TRACEABILITY.md` | `present_current` | Links standards/research/requirements to decisions and evidence with scoped claims | Acquisition reviewers can distinguish evidence from aspiration. |
 | Contributor/agent authority | `AGENTS.md`, `CLAUDE.md`, `docs/README.md` | `present_current` | Protected-main-first decision discipline | Agents are directed back to the same canonical graph rather than parallel private memory. |
+| Autonomous maintenance governance | `AGENTS.md`, `CLAUDE.md` plus the external scheduler | `present_current` | `out_of_scope` as Inkspan runtime behavior; the external scheduler owns cadence/continuation | Work-conserving execution, lane-local waiting, no-report-as-completion, and the scheduler-vs-product authority boundary are reconstructable without pretending automation is an Inkspan API. |
 
 ## Conversation-to-GitHub reconciliation
 
@@ -69,7 +70,7 @@ The canonical graph must retain durable product decisions from the project conve
 - real Chromium/Firefox/WebKit differential evidence as a release gate for browser-semantic clipboard security rather than a jsdom conformance claim; and
 - exact-head/package/security/provenance/release evidence as separate authorities from comments, model verdicts and historical checks.
 
-Autonomous commercial-maintenance scheduling and the no-early-stop execution discipline are **control-plane governance, not a shipped Inkspan product capability**. The scheduler prompt is the execution authority for that loop; repository guidance records writer leases, evidence hierarchy and protected-main authority without pretending the automation prompt is a runtime API or architectural feature.
+Autonomous commercial-maintenance scheduling and the no-early-stop execution discipline are **control-plane governance, not a shipped Inkspan product capability**. The external scheduler is the execution authority for cadence and continuation; repository guidance records writer leases, work-conserving queue behavior, lane-local waiting, evidence hierarchy and protected-main authority without pretending the automation prompt is a runtime API or architectural feature.
 
 Where an older conversation, PR body, or plan conflicts with Protected `main`, it is historical rather than canonical. Where a requirement is only on an active PR, this documentation may describe it as `implemented_on_active_pr` but never as shipped.
 
