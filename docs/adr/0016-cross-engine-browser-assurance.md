@@ -6,7 +6,7 @@ Status: Proposed
 
 Inkspan's safe rich-clipboard boundary depends on browser HTML fragment parsing, DOM construction, serialization, hidden-content interpretation, and TipTap/ProseMirror integration. Unit and jsdom evidence is valuable but cannot prove that Chromium, Firefox, and WebKit expose identical security-relevant behavior. Earlier development already found a CSSOM mismatch around proprietary Office style handling, demonstrating that one simulated DOM is not a sufficient publication boundary.
 
-PR #65 owns the sanitizer implementation. Issue #66 separately owns the browser-realistic differential release gate after PR #65 reaches protected `main`. The architectural decision is how browser-semantic differences are admitted into a release without turning engine disagreement into either an unbounded compatibility promise or an excuse to normalize away a security defect.
+SafeClipboard is now integrated on protected `main`. Issue #66 owns the browser-realistic differential release gate and is implemented on the active cross-engine assurance PR. The architectural decision is how browser-semantic differences are admitted into a release without turning engine disagreement into either an unbounded compatibility promise or an excuse to normalize away a security defect. Until that active implementation reaches protected `main`, its evidence remains non-authoritative for release.
 
 ## Alternatives considered
 
@@ -47,13 +47,13 @@ The design reduces parser-confusion, hidden-content, active-resource, serializat
 
 Each accepted browser/Playwright revision is part of release evidence rather than a forever-supported browser guarantee. Upgrading Playwright or its browser revisions requires the complete corpus to rerun before the new evidence becomes authoritative. A future browser difference that is safe only behind a narrower supported construct must be reflected in the public compatibility contract rather than silently normalized.
 
-The gate is ordered behind the safe-clipboard implementation because there is no useful release assurance for a trust boundary that is not yet integrated. It does not change existing document-envelope or persistence migration semantics.
+The active gate starts from the already integrated SafeClipboard boundary and does not change existing document-envelope or persistence migration semantics. Until protected integration, it remains active-PR release evidence only.
 
 ## Verification
 
-Issue #66 defines the test-first implementation acceptance. Required proof includes RED evidence that the differential harness detects an intentionally introduced divergence or unsafe reconstruction, GREEN evidence after removing the fault, all three named browser projects, deterministic corpus/allowlist/evidence-generation tests, representative performance bounds, exact-head CI/security/package evidence, and a qualifying independent review before the release gate is accepted.
+Issue #66 defines the test-first implementation acceptance. The active implementation includes a permanent differential oracle, an intentionally failing historical RED lineage from the superseded predecessor branch, real Playwright Chromium/Firefox/WebKit execution through the supported paste pipeline, deterministic corpus/evidence-generation tests, representative performance bounds, and exact-head CI/security/package evidence. Any head movement invalidates predecessor evidence and requires the exact current head to re-prove the gate.
 
-The canonical documentation and test strategy must continue to state that jsdom-only evidence is not real-engine conformance and that differences are never normalized merely to make engines agree.
+Protected acceptance additionally requires zero valid unresolved findings, any actually required qualifying independent review, repository policy, and protected integration. The canonical documentation and test strategy continue to state that jsdom-only evidence is not real-engine conformance and that differences are never normalized merely to make engines agree.
 
 ## Rollback or supersession
 
