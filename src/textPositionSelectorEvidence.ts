@@ -11,6 +11,11 @@ export const TEXT_POSITION_PROJECTION_VERSION = 1 as const;
 const BLOCK_SEPARATOR = '\n';
 const LEAF_TEXT = '\uFFFC';
 
+/** Stable failure codes for text-position evidence construction. */
+export type TextPositionSelectorEvidenceErrorCode =
+  | 'grapheme_boundary'
+  | 'segmenter_unavailable';
+
 /** W3C Web Annotation text-position selector for one projected text range. */
 export interface CwlEditorTextPositionSelector {
   /** W3C selector class name. */
@@ -41,12 +46,17 @@ export interface CwlEditorTextPositionSelectorEvidence {
 
 /** Raised when a structural selection cannot safely become text-position evidence. */
 export class TextPositionSelectorEvidenceError extends Error {
-  /** Stable failure code for unsupported grapheme-splitting selection boundaries. */
-  readonly code = 'grapheme_boundary' as const;
+  /** Stable public failure classification. */
+  readonly code: TextPositionSelectorEvidenceErrorCode;
 
-  constructor() {
-    super('Text-position evidence requires grapheme-cluster selection boundaries.');
+  constructor(code: TextPositionSelectorEvidenceErrorCode) {
+    super(
+      code === 'grapheme_boundary'
+        ? 'Text-position evidence requires grapheme-cluster selection boundaries.'
+        : 'Text-position evidence requires Unicode grapheme segmentation support.',
+    );
     this.name = 'TextPositionSelectorEvidenceError';
+    this.code = code;
   }
 }
 
@@ -77,8 +87,13 @@ function codePointLength(value: string): number {
 
 /** Require a position to coincide with a Unicode grapheme-cluster boundary. */
 function assertGraphemeBoundary(text: string, codeUnitOffset: number): void {
-  const Segmenter = (Intl as unknown as { Segmenter: GraphemeSegmenterConstructor })
-    .Segmenter;
+  const Segmenter = (
+    Intl as unknown as { Segmenter?: GraphemeSegmenterConstructor }
+  ).Segmenter;
+  if (typeof Segmenter !== 'function') {
+    throw new TextPositionSelectorEvidenceError('segmenter_unavailable');
+  }
+
   const boundaries = new Set<number>([0, text.length]);
   for (const segment of new Segmenter(undefined, { granularity: 'grapheme' }).segment(
     text,
@@ -86,7 +101,7 @@ function assertGraphemeBoundary(text: string, codeUnitOffset: number): void {
     boundaries.add(segment.index);
   }
   if (!boundaries.has(codeUnitOffset)) {
-    throw new TextPositionSelectorEvidenceError();
+    throw new TextPositionSelectorEvidenceError('grapheme_boundary');
   }
 }
 
@@ -95,8 +110,11 @@ function assertGraphemeBoundary(text: string, codeUnitOffset: number): void {
  *
  * Projection version 1 uses logical ProseMirror document order, `\n` between
  * blocks, and U+FFFC OBJECT REPLACEMENT CHARACTER for non-text leaf nodes. The
- * returned offsets count Unicode code points. The caller must bind the result to
- * the same immutable document revision; this helper contains no selected text.
+ * returned offsets count Unicode code points. Selection boundaries must also be
+ * Unicode grapheme-cluster boundaries; runtimes without `Intl.Segmenter` fail
+ * closed instead of publishing ambiguous evidence. The caller must bind the
+ * result to the same immutable document revision; this helper contains no
+ * selected text.
  */
 export function createTextPositionSelector(
   documentNode: ProseMirrorNode,
