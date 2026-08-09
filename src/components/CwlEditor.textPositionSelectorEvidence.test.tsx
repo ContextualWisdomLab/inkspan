@@ -65,6 +65,39 @@ describe('CwlEditor W3C text-position selector evidence', () => {
     });
   });
 
+  it('projects supported non-text leaf nodes as one object-replacement code point', async () => {
+    const editorRef = createRef<CwlEditorHandle>();
+    render(<CwlEditor ref={editorRef} defaultValue="placeholder" />);
+    await waitFor(() => expect(editorRef.current?.getEditor()).not.toBeNull());
+
+    const handle = editorRef.current!;
+    act(() => {
+      handle.setDocumentJson({
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [
+              { type: 'text', text: 'A' },
+              { type: 'hardBreak' },
+              { type: 'text', text: 'B' },
+            ],
+          },
+        ],
+      });
+      handle.getEditor()!.commands.setTextSelection({ from: 3, to: 4 });
+    });
+
+    const evidence = await handle.getTextPositionSelectorEvidence(undefined, {
+      digest: async () => new Uint8Array(32).fill(0x44).buffer,
+    });
+    expect(evidence?.selector).toEqual({
+      type: 'TextPositionSelector',
+      start: 2,
+      end: 3,
+    });
+  });
+
   it('rejects a structural selection boundary that splits a grapheme cluster', async () => {
     const editorRef = createRef<CwlEditorHandle>();
     render(<CwlEditor ref={editorRef} defaultValue={'A\u0301B'} />);
@@ -84,6 +117,35 @@ describe('CwlEditor W3C text-position selector evidence', () => {
       name: 'TextPositionSelectorEvidenceError',
       code: 'grapheme_boundary',
     });
+  });
+
+  it('fails closed with a stable code when grapheme segmentation is unavailable', async () => {
+    const editorRef = createRef<CwlEditorHandle>();
+    render(<CwlEditor ref={editorRef} defaultValue="ABC" />);
+    await waitFor(() => expect(editorRef.current?.getEditor()).not.toBeNull());
+
+    const handle = editorRef.current!;
+    const intlWithSegmenter = Intl as typeof Intl & { Segmenter?: unknown };
+    const originalSegmenter = intlWithSegmenter.Segmenter;
+    try {
+      Object.defineProperty(intlWithSegmenter, 'Segmenter', {
+        configurable: true,
+        value: undefined,
+      });
+      await expect(
+        handle.getTextPositionSelectorEvidence(undefined, {
+          digest: async () => new Uint8Array(32).buffer,
+        }),
+      ).rejects.toMatchObject({
+        name: 'TextPositionSelectorEvidenceError',
+        code: 'segmenter_unavailable',
+      });
+    } finally {
+      Object.defineProperty(intlWithSegmenter, 'Segmenter', {
+        configurable: true,
+        value: originalSegmenter,
+      });
+    }
   });
 
   it('keeps selector positions and revision bound to the same state while hashing is delayed', async () => {
