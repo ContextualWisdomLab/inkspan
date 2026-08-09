@@ -80,6 +80,28 @@ describe('document envelope identity branch coverage', () => {
     }
   });
 
+  it('enforces value-count and nesting ceilings before JSON.parse', () => {
+    const tooManyValues = JSON.stringify({
+      schemaId: 'legacy',
+      schemaVersion: 1,
+      documentJson: { one: 1, two: 2 },
+    });
+    expectDocumentEnvelopeError(
+      () => inspectDocumentEnvelopeIdentity(tooManyValues, { maxJsonValues: 1 }),
+      'JSON value count',
+    );
+
+    const tooDeep = JSON.stringify({
+      schemaId: 'legacy',
+      schemaVersion: 1,
+      documentJson: { nested: { deeper: true } },
+    });
+    expectDocumentEnvelopeError(
+      () => inspectDocumentEnvelopeIdentity(tooDeep, { maxNestingDepth: 1 }),
+      'nesting depth',
+    );
+  });
+
   it('rejects too many top-level fields under the configured value ceiling', () => {
     expectDocumentEnvelopeError(
       () =>
@@ -95,10 +117,45 @@ describe('document envelope identity branch coverage', () => {
     );
   });
 
+  it('validates inert future fields without returning them', () => {
+    const identity = inspectDocumentEnvelopeIdentity({
+      ...validEnvelope(),
+      futureRoutingHint: { nested: ['safe', true] },
+    });
+    expect(identity).toEqual({
+      schemaId: validEnvelope().schemaId,
+      schemaVersion: 9,
+    });
+    expect('futureRoutingHint' in identity).toBe(false);
+
+    for (const futureRoutingHint of [
+      () => undefined,
+      Symbol('future'),
+      Number.NaN,
+      new Date(),
+    ]) {
+      expectDocumentEnvelopeError(() =>
+        inspectDocumentEnvelopeIdentity({
+          ...validEnvelope(),
+          futureRoutingHint,
+        }),
+      );
+    }
+  });
+
   it('rejects invalid schema identifiers and each invalid schema-version class', () => {
     expectDocumentEnvelopeError(
       () => inspectDocumentEnvelopeIdentity({ ...validEnvelope(), schemaId: 3 }),
       'schemaId must be a string',
+    );
+
+    expectDocumentEnvelopeError(
+      () =>
+        inspectDocumentEnvelopeIdentity(
+          { ...validEnvelope(), schemaId: 'x'.repeat(61) },
+          { maxStringCodeUnits: 60 },
+        ),
+      'strings exceed',
     );
 
     for (const schemaVersion of [
@@ -168,8 +225,8 @@ describe('document envelope identity branch coverage', () => {
     expectDocumentEnvelopeError(
       () =>
         inspectDocumentEnvelopeIdentity(
-          { ...validEnvelope(), documentJson: 'abcdef' },
-          { maxStringCodeUnits: 5 },
+          { ...validEnvelope(), documentJson: 'x'.repeat(80) },
+          { maxStringCodeUnits: 60 },
         ),
       'strings exceed',
     );
@@ -178,7 +235,9 @@ describe('document envelope identity branch coverage', () => {
   it('accepts null-prototype JSON objects', () => {
     const body = Object.create(null) as Record<string, unknown>;
     body.value = 1;
-    expect(inspectDocumentEnvelopeIdentity({ ...validEnvelope(), documentJson: body })).toEqual({
+    expect(
+      inspectDocumentEnvelopeIdentity({ ...validEnvelope(), documentJson: body }),
+    ).toEqual({
       schemaId: validEnvelope().schemaId,
       schemaVersion: 9,
     });
@@ -291,9 +350,9 @@ describe('document envelope identity branch coverage', () => {
         inspectDocumentEnvelopeIdentity(
           {
             ...validEnvelope(),
-            abcdef: 1,
+            ['x'.repeat(61)]: 1,
           },
-          { maxStringCodeUnits: 5 },
+          { maxStringCodeUnits: 60 },
         ),
       'strings exceed',
     );
