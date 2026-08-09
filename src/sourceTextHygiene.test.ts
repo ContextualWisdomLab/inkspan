@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 const TEXT_HYGIENE_TARGETS = [
   ['root public entrypoint', 'src/index.ts'],
   ['revision-evidence entrypoint test', 'src/revision-evidence/index.test.ts'],
+  ['revision-evidence build config', 'vite.revision-evidence.config.ts'],
 ] as const;
 
 describe('source text hygiene', () => {
