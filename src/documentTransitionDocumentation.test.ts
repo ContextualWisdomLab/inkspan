@@ -13,6 +13,7 @@ describe('document transition evidence documentation', () => {
       'docs/revision-evidence-subpath.md',
     );
     const rootEntrypoint = repositoryFile('src/index.ts');
+    const readme = repositoryFile('README.md');
 
     expect(rootEntrypoint).toContain(
       'createDocumentEnvelopeTransitionEvidence',
@@ -28,6 +29,15 @@ describe('document transition evidence documentation', () => {
       'does not prove that a durable write occurred',
     );
     expect(operatorGuide).toContain('previous first and resulting second');
+    expect(readme).toContain(
+      'Framework-independent document transition evidence',
+    );
+    expect(readme).toContain(
+      'createDocumentEnvelopeTransitionEvidenceBytes()',
+    );
+    expect(readme).toContain(
+      'does not identify an actor, establish authorization, authenticate server time',
+    );
   });
 
   it('keeps occurrence provenance, privacy, and durable audit ownership explicit', () => {
