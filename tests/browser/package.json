@@ -1,0 +1,9 @@
+{
+  "name": "inkspan-cross-engine-browser-tests",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.5.3",
+  "devDependencies": {
+    "@playwright/test": "1.62.0"
+  }
+}
