@@ -10,6 +10,7 @@ const packageMetadata = JSON.parse(repositoryText('package.json')) as {
   exports: Record<string, unknown>;
 };
 const distributionGuide = repositoryText('docs/package-distribution.md');
+const documentationIndex = repositoryText('docs/README.md');
 
 describe('package distribution documentation contract', () => {
   it('discovers every declared public package export from one buyer-facing guide', () => {
@@ -35,5 +36,12 @@ describe('package distribution documentation contract', () => {
       '`@contextualwisdomlab/cwl-editor/revision-evidence`',
     );
     expect(distributionGuide).toContain('framework-independent revision evidence');
+  });
+
+  it('makes the buyer-facing distribution contract discoverable from the canonical index', () => {
+    expect(documentationIndex).toContain(
+      '[`package-distribution.md`](package-distribution.md)',
+    );
+    expect(documentationIndex).toContain('public npm package entrypoints');
   });
 });
