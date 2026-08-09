@@ -1,5 +1,5 @@
-# Hash-locked Linux wheels for GitHub-hosted ubuntu-latest runners.
-# Supports the minimum CPython 3.11 and current stable CPython 3.14.
+# Hash-locked Linux wheels for GitHub-hosted ubuntu-24.04 runners.
+# Supports CPython 3.11, 3.12, 3.13, and 3.14.
 
 coverage @ https://files.pythonhosted.org/packages/37/e7/7069b3d6c018917f49ba2e1c5fb910e498c7fefa3a1b78cb1b79e61ff45d/coverage-7.15.3-py3-none-any.whl \
     --hash=sha256:da78fa6fc7dafe4212839173133ee85afcf42c5cd5f3e47fa7c1c210453b445e
