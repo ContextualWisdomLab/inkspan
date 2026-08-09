@@ -75,6 +75,18 @@ describe('cross-engine clipboard documentation contract', () => {
     expect(operability).toContain('test-results');
   });
 
+  it('grounds browser-version claims in the official Playwright release notes', () => {
+    const doctoring = documentText(
+      'docs/doctoring/cross-engine-rich-clipboard-assurance.md',
+    );
+    const traceability = documentText('docs/TRACEABILITY.md');
+
+    for (const text of [doctoring, traceability]) {
+      expect(text).toContain('Release notes: Version 1.62');
+      expect(text).toContain('https://playwright.dev/docs/release-notes');
+    }
+  });
+
   it('records browser maturity in the exact canonical and changelog entries', () => {
     const fitness = repositoryFile('docs/DOCUMENTATION_FITNESS.md');
     const changelog = repositoryFile('CHANGELOG.md');
