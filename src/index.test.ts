@@ -18,6 +18,11 @@ describe('package entry point', () => {
     expect(typeof api.Toolbar).toBe('function');
   });
 
+  it('re-exports the persistence routing surface', () => {
+    expect(typeof api.inspectDocumentEnvelopeIdentity).toBe('function');
+    expect(typeof api.inspectDocumentEnvelopeIdentityBytes).toBe('function');
+  });
+
   it('re-exports the headless extensions', () => {
     expect(api.Base64Image).toBeTruthy();
     expect(api.base64ImagePluginKey).toBeTruthy();

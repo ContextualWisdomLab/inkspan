@@ -4,7 +4,7 @@ Status: Protected-main canonical baseline
 
 ## Product definition
 
-Inkspan is a standalone Markdown/HTML rich-text authoring and deterministic document-conversion product that can also be embedded as a modular CWL component. Protected `main` is the implementation authority for what Inkspan actually provides today. Lifecycle observation, security disclosure, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, and document-transition evidence are implemented on protected `main`. This canonical PRD also records Active PR / Proposed requirements such as safe rich clipboard handling; such requirements are not shipped claims until protected integration. Across current and proposed scope, Inkspan keeps host transport, authentication, authorization, tenant isolation, durable persistence, credentials, migrations, retention, deployment, audit storage, and model-use policy outside the product boundary unless a future accepted versioned contract explicitly changes that division.
+Inkspan is a standalone Markdown/HTML rich-text authoring and deterministic document-conversion product that can also be embedded as a modular CWL component. Protected `main` is the implementation authority for what Inkspan actually provides today. Safe rich clipboard handling, lifecycle observation, security disclosure, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, and document-transition evidence are implemented on protected `main`. This canonical PRD also records Active PR / Proposed requirements such as bounded envelope identity routing; such requirements are not shipped claims until protected integration. Across current and proposed scope, Inkspan keeps host transport, authentication, authorization, tenant isolation, durable persistence, credentials, migrations, retention, deployment, audit storage, and model-use policy outside the product boundary unless a future accepted versioned contract explicitly changes that division.
 
 The product promise is: **author, convert, collaborate, and prove document changes without hiding authority inside the editor.**
 
@@ -29,6 +29,7 @@ The product promise is: **author, convert, collaborate, and prove document chang
 9. Offer model-assisted authoring only as host-approved untrusted proposals; deterministic editor/conversion validation remains authoritative.
 10. Produce reviewable package, security, compatibility, accessibility, SBOM/provenance, and release evidence tied to one exact protected source head.
 11. Give security researchers a discoverable private vulnerability-reporting and coordinated-disclosure path without promising unsupported SLAs, bounties, certification, or legal safe harbor.
+12. Identify a complete unsupported document-envelope generation safely enough for the host to select its own migration without accepting that generation as current Inkspan document semantics.
 
 ## Required outcomes
 
@@ -37,6 +38,8 @@ The product promise is: **author, convert, collaborate, and prove document chang
 - Markdown and HTML authoring use a deterministic TipTap/ProseMirror surface.
 - Supported import/export behavior is explicitly versioned and testable; unsupported or lossy constructs are not silently advertised as lossless.
 - Canonical document envelopes preserve exact schema/version identity and strict JSON/UTF-8 boundaries.
+- A bounded identity-only routing surface may return only validated `schemaId` and positive safe-integer `schemaVersion` for a complete unsupported envelope; it must not return the document body, validate unknown-version semantics as current, execute a migration, or weaken the strict current-schema parser.
+- Hosts retain schema registry, migration selection/execution, authorization, tenant isolation, persistence, audit, retention, rollback, and recovery; migrated output must pass the strict current parser before it becomes canonical Inkspan state.
 - Source and rendered/exported representations must have documented authority; generated output never silently becomes a new source of truth.
 
 ### Clipboard and external content
@@ -103,11 +106,14 @@ Inkspan does not promise universal HTML/Office round-trip fidelity, arbitrary ex
 ## Security and privacy requirements
 
 - Untrusted HTML, DOM capabilities, clipboard configuration, form values, Office structures, host callbacks, collaboration updates, and model proposals fail closed at documented boundaries.
+- Malformed or unsafe envelope inputs fail closed without partial routing metadata.
+- Structurally valid unknown envelope identities return routing metadata only and do not prove current-schema compatibility or migration success.
 - Active or hidden rich content must not bypass the supported semantic clipboard policy.
+- Envelope identity output is routing metadata only and must not expose document-bearing source fields or become migration/authorization/durable-write evidence.
 - Spreadsheet formula-significant input must not silently become executable formulas unless a future explicit trusted formula contract says otherwise.
 - Document bodies, revision/entity tags, provider metadata, tenant identifiers, prompts, and model outputs must not enter generic public metrics or unauthenticated logs.
 - Vulnerability reporting must prefer private channels and minimized/synthetic evidence; public fallback must not disclose vulnerability details, secrets, proof-of-concept payloads, or customer data.
-- Host applications remain responsible for authentication, authorization, CSRF, tenant isolation, persistence, encryption, retention, audit storage, provider admission, and external-model policy.
+- Host applications remain responsible for authentication, authorization, CSRF, tenant isolation, persistence, encryption, retention, audit storage, provider admission, schema migration, and external-model policy.
 
 ## Reliability and operability requirements
 
@@ -115,6 +121,7 @@ Inkspan does not promise universal HTML/Office round-trip fidelity, arbitrary ex
 - Observer failures cannot change save ordering, result classification, or durable-validator handoff.
 - Async revision/selection capture binds to one immutable editor state.
 - Conversion/publication never reports a partial artifact as successful output.
+- Unsupported envelope identity inspection returns no partial routing result on malformed/unsafe input; a host migration failure leaves the original source unchanged.
 - Package/release operations fail closed on stale source, ambiguous artifact inventory, digest mismatch, missing required evidence, or stale review/check state.
 - Security policy support rows and reporting mechanics must remain synchronized with package manifests and current repository capabilities.
 - Boundary-specific rollback must preserve canonical document readability and host-owned durable state.
@@ -129,4 +136,4 @@ Shareable acquisition evidence excludes production tenant content and credential
 
 Protected `main` is the sole implemented baseline. Open PRs may describe Proposed or Active work but are not shipped contracts until protected integration. Canonical documentation must state when a requirement is target architecture rather than current implementation.
 
-Lifecycle observation is implemented on protected `main`. The root security disclosure lifecycle, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, and document-transition evidence are also implemented on protected `main`. SafeClipboard remains the current active product line. Cross-engine browser assurance remains planned behind SafeClipboard, and a future envelope-identity migration-routing API is tracked separately and must preserve host migration ownership.
+SafeClipboard, lifecycle observation, the root security disclosure lifecycle, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, and document-transition evidence are implemented on protected `main`. Envelope identity-only migration routing is `implemented_on_active_pr` in PR #84 and remains unshipped until protected integration. Cross-engine browser assurance remains `planned`, now unblocked by SafeClipboard integration, and must start from fresh protected `main` without weakening the sanitizer or treating jsdom evidence as browser conformance.

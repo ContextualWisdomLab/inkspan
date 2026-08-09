@@ -20,7 +20,9 @@ Package exports, declaration files, runtime support, and packed ESM/CommonJS/str
 
 The **document envelope** is a versioned boundary carrying schema identity and supported document content. Current-schema parsing validates strict JSON/UTF-8 and active schema requirements before canonicalization or hashing. Unknown schema migration remains host-owned.
 
-Canonical revision evidence is content-equality metadata only. It is not an actor identity, tenant identity, authorization grant, signature, timestamp, durable write receipt, or bearer credential. When a future identity-only migration-routing helper is implemented, it may expose bounded schema identity without becoming a permissive parser or migration executor.
+PR #84 adds an active-PR identity-routing contract through `inspectDocumentEnvelopeIdentity()` and `inspectDocumentEnvelopeIdentityBytes()`, exported by the root package and the framework-independent `./envelope-identity` subpath. The inspectors validate a complete bounded envelope and return only frozen `{ schemaId, schemaVersion }` routing metadata. They do not return `documentJson`, accept unknown document semantics as current, execute a migration, authorize access, or claim durable persistence. Until protected integration this is `implemented_on_active_pr` evidence rather than a shipped contract.
+
+Canonical revision evidence is content-equality metadata only. It is not an actor identity, tenant identity, authorization grant, signature, timestamp, durable write receipt, or bearer credential. Identity routing does not weaken the strict current-schema parser or transfer schema-registry, migration, persistence, rollback, or recovery authority from the host.
 
 Compatibility rule: a new schema or incompatible interpretation requires an explicit new versioned contract and migration story; existing persisted semantics are not silently redefined.
 

@@ -97,18 +97,22 @@ describe('canonical product documentation graph', () => {
     expect(productDefinition).toContain('not shipped claims');
   });
 
-  it('does not leave merged autosave lifecycle observation classified as active-PR work', () => {
+  it('tracks protected and active implementation maturity semantically', () => {
     const prd = repositoryFile('docs/PRD.md');
     const trd = repositoryFile('docs/TRD.md');
     const fitness = repositoryFile('docs/DOCUMENTATION_FITNESS.md');
     const currentScope = prd.slice(prd.indexOf('## Current, proposed, and planned scope'));
 
-    expect(currentScope).toContain('Lifecycle observation is implemented on protected `main`');
+    expect(currentScope).toMatch(/lifecycle observation[^.]*implemented on protected `main`/iu);
+    expect(currentScope).toMatch(/SafeClipboard[^.]*implemented on protected `main`/u);
+    expect(currentScope).toMatch(/Envelope identity-only migration routing[^.]*implemented_on_active_pr/u);
     expect(currentScope).not.toMatch(/open development lines include[^.]*lifecycle observation/u);
     expect(trd).toContain('Autosave lifecycle observation is implemented on protected `main`');
-    expect(trd).not.toContain('open clipboard, autosave observation');
+    expect(trd).toContain('SafeClipboard is implemented on protected `main`');
+    expect(trd).toMatch(/Envelope identity routing is `implemented_on_active_pr`/u);
     expect(fitness).toContain('Autosave lifecycle observation');
     expect(fitness).toMatch(/Autosave lifecycle observation[^\n]*implemented_on_protected_main/u);
+    expect(fitness).toMatch(/Envelope schema identity \/ migration routing[^\n]*implemented_on_active_pr/u);
   });
 
   it('records host ownership and deterministic Inkspan authority consistently', () => {

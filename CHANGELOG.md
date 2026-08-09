@@ -15,6 +15,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Kept collaborative Yjs document content out of server markup until the host-owned client collaboration lifecycle is bound
 
 ### Added
+- Added bounded `inspectDocumentEnvelopeIdentity()` and `inspectDocumentEnvelopeIdentityBytes()` routing metadata plus the framework-independent `envelope-identity` package subpath so hosts can select explicit schema migrations without exposing document bodies, weakening the strict current-schema parser, or moving migration/persistence authority into Inkspan
 - Added one optional construction-time `onSnapshotChange` callback to the framework-free autosave queue and durable autosave session so hosts can observe saving, pending, blocked, recovery, idle, and shutdown state without polling or introducing a subscriber collection
 - Added privacy-minimized revision-scoped selection evidence through `getSelectionRevisionEvidence()`, binding frozen ProseMirror coordinates to the SHA-256 strong revision of the exact same immutable editor state before asynchronous hashing begins
 - Added privacy-minimized document transition evidence for validated previous and resulting canonical revisions through the framework-independent `revision-evidence` subpath, with object/JSON and strict UTF-8 entry points, deterministic previous-then-resulting SHA-256 derivation, frozen revision-only results, and no document body, actor, tenant, time, authorization, signature, transport, model, or durable-write claim

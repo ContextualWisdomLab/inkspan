@@ -1,5 +1,8 @@
 import type { JSONContent } from '@tiptap/core';
+import type { DocumentEnvelopeLimits } from './documentEnvelopeLimits.js';
 import { inspectJsonText } from './jsonObjectNameScanner.js';
+
+export type { DocumentEnvelopeLimits } from './documentEnvelopeLimits.js';
 
 /** Canonical identifier for Inkspan's first portable document envelope. */
 export const DOCUMENT_ENVELOPE_SCHEMA_ID =
@@ -7,20 +10,6 @@ export const DOCUMENT_ENVELOPE_SCHEMA_ID =
 
 /** Current document-envelope schema version. */
 export const DOCUMENT_ENVELOPE_SCHEMA_VERSION = 1 as const;
-
-/** Optional resource ceilings applied while inspecting an envelope. */
-export interface DocumentEnvelopeLimits {
-  /** Maximum raw UTF-8 byte length before decoding. */
-  readonly maxUtf8Bytes?: number;
-  /** Maximum raw JSON-text length measured in JavaScript UTF-16 code units. */
-  readonly maxJsonTextCodeUnits?: number;
-  /** Maximum total number of scalar and container values in `documentJson`. */
-  readonly maxJsonValues?: number;
-  /** Maximum length of any decoded string value or object name. */
-  readonly maxStringCodeUnits?: number;
-  /** Maximum nested object/array depth below the document root. */
-  readonly maxNestingDepth?: number;
-}
 
 interface ResolvedDocumentEnvelopeLimits {
   readonly maxUtf8Bytes: number;

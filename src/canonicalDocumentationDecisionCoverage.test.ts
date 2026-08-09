@@ -58,12 +58,15 @@ describe('canonical architecture decision coverage', () => {
     expect(fitness).toContain('SECURITY disclosure policy');
     expect(fitness).toContain('present_current');
     expect(fitness).toContain('implemented_on_protected_main');
+    expect(fitness).toContain('implemented_on_active_pr');
     expect(fitness).toContain('planned');
-    expect(fitness).toContain('Issue #74');
+    expect(fitness).toMatch(
+      /Envelope schema identity \/ migration routing[^\n]*implemented_on_active_pr/u,
+    );
     expect(fitness).toContain('Issue #66');
   });
 
-  it('makes both planned decision paths reviewable as diagrams and standards traceability', () => {
+  it('makes active and planned decision paths reviewable as diagrams and standards traceability', () => {
     const uml = repositoryFile('docs/UML.md');
     const traceability = repositoryFile('docs/TRACEABILITY.md');
 
@@ -72,6 +75,9 @@ describe('canonical architecture decision coverage', () => {
     expect(traceability).toContain('Envelope version routing');
     expect(traceability).toContain('Cross-engine release assurance');
     expect(traceability).toContain('RFC 7493');
+    expect(traceability).toMatch(
+      /Envelope version routing[^\n]*Active-PR evidence is not shipped authority/u,
+    );
   });
 
   it('keeps the conceptual ERD explicit without inventing Inkspan persistence', () => {
@@ -84,7 +90,8 @@ describe('canonical architecture decision coverage', () => {
     ]) {
       expect(dataModel).toContain(marker);
     }
-    expect(dataModel).toContain('planned value and evidence objects');
+    expect(dataModel).toContain('`document_schema_identity`: `implemented_on_active_pr`');
+    expect(dataModel).toContain('planned evidence objects');
     expect(dataModel).toContain('does **not** own an application database');
     expect(dataModel).toContain('physical database ERD');
   });

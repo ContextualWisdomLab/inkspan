@@ -40,6 +40,7 @@ erDiagram
 ## Inkspan-owned in-memory or package value objects
 
 - `document_envelope`: versioned, strictly validated, canonicalizable complete document value. It can contain the complete document body. Inkspan constructs/validates it; a host may persist it under its own policy.
+- `document_schema_identity`: `implemented_on_active_pr` in PR #84 as a frozen identity-only routing value containing the complete envelope's bounded `schemaId` and positive safe-integer `schemaVersion`. It contains no document body and does not validate unsupported-version document semantics. The host owns migration selection/execution and persistence.
 - `document_revision`: SHA-256 equality evidence derived from one exact canonical envelope. It is not authorization, tenant identity, actor identity, timestamp, signature, or proof of a durable write.
 - `editor_session`: conceptual local editor/runtime lifetime. It binds one mounted editor state to local evidence and host callbacks. It is not a durable account/session record and has no authentication authority.
 - `document_transition`: previous/resulting revision pair plus changed classification. It deliberately omits the document body from ordinary evidence.
@@ -53,11 +54,10 @@ erDiagram
 - `release_artifact`: package/wheel/checksum or other expected artifact considered for release.
 - `release_evidence`: exact-source artifact inventory/digest/provenance/verification evidence used before publication.
 
-## Planned value and evidence objects
+## Planned evidence objects
 
-The following **planned value and evidence objects** make already accepted future boundaries visible in the conceptual ERD without claiming that their APIs or persistence exist on protected `main`:
+The following **planned evidence objects** make an accepted future release-assurance boundary visible in the conceptual ERD without claiming that its APIs or persistence exist on protected `main`:
 
-- `document_schema_identity`: proposed frozen identity-only routing metadata containing the bounded envelope `schemaId` and `schemaVersion`. It contains no document body and does not validate unknown-version document semantics. ADR 0015 and Issue #74 define the planned public routing aid; the host owns migration selection/execution and persistence.
 - `browser_assurance_evidence`: proposed exact-head release evidence from the same committed rich-clipboard corpus executed in required Chromium, Firefox, and WebKit projects. It records bounded public fixture/corpus, browser-revision, package-lock, platform and source identity rather than tenant clipboard data.
 - `browser_difference_allowance`: proposed reviewed explanation for one standards-permitted browser serialization difference. It is attached only to focused evidence with threat analysis and rollback; it never acts as a generic normalization rule or approval substitute.
 
@@ -77,7 +77,7 @@ These values may remain ephemeral or release-artifact metadata. Their presence i
 | Entity | Current physical persistence owner | Typical lifecycle | Contains complete document body? | Authority claim |
 |---|---|---|---|---|
 | `document_envelope` | host if persisted | document revision | yes | deterministic document value only |
-| `document_schema_identity` | none required; planned | one routing inspection | no | schema-route metadata only |
+| `document_schema_identity` | none required; `implemented_on_active_pr` | one routing inspection | no | schema-route metadata only |
 | `document_revision` | local or host metadata by policy | derived per exact content | no | equality only |
 | `editor_session` | none required | mounted editor runtime | may reference local state | no auth/session authority |
 | `document_transition` | none required; host may store | change evidence | no | content-lineage evidence only |
@@ -103,7 +103,7 @@ These values may remain ephemeral or release-artifact metadata. Their presence i
 The current Inkspan runtime does not create a tenant database, but products embedding it depend on temporal/version provenance boundaries:
 
 - `document_envelope` carries an explicit schema/version contract; unknown versions require host-owned migration routing rather than permissive parsing.
-- the planned `document_schema_identity` may expose only bounded routing metadata; it never validates or migrates the unsupported document body and never creates a durable version claim.
+- active-PR `document_schema_identity` exposes only bounded routing metadata; it never validates or migrates the unsupported document body and never creates a durable version claim.
 - `document_revision`, selection, transition, and autosave evidence bind to one exact content state; they do not add actor/time/tenant claims not present in the source contract.
 - `durable_validator` is temporally ordered by the host's atomic persistence service and must advance only after validated durable success.
 - `collaboration_document`, `provider_binding`, `awareness_state`, `host_capability`, and `audit_event` can be tenant-scoped in a host, but Inkspan does not define or infer that tenant key.
@@ -116,7 +116,7 @@ Ordinary lifecycle/selection/transition/schema-identity evidence should remain d
 
 ## Persistence non-applicability and future change
 
-No Inkspan-owned relational schema is required by the current architecture, so no physical database ERD or migration set is invented here merely to satisfy documentation completeness. Planned identity-routing and browser-assurance values are logical API/evidence objects, not database tables. If Inkspan later introduces durable persistence, that is a material architecture change requiring:
+No Inkspan-owned relational schema is required by the current architecture, so no physical database ERD or migration set is invented here merely to satisfy documentation completeness. Active identity-routing and planned browser-assurance values are logical API/evidence objects, not database tables. If Inkspan later introduces durable persistence, that is a material architecture change requiring:
 
 1. an Accepted ADR defining why persistence moved into Inkspan;
 2. a physical database ERD with descriptive multiword `snake_case` object names;
