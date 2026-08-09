@@ -46,7 +46,7 @@ States are `idle`, `saving`, `blocked`, `closing`, and `closed`, with explicit b
 
 Durable sessions carry a host/server-selected strong HTTP entity tag. Successful host callbacks may advance the durable validator only from a validated replacement strong tag. Conflict, malformed result, callback failure, hostile reflection, promise-assimilation failure, timeout/network ambiguity, or explicit host failure never silently advances it.
 
-Lifecycle observation is optional and bounded to one construction-time callback. Construction emits nothing. Only distinct externally visible document-free snapshots are emitted. A method call producing no visible lifecycle transition, including a no-op `resume()`, emits nothing. Observer exceptions are isolated from queue ordering, save outcomes, recovery, and durable-validator handoff.
+Autosave lifecycle observation is implemented on protected `main`. Observation is optional and bounded to one construction-time callback. Construction emits nothing. Only distinct externally visible document-free snapshots are emitted. A method call producing no visible lifecycle transition, including a no-op `resume()`, emits nothing. Observer exceptions are isolated from queue ordering, save outcomes, recovery, and durable-validator handoff.
 
 ## Provider-neutral collaboration
 
@@ -105,4 +105,4 @@ Queued, cancelled, skipped-required, absent, stale-head, predecessor-head, statu
 
 ## Implemented versus proposed
 
-Protected `main` is the sole implemented baseline. The security disclosure lifecycle is implemented on protected `main`. Requirements describing open clipboard, autosave observation, transition/selection evidence, SSR/native-form, or accessibility PRs remain Proposed until merged; migration routing and cross-engine browser assurance remain planned according to their dependency order. Canonical docs distinguish target architecture from shipped behavior and must be updated when the protected implementation changes.
+Protected `main` is the sole implemented baseline. The security disclosure lifecycle and autosave lifecycle observation are implemented on protected `main`. Requirements describing open clipboard, transition/selection evidence, SSR/native-form, or accessibility PRs remain Proposed until merged; migration routing and cross-engine browser assurance remain planned according to their dependency order. Canonical docs distinguish target architecture from shipped behavior and must be updated when the protected implementation changes.
