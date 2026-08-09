@@ -12,12 +12,16 @@ describe('document envelope identity documentation', () => {
   it('keeps identity routing separate from strict current-schema parsing', () => {
     const guide = read('docs/document-envelope.md');
     const doctoring = read('docs/doctoring/envelope-identity-routing.md');
+    const contracts = read('docs/CONTRACTS.md');
     const adr = read('docs/adr/0015-envelope-schema-migration-routing.md');
 
     for (const source of [guide, doctoring]) {
       expect(source).toContain('inspectDocumentEnvelopeIdentity');
       expect(source).toContain('parseDocumentEnvelope');
     }
+    expect(contracts).toContain('inspectDocumentEnvelopeIdentity()');
+    expect(contracts).toContain('inspectDocumentEnvelopeIdentityBytes()');
+    expect(contracts).toContain('./envelope-identity');
     expect(adr).toMatch(/identity inspector/i);
     expect(adr).toContain('`parseDocumentEnvelope()` remains strict');
     expect(guide).toContain('@contextualwisdomlab/cwl-editor/envelope-identity');
