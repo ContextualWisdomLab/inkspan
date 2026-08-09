@@ -158,7 +158,8 @@ test.afterAll(async ({ browser, browserName }) => {
     browserVersion: browser.version(),
     osPlatform: process.platform,
     runnerImage: process.env.ImageOS ?? null,
-    headSha: process.env.GITHUB_SHA ?? null,
+    headSha:
+      process.env.INKSPAN_EXPECTED_HEAD_SHA ?? process.env.GITHUB_SHA ?? null,
     lockSha256: createHash('sha256').update(lockfile).digest('hex'),
     representativeWordMillis,
     observations,
