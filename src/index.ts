@@ -11,9 +11,10 @@
  * ```
  */
 
-// Register editor-only imperative-handle type augmentation without coupling the
+// Register editor-only imperative-handle type augmentations without coupling the
 // framework-independent revision-evidence subpath to the interactive graph.
 import './documentRevisionEvidenceHandle.js';
+import './textPositionSelectorEvidenceHandle.js';
 
 // React component surface.
 export { CwlEditor, default as Editor } from './components/CwlEditor.js';
@@ -35,6 +36,18 @@ export type {
   ImageConfig,
 } from './types.js';
 export type { CwlEditorDocumentRevisionEvidenceCapture } from './documentRevisionEvidenceHandle.js';
+export type { CwlEditorTextPositionSelectorEvidenceCapture } from './textPositionSelectorEvidenceHandle.js';
+export {
+  TEXT_POSITION_PROJECTION_ID,
+  TEXT_POSITION_PROJECTION_VERSION,
+  TextPositionSelectorEvidenceError,
+  createTextPositionSelector,
+} from './textPositionSelectorEvidence.js';
+export type {
+  CwlEditorTextPositionSelector,
+  CwlEditorTextPositionSelectorEvidence,
+  CwlEditorTextProjectionIdentity,
+} from './textPositionSelectorEvidence.js';
 
 // Versioned, lossless persistence boundary.
 export {
