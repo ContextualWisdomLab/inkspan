@@ -325,6 +325,9 @@ export function createDocumentAutosaveQueue(
     validatedOptions.onSnapshotChange === null
       ? null
       : JSON.stringify(internalQueue.getSnapshot());
+  const observedRequestSettlements = new WeakSet<
+    Promise<DocumentAutosaveRequestOutcome>
+  >();
 
   /** Notify the retained observer only when externally visible state changed. */
   function emitSnapshotChange(): void {
@@ -340,10 +343,12 @@ export function createDocumentAutosaveQueue(
     }
   }
 
-  /** Observe one eventual request settlement without replacing its promise. */
+  /** Observe one eventual request settlement at most once per shared promise. */
   function observeRequestSettlement(
     request: Promise<DocumentAutosaveRequestOutcome>,
   ): void {
+    if (observedRequestSettlements.has(request)) return;
+    observedRequestSettlements.add(request);
     void request.then(emitSnapshotChange, emitSnapshotChange);
   }
 
