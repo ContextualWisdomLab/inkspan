@@ -46,17 +46,15 @@ envelope, use the bounded identity-only inspector rather than weakening the
 strict parser or implementing a second untrusted JSON parser in the host:
 
 ```ts
-import {
-  inspectDocumentEnvelopeIdentity,
-  parseDocumentEnvelope,
-} from '@contextualwisdomlab/cwl-editor/envelope-identity';
+import { parseDocumentEnvelope } from '@contextualwisdomlab/cwl-editor';
+import { inspectDocumentEnvelopeIdentity } from '@contextualwisdomlab/cwl-editor/envelope-identity';
 
 const identity = inspectDocumentEnvelopeIdentity(persisted);
 const migrated = await migrationRegistry.migrate(identity, persisted);
 const currentEnvelope = parseDocumentEnvelope(migrated);
 ```
 
-The same functions are also exported by the root package. The dedicated
+The identity functions are also exported by the root package. The dedicated
 `envelope-identity` subpath is framework-independent for servers, workers,
 migration jobs, storage adapters, and other non-editor processes.
 
