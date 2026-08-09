@@ -6,6 +6,12 @@ Status: Proposed
 
 Delayed review, annotation, AI assistance, and audit-like workflows need to refer to an exact editor state. Copying selected text or entire document bodies into ordinary metadata increases privacy exposure, while asynchronous hashing can accidentally bind coordinates to a later document if state is reread.
 
+## Alternatives considered
+
+- Store selected text or full documents in ordinary review metadata. Rejected because it duplicates sensitive content and still does not guarantee stable anchoring after edits.
+- Capture coordinates first and reread the document later for hashing. Rejected because asynchronous work can bind coordinates and revision to different editor states.
+- Capture structural coordinates and canonical content from one immutable editor snapshot, then derive minimum revision-scoped evidence. Selected because it preserves temporal consistency while minimizing disclosure.
+
 ## Decision
 
 Capture selection coordinates and the canonical document envelope from the same immutable editor state before asynchronous revision derivation. Transition evidence validates previous and resulting envelopes before deriving both revisions. Evidence contains only the minimum revision/coordinate/change metadata required by the versioned contract and excludes document bodies, actor, tenant, time, authorization, model identity, transport result, signature, and durable-write claims.
@@ -17,6 +23,14 @@ Hosts can detect stale review coordinates and content transitions without duplic
 ## Failure and recovery
 
 If editor state changes during a capture boundary, the API must not emit a stale mixed-state claim. Coordinates are valid only with the matching revision. A changed document requires an explicit host re-anchor, compare, merge, fork, or collaborative anchoring policy.
+
+## Security and privacy impact
+
+Ordinary evidence is deliberately content-minimized and does not synthesize actor, tenant, model, authorization, signature, or durable-save claims. Revision identifiers and structural coordinates can still correlate tenant activity, so hosts must treat them as purpose-bound metadata and avoid public high-cardinality telemetry or unauthenticated disclosure.
+
+## Compatibility and migration
+
+Evidence shape and coordinate semantics are versioned contracts. Existing evidence remains meaningful only against its exact revision. A future durable/collaborative anchor format requires an explicit new version or migration rule; old coordinates must not be silently reinterpreted against a new document generation.
 
 ## Verification
 
