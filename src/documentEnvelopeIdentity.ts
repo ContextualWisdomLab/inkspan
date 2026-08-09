@@ -120,20 +120,28 @@ function inspectIdentityWithLimits(
       );
     }
     const inspection = inspectJsonText(source, {
-      maxValues: Number.MAX_SAFE_INTEGER,
-      maxDepth: Number.MAX_SAFE_INTEGER,
+      maxValues: Math.min(
+        Number.MAX_SAFE_INTEGER,
+        limits.maxJsonValues + 3,
+      ),
+      maxDepth: Math.min(
+        Number.MAX_SAFE_INTEGER,
+        limits.maxNestingDepth + 1,
+      ),
     });
     if (inspection === 'duplicate-object-name') {
       throw new DocumentEnvelopeError(
         'Document envelope identity JSON must not contain duplicate object names',
       );
     }
-    if (
-      inspection === 'value-count-limit' ||
-      inspection === 'nesting-depth-limit'
-    ) {
+    if (inspection === 'value-count-limit') {
       throw new DocumentEnvelopeError(
-        'Document envelope identity JSON could not be inspected within limits',
+        'Document envelope exceeds the supported JSON value count',
+      );
+    }
+    if (inspection === 'nesting-depth-limit') {
+      throw new DocumentEnvelopeError(
+        'Document envelope exceeds the supported document nesting depth',
       );
     }
     try {
@@ -192,7 +200,11 @@ function inspectIdentityWithLimits(
     limits,
     active: new WeakSet<object>(),
   };
-  validateJsonValue(fields.get('documentJson'), 0, state);
+  for (const [field, child] of entries) {
+    if (field !== 'schemaId' && field !== 'schemaVersion') {
+      validateJsonValue(child, 0, state);
+    }
+  }
 
   return Object.freeze({ schemaId, schemaVersion });
 }
