@@ -32,9 +32,10 @@ describe('cross-engine rich clipboard release oracle', () => {
         'table-list',
         'svg-mathml',
         'parser-edge',
+        'resource-limit',
       ]),
     );
-    expect(SAFE_CLIPBOARD_CROSS_ENGINE_CORPUS.length).toBeGreaterThanOrEqual(14);
+    expect(SAFE_CLIPBOARD_CROSS_ENGINE_CORPUS.length).toBeGreaterThanOrEqual(18);
     expect(
       SAFE_CLIPBOARD_CROSS_ENGINE_CORPUS.every(
         (testCase) =>
