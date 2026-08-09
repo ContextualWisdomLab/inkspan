@@ -26,7 +26,10 @@ describe('DOM capability reflection documentation contract', () => {
     );
     expect(operatorGuide).toContain('fail closed with `dom_unavailable`');
     expect(operatorGuide).toContain(
-      'unexpected inert-document creation, parsing, reconstruction, DOM mutation, or serialization failures remain `invalid_html`',
+      'inert-document creation failures remain `dom_unavailable`',
+    );
+    expect(operatorGuide).toContain(
+      'parsing, reconstruction, DOM mutation, or serialization failures remain `invalid_html`',
     );
     expect(operatorGuide).toContain(
       '`docs/doctoring/dom-capability-reflection-redaction.md`',
