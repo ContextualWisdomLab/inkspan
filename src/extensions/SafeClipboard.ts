@@ -492,9 +492,14 @@ export function sanitizeRichClipboardHtml(
     throw new ClipboardSanitizationError('input_too_large');
   }
   const sourceDocument = resolveClipboardDocument(documentOverride);
+  let inertDocument: Document;
+  try {
+    inertDocument = sourceDocument.implementation.createHTMLDocument('');
+  } catch {
+    throw new ClipboardSanitizationError('dom_unavailable');
+  }
 
   try {
-    const inertDocument = sourceDocument.implementation.createHTMLDocument('');
     const sourceTemplate = inertDocument.createElement('template');
     sourceTemplate.innerHTML = sourceHtml;
     const outputContainer = inertDocument.createElement('div');
