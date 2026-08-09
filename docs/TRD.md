@@ -32,13 +32,15 @@ Where browser fragment parsing or serialization can change security semantics, a
 
 ## SSR and native forms
 
-Server rendering must not instantiate an editor view. When a native field is explicitly enabled, SSR/hydration serializes the selected controlled Markdown/HTML value as escaped client-controlled input. Once the editor is authoritative, document transactions synchronously mirror the configured serialization into the form field.
+SSR/native-form serialization is implemented on protected `main`. Server rendering must not instantiate an editor view. When a native field is explicitly enabled, SSR/hydration serializes the selected controlled Markdown/HTML value as escaped client-controlled input. Controlled `value` precedes `defaultValue` for that field. Before TipTap initializes, prop updates remain authoritative; once the editor is authoritative, document transactions synchronously mirror the configured serialization into the form field, and native reset processing restores the live serialized value when the host does not reset the editor.
 
-The hidden/native field is never authentication, authorization, CSRF protection, tenant identity, signature, integrity proof, or durable-write evidence. Hosts independently validate and authorize submissions.
+The hidden/native field is never authentication, authorization, CSRF protection, tenant identity, signature, integrity proof, or durable-write evidence. Hosts independently validate and authorize submissions. Collaborative Yjs content remains absent from the server shell until the host-owned client collaboration lifecycle is established.
 
 ## Revision-scoped evidence
 
 Selection evidence captures structural coordinates and canonical document state from the same immutable editor snapshot before asynchronous hashing. Transition evidence validates previous and resulting envelopes before sequential revision derivation. Ordinary evidence contains revision/coordinate/change metadata rather than document bodies and does not synthesize actor, tenant, time, model identity, signature, authorization, transport result, or durable-persistence claims.
+
+Selection and transition evidence remain active-PR capabilities until protected integration; these target requirements do not promote those branches to shipped runtime behavior.
 
 ## Autosave state machine and durable concurrency
 
@@ -89,7 +91,7 @@ Cancellation, retry/offline policy, network timeout budgets, durable reconciliat
 
 ## Accessibility and interaction semantics
 
-Shipped keyboard behavior, focus behavior, native controls, `aria-pressed`, `aria-keyshortcuts`, programmatic save/conflict state, and visible shortcut documentation must agree. Status must not depend on color alone. Inkspan exposes machine state sufficient for host WCAG-oriented messaging while leaving localization and application-specific live-region policy to the host.
+Toolbar shortcut metadata is implemented on protected `main`. Shipped keyboard behavior, focus behavior, native controls, `aria-pressed`, `aria-keyshortcuts`, programmatic save/conflict state, and visible shortcut documentation must agree. Repository-level keyboard behavior outranks extension-local defaults when determining metadata. Status must not depend on color alone. Inkspan exposes machine state sufficient for host WCAG-oriented messaging while leaving localization and application-specific live-region policy to the host.
 
 ## Packaging, compatibility, and release evidence
 
@@ -101,8 +103,8 @@ Queued, cancelled, skipped-required, absent, stale-head, predecessor-head, statu
 
 ## Security, privacy, and operability dependencies
 
-`SECURITY.md`, `docs/THREAT_MODEL.md`, `docs/TEST_STRATEGY.md`, `docs/OPERABILITY.md`, `docs/TRACEABILITY.md`, and the detailed ADR corpus are part of this technical contract. Root `SECURITY.md` is now `implemented_on_protected_main` and is the normative private vulnerability-reporting/coordinated-disclosure policy. ADR 0017 records the durable decision, ownership boundary, claim limits, and recovery/supersession semantics without duplicating the policy text.
+`SECURITY.md`, `docs/THREAT_MODEL.md`, `docs/TEST_STRATEGY.md`, `docs/OPERABILITY.md`, `docs/TRACEABILITY.md`, and the detailed ADR corpus are part of this technical contract. Root `SECURITY.md` is `implemented_on_protected_main` and is the normative private vulnerability-reporting/coordinated-disclosure policy. ADR 0017 records the durable decision, ownership boundary, claim limits, and recovery/supersession semantics without duplicating the policy text.
 
 ## Implemented versus proposed
 
-Protected `main` is the sole implemented baseline. The security disclosure lifecycle and autosave lifecycle observation are implemented on protected `main`. Requirements describing open clipboard, transition/selection evidence, SSR/native-form, or accessibility PRs remain Proposed until merged; migration routing and cross-engine browser assurance remain planned according to their dependency order. Canonical docs distinguish target architecture from shipped behavior and must be updated when the protected implementation changes.
+Protected `main` is the sole implemented baseline. The security disclosure lifecycle, autosave lifecycle observation, toolbar shortcut accessibility metadata, and SSR/native-form serialization are implemented on protected `main`. Requirements describing SafeClipboard and transition/selection evidence remain Proposed until merged; migration routing and cross-engine browser assurance remain planned according to their dependency order. Canonical docs distinguish target architecture from shipped behavior and must be updated when the protected implementation changes.
