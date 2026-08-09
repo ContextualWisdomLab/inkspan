@@ -28,6 +28,7 @@ export type {
   CwlEditorHandle,
   CwlEditorProps,
   CwlEditorSelectionEvent,
+  CwlEditorSelectionRevisionEvidence,
   CwlEditorSelectionSnapshot,
   EditorMode,
   EditorTextDirection,

@@ -24,6 +24,8 @@ interface ButtonProps {
   disabled?: boolean;
   title: string;
   label: string;
+  /** WAI-ARIA key shortcut tokens for shortcuts already implemented by the editor. */
+  keyShortcuts?: string;
 }
 
 const TOOLBAR_ITEM_SELECTOR = 'button[data-cwl-toolbar-item="true"]';
@@ -45,7 +47,14 @@ function setRovingTabStop(
   }
 }
 
-function ToolbarButton({ onClick, active, disabled, title, label }: ButtonProps) {
+function ToolbarButton({
+  onClick,
+  active,
+  disabled,
+  title,
+  label,
+  keyShortcuts,
+}: ButtonProps) {
   return (
     <button
       type="button"
@@ -57,6 +66,7 @@ function ToolbarButton({ onClick, active, disabled, title, label }: ButtonProps)
       disabled={disabled}
       title={title}
       aria-label={title}
+      aria-keyshortcuts={keyShortcuts}
       aria-pressed={active === undefined ? undefined : active}
     >
       {label}
@@ -72,7 +82,9 @@ function ToolbarButton({ onClick, active, disabled, title, label }: ButtonProps)
  * The toolbar follows the WAI-ARIA composite-toolbar keyboard model: it is one
  * tab stop, Left/Right arrows move between enabled controls with wrapping, and
  * Home/End move to the first/last enabled control. `onMouseDown` preserves the
- * editor selection when pointer users invoke a formatting action.
+ * editor selection when pointer users invoke a formatting action. Shortcuts
+ * already implemented by the editor are exposed with `aria-keyshortcuts` so
+ * assistive technology receives the same cross-platform commands as tooltips.
  */
 export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -218,12 +230,14 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
         <ToolbarButton
           title="Bold (Ctrl/Cmd+B)"
           label="B"
+          keyShortcuts="Control+B Meta+B"
           active={editor.isActive('bold')}
           onClick={() => editor.chain().focus().toggleBold().run()}
         />
         <ToolbarButton
           title="Italic (Ctrl/Cmd+I)"
           label="I"
+          keyShortcuts="Control+I Meta+I"
           active={editor.isActive('italic')}
           onClick={() => editor.chain().focus().toggleItalic().run()}
         />
@@ -298,6 +312,7 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
         <ToolbarButton
           title="Insert/edit link (Ctrl/Cmd+K)"
           label="🔗"
+          keyShortcuts="Control+K Meta+K"
           active={editor.isActive('link')}
           onClick={setLink}
         />
@@ -366,12 +381,14 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
         <ToolbarButton
           title="Undo (Ctrl/Cmd+Z)"
           label="↶"
+          keyShortcuts="Control+Z Meta+Z"
           disabled={!editor.can().undo()}
           onClick={() => editor.chain().focus().undo().run()}
         />
         <ToolbarButton
-          title="Redo (Ctrl/Cmd+Shift+Z)"
+          title="Redo (Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y)"
           label="↷"
+          keyShortcuts="Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y"
           disabled={!editor.can().redo()}
           onClick={() => editor.chain().focus().redo().run()}
         />
