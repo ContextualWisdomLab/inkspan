@@ -135,28 +135,37 @@ the source widget semantics. Hidden `datalist` suggestion and down-level
 fallback subtrees are removed because Inkspan does not preserve the linked form
 control or its `list` relationship.
 
-Elements carrying `hidden`, case-insensitive `aria-hidden="true"`,
-`display:none`, `visibility:hidden`, or Office `mso-hide:all` are removed with
-descendants. Comments, including Office conditional comments, are omitted. A
-closed `dialog` contributes no subtree. A closed `details` contributes only the
-sanitized contents of its first `summary` element child, when present; open
-variants are unwrapped and sanitized normally.
+Elements carrying `hidden`, case-insensitive `aria-hidden="true"`, or any
+`popover` attribute are removed with descendants. Inline declarations of
+`display:none`, `visibility:hidden`, or `visibility:collapse` are likewise
+complete subtree-removal boundaries. The bounded raw-style parser also removes
+exact decoded `content-visibility:hidden` and Office `mso-hide:all`
+declarations. External stylesheets, inherited values, and computed-style
+resolution are outside this deterministic network-free clipboard boundary.
+Comments, including Office conditional comments, are omitted. A closed `dialog`
+contributes no subtree. A closed `details` contributes only the sanitized
+contents of its first `summary` element child, when present; open variants are
+unwrapped and sanitized normally.
 
-Office hidden-content detection reads the bounded raw `style` attribute, removes
+Raw-style hidden-content detection reads the bounded `style` attribute, removes
 closed CSS comments and a final comment that runs through end of input, decodes
 bounded CSS escapes in the property name and keyword value, splits declarations,
-and requires an exact case-insensitive `mso-hide` property with exact value
-`all`, optionally followed by terminal `!important`. This avoids relying on
-engine-specific CSSOM support while rejecting malformed escapes, misleading
-values such as `alligator`, and property names such as `not-mso-hide`. No source
-style attribute survives reconstruction.
+and requires an exact case-insensitive property/value pair. The supported raw
+pairs are `mso-hide:all` and `content-visibility:hidden`, each optionally followed
+by terminal `!important`. This avoids relying on engine-specific CSSOM exposure
+for those declarations while rejecting malformed escapes, misleading values such
+as `alligator` or `hiddenly`, and prefixed property names. No source style
+attribute survives reconstruction.
 
 The detailed standards, test-first evidence, residual-risk, and rollback
 boundaries are recorded in
 `docs/doctoring/closed-interactive-content.md`,
 `docs/doctoring/native-widget-fallback-content.md`,
-`docs/doctoring/datalist-hidden-suggestion-content.md`, and
-`docs/doctoring/css-escaped-office-hidden-content.md`.
+`docs/doctoring/datalist-hidden-suggestion-content.md`,
+`docs/doctoring/css-escaped-office-hidden-content.md`,
+`docs/doctoring/popover-hidden-content.md`,
+`docs/doctoring/content-visibility-hidden-content.md`, and
+`docs/doctoring/visibility-collapse-hidden-content.md`.
 
 All HTML images are removed even when their source appears to be a data URI.
 Binary clipboard image items use the pre-existing Base64Image pipeline instead.
