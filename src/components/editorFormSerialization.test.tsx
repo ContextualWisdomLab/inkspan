@@ -279,6 +279,11 @@ describe('native form serialization', () => {
 
   it('rejects automatic reset values for collaborative editors', () => {
     const collaborationDocument = new Y.Doc();
+    const expectedMessage =
+      'collaborative editors require host-authorized reset handling through onFormReset; formResetValue is not allowed';
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
     try {
       expect(() =>
         render(
@@ -288,10 +293,10 @@ describe('native form serialization', () => {
             {...({ formResetValue: 'Shared reset' } as Record<string, unknown>)}
           />,
         ),
-      ).toThrow(
-        'collaborative editors require host-authorized reset handling through onFormReset; formResetValue is not allowed',
-      );
+      ).toThrow(expectedMessage);
+      expect(consoleError).toHaveBeenCalled();
     } finally {
+      consoleError.mockRestore();
       collaborationDocument.destroy();
     }
   });
