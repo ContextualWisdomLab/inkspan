@@ -1,6 +1,6 @@
 # Inkspan Conceptual Data and Evidence Model
 
-Status: Proposed canonical baseline
+Status: Protected-main canonical baseline
 
 Inkspan does **not** own an application database in the current architecture. This document is a conceptual/logical model of runtime value objects, conversion/release evidence, and host-owned boundaries. It must not be read as physical DDL. Entities marked host-owned may be persisted by an embedding product, but their physical schema is outside Inkspan authority.
 

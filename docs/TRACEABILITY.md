@@ -1,6 +1,6 @@
 # Inkspan Standards and Evidence Traceability
 
-Status: Proposed canonical baseline
+Status: Protected-main canonical baseline
 
 ## Purpose
 
