@@ -6,6 +6,9 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Security
+- Added a fail-closed draft release asset inventory gate that requires exactly one npm tarball, one Office wheel, and `SHA256SUMS`, rejects stale or unexpected draft assets before immutable publication, and verifies every GitHub-reported `sha256:` asset digest against the transferred local file
+
 ### Added
 - Added privacy-minimized revision-scoped selection evidence through `getSelectionRevisionEvidence()`, binding frozen ProseMirror coordinates to the SHA-256 strong revision of the exact same immutable editor state before asynchronous hashing begins
 
