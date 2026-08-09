@@ -28,6 +28,7 @@ The product promise is: **author, convert, collaborate, and prove document chang
 8. Compose Inkspan inside naruon or another CWL host without making those hosts required runtime dependencies for standalone adopters.
 9. Offer model-assisted authoring only as host-approved untrusted proposals; deterministic editor/conversion validation remains authoritative.
 10. Produce reviewable package, security, compatibility, accessibility, SBOM/provenance, and release evidence tied to one exact protected source head.
+11. Give security researchers a discoverable private vulnerability-reporting and coordinated-disclosure path without promising unsupported SLAs, bounties, certification, or legal safe harbor.
 
 ## Required outcomes
 
@@ -83,11 +84,19 @@ The product promise is: **author, convert, collaborate, and prove document chang
 - Application-visible saving/conflict/recovery messages must be derivable from programmatic state without Inkspan prescribing untranslated user-facing copy.
 - Export/print surfaces must not rely on color alone or inaccessible interaction-only state where the corresponding product surface exists.
 
+### Security disclosure and vulnerability handling
+
+- Root `SECURITY.md` is the protected-main authority for supported release lines, private vulnerability reporting, minimized evidence, coordinated disclosure, and explicit claim limits.
+- Private GitHub vulnerability reporting / Security Advisory intake is preferred when available. Public issues must not contain vulnerability details, proof-of-concept payloads, secrets, or customer data; they may only request a private reporting route when necessary.
+- Supported pre-1.0 security lines remain bound to package manifests by deterministic tests rather than copied as unverified prose.
+- The policy does not promise a response-time SLA, bounty, legal safe harbor, certification, or complete secure-development-framework conformance without separate evidence and authority.
+- Host-owned incidents remain host responsibilities unless an Inkspan-owned defect contributes to the issue.
+
 ## Non-goals
 
 Inkspan is not an identity provider, tenant database, durable document store, collaboration authorization server, deployment platform, credential manager, retention engine, model router, durable audit service, application migration owner, or merge/release authority for host products.
 
-Inkspan does not promise universal HTML/Office round-trip fidelity, arbitrary executable document content, implicit network fetching, model-generated content as trusted source, or silent migration of unknown document schemas.
+Inkspan does not promise universal HTML/Office round-trip fidelity, arbitrary executable document content, implicit network fetching, model-generated content as trusted source, silent migration of unknown document schemas, a security bounty, legal safe harbor, fixed vulnerability-response SLA, or certification from repository documentation alone.
 
 ## Security and privacy requirements
 
@@ -95,6 +104,7 @@ Inkspan does not promise universal HTML/Office round-trip fidelity, arbitrary ex
 - Active or hidden rich content must not bypass the supported semantic clipboard policy.
 - Spreadsheet formula-significant input must not silently become executable formulas unless a future explicit trusted formula contract says otherwise.
 - Document bodies, revision/entity tags, provider metadata, tenant identifiers, prompts, and model outputs must not enter generic public metrics or unauthenticated logs.
+- Vulnerability reporting must prefer private channels and minimized/synthetic evidence; public fallback must not disclose vulnerability details, secrets, proof-of-concept payloads, or customer data.
 - Host applications remain responsible for authentication, authorization, CSRF, tenant isolation, persistence, encryption, retention, audit storage, provider admission, and external-model policy.
 
 ## Reliability and operability requirements
@@ -104,11 +114,12 @@ Inkspan does not promise universal HTML/Office round-trip fidelity, arbitrary ex
 - Async revision/selection capture binds to one immutable editor state.
 - Conversion/publication never reports a partial artifact as successful output.
 - Package/release operations fail closed on stale source, ambiguous artifact inventory, digest mismatch, missing required evidence, or stale review/check state.
+- Security policy support rows and reporting mechanics must remain synchronized with package manifests and current repository capabilities.
 - Boundary-specific rollback must preserve canonical document readability and host-owned durable state.
 
 ## Packaging and acquisition acceptance
 
-A release is acceptable only from an exact integrated protected head with applicable CI/security checks, exact owned production statement/branch/function/line coverage, complete public docstrings where required, package-consumer compatibility, real browser/document-fidelity evidence, accessibility evidence, SBOM/provenance/reproducibility, zero valid unresolved findings, required independent non-author review, rollback guidance, and verified published artifacts.
+A release is acceptable only from an exact integrated protected head with applicable CI/security checks, exact owned production statement/branch/function/line coverage, complete public docstrings where required, package-consumer compatibility, real browser/document-fidelity evidence, accessibility evidence, SBOM/provenance/reproducibility, zero valid unresolved findings, actually required independent non-author review, rollback guidance, and verified published artifacts.
 
 Shareable acquisition evidence excludes production tenant content and credentials. Protected `main`, exact-head machine evidence, formal reviews, and canonical product documentation outrank historical PR bodies, comments, local-only results, or predecessor-head status.
 
@@ -116,4 +127,4 @@ Shareable acquisition evidence excludes production tenant content and credential
 
 Protected `main` is the sole implemented baseline. Open PRs may describe Proposed or Active work but are not shipped contracts until protected integration. Canonical documentation must state when a requirement is target architecture rather than current implementation.
 
-Current open development lines include richer browser-verified clipboard assurance, lifecycle observation, document-transition/revision evidence, SSR/native-form integration, accessibility metadata, release hardening, and security disclosure documentation. Their detail is useful design evidence but remains Proposed until merged. A future envelope-identity migration-routing API is tracked separately and must preserve host migration ownership.
+The root security disclosure lifecycle is implemented on protected `main`. Current open development lines include richer browser-verified clipboard assurance, lifecycle observation, document-transition/revision evidence, SSR/native-form integration, accessibility metadata, and canonical documentation reconciliation. Their detail is useful design evidence but remains Proposed until merged. A future envelope-identity migration-routing API is tracked separately and must preserve host migration ownership.
