@@ -20,6 +20,7 @@ function workflowJob(source: string, jobName: string, nextJobName: string): stri
 const workflow = repositoryFile('.github/workflows/release.yml');
 const playwrightConfig = repositoryFile('tests/browser/playwright.config.ts');
 const browserHarness = repositoryFile('tests/browser/harness.ts');
+const browserEvidenceContract = repositoryFile('tests/browser/evidenceContract.ts');
 const browserSpec = repositoryFile('tests/browser/specs/clipboard.browser.spec.ts');
 const consensusSpec = repositoryFile('tests/browser/specs/clipboard.consensus.spec.ts');
 
@@ -81,18 +82,29 @@ describe('release cross-engine browser evidence contract', () => {
     expect(browserJob).not.toContain('path: tests/browser/test-results');
   });
 
-  it('binds browser evidence to one fresh run, current lock, and packed package', () => {
+  it('binds browser evidence to one fresh run, current lock, and packed package bytes', () => {
     expect(playwrightConfig).toContain("globalSetup: './globalSetup.ts'");
     expect(browserHarness).toContain("from 'inkspan-browser-under-test'");
+    expect(browserEvidenceContract).toContain("createReadStream(resolve(releaseDirectory");
+    expect(browserEvidenceContract).toContain("entry.name.endsWith('.tgz')");
+    expect(browserEvidenceContract).toContain("createHash('sha256')");
+    expect(browserEvidenceContract).toContain(
+      'Cross-engine release evidence requires exactly one packed npm artifact.',
+    );
+    expect(browserEvidenceContract).toContain(
+      'Packed npm artifact digest does not match propagated release evidence.',
+    );
     expect(browserSpec).toContain('runId');
-    expect(browserSpec).toContain('packageSha256');
+    expect(browserSpec).toContain('packageSha256: await packedPackageSha256(repositoryRoot)');
     expect(consensusSpec).toContain("createHash('sha256')");
     expect(consensusSpec).toContain("'../pnpm-lock.yaml'");
     expect(consensusSpec).toContain('item.runId');
     expect(consensusSpec).toContain('reference.runId');
     expect(consensusSpec).toContain('item.lockSha256');
     expect(consensusSpec).toContain('currentLockSha256');
-    expect(consensusSpec).toContain('INKSPAN_EXPECTED_PACKAGE_SHA256');
+    expect(consensusSpec).toContain('currentPackageSha256');
+    expect(consensusSpec).toContain('item.packageSha256');
+    expect(consensusSpec).toContain('packedPackageSha256(repositoryRoot)');
   });
 
   it('makes immutable publication depend on both artifacts and tagged browser evidence', () => {
