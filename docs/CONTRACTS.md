@@ -1,6 +1,6 @@
 # Inkspan Interface and Integration Contracts
 
-Status: Proposed canonical baseline
+Status: Protected-main canonical baseline
 
 This document is the discoverable contract index for Inkspan's public product boundaries. Protected `main` remains the implementation authority. Open pull requests may describe Proposed behavior, but they are not shipped until protected integration and exact-head acceptance.
 
