@@ -9,6 +9,7 @@ Inkspan does **not** own an application database in the current architecture. Th
 ```mermaid
 erDiagram
   document_envelope ||--|| document_revision : derives
+  document_envelope ||--o| document_schema_identity : may_identify
   editor_session ||--o{ document_revision : observes
   document_revision ||--o{ document_transition : previous_or_resulting
   document_revision ||--o{ selection_evidence : binds
@@ -20,8 +21,11 @@ erDiagram
   collaboration_document ||--o{ awareness_state : exposes
   provider_binding }o--|| host_capability : requires
   collaboration_document }o--o{ editor_session : coordinates
+  document_schema_identity }o--|| host_capability : routes_migration_through
 
   clipboard_policy ||--o{ document_envelope : constrains_input
+  clipboard_policy ||--o{ browser_assurance_evidence : verified_by
+  browser_assurance_evidence ||--o{ browser_difference_allowance : may_admit
 
   document_envelope ||--o{ conversion_request : source_for
   conversion_request ||--o| conversion_artifact : produces
@@ -29,6 +33,7 @@ erDiagram
   conversion_artifact ||--o{ audit_event : host_may_record
 
   release_artifact }o--|| release_evidence : verified_by
+  release_evidence ||--o{ browser_assurance_evidence : may_require
   release_evidence ||--o{ audit_event : host_or_release_system_records
 ```
 
@@ -48,13 +53,23 @@ erDiagram
 - `release_artifact`: package/wheel/checksum or other expected artifact considered for release.
 - `release_evidence`: exact-source artifact inventory/digest/provenance/verification evidence used before publication.
 
+## Planned value and evidence objects
+
+The following **planned value and evidence objects** make already accepted future boundaries visible in the conceptual ERD without claiming that their APIs or persistence exist on protected `main`:
+
+- `document_schema_identity`: proposed frozen identity-only routing metadata containing the bounded envelope `schemaId` and `schemaVersion`. It contains no document body and does not validate unknown-version document semantics. ADR 0015 and Issue #74 define the planned public routing aid; the host owns migration selection/execution and persistence.
+- `browser_assurance_evidence`: proposed exact-head release evidence from the same committed rich-clipboard corpus executed in required Chromium, Firefox, and WebKit projects. It records bounded public fixture/corpus, browser-revision, package-lock, platform and source identity rather than tenant clipboard data.
+- `browser_difference_allowance`: proposed reviewed explanation for one standards-permitted browser serialization difference. It is attached only to focused evidence with threat analysis and rollback; it never acts as a generic normalization rule or approval substitute.
+
+These values may remain ephemeral or release-artifact metadata. Their presence in the logical model does not create an Inkspan application database or transfer host authority.
+
 ## Host-owned conceptual entities and boundaries
 
 - `durable_validator`: host/server-selected strong HTTP entity tag used for durable compare-and-swap. Inkspan validates/coordinates the value but does not select durable server state.
 - `collaboration_document`: host-owned Yjs-compatible collaborative document state supplied to Inkspan. Room identity, tenant membership, persistence and retention remain host responsibilities.
 - `awareness_state`: host/provider-governed ephemeral collaboration presence metadata. It can contain sensitive tenant information and is not authorization evidence.
 - `provider_binding`: host-created connection/binding between an Inkspan collaboration adapter and a collaboration provider/document. Inkspan does not own credentials, reconnect policy, provider creation/destruction, or durable update storage.
-- `host_capability`: conceptual set of explicitly supplied host capabilities such as durable save callback, authenticated API, collaboration provider, external model proposal surface, file-output authority, or naruon panel composition. Absence of a capability means Inkspan must not invent it.
+- `host_capability`: conceptual set of explicitly supplied host capabilities such as durable save callback, authenticated API, collaboration provider, external model proposal surface, file-output authority, migration registry, or naruon panel composition. Absence of a capability means Inkspan must not invent it.
 - `audit_event`: host/release-system owned durable event for actor, authorization, durable save, migration, provider, security, or release activity. Inkspan local revisions/transitions/snapshots do not substitute for authenticated durable audit records.
 
 ## Ownership and lifecycle matrix
@@ -62,6 +77,7 @@ erDiagram
 | Entity | Current physical persistence owner | Typical lifecycle | Contains complete document body? | Authority claim |
 |---|---|---|---|---|
 | `document_envelope` | host if persisted | document revision | yes | deterministic document value only |
+| `document_schema_identity` | none required; planned | one routing inspection | no | schema-route metadata only |
 | `document_revision` | local or host metadata by policy | derived per exact content | no | equality only |
 | `editor_session` | none required | mounted editor runtime | may reference local state | no auth/session authority |
 | `document_transition` | none required; host may store | change evidence | no | content-lineage evidence only |
@@ -76,6 +92,8 @@ erDiagram
 | `conversion_request` | none required | one deterministic conversion | may reference/contain requested source content | conversion intent only |
 | `conversion_artifact` | caller/host filesystem or artifact store | successful render/export | yes, rendered form | successful deterministic output only |
 | `render_warning` | none required; host may log under policy | conversion result | no by default | warning/limitation only |
+| `browser_assurance_evidence` | release system if retained; planned | one exact-head browser gate | public fixture metadata only | release assurance evidence only |
+| `browser_difference_allowance` | release system if retained; planned | focused engine difference | no tenant content | reviewed safe-difference rationale only |
 | `audit_event` | host/release system | durable operational history | should avoid complete body unless policy requires | authenticated host/release evidence |
 | `release_artifact` | release system | build/release | package content | candidate artifact only |
 | `release_evidence` | release system | exact-head publication | no tenant document content | artifact/source verification only |
@@ -85,18 +103,20 @@ erDiagram
 The current Inkspan runtime does not create a tenant database, but products embedding it depend on temporal/version provenance boundaries:
 
 - `document_envelope` carries an explicit schema/version contract; unknown versions require host-owned migration routing rather than permissive parsing.
+- the planned `document_schema_identity` may expose only bounded routing metadata; it never validates or migrates the unsupported document body and never creates a durable version claim.
 - `document_revision`, selection, transition, and autosave evidence bind to one exact content state; they do not add actor/time/tenant claims not present in the source contract.
 - `durable_validator` is temporally ordered by the host's atomic persistence service and must advance only after validated durable success.
 - `collaboration_document`, `provider_binding`, `awareness_state`, `host_capability`, and `audit_event` can be tenant-scoped in a host, but Inkspan does not define or infer that tenant key.
+- `browser_assurance_evidence` and any focused `browser_difference_allowance` bind to one exact source, corpus, package lock and browser revision set; predecessor or different-browser evidence does not transfer silently.
 - `release_evidence` binds package artifacts to one exact protected source generation; predecessor evidence does not transfer after source movement.
 
 ## Privacy and minimum-disclosure rules
 
-Ordinary lifecycle/selection/transition evidence should remain document-free. Revision/entity tags, provider metadata, awareness state, and host identifiers can still be tenant-confidential metadata and must not become public high-cardinality metric labels or unauthenticated logs. Complete document envelopes, Yjs state, conversion inputs/artifacts, prompts/model outputs, credentials, and host authorization claims follow the host's purpose, encryption, retention, and access policy.
+Ordinary lifecycle/selection/transition/schema-identity evidence should remain document-free. Revision/entity tags, provider metadata, awareness state, schema identity, browser evidence and host identifiers can still be tenant-confidential or release-sensitive metadata and must not become public high-cardinality metric labels or unauthenticated logs without an explicit policy. Complete document envelopes, Yjs state, conversion inputs/artifacts, prompts/model outputs, credentials, and host authorization claims follow the host's purpose, encryption, retention, and access policy.
 
 ## Persistence non-applicability and future change
 
-No Inkspan-owned relational schema is required by the current architecture, so no physical database ERD or migration set is invented here merely to satisfy documentation completeness. If Inkspan later introduces durable persistence, that is a material architecture change requiring:
+No Inkspan-owned relational schema is required by the current architecture, so no physical database ERD or migration set is invented here merely to satisfy documentation completeness. Planned identity-routing and browser-assurance values are logical API/evidence objects, not database tables. If Inkspan later introduces durable persistence, that is a material architecture change requiring:
 
 1. an Accepted ADR defining why persistence moved into Inkspan;
 2. a physical ERD with descriptive multiword `snake_case` object names;
