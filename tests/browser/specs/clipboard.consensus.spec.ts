@@ -13,6 +13,7 @@ import {
 import {
   BROWSER_EVIDENCE_SCHEMA_VERSION,
   BROWSER_PERFORMANCE_BUDGET_MILLIS,
+  packedPackageSha256,
 } from '../evidenceContract.js';
 
 interface BrowserEvidence {
@@ -32,6 +33,7 @@ interface BrowserEvidence {
 }
 
 const specDirectory = dirname(fileURLToPath(import.meta.url));
+const repositoryRoot = resolve(specDirectory, '../../..');
 const evidenceDirectory = resolve(specDirectory, '../.browser-evidence');
 const lockfilePath = resolve(specDirectory, '../pnpm-lock.yaml');
 const engines: readonly CrossEngineClipboardEngine[] = [
@@ -55,8 +57,7 @@ test('requires complete exact-head browser evidence and exact corpus consensus',
   const currentLockSha256 = createHash('sha256')
     .update(await readFile(lockfilePath))
     .digest('hex');
-  const expectedPackageSha256 =
-    process.env.INKSPAN_EXPECTED_PACKAGE_SHA256?.trim() || null;
+  const currentPackageSha256 = await packedPackageSha256(repositoryRoot);
   const evidence = await Promise.all(engines.map(readEvidence));
   const [reference] = evidence;
   if (!reference) throw new Error('Cross-engine browser evidence is missing.');
@@ -72,7 +73,7 @@ test('requires complete exact-head browser evidence and exact corpus consensus',
     expect(item.browserVersion.length).toBeGreaterThan(0);
     expect(item.lockSha256).toBe(reference.lockSha256);
     expect(item.lockSha256).toBe(currentLockSha256);
-    expect(item.packageSha256).toBe(expectedPackageSha256);
+    expect(item.packageSha256).toBe(currentPackageSha256);
     expect(item.headSha).toBe(reference.headSha);
     expect(item.observations).toHaveLength(SAFE_CLIPBOARD_CROSS_ENGINE_CORPUS.length);
     expect(item.representativeWordMillis).toBeGreaterThanOrEqual(0);
