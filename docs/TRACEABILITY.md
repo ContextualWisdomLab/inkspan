@@ -17,12 +17,12 @@ This record maps durable Inkspan product decisions to authoritative standards, p
 | Provenance semantics | Local transition/release evidence keeps content lineage separate from actor/authorization/durable claims | W3C PROV family | transition evidence, release evidence, canonical data model | Inkspan does not claim complete PROV conformance or host audit provenance |
 | Accessibility | Native controls, keyboard semantics, shortcut metadata, and host-facing status state support accessible embedding | W3C WCAG 2.2; WAI-ARIA where used | toolbar/accessibility tests, SSR tests, autosave lifecycle data | Component evidence alone is not a full host WCAG conformance claim |
 | Browser clipboard behavior | Security-relevant rich HTML handling requires actual paste-pipeline integration and bounded semantic reconstruction before editor state | WHATWG HTML parsing; W3C Clipboard API | protected-main rich-clipboard unit/integration corpus and SafeClipboard ADR | Protected jsdom/TipTap integration success is not universal browser-engine conformance |
-| Cross-engine release assurance | The same committed adversarial corpus runs under required Chromium, Firefox, and WebKit projects; only focused standards-grounded safe differences may be admitted | WHATWG HTML Living Standard; W3C Clipboard API and events; Playwright browser/project documentation | ADR 0016, Issue #66, active-PR exact-head browser job/evidence, TEST_STRATEGY and UML | The active implementation remains non-authoritative until protected integration; it does not claim byte-identical browser serialization or branded enterprise-policy coverage |
+| Cross-engine release assurance | The same committed adversarial corpus runs under required Chromium, Firefox, and WebKit projects; only focused standards-grounded safe differences may be admitted | WHATWG HTML Living Standard; W3C Clipboard API and events; Playwright 1.62 release notes and browser/project documentation | ADR 0016, Issue #66, active-PR exact-head browser job/evidence, TEST_STRATEGY, OPERABILITY and UML | The active implementation remains non-authoritative until protected integration; the release path additionally binds browser evidence to the exact packed npm artifact and does not claim byte-identical browser serialization or branded enterprise-policy coverage |
 | Editor integration | Public behavior must exercise the actual TipTap/ProseMirror integration path, not an inert extension field or test-only hook | official TipTap and ProseMirror documentation for the locked dependency line | integration tests and package consumers | Inkspan does not claim compatibility with untested major-version integration semantics |
 | Collaboration | Inkspan provides provider-neutral editor/Yjs bindings; host owns provider lifecycle, room authorization, awareness privacy, persistence and audit | official Yjs/provider documentation plus Inkspan public contract | collaboration tests and architecture ownership matrix | No network-provider or tenant-authorization authority is implied |
 | Secure development | Security controls are developed test-first, with exact-head scanning/review/package evidence and root-cause regression | NIST SP 800-218 SSDF 1.1 | CI/security/SAST/package/provenance gates, doctoring and regression history | Repository evidence is not a claim of complete SSDF organizational conformance |
 | Office rendering | JSON→DOCX/XLSX/PPTX is deterministic, bounded, network-free, macro-free, injection-aware and package-inspected | Office Open XML specifications and relevant Python package contracts | Office renderer tests, Python coverage/docstring/package gates | Format fidelity is limited to explicitly tested supported constructs |
-| Release authority | Source movement invalidates exact-head evidence; stale assets/digest ambiguity fail closed; formal approval remains distinct from status/comments | GitHub protected-branch/review/release/attestation behavior and repository policy | release workflow tests, package checksums, SBOM/provenance, formal reviews | Local success or automated prose does not authorize protected merge/release |
+| Release authority | Source movement invalidates exact-head evidence; stale assets/digest ambiguity fail closed; formal approval remains distinct from status/comments | GitHub protected-branch/review/release/attestation behavior and repository policy | release workflow tests, package checksums, browser evidence, SBOM/provenance, formal reviews | Local success or automated prose does not authorize protected merge/release |
 
 ## Current primary references
 
@@ -36,7 +36,7 @@ Rundgren, A., Jordan, B., & Erdtman, S. (2020). *JSON Canonicalization Scheme (J
 
 Souppaya, M., Scarfone, K., & Dodson, D. (2022). *Secure Software Development Framework (SSDF) Version 1.1: Recommendations for Mitigating the Risk of Software Vulnerabilities* (NIST SP 800-218). National Institute of Standards and Technology. https://doi.org/10.6028/NIST.SP.800-218
 
-Web Hypertext Application Technology Working Group. (2026). *HTML Standard: Parsing HTML documents* (Living Standard). Retrieved August 9, 2026, from https://html.spec.whatwg.org/multipage/parsing.html
+Web Hypertext Application Technology Working Group. (2026). *HTML Standard: Parsing HTML documents* (Living Standard). Retrieved August 10, 2026, from https://html.spec.whatwg.org/multipage/parsing.html
 
 World Wide Web Consortium. (2026, June 24). *Clipboard API and events* (W3C Working Draft). https://www.w3.org/TR/2026/WD-clipboard-apis-20260624/
 
@@ -44,9 +44,11 @@ World Wide Web Consortium. (2024, December 12). *Web Content Accessibility Guide
 
 World Wide Web Consortium. (2013). *PROV-DM: The PROV Data Model*. https://www.w3.org/TR/prov-dm/
 
-Microsoft. (n.d.). *Browsers*. Playwright documentation. Retrieved August 9, 2026, from https://playwright.dev/docs/browsers
+Microsoft. (2026). *Release notes: Version 1.62*. Playwright. Retrieved August 10, 2026, from https://playwright.dev/docs/release-notes
 
-Microsoft. (n.d.). *Projects*. Playwright documentation. Retrieved August 9, 2026, from https://playwright.dev/docs/test-projects
+Microsoft. (n.d.-a). *Browsers*. Playwright documentation. Retrieved August 10, 2026, from https://playwright.dev/docs/browsers
+
+Microsoft. (n.d.-b). *Projects*. Playwright documentation. Retrieved August 10, 2026, from https://playwright.dev/docs/test-projects
 
 ## Research-backed concurrency rationale
 
