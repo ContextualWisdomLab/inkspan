@@ -6,6 +6,9 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Security
+- Added a fail-closed draft release asset inventory gate that requires exactly one npm tarball, one Office wheel, and `SHA256SUMS`, rejects stale or unexpected draft assets before immutable publication, and verifies every GitHub-reported `sha256:` asset digest against the transferred local file
+
 ### Documentation
 - Added a canonical acquisition documentation spine covering product requirements, technical requirements, public interface/integration contracts, Mermaid UML, a conceptual data/evidence model, a threat model, test strategy, operability/recovery, standards/evidence traceability, and sixteen linked architecture decision records without inventing Inkspan-owned persistence or host authority; the newest decisions make envelope schema identity/host-owned migration routing and cross-engine browser-semantic release assurance first-class while keeping their implementations explicitly planned
 - Added machine-checkable canonical-documentation decision coverage that keeps required files, ADR index links and completeness, migration-routing and browser-assurance UML/data-model/traceability evidence, physical-ERD non-applicability, browser-security evidence, offline font provenance/no-runtime-font-egress, standards references, rollback sections, host-vs-Inkspan authority boundaries, and work-conserving autonomous-maintenance guidance synchronized
