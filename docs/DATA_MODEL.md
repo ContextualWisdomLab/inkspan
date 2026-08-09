@@ -45,7 +45,7 @@ erDiagram
 - `document_transition`: previous/resulting revision pair plus changed classification. It deliberately omits the document body from ordinary evidence.
 - `selection_evidence`: ProseMirror structural coordinates bound to one exact revision. It is a local evidence value, not a durable cross-revision anchor.
 - `autosave_revision`: detached immutable revision evidence accepted by the local single-flight autosave coordinator.
-- `autosave_snapshot`: frozen document-free queue/session lifecycle metadata such as idle/saving/blocked/closing/closed and bounded pending state.
+- `autosave_snapshot`: frozen document-free queue/session lifecycle metadata such as idle/saving/blocked/closing/closed and bounded pending state. The explicit in-process snapshot may also carry the bounded active/pending/last-saved strong-validator fields defined by the autosave contract; those fields are confidential local concurrency metadata rather than generic telemetry.
 - `clipboard_policy`: bounded local policy describing the supported semantic rich-paste boundary. It grants no host network or tenant authority.
 - `conversion_request`: versioned deterministic conversion intent. It identifies the supported source representation, requested target such as Markdown/HTML/DOCX/XLSX/PPTX, explicit output/publication options, and validated render configuration. It is a runtime value, not a durable job record.
 - `conversion_artifact`: completed deterministic conversion result or artifact identity produced only after validation/build/publication succeeds. A partial/failed output is not a `conversion_artifact` success.
@@ -83,7 +83,7 @@ These values may remain ephemeral or release-artifact metadata. Their presence i
 | `document_transition` | none required; host may store | change evidence | no | content-lineage evidence only |
 | `selection_evidence` | none required | review/selection capture | no | exact-revision coordinates only |
 | `autosave_revision` | none required | queued local save evidence | envelope-bearing evidence may be retained boundedly by queue | local save ordering only |
-| `autosave_snapshot` | none required | lifecycle observation | no | local machine state only |
+| `autosave_snapshot` | none required | lifecycle observation/coordination | no | local machine state only; validator fields remain confidential metadata |
 | `durable_validator` | host | durable version | no | host concurrency evidence, not authorization |
 | `collaboration_document` | host/provider | collaborative room/document | yes, as Yjs state | host/provider authority |
 | `awareness_state` | host/provider | ephemeral presence | not normally document body | no authorization |
@@ -112,14 +112,14 @@ The current Inkspan runtime does not create a tenant database, but products embe
 
 ## Privacy and minimum-disclosure rules
 
-Ordinary lifecycle/selection/transition/schema-identity evidence should remain document-free. Revision/entity tags, provider metadata, awareness state, schema identity, browser evidence and host identifiers can still be tenant-confidential or release-sensitive metadata and must not become public high-cardinality metric labels or unauthenticated logs without an explicit policy. Complete document envelopes, Yjs state, conversion inputs/artifacts, prompts/model outputs, credentials, and host authorization claims follow the host's purpose, encryption, retention, and access policy.
+Ordinary lifecycle/selection/transition/schema-identity evidence should remain document-free. Revision/entity tags, durable validators, provider metadata, awareness state, schema identity, browser evidence, and host identifiers can still be tenant-confidential or release-sensitive metadata and **must never** become public high-cardinality metric labels or unauthenticated logs. Any separate sharing is limited to authenticated, purpose-bound, minimum-disclosure channels under host policy; such a channel does not create an exception for public metrics or unauthenticated logging. Complete document envelopes, Yjs state, conversion inputs/artifacts, prompts/model outputs, credentials, and host authorization claims follow the host's purpose, encryption, retention, and access policy.
 
 ## Persistence non-applicability and future change
 
 No Inkspan-owned relational schema is required by the current architecture, so no physical database ERD or migration set is invented here merely to satisfy documentation completeness. Planned identity-routing and browser-assurance values are logical API/evidence objects, not database tables. If Inkspan later introduces durable persistence, that is a material architecture change requiring:
 
 1. an Accepted ADR defining why persistence moved into Inkspan;
-2. a physical ERD with descriptive multiword `snake_case` object names;
+2. a physical database ERD with descriptive multiword `snake_case` object names;
 3. tenant, temporal, provenance, retention, encryption, authorization, and audit semantics;
 4. migrations, backup/restore and rollback/recovery design; and
 5. a revised threat model, test strategy, operability runbook, and acquisition evidence package.
