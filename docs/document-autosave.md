@@ -26,6 +26,7 @@ server, worker, queue, or test code:
 ```ts
 import {
   createDocumentAutosaveSession,
+  isStrongHttpEntityTag,
   type DocumentAutosaveDurableSaveResult,
 } from '@contextualwisdomlab/cwl-editor/autosave';
 import {
@@ -75,8 +76,12 @@ or inaccessible validators fail closed before the session is created.
 const loadedResponse = await loadDocument();
 const loadedStrongEntityTag = loadedResponse.headers.get('ETag');
 
+if (!isStrongHttpEntityTag(loadedStrongEntityTag)) {
+  throw new Error('A strong durable entity tag is required before autosave starts');
+}
+
 const autosaveSession = createDocumentAutosaveSession({
-  initialStrongEntityTag: loadedStrongEntityTag ?? '',
+  initialStrongEntityTag: loadedStrongEntityTag,
   async save(request): Promise<DocumentAutosaveDurableSaveResult> {
     const response = await saveDocument({
       envelope: request.evidence.envelope,
@@ -90,9 +95,14 @@ const autosaveSession = createDocumentAutosaveSession({
       throw new Error('Private transport failure');
     }
 
+    const nextStrongEntityTag = response.headers.get('ETag');
+    if (!isStrongHttpEntityTag(nextStrongEntityTag)) {
+      throw new Error('The save response did not include a strong durable entity tag');
+    }
+
     return {
       status: 'saved',
-      nextStrongEntityTag: response.headers.get('ETag') ?? '',
+      nextStrongEntityTag,
     };
   },
 });
@@ -160,6 +170,52 @@ can replace it. A different active or pending write, server conflict, invalid
 callback result, promise-assimilation failure, or ambiguous transport failure
 invalidates that shortcut. Recovery does not restore the shortcut; a later
 successful save must establish it again.
+
+## Observe lifecycle without polling
+
+Supply one optional `onSnapshotChange` callback when creating a queue or durable
+session when the host needs local saving, pending, blocked, recovery, or shutdown
+state. Inkspan retains only that one callback, does not invoke it during
+construction, emits only distinct externally visible snapshots, and ignores
+observer exceptions so presentation or telemetry code cannot change persistence
+ordering.
+
+```ts
+const autosaveSession = createDocumentAutosaveSession({
+  initialStrongEntityTag: loadedStrongEntityTag,
+  save: saveDurableDocument,
+  onSnapshotChange(snapshot) {
+    updateLocalSaveStatus(snapshot.state, snapshot.blockedReason);
+  },
+});
+
+// Read the initial idle state explicitly when the host needs it.
+const initialSnapshot = autosaveSession.getSnapshot();
+```
+
+A snapshot is frozen and document-free. Queue snapshots expose only lifecycle
+state plus active, pending, and last-saved local equality tags. Durable-session
+snapshots additionally expose the current server-issued strong entity tag. A
+successful durable save advances that server tag before the corresponding
+post-save lifecycle notification is observed; conflict or ambiguous failure does
+not advance it.
+
+The observer is not a durable audit log, authorization hook, retry mechanism, or
+transport callback. Hosts must not use observer exceptions as control flow and
+must not infer durable persistence from `state` alone. Durable success is the
+validated host save result and server-validator handoff described above.
+
+Revision and durable entity tags can correlate tenant data. Do not place them in
+public URLs, unauthenticated logs, analytics dimensions, or high-cardinality
+public metric labels. Prefer host-generated descriptive trace identifiers for
+shareable observability evidence.
+
+When lifecycle state is surfaced in a web interface, the host owns localized and
+accessible wording. Non-focus-changing messages such as “Saving”, “Saved”, or a
+blocked/conflict status should be exposed through the embedding application's
+appropriate accessible status-message pattern so assistive technology can
+identify the change without moving focus. Inkspan supplies machine state only;
+it does not prescribe ARIA text or localization.
 
 ## Recover from conflict or failure
 
@@ -304,7 +360,9 @@ previously loaded or committed server validator and write the proposed document
 atomically in the same authorized storage transaction, consistent with RFC 9110
 `If-Match` semantics.
 
-See `docs/doctoring/document-autosave-queue.md` and
-`docs/doctoring/durable-autosave-session.md` for the architectural decisions,
-security analyses, verification plans, and APA 7th references to RFC 9110, RFC
-8785, Herlihy and Wing (1990), and ISO/IEC 25010:2023.
+See `docs/doctoring/document-autosave-queue.md`,
+`docs/doctoring/durable-autosave-session.md`, and
+`docs/doctoring/autosave-lifecycle-observation.md` for the architectural
+decisions, security analyses, verification plans, and APA 7th references to RFC
+9110, RFC 8785, WCAG 2.2, Herlihy and Wing (1990), Kung and Robinson (1981), and
+ISO/IEC 25010:2023.
