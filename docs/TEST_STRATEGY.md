@@ -22,7 +22,11 @@ Install or consume the packed artifacts rather than source-tree aliases. Verify 
 
 ### Browser differential tests
 
-Where browser fragment parsing or serialization participates in a security boundary, use dependency-locked Playwright coverage across Chromium, Firefox, and WebKit. The same adversarial corpus must run in all required engines. Differences are not normalized away merely to produce parity; every reviewed allowlisted difference requires a standards basis and threat analysis. Missing/skipped browsers are not successful release evidence.
+Where browser fragment parsing or serialization participates in a security boundary, use dependency-locked Playwright coverage across Chromium, Firefox, and WebKit. SafeClipboard is already implemented on protected `main`; the cross-engine publication gate is implemented on the active browser-assurance PR and is not shipped until protected integration.
+
+The active gate pins **Playwright 1.62.0** in an isolated immutable browser-test lock and runs the same versioned synthetic corpus through the supported TipTap/ProseMirror `transformPastedHTML` path in named Chromium, Firefox, and WebKit projects on one **exact source head**. Evidence binds the corpus version, browser-test lock digest, Playwright version, actual browser versions, operating-system identity, and exact source head. The corpus covers active/resource/form content, hidden/Office/popover semantics, safe and unsafe links, malformed fragments, tables/lists, SVG/MathML, interactive/native fallback, byte/node/depth ceilings, hostile DOM capability failures, and a representative Word-like performance alarm.
+
+Differences are not normalized away merely to produce parity. The default gate has no generic normalization or broad engine allowlist; a permitted difference requires a focused regression fixture, authoritative standards basis, threat analysis, exact affected engine/version evidence, canonical interpretation, compatibility impact, and rollback. Missing, skipped, cancelled, incomplete, or divergent required browser evidence must fail closed rather than becoming successful release evidence. Passing the active PR does not become protected-main release authority until that exact implementation is reviewed and integrated.
 
 ### Office artifact tests
 
@@ -47,7 +51,7 @@ Office Python uses a distinct language/tool contract. Across every advertised su
 At minimum, maintain regressions for:
 
 - duplicate JSON object names, negative zero, malformed JSON, malformed UTF-8, BOM, depth/value/string/byte limits, sparse/decorated/non-plain objects, symbols, accessors, proxies, reflection failures, and detached/cross-realm byte views;
-- rich clipboard scripts, embeds, resources, forms, metadata, SVG/MathML, images, hidden subtrees, `dialog`, `details`, `popover`, Office `mso-hide`, CSS comments/escapes/case/whitespace, malformed fragments, tables/lists/formatting elements, unsafe links, and resource ceilings;
+- rich clipboard scripts, embeds, resources, forms, metadata, SVG/MathML, images, hidden subtrees, `dialog`, `details`, `popover`, Office `mso-hide`, CSS comments/escapes/case/whitespace, malformed fragments, tables/lists/formatting elements, unsafe links, resource ceilings, real-engine parser/serializer differences, and hostile DOM capabilities;
 - SSR client-controlled form values, escaping, hydration continuity, reset behavior, and absence of server editor construction;
 - autosave stale validators, conflict/failure recovery, ambiguous transport outcomes, duplicate/no-op lifecycle transitions, callback exceptions, queue bounds, flush/close behavior, and durable-validator coherence;
 - selection/revision races and document movement during asynchronous hashing;
@@ -66,7 +70,7 @@ A release candidate requires the exact integrated protected head to satisfy appl
 
 The release workflow must also satisfy the normative `docs/CONTRACTS.md` draft inventory contract: exactly one npm tarball, exactly one Office wheel, and `SHA256SUMS`; no other top-level entry; remote uploaded asset names exactly equal local names; and every GitHub-reported `sha256:` digest equals the exact transferred local file digest. Missing, stale, unexpected, non-regular, incomplete, or digest-mismatched assets are failures, not cleanup opportunities.
 
-The 0.6.0 rich-clipboard release line specifically requires the Chromium, Firefox, and WebKit differential gate before publication. Deterministic jsdom coverage remains useful but is not a substitute for browser-engine acceptance.
+The 0.6.0 rich-clipboard release line specifically requires the dependency-locked **Playwright 1.62.0** Chromium, Firefox, and WebKit differential gate on the exact integrated protected source head before publication. Deterministic jsdom coverage remains useful but is not a substitute for browser-engine acceptance; active-PR browser evidence remains proposed evidence until protected integration.
 
 ## Documentation verification
 
@@ -74,4 +78,4 @@ Documentation tests must compare canonical PRD/TRD/Architecture/ADR/UML/data-mod
 
 ## Rollback of a test gate
 
-A gate may be changed only because its product contract changed or the gate itself is technically invalid. The replacement begins with a regression that demonstrates the mismatch. Do not disable, skip, broaden allowlists, or lower coverage/security thresholds merely to make a branch green.
+A gate may be changed only because its product contract changed or the gate itself is technically invalid. The replacement begins with a regression that demonstrates the mismatch. Do not disable, skip, broaden allowlists, or lower coverage/security thresholds merely to make a branch green. Browser-gate rollback must leave the rich-clipboard publication claim unaccepted unless equivalent or stronger real-engine evidence replaces it.
