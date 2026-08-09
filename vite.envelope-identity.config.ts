@@ -10,6 +10,7 @@ export default defineConfig({
       include: [
         'src/envelope-identity',
         'src/documentEnvelopeIdentity.ts',
+        'src/documentEnvelopeLimits.ts',
         'src/documentEnvelope.ts',
         'src/jsonObjectNameScanner.ts',
       ],
