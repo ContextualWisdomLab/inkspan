@@ -25,7 +25,7 @@ function createEvidence(byte: string): DocumentAutosaveRevisionEvidence {
 }
 
 describe('autosave lifecycle settlement observation bounds', () => {
-  it('attaches only one settlement observer when duplicate queue requests share a promise', async () => {
+  it('does not reattach a settlement observer when duplicate queue requests share a promise', async () => {
     let completeSave!: (result: DocumentAutosaveSaveResult) => void;
     const saveResult = new Promise<DocumentAutosaveSaveResult>((resolve) => {
       completeSave = resolve;
@@ -35,14 +35,13 @@ describe('autosave lifecycle settlement observation bounds', () => {
       onSnapshotChange: () => undefined,
     });
     const evidence = createEvidence('51');
-    const thenSpy = vi.spyOn(Promise.prototype, 'then');
     const firstRequest = queue.enqueue(evidence);
-    const thenCallsAfterFirstRequest = thenSpy.mock.calls.length;
+    const thenSpy = vi.spyOn(firstRequest, 'then');
 
     try {
       const duplicateRequest = queue.enqueue(evidence);
       expect(duplicateRequest).toBe(firstRequest);
-      expect(thenSpy.mock.calls.length).toBe(thenCallsAfterFirstRequest);
+      expect(thenSpy).not.toHaveBeenCalled();
     } finally {
       thenSpy.mockRestore();
       completeSave({ status: 'saved' });
@@ -50,7 +49,7 @@ describe('autosave lifecycle settlement observation bounds', () => {
     }
   });
 
-  it('attaches only one settlement observer when duplicate durable-session requests share a promise', async () => {
+  it('does not reattach a settlement observer when duplicate durable-session requests share a promise', async () => {
     let completeSave!: (result: DocumentAutosaveDurableSaveResult) => void;
     const saveResult = new Promise<DocumentAutosaveDurableSaveResult>((resolve) => {
       completeSave = resolve;
@@ -61,14 +60,13 @@ describe('autosave lifecycle settlement observation bounds', () => {
       onSnapshotChange: () => undefined,
     });
     const evidence = createEvidence('52');
-    const thenSpy = vi.spyOn(Promise.prototype, 'then');
     const firstRequest = session.enqueue(evidence);
-    const thenCallsAfterFirstRequest = thenSpy.mock.calls.length;
+    const thenSpy = vi.spyOn(firstRequest, 'then');
 
     try {
       const duplicateRequest = session.enqueue(evidence);
       expect(duplicateRequest).toBe(firstRequest);
-      expect(thenSpy.mock.calls.length).toBe(thenCallsAfterFirstRequest);
+      expect(thenSpy).not.toHaveBeenCalled();
     } finally {
       thenSpy.mockRestore();
       completeSave({
