@@ -321,7 +321,10 @@ export function createDocumentAutosaveQueue(
   const internalQueue = createInternalDocumentAutosaveQueue({
     save: validatedOptions.save as never,
   }) as unknown as DocumentAutosaveQueue;
-  let lastObservedSnapshotJson: string | null = null;
+  let lastObservedSnapshotJson =
+    validatedOptions.onSnapshotChange === null
+      ? null
+      : JSON.stringify(internalQueue.getSnapshot());
 
   /** Notify the retained observer only when externally visible state changed. */
   function emitSnapshotChange(): void {
