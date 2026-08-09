@@ -1,6 +1,6 @@
 # Inkspan Product Requirements
 
-Status: Proposed canonical baseline
+Status: Protected-main canonical baseline
 
 ## Product definition
 
@@ -129,4 +129,4 @@ Shareable acquisition evidence excludes production tenant content and credential
 
 Protected `main` is the sole implemented baseline. Open PRs may describe Proposed or Active work but are not shipped contracts until protected integration. Canonical documentation must state when a requirement is target architecture rather than current implementation.
 
-Lifecycle observation is implemented on protected `main`. The root security disclosure lifecycle, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, and document-transition evidence are also implemented on protected `main`. Current open development lines include SafeClipboard and canonical documentation reconciliation. Cross-engine browser assurance remains planned behind SafeClipboard, and a future envelope-identity migration-routing API is tracked separately and must preserve host migration ownership.
+Lifecycle observation is implemented on protected `main`. The root security disclosure lifecycle, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, and document-transition evidence are also implemented on protected `main`. SafeClipboard remains the current active product line. Cross-engine browser assurance remains planned behind SafeClipboard, and a future envelope-identity migration-routing API is tracked separately and must preserve host migration ownership.
