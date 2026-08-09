@@ -17,6 +17,39 @@ env:
   PYTHON_VERSION: '3.14'
 
 jobs:
+  browser-release-evidence:
+    name: Cross-engine Clipboard / Playwright 1.62.0
+    if: github.repository == 'ContextualWisdomLab/inkspan'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/inkspan-playwright-browsers
+    steps:
+      - name: Check out the exact tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: Install root dependencies from the immutable lock
+        run: pnpm install --frozen-lockfile
+      - name: Install browser-test dependencies from the isolated immutable lock
+        run: pnpm --dir tests/browser install --frozen-lockfile
+      - name: Install Playwright browser revisions pinned by 1.62.0
+        run: pnpm --dir tests/browser exec playwright install --with-deps chromium firefox webkit
+      - name: Verify real-engine rich clipboard release evidence on the tagged source
+        env:
+          INKSPAN_EXPECTED_HEAD_SHA: ${{ github.sha }}
+        run: pnpm --dir tests/browser exec playwright test --config playwright.config.ts
+
   build-release-artifacts:
     if: github.repository == 'ContextualWisdomLab/inkspan'
     runs-on: ubuntu-24.04
@@ -136,7 +169,7 @@ jobs:
 
   publish-release:
     if: github.repository == 'ContextualWisdomLab/inkspan'
-    needs: build-release-artifacts
+    needs: [build-release-artifacts, browser-release-evidence]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
