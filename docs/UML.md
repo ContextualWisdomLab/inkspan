@@ -33,7 +33,7 @@ flowchart LR
   CollaborationAdapter <--> HostProvider
   AutosaveCore --> HostStore
   HostApp --> ModelGateway
-  ControlPlane -. CI security review provenance release policy .-> EditorCore
+  ControlPlane -. CI-only; not runtime: security review provenance release policy .-> EditorCore
 ```
 
 The host owns transport, authentication, authorization, tenant isolation, persistence, credentials, provider lifecycle, retention, deployment, durable audit, and model-use policy. Inkspan owns deterministic local editor/conversion/evidence behavior only.
