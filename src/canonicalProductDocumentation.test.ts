@@ -119,8 +119,11 @@ describe('canonical product documentation graph', () => {
     const operability = repositoryFile('docs/OPERABILITY.md');
 
     for (const document of [prd, trd, contracts, threatModel, operability]) {
-      expect(document).toContain('host');
-      expect(document).toMatch(/transport|authorization|tenant|persistence/i);
+      expect(document).toMatch(/host[^.]*transport/i);
+      expect(document).toMatch(/host[^.]*authentication/i);
+      expect(document).toMatch(/host[^.]*authorization/i);
+      expect(document).toMatch(/host[^.]*tenant(?: isolation|cy)/i);
+      expect(document).toMatch(/host[^.]*durable persistence|host[^.]*persistence/i);
     }
     expect(prd).toContain('deterministic');
     expect(trd).toContain('Protected `main`');
@@ -128,7 +131,7 @@ describe('canonical product documentation graph', () => {
     expect(operability).toContain('rollback');
   });
 
-  it('preserves the durable product decisions from the canonical conversation', () => {
+  it('preserves durable product decisions from the canonical documentation graph', () => {
     const prd = repositoryFile('docs/PRD.md');
     const trd = repositoryFile('docs/TRD.md');
     const contracts = repositoryFile('docs/CONTRACTS.md');
@@ -154,6 +157,7 @@ describe('canonical product documentation graph', () => {
     for (const marker of ['Office', 'naruon', 'Yjs', 'file publication']) {
       expect(uml).toContain(marker);
     }
+    expect(uml).toContain('CI-only; not runtime');
     for (const marker of [
       'conversion_request',
       'conversion_artifact',
@@ -246,8 +250,17 @@ describe('canonical product documentation graph', () => {
       expect(notice).toContain(marker);
     }
     for (const stylesheet of [fullFonts, latinFonts]) {
-      expect(stylesheet).toContain("url('./files/");
-      expect(stylesheet).not.toMatch(/https?:\/\//u);
+      const fontUrls = [
+        ...stylesheet.matchAll(
+          /url\(\s*(?:'([^']*)'|"([^"]*)"|([^'")\s]+))\s*\)/gu,
+        ),
+      ].map(([, singleQuoted, doubleQuoted, unquoted]) =>
+        singleQuoted ?? doubleQuoted ?? unquoted,
+      );
+      expect(fontUrls.length).toBeGreaterThan(0);
+      for (const url of fontUrls) {
+        expect(url).toMatch(/^\.\/files\//u);
+      }
     }
   });
 
