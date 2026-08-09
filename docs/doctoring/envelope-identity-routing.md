@@ -6,7 +6,7 @@ Tracking: Issue #74
 
 ## Problem boundary
 
-Inkspan's strict `parseDocumentEnvelope()` correctly rejects unknown schema identifiers and versions. That protects current document semantics, but a host still needs a safe way to determine which version-specific migration should receive a complete legacy or future envelope. Asking every host to parse untrusted envelope JSON independently would duplicate duplicate-name, UTF-8, resource-limit, accessor, proxy/reflection, and error-redaction policy at the compatibility boundary.
+Inkspan's strict `parseDocumentEnvelope()` correctly rejects unknown schema identifiers and versions. That protects current document semantics, but a host still needs a safe way to determine which version-specific migration should receive a complete legacy or future envelope. Asking every host to parse untrusted envelope JSON independently would replicate duplicate-name, UTF-8, resource-limit, accessor, proxy/reflection, and error-redaction policy at the compatibility boundary.
 
 ## Implemented decision
 
