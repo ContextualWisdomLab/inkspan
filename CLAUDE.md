@@ -27,6 +27,14 @@ For architectural changes, update the smallest affected canonical records and AD
 
 A queued, pending, cancelled, skipped-required, stale-head, predecessor-head, status-only, comment-only, author-only, or synthetic-merge result is not acceptance evidence. Formal review, automated review, repository checks, host authorization, and release evidence remain distinct authorities.
 
+## Autonomous maintenance execution discipline
+
+When an external scheduler or autonomous maintainer drives Inkspan work, execution is **work-conserving**. After each mutation, proof, merge, closure, review/check observation, or defer decision, choose the next highest-value safe Inkspan item while practical execution budget remains. A blocked PR blocks only that lane; do not let queued CI, reviewer latency, provider cooldown, a read-only dependency, or missing approval freeze unrelated source, documentation, operability, or product work.
+
+Do not use a status report, prompt update, documentation assessment, green check, PR creation, review request, or one completed product slice as a stopping condition while another safe action exists. Before ending an autonomous run, re-scan open PRs/issues, protected `main`, changed branches, review/check/security evidence, canonical-document fitness, release readiness, and buyer-visible gaps; continue when an executable item remains.
+
+The external scheduler remains the execution authority for cadence and continuation. This file constrains repository-specific writer/evidence/product/safety behavior and does not make scheduling or autonomous orchestration part of Inkspan runtime architecture.
+
 ## Integration discipline
 
 Inkspan must remain independently usable. naruon and other CWL hosts compose it through narrow host-owned boundaries; they are not required runtime dependencies. Central `.github`, contextual-orchestrator, and other repositories are external bounded contexts and must not be locally patched around when they own a shared control-plane defect.
