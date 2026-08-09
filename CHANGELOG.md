@@ -6,6 +6,9 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Security
+- Added a fail-closed draft release asset inventory gate that requires exactly one npm tarball, one Office wheel, and `SHA256SUMS`, rejects stale or unexpected draft assets before immutable publication, and verifies every GitHub-reported `sha256:` asset digest against the transferred local file
+
 ### Added
 - Added privacy-minimized document transition evidence for validated previous and resulting canonical revisions through the framework-independent `revision-evidence` subpath, with object/JSON and strict UTF-8 entry points, deterministic previous-then-resulting SHA-256 derivation, frozen revision-only results, and no document body, actor, tenant, time, authorization, signature, transport, model, or durable-write claim
 
