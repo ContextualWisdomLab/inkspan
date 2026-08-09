@@ -558,12 +558,12 @@ python -m pip wheel . --no-deps --wheel-dir dist
 ```
 
 The repository CI pins GitHub Actions by full commit SHA. The Office matrix uses
-hash-locked binary dependencies on Python 3.11 and 3.14. JavaScript and Python
-shipped code are gated at 100% coverage; the Python package additionally enforces
-100% shipped-symbol docstring coverage and verifies the contents of its built
-wheel. Link-policy tests cover parsing, commands, direct transactions,
-serialization, and redacted diagnostics; image-policy tests cover every editor
-and standalone serializer ingress path.
+hash-locked binary dependencies on Python 3.11, Python 3.12, Python 3.13, and
+Python 3.14. JavaScript and Python shipped code are gated at 100% coverage; the
+Python package additionally enforces 100% shipped-symbol docstring coverage and
+verifies the contents of its built wheel. Link-policy tests cover parsing,
+commands, direct transactions, serialization, and redacted diagnostics;
+image-policy tests cover every editor and standalone serializer ingress path.
 
 ## Architecture
 
