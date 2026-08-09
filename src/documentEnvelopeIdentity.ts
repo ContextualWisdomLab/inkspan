@@ -20,6 +20,7 @@ const LIMIT_FIELDS = new Set([
   'maxStringCodeUnits',
   'maxNestingDepth',
 ]);
+const IDENTITY_ENVELOPE_OVERHEAD_VALUES = 3;
 const UTF8_BYTE_ORDER_MARK = 0xefbbbf;
 const TYPED_ARRAY_TAG_GETTER = Object.getOwnPropertyDescriptor(
   Object.getPrototypeOf(Uint8Array.prototype),
@@ -112,6 +113,10 @@ function inspectIdentityWithLimits(
   source: unknown,
   limits: ResolvedIdentityLimits,
 ): Readonly<CwlEditorDocumentEnvelopeIdentity> {
+  const envelopeValueCeiling = Math.min(
+    Number.MAX_SAFE_INTEGER,
+    limits.maxJsonValues + IDENTITY_ENVELOPE_OVERHEAD_VALUES,
+  );
   let value: unknown = source;
   if (typeof source === 'string') {
     if (source.length > limits.maxJsonTextCodeUnits) {
@@ -120,10 +125,7 @@ function inspectIdentityWithLimits(
       );
     }
     const inspection = inspectJsonText(source, {
-      maxValues: Math.min(
-        Number.MAX_SAFE_INTEGER,
-        limits.maxJsonValues + 3,
-      ),
+      maxValues: envelopeValueCeiling,
       maxDepth: Math.min(
         Number.MAX_SAFE_INTEGER,
         limits.maxNestingDepth + 1,
@@ -161,7 +163,7 @@ function inspectIdentityWithLimits(
 
   const entries = readDataEntries(
     value,
-    Math.min(Number.MAX_SAFE_INTEGER, limits.maxJsonValues + 3),
+    envelopeValueCeiling,
     limits.maxStringCodeUnits,
     'Document envelope identity contains too many top-level fields',
   );
