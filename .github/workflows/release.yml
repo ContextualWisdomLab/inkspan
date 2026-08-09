@@ -19,7 +19,7 @@ env:
 jobs:
   build-release-artifacts:
     if: github.repository == 'ContextualWisdomLab/inkspan'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out the tagged source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -137,7 +137,7 @@ jobs:
   publish-release:
     if: github.repository == 'ContextualWisdomLab/inkspan'
     needs: build-release-artifacts
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       id-token: write
@@ -153,6 +153,30 @@ jobs:
           set -euo pipefail
           cd release
           sha256sum --check SHA256SUMS
+      - name: Verify bounded local release artifact set
+        run: |
+          set -euo pipefail
+          expected_asset_count=3
+          mapfile -t local_entries < <(
+            find release -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort
+          )
+          mapfile -t local_assets < <(
+            find release -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort
+          )
+          mapfile -t npm_assets < <(
+            printf '%s\n' "${local_assets[@]}" | grep -E '\.tgz$' || true
+          )
+          mapfile -t wheel_assets < <(
+            printf '%s\n' "${local_assets[@]}" | grep -E '\.whl$' || true
+          )
+          if [[ ${#local_entries[@]} -ne $expected_asset_count \
+            || ${#local_assets[@]} -ne $expected_asset_count \
+            || ${#npm_assets[@]} -ne 1 \
+            || ${#wheel_assets[@]} -ne 1 \
+            || ! -f release/SHA256SUMS ]]; then
+            echo "::error::Unexpected local release artifact set; require exactly one *.tgz, one *.whl, and SHA256SUMS."
+            exit 1
+          fi
       - name: Attest release artifacts
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
@@ -168,7 +192,7 @@ jobs:
           for artifact in release/*.tgz release/*.whl release/SHA256SUMS; do
             gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY"
           done
-      - name: Publish immutable GitHub release
+      - name: Prepare draft GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -194,6 +218,102 @@ jobs:
           gh release upload "$GITHUB_REF_NAME" release/* \
             --repo "$GITHUB_REPOSITORY" \
             --clobber
+      - name: Verify exact draft release asset inventory
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          expected_asset_count=3
+          mapfile -t local_entries < <(
+            find release -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort
+          )
+          mapfile -t local_assets < <(
+            find release -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort
+          )
+          mapfile -t npm_assets < <(
+            printf '%s\n' "${local_assets[@]}" | grep -E '\.tgz$' || true
+          )
+          mapfile -t wheel_assets < <(
+            printf '%s\n' "${local_assets[@]}" | grep -E '\.whl$' || true
+          )
+          if [[ ${#local_entries[@]} -ne $expected_asset_count \
+            || ${#local_assets[@]} -ne $expected_asset_count \
+            || ${#npm_assets[@]} -ne 1 \
+            || ${#wheel_assets[@]} -ne 1 \
+            || ! -f release/SHA256SUMS ]]; then
+            echo "::error::Unexpected local release artifact set; require exactly one *.tgz, one *.whl, and SHA256SUMS."
+            exit 1
+          fi
+
+          release_pages="$(gh api \
+            --paginate \
+            --slurp \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2026-03-10' \
+            "repos/$GITHUB_REPOSITORY/releases?per_page=100")"
+          release_match_count="$(jq -r --arg tag "$GITHUB_REF_NAME" \
+            '[.[][] | select(.tag_name == $tag)] | length' \
+            <<< "$release_pages")"
+          if [[ "$release_match_count" != '1' ]]; then
+            echo "::error::Expected exactly one draft release for tag $GITHUB_REF_NAME; found $release_match_count."
+            exit 1
+          fi
+          release_json="$(jq -ce --arg tag "$GITHUB_REF_NAME" \
+            '[.[][] | select(.tag_name == $tag)][0]' \
+            <<< "$release_pages")"
+          release_state='.draft'
+          asset_name='.assets[].name'
+          asset_state='.assets[].state'
+          asset_digest='.assets[].digest'
+
+          if [[ "$(jq -r "$release_state" <<< "$release_json")" != 'true' ]]; then
+            echo "::error::Release must remain a draft while its exact asset inventory is validated."
+            exit 1
+          fi
+
+          mapfile -t remote_assets < <(
+            jq -r "$asset_name" <<< "$release_json" | LC_ALL=C sort
+          )
+          if [[ ${#remote_assets[@]} -ne $expected_asset_count ]] \
+            || ! diff -u \
+              <(printf '%s\n' "${local_assets[@]}") \
+              <(printf '%s\n' "${remote_assets[@]}"); then
+            echo "::error::Unexpected draft release asset inventory; remove the stale draft or unexpected stale asset before retrying."
+            exit 1
+          fi
+
+          mapfile -t remote_states < <(jq -r "$asset_state" <<< "$release_json")
+          if [[ ${#remote_states[@]} -ne $expected_asset_count ]]; then
+            echo "::error::Unexpected draft release asset inventory; asset state evidence is incomplete."
+            exit 1
+          fi
+          for state in "${remote_states[@]}"; do
+            if [[ "$state" != 'uploaded' ]]; then
+              echo "::error::Draft release contains an asset that is not fully uploaded."
+              exit 1
+            fi
+          done
+
+          mapfile -t remote_digests < <(jq -r "$asset_digest" <<< "$release_json")
+          if [[ ${#remote_digests[@]} -ne $expected_asset_count ]]; then
+            echo "::error::Draft release asset digest evidence is incomplete."
+            exit 1
+          fi
+          for filename in "${local_assets[@]}"; do
+            local_digest="sha256:$(sha256sum -- "release/$filename" | awk '{print $1}')"
+            remote_digest="$(jq -r --arg filename "$filename" \
+              '.assets[] | select(.name == $filename) | .digest // empty' \
+              <<< "$release_json")"
+            if [[ "$remote_digest" != "$local_digest" ]]; then
+              echo "::error::Draft release asset digest mismatch for $filename."
+              exit 1
+            fi
+          done
+      - name: Publish immutable GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
           gh release edit "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" \
             --draft=false
