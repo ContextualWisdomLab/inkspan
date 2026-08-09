@@ -22,7 +22,7 @@ def _repository_text(relative_path: str) -> str:
 
 
 def test_python_support_range_matches_classifiers_and_ci_matrix() -> None:
-    """Require package metadata and CI to cover the same bounded minor releases."""
+    """Require package metadata and the Office CI job to cover the same minors."""
 
     pyproject = tomllib.loads(_repository_text("office/pyproject.toml"))
     project = pyproject["project"]
@@ -36,7 +36,10 @@ def test_python_support_range_matches_classifiers_and_ci_matrix() -> None:
     assert classified_versions == SUPPORTED_PYTHON_VERSIONS
 
     workflow = _repository_text(".github/workflows/ci.yml")
-    matrix_match = re.search(r'python-version:\s*\[([^\]]+)\]', workflow)
+    office_job = _workflow_job_block(workflow, "office")
+    assert "runs-on: ubuntu-24.04" in office_job
+    assert "runs-on: ubuntu-latest" not in office_job
+    matrix_match = re.search(r'python-version:\s*\[([^\]]+)\]', office_job)
     assert matrix_match is not None
     matrix_versions = tuple(re.findall(r'"(3\.\d+)"', matrix_match.group(1)))
     assert matrix_versions == SUPPORTED_PYTHON_VERSIONS
@@ -60,16 +63,22 @@ def test_python_312_binary_wheels_are_covered_by_the_hash_lock() -> None:
     """Keep the exact Ubuntu CPython 3.12 binary wheel digests in the lock."""
 
     requirements = _repository_text("office/requirements-ci.txt")
-    lxml_block = requirements[requirements.index("lxml==6.1.0") : requirements.index("openpyxl==3.1.5")]
-    pillow_block = requirements[requirements.index("Pillow==12.3.0") : requirements.index("pluggy==1.6.0")]
+    lxml_block = requirements[
+        requirements.index("lxml==6.1.0") : requirements.index("openpyxl==3.1.5")
+    ]
+    pillow_block = requirements[
+        requirements.index("Pillow==12.3.0") : requirements.index("pluggy==1.6.0")
+    ]
 
     assert f"--hash=sha256:{PYTHON_312_LXML_LINUX_SHA256}" in lxml_block
     assert f"--hash=sha256:{PYTHON_312_PILLOW_LINUX_SHA256}" in pillow_block
 
 
 def test_release_workflow_uses_the_same_fixed_runner_contract() -> None:
-    """Prevent release verification from drifting onto a different runner image."""
+    """Bind both release jobs independently to the supported runner image."""
 
     release_workflow = _repository_text(".github/workflows/release.yml")
-    assert "runs-on: ubuntu-latest" not in release_workflow
-    assert release_workflow.count("runs-on: ubuntu-24.04") == 2
+    for job_name in ("build-release-artifacts", "publish-release"):
+        job = _workflow_job_block(release_workflow, job_name)
+        assert "runs-on: ubuntu-24.04" in job
+        assert "runs-on: ubuntu-latest" not in job
