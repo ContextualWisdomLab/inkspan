@@ -37,6 +37,55 @@ describe('CwlEditor W3C text-position selector evidence', () => {
     expect(JSON.stringify(evidence)).not.toContain('😀');
   });
 
+  it('indexes multi-block bidirectional text in logical document order', async () => {
+    const editorRef = createRef<CwlEditorHandle>();
+    render(<CwlEditor ref={editorRef} defaultValue={'אבג\n\nXYZ'} />);
+    await waitFor(() => expect(editorRef.current?.getEditor()).not.toBeNull());
+
+    const handle = editorRef.current!;
+    let secondBlockTextPosition: number | null = null;
+    handle.getEditor()!.state.doc.descendants((node, position) => {
+      if (node.isText && node.text === 'XYZ') secondBlockTextPosition = position;
+    });
+    expect(secondBlockTextPosition).not.toBeNull();
+    act(() => {
+      handle.getEditor()!.commands.setTextSelection({
+        from: secondBlockTextPosition!,
+        to: secondBlockTextPosition! + 1,
+      });
+    });
+
+    const evidence = await handle.getTextPositionSelectorEvidence(undefined, {
+      digest: async () => new Uint8Array(32).fill(0x33).buffer,
+    });
+    expect(evidence?.selector).toEqual({
+      type: 'TextPositionSelector',
+      start: 4,
+      end: 5,
+    });
+  });
+
+  it('rejects a structural selection boundary that splits a grapheme cluster', async () => {
+    const editorRef = createRef<CwlEditorHandle>();
+    render(<CwlEditor ref={editorRef} defaultValue={'A\u0301B'} />);
+    await waitFor(() => expect(editorRef.current?.getEditor()).not.toBeNull());
+
+    const handle = editorRef.current!;
+    act(() => {
+      // Position 2 falls between the base A and its combining acute accent.
+      handle.getEditor()!.commands.setTextSelection(2);
+    });
+
+    await expect(
+      handle.getTextPositionSelectorEvidence(undefined, {
+        digest: async () => new Uint8Array(32).buffer,
+      }),
+    ).rejects.toMatchObject({
+      name: 'TextPositionSelectorEvidenceError',
+      code: 'grapheme_boundary',
+    });
+  });
+
   it('keeps selector positions and revision bound to the same state while hashing is delayed', async () => {
     const editorRef = createRef<CwlEditorHandle>();
     render(<CwlEditor ref={editorRef} defaultValue="Alpha beta" />);
