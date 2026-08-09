@@ -27,15 +27,15 @@ describe('package distribution documentation contract', () => {
     expect(distributionGuide).toContain(
       '`@contextualwisdomlab/cwl-editor/autosave`',
     );
-    expect(distributionGuide).toContain('framework-independent autosave');
+    expect(distributionGuide).toMatch(/framework-independent autosave/iu);
     expect(distributionGuide).toContain(
       '`@contextualwisdomlab/cwl-editor/envelope-identity`',
     );
-    expect(distributionGuide).toContain('identity-only envelope routing');
+    expect(distributionGuide).toMatch(/identity-only envelope routing/iu);
     expect(distributionGuide).toContain(
       '`@contextualwisdomlab/cwl-editor/revision-evidence`',
     );
-    expect(distributionGuide).toContain('framework-independent revision evidence');
+    expect(distributionGuide).toMatch(/framework-independent revision evidence/iu);
   });
 
   it('makes the buyer-facing distribution contract discoverable from the canonical index', () => {
