@@ -97,6 +97,20 @@ describe('canonical product documentation graph', () => {
     expect(productDefinition).toContain('not shipped claims');
   });
 
+  it('does not leave merged autosave lifecycle observation classified as active-PR work', () => {
+    const prd = repositoryFile('docs/PRD.md');
+    const trd = repositoryFile('docs/TRD.md');
+    const fitness = repositoryFile('docs/DOCUMENTATION_FITNESS.md');
+    const currentScope = prd.slice(prd.indexOf('## Current, proposed, and planned scope'));
+
+    expect(currentScope).toContain('Lifecycle observation is implemented on protected `main`');
+    expect(currentScope).not.toMatch(/open development lines include[^.]*lifecycle observation/u);
+    expect(trd).toContain('Autosave lifecycle observation is implemented on protected `main`');
+    expect(trd).not.toContain('open clipboard, autosave observation');
+    expect(fitness).toContain('Autosave lifecycle observation');
+    expect(fitness).toMatch(/Autosave lifecycle observation[^\n]*implemented_on_protected_main/u);
+  });
+
   it('records host ownership and deterministic Inkspan authority consistently', () => {
     const prd = repositoryFile('docs/PRD.md');
     const trd = repositoryFile('docs/TRD.md');
