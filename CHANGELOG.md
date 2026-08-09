@@ -114,7 +114,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ### Security
 - Evidence and callback outcomes are validated fail-closed without evaluating accessors; hostile reflection failures become bounded redacted errors
-- The public autosave boundary traverses candidate document JSON iteratively before scheduling, rejecting mutable nested nodes, accessors, symbols, non-finite numbers, unsupported prototypes, aliases, cycles, sparse arrays, excessive nesting, and values beyond the active envelope resource ceiling
+- The public autosave boundary traverses candidate document JSON iteratively before scheduling, rejecting mutable nested nodes, accessors, symbols, non-finite numbers, unsupported prototypes, aliases, cycles, sparse arrays, excessive depth, and values beyond the active envelope resource ceiling
 - Partially frozen look-alike evidence cannot enter the host callback and mutate after its strong revision was selected
 - The queue includes no timer, network client, provider SDK, credential, tenant identifier, persistence adapter, React, TipTap, ProseMirror, or Yjs runtime dependency
 - Revision tags remain tenant-confidential equality validators rather than authorization, signatures, tenant membership, or proof of durable persistence
@@ -133,3 +133,53 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 ### Documentation
 - Added the autosave architecture and doctoring record with APA 7th references to RFC 9110, RFC 8785, Herlihy and Wing (1990), and ISO/IEC 25010:2023
 - Added an operator guide covering correct durable-base `If-Match` usage, local versus durable ownership, SSR/worker compatibility, observability minimization, and CWL/naruon modular integration boundaries
+
+## Pending 0.6.0 — Safe rich clipboard ingestion
+
+### Added
+- Added a default `SafeClipboard` TipTap extension and `sanitizeRichClipboardHtml()` API that reconstruct browser-provided `text/html` through a strict semantic allowlist before ProseMirror parsing
+- Added a registered TipTap v2.27.2 ProseMirror plugin adapter and public plugin key so SafeClipboard participates in the actual `transformPastedHTML` editor-property chain before parsing
+- Added `clipboard` byte/node/depth limits and a live `onClipboardError` observer to standalone and provider-neutral Yjs editor surfaces
+- Added operator guidance, design, implementation-plan, and APA 7th doctoring records for the clipboard trust boundary
+
+### Changed
+- Rich HTML pasted from Word, Google Docs, email, and web pages keeps supported structure and narrowly mapped bold/italic/underline/strike semantics while discarding arbitrary source styling and proprietary metadata
+- Standalone and collaborative editors use one shared clipboard policy through `buildExtensions()`
+- The runtime integration now uses the locked TipTap v2.27.2 `addProseMirrorPlugins` contract instead of relying on a manually invoked direct extension field that the installed v2 ExtensionManager does not register
+- Nested clipboard policy objects use accessor-safe paste-time configuration validation at the exact rich-paste boundary
+- Because default rich-HTML paste behavior changes, publication targets **0.6.0** only after a separate verified release pull request
+
+### Security
+- Active, embedded, form, metadata, media, SVG/MathML, template, resource-bearing, hidden, and HTML-image subtrees are removed before insertion
+- Exact `content-visibility: hidden` subtrees are removed from bounded raw style declarations, including case, whitespace, terminal `!important`, CSS-comment, and CSS-escaped forms, while `visible`, `auto`, `hiddenly`, and prefixed property names remain visible
+- Closed `details` elements preserve only their first rendered summary, closed `dialog` subtrees are removed, and open variants are unwrapped through the ordinary sanitizer
+- Every subtree bearing a `popover` attribute is removed because static clipboard HTML cannot prove the source element's separate runtime showing state; empty, `auto`, `manual`, `hint`, and invalid-value forms are covered
+- Native `progress` and `meter` widget subtrees and obsolete `noframes` and `noembed` fallback subtrees are removed
+- Hidden `datalist` suggestion and down-level fallback subtrees are removed
+- Raw `mso-hide` declarations are parsed with exact case-insensitive property/value matching, closed and EOF-terminated CSS-comment removal, optional terminal `!important`, and false-positive guards
+- CSS-escaped property and keyword forms of `mso-hide: all` are decoded for exact comparison, while invalid or look-alike declarations remain visible
+- SafeClipboard is the final ordinary TipTap paste transform through a low-priority ProseMirror plugin; a host that deliberately installs an even later transform remains outside the supported safety contract
+- Unsafe and credential-bearing links are unwrapped while visible text remains; approved links retain only exact `href` and fixed `noopener noreferrer nofollow`
+- IDs, classes, styles, event handlers, `data-*`, arbitrary ARIA, `contenteditable`, remote resources, local-file references, and Office/Google attributes never reach the output fragment
+- UTF-8 bytes, traversed nodes, source depth, and configuration reflection are bounded and fail closed with static redacted errors
+- Hostile direct-API `Document` accessors, proxies, and revoked proxies now fail closed as the stable `dom_unavailable` error before parsing, without exposing private capability exceptions
+
+### Performance
+- Accepted clipboard traversal is iterative and linear in the bounded source tree; defaults are 1 MiB, 10,000 nodes, and 64 levels
+- The feature adds no runtime dependency and performs no network, storage, clipboard-permission, model, provider, credential, or database operation
+
+### Tests
+- Added realistic Word-like and Google-Docs-like fixtures, Office conditional comments, semantic conversion, structural, malformed, active-content, hidden-data, unsafe-link, resource-bound, hostile-configuration, DOM-unavailable, callback-failure, and error-redaction cases
+- Added test-first regressions for closed interactive content, hidden popover state, native-widget fallback content, hidden `datalist` suggestions, `visibility: collapse`, and `content-visibility: hidden`
+- Added a test-first direct-API regression proving hostile `createElement` and `implementation` property reads cannot leak arbitrary exception text
+- Added RED integration commit `2e1d634bd819686b298256f9bac161e4f6e90067` and CI run `31172315841`, then real standalone, Yjs, competing-transform, and public-export tests against the complete ProseMirror paste pipeline
+- Added standalone and Yjs integration tests, a 3,000-paragraph capacity fixture, final-transform ordering evidence, and repository-wide 100% production statement, branch, function, and line coverage gates
+- Current jsdom results are not cross-engine browser evidence; version-pinned Chromium, Firefox, and WebKit differential fixtures remain a publication gate for 0.6.0
+
+### Documentation
+- Documented preserved and removed clipboard content, Base64Image handoff, SSR behavior, error codes, modular ownership, performance bounds, rollback, and buyer integration
+- Documented `content-visibility: hidden` against CSS Containment Module Level 2, including exact raw-declaration matching, false-positive controls, test-first evidence, rollback, and the cross-engine assurance boundary
+- Documented hidden popover content against the WHATWG runtime visibility-state model, including invalid-value behavior, deterministic loss boundary, test-first evidence, rollback, and cross-engine limitations
+- Documented closed interactive, native-widget fallback, hidden suggestion-source, CSS escape, Office hidden-content, and final-transform composition decisions against primary specifications and official documentation
+- Added an APA 7th doctoring record for DOM capability reflection redaction grounded in ECMAScript 2026 proxy abrupt-completion semantics, the WHATWG DOM capability surface, and OWASP generic-error guidance
+- Added APA 7th doctoring for the TipTap v2.27.2 ProseMirror paste adapter, including locked-source authority, test-first root-cause evidence, priority ordering, residual host boundary, and rollback
