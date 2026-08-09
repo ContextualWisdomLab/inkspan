@@ -302,8 +302,9 @@ describe('sanitizeRichClipboardHtml', () => {
       sanitizeRichClipboardHtml('<p>x</p>', {}, hostileDocument),
     ).toThrowError(
       expect.objectContaining({
-        code: 'invalid_html',
-        message: 'Rich clipboard HTML could not be sanitized.',
+        code: 'dom_unavailable',
+        message:
+          'Rich clipboard sanitization requires a DOM-capable document.',
       }),
     );
   });
