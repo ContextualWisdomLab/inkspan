@@ -1,4 +1,10 @@
-import type { ClipboardSanitizationErrorCode } from './extensions/SafeClipboard.js';
+import type {
+  ClipboardConfig,
+  ClipboardSanitizationErrorCode,
+} from './extensions/SafeClipboard.js';
+
+/** Version of the release corpus and its interpretation contract. */
+export const SAFE_CLIPBOARD_CROSS_ENGINE_CORPUS_VERSION = 1;
 
 /** Browser engines that must independently pass the rich-clipboard release gate. */
 export type CrossEngineClipboardEngine = 'chromium' | 'firefox' | 'webkit';
@@ -11,7 +17,8 @@ export type CrossEngineClipboardRiskFamily =
   | 'malformed-markup'
   | 'table-list'
   | 'svg-mathml'
-  | 'parser-edge';
+  | 'parser-edge'
+  | 'resource-limit';
 
 /** One immutable public fixture in the cross-engine rich-clipboard corpus. */
 export interface CrossEngineClipboardCase {
@@ -19,6 +26,8 @@ export interface CrossEngineClipboardCase {
   readonly riskFamily: CrossEngineClipboardRiskFamily;
   readonly sourceHtml: string;
   readonly expectedSanitizedHtml: string;
+  readonly expectedErrorCode: ClipboardSanitizationErrorCode | null;
+  readonly clipboardConfig?: ClipboardConfig;
 }
 
 /** One browser observation used by the fail-closed release consensus oracle. */
@@ -36,6 +45,7 @@ const CORPUS: readonly CrossEngineClipboardCase[] = [
     riskFamily: 'active-content',
     sourceHtml: '<p>safe<script>alert(1)</script></p>',
     expectedSanitizedHtml: '<p>safe</p>',
+    expectedErrorCode: null,
   },
   {
     id: 'active-resource-and-form',
@@ -43,6 +53,7 @@ const CORPUS: readonly CrossEngineClipboardCase[] = [
     sourceHtml:
       '<div>before<iframe src="https://example.invalid/"></iframe><img src="https://example.invalid/x"><form><input value="secret"></form>after</div>',
     expectedSanitizedHtml: '<div>beforeafter</div>',
+    expectedErrorCode: null,
   },
   {
     id: 'hidden-display-and-aria',
@@ -50,6 +61,7 @@ const CORPUS: readonly CrossEngineClipboardCase[] = [
     sourceHtml:
       '<p>visible<span style="display:none">display</span><span aria-hidden="true">aria</span>end</p>',
     expectedSanitizedHtml: '<p>visibleend</p>',
+    expectedErrorCode: null,
   },
   {
     id: 'hidden-office-eof-comment',
@@ -57,6 +69,7 @@ const CORPUS: readonly CrossEngineClipboardCase[] = [
     sourceHtml:
       '<p>before<span style="mso-hide: all !important; /* office comment">secret</span>after</p>',
     expectedSanitizedHtml: '<p>beforeafter</p>',
+    expectedErrorCode: null,
   },
   {
     id: 'hidden-content-visibility-popover',
@@ -64,12 +77,14 @@ const CORPUS: readonly CrossEngineClipboardCase[] = [
     sourceHtml:
       '<div>one<span style="content-visibility: h\\69dden">two</span><span popover>three</span>four</div>',
     expectedSanitizedHtml: '<div>onefour</div>',
+    expectedErrorCode: null,
   },
   {
     id: 'unsafe-javascript-link',
     riskFamily: 'unsafe-link',
     sourceHtml: '<a href="javascript:alert(1)" onclick="alert(2)">click</a>',
     expectedSanitizedHtml: 'click',
+    expectedErrorCode: null,
   },
   {
     id: 'safe-https-link',
@@ -77,18 +92,21 @@ const CORPUS: readonly CrossEngineClipboardCase[] = [
     sourceHtml: '<a href="https://example.com/path">safe</a>',
     expectedSanitizedHtml:
       '<a href="https://example.com/path" rel="noopener noreferrer nofollow">safe</a>',
+    expectedErrorCode: null,
   },
   {
     id: 'malformed-formatting',
     riskFamily: 'malformed-markup',
     sourceHtml: '<b><i>text</b></i>',
     expectedSanitizedHtml: '<strong><em>text</em></strong>',
+    expectedErrorCode: null,
   },
   {
     id: 'malformed-paragraph',
     riskFamily: 'malformed-markup',
     sourceHtml: '<p>one<p>two',
     expectedSanitizedHtml: '<p>one</p><p>two</p>',
+    expectedErrorCode: null,
   },
   {
     id: 'table-parser-repair',
@@ -96,12 +114,14 @@ const CORPUS: readonly CrossEngineClipboardCase[] = [
     sourceHtml: '<table><tr><td colspan="2">cell</td></tr></table>',
     expectedSanitizedHtml:
       '<table><tbody><tr><td colspan="2">cell</td></tr></tbody></table>',
+    expectedErrorCode: null,
   },
   {
     id: 'ordered-list-repair',
     riskFamily: 'table-list',
     sourceHtml: '<ol start="3"><li>one<li>two</ol>',
     expectedSanitizedHtml: '<ol start="3"><li>one</li><li>two</li></ol>',
+    expectedErrorCode: null,
   },
   {
     id: 'svg-and-mathml-subtrees',
@@ -109,12 +129,14 @@ const CORPUS: readonly CrossEngineClipboardCase[] = [
     sourceHtml:
       '<p>a<svg><script>alert(1)</script><text>x</text></svg>b<math><mtext>y</mtext></math>c</p>',
     expectedSanitizedHtml: '<p>abc</p>',
+    expectedErrorCode: null,
   },
   {
     id: 'closed-details-summary',
     riskFamily: 'parser-edge',
     sourceHtml: '<details><summary>label</summary><p>secret</p></details>',
     expectedSanitizedHtml: 'label',
+    expectedErrorCode: null,
   },
   {
     id: 'dialog-and-native-widget-fallback',
@@ -122,6 +144,7 @@ const CORPUS: readonly CrossEngineClipboardCase[] = [
     sourceHtml:
       '<dialog>closed</dialog><dialog open><p>open</p></dialog><datalist><option>hidden</option></datalist><p>end</p>',
     expectedSanitizedHtml: '<p>open</p><p>end</p>',
+    expectedErrorCode: null,
   },
   {
     id: 'semantic-style-reconstruction',
@@ -129,6 +152,31 @@ const CORPUS: readonly CrossEngineClipboardCase[] = [
     sourceHtml:
       '<span style="font-weight:700;font-style:italic;text-decoration:underline line-through">styled</span>',
     expectedSanitizedHtml: '<strong><em><u><s>styled</s></u></em></strong>',
+    expectedErrorCode: null,
+  },
+  {
+    id: 'utf8-byte-ceiling',
+    riskFamily: 'resource-limit',
+    sourceHtml: '<p>private source</p>',
+    expectedSanitizedHtml: '',
+    expectedErrorCode: 'input_too_large',
+    clipboardConfig: { maxHtmlBytes: 1 },
+  },
+  {
+    id: 'node-ceiling',
+    riskFamily: 'resource-limit',
+    sourceHtml: '<p><span>one</span><span>two</span></p>',
+    expectedSanitizedHtml: '',
+    expectedErrorCode: 'node_limit_exceeded',
+    clipboardConfig: { maxNodes: 2 },
+  },
+  {
+    id: 'depth-ceiling',
+    riskFamily: 'resource-limit',
+    sourceHtml: '<div><div><p>deep</p></div></div>',
+    expectedSanitizedHtml: '',
+    expectedErrorCode: 'depth_limit_exceeded',
+    clipboardConfig: { maxDepth: 1 },
   },
 ] as const;
 
