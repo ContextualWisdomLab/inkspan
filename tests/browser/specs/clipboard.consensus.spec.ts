@@ -57,7 +57,7 @@ test('requires complete exact-head browser evidence and exact corpus consensus',
   }
 
   if (process.env.GITHUB_ACTIONS === 'true') {
-    expect(reference.headSha).toBe(process.env.GITHUB_SHA);
+    expect(reference.headSha).toBe(process.env.INKSPAN_EXPECTED_HEAD_SHA);
     expect(reference.runnerImage).not.toBeNull();
   }
 
