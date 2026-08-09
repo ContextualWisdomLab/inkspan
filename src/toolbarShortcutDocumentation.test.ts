@@ -26,11 +26,11 @@ describe('toolbar shortcut accessibility documentation', () => {
     );
   });
 
-  it('keeps buyer-facing README link guidance within the validated command boundary', () => {
+  it('keeps buyer-facing README link guidance aligned with the shipped link command', () => {
     const readme = repositoryFile('README.md').replace(/\s+/g, ' ');
 
     expect(readme).toContain(
-      'Inkspan applies one link policy to initial content, toolbar commands, pasted/autolinked URLs',
+      'Inkspan applies one link policy to initial content, toolbar and Ctrl/Cmd+K commands, pasted/autolinked URLs',
     );
     expect(readme).not.toContain(
       'Tiptap Link extension implements Ctrl/Cmd+K',
