@@ -101,8 +101,8 @@ Queued, cancelled, skipped-required, absent, stale-head, predecessor-head, statu
 
 ## Security, privacy, and operability dependencies
 
-`docs/THREAT_MODEL.md`, `docs/TEST_STRATEGY.md`, `docs/OPERABILITY.md`, `docs/TRACEABILITY.md`, and the detailed ADR corpus are part of this technical contract. `SECURITY.md` is separately owned by the open security-disclosure PR until that bounded line reaches protected `main`; this branch must not duplicate/race it.
+`SECURITY.md`, `docs/THREAT_MODEL.md`, `docs/TEST_STRATEGY.md`, `docs/OPERABILITY.md`, `docs/TRACEABILITY.md`, and the detailed ADR corpus are part of this technical contract. Root `SECURITY.md` is now `implemented_on_protected_main` and is the normative private vulnerability-reporting/coordinated-disclosure policy. ADR 0017 records the durable decision, ownership boundary, claim limits, and recovery/supersession semantics without duplicating the policy text.
 
 ## Implemented versus proposed
 
-Protected `main` is the sole implemented baseline. Requirements describing open clipboard, autosave observation, transition/selection evidence, SSR/native-form, accessibility, release-hardening, or security-disclosure PRs are Proposed until merged. Canonical docs distinguish target architecture from shipped behavior and must be updated when the protected implementation changes.
+Protected `main` is the sole implemented baseline. The security disclosure lifecycle is implemented on protected `main`. Requirements describing open clipboard, autosave observation, transition/selection evidence, SSR/native-form, or accessibility PRs remain Proposed until merged; migration routing and cross-engine browser assurance remain planned according to their dependency order. Canonical docs distinguish target architecture from shipped behavior and must be updated when the protected implementation changes.
