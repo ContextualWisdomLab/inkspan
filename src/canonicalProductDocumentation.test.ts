@@ -32,6 +32,10 @@ const requiredFiles = [
   'docs/adr/0008-deterministic-office-rendering.md',
   'docs/adr/0009-naruon-modular-composition.md',
   'docs/adr/0010-release-evidence-authority.md',
+  'docs/adr/0011-deterministic-vs-model-assisted-authoring.md',
+  'docs/adr/0012-spreadsheet-formula-injection.md',
+  'docs/adr/0013-atomic-file-publication.md',
+  'docs/adr/0014-local-assets-font-licensing.md',
 ] as const;
 
 describe('canonical product documentation graph', () => {
