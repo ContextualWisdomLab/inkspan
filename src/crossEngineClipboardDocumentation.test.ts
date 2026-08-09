@@ -2,8 +2,29 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+const repositoryFile = (path: string): string =>
+  readFileSync(resolve(process.cwd(), path), 'utf8');
+
 const documentText = (path: string): string =>
-  readFileSync(resolve(process.cwd(), path), 'utf8').replace(/\s+/gu, ' ').trim();
+  repositoryFile(path).replace(/\s+/gu, ' ').trim();
+
+/** Return the unique Markdown table row containing the requested cell text. */
+function tableRow(document: string, cellText: string): string {
+  const matches = document
+    .split(/\r?\n/u)
+    .filter((line) => line.startsWith('|') && line.includes(cellText));
+  expect(matches).toHaveLength(1);
+  return matches[0] ?? '';
+}
+
+/** Return the unique changelog bullet containing the requested feature phrase. */
+function changelogBullet(document: string, phrase: string): string {
+  const matches = document
+    .split(/\r?\n/u)
+    .filter((line) => line.startsWith('- ') && line.includes(phrase));
+  expect(matches).toHaveLength(1);
+  return matches[0] ?? '';
+}
 
 describe('cross-engine clipboard documentation contract', () => {
   it('documents the exact browser release gate and evidence identity', () => {
@@ -43,17 +64,22 @@ describe('cross-engine clipboard documentation contract', () => {
     expect(doctoring).toContain('no tenant document');
   });
 
-  it('records the current implementation maturity without calling the active PR shipped', () => {
-    const fitness = documentText('docs/DOCUMENTATION_FITNESS.md');
-    const changelog = documentText('CHANGELOG.md');
-
-    expect(fitness).toContain(
+  it('records browser maturity in the exact canonical and changelog entries', () => {
+    const fitness = repositoryFile('docs/DOCUMENTATION_FITNESS.md');
+    const changelog = repositoryFile('CHANGELOG.md');
+    const assuranceRow = tableRow(
+      fitness,
       'Cross-engine browser-semantic release assurance',
     );
-    expect(fitness).toContain('`implemented_on_active_pr`');
-    expect(fitness).toContain('SafeClipboard');
-    expect(fitness).toContain('`implemented_on_protected_main`');
-    expect(changelog).toContain('dependency-locked Chromium/Firefox/WebKit');
-    expect(changelog).toContain('cross-engine rich-clipboard release gate');
+    const releaseBullet = changelogBullet(
+      changelog,
+      'cross-engine rich-clipboard release gate',
+    );
+
+    expect(assuranceRow).toContain('`implemented_on_active_pr`');
+    expect(assuranceRow).toContain('SafeClipboard itself is `implemented_on_protected_main`');
+    expect(assuranceRow).not.toContain('`implemented_on_protected_main`; SafeClipboard itself');
+    expect(releaseBullet).toContain('dependency-locked Chromium/Firefox/WebKit');
+    expect(releaseBullet).toContain('Playwright 1.62.0');
   });
 });
