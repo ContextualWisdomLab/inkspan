@@ -51,6 +51,32 @@ describe('canonical product documentation graph', () => {
     expect(operability).toContain('rollback');
   });
 
+  it('preserves the durable product decisions from the canonical conversation', () => {
+    const prd = repositoryFile('docs/PRD.md');
+    const trd = repositoryFile('docs/TRD.md');
+    const uml = repositoryFile('docs/UML.md');
+    const dataModel = repositoryFile('docs/DATA_MODEL.md');
+
+    for (const marker of ['Markdown', 'HTML', 'Office', 'naruon', 'provider-neutral']) {
+      expect(prd).toContain(marker);
+    }
+    for (const marker of ['network-free', 'macro-free', 'formula', 'Office']) {
+      expect(trd).toContain(marker);
+    }
+    for (const marker of ['Office', 'naruon', 'Yjs', 'file publication']) {
+      expect(uml).toContain(marker);
+    }
+    for (const marker of [
+      'conversion_request',
+      'conversion_artifact',
+      'render_warning',
+      'host_capability',
+      'audit_event',
+    ]) {
+      expect(dataModel).toContain(marker);
+    }
+  });
+
   it('documents realistic security, test, and release evidence boundaries', () => {
     const threatModel = repositoryFile('docs/THREAT_MODEL.md');
     const testStrategy = repositoryFile('docs/TEST_STRATEGY.md');
