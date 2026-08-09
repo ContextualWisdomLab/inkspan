@@ -6,6 +6,9 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Security
+- Added a fail-closed draft release asset inventory gate that requires exactly one npm tarball, one Office wheel, and `SHA256SUMS`, rejects stale or unexpected draft assets before immutable publication, and verifies every GitHub-reported `sha256:` asset digest against the transferred local file
+
 ### Accessibility
 - Added programmatic toolbar shortcut discoverability with WAI-ARIA `aria-keyshortcuts` for the implemented bold, italic, link, undo, and redo commands, preserving the same native-button behavior, visible labels, roving focus model, and host-owned shortcut-conflict policy
 - Completed redo shortcut metadata with `Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y`, matching the configured Tiptap history and collaboration behavior and exposing both `Ctrl/Cmd+Shift+Z` and `Ctrl/Cmd+Y` alternatives without adding new key handling
