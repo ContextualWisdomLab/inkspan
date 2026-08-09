@@ -2,8 +2,8 @@ import { inspectJsonText } from './jsonObjectNameScanner.js';
 import {
   DEFAULT_DOCUMENT_ENVELOPE_LIMITS,
   DocumentEnvelopeError,
-  type DocumentEnvelopeLimits,
 } from './documentEnvelope.js';
+import type { DocumentEnvelopeLimits } from './documentEnvelopeLimits.js';
 
 interface ResolvedIdentityLimits {
   readonly maxUtf8Bytes: number;
