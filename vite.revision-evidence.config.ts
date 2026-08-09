@@ -14,6 +14,7 @@ export default defineConfig({
         'src/documentEnvelopeCanonical.ts',
         'src/documentEnvelopeRevision.ts',
         'src/documentRevisionEvidence.ts',
+        'src/documentTransitionEvidence.ts',
       ],
       exclude: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'src/**/*.spec.ts'],
       rollupTypes: false,
