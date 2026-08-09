@@ -61,7 +61,7 @@ describe('canonical architecture decision coverage', () => {
     expect(fitness).toContain('implemented_on_active_pr');
     expect(fitness).toContain('planned');
     expect(fitness).toMatch(
-      /Envelope schema identity \/ migration routing[^\n]*implemented_on_active_pr/u,
+      /Envelope schema identity \/ migration routing[^\n]*implemented_on_protected_main/u,
     );
     expect(fitness).toContain('Issue #66');
   });
