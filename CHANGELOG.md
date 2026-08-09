@@ -7,6 +7,8 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 ## [Unreleased]
 
 ### Documentation
+- Added a canonical acquisition documentation spine covering product requirements, technical requirements, Mermaid UML, a conceptual data/evidence model, a threat model, test strategy, operability/recovery, standards/evidence traceability, and ten linked architecture decision records without inventing Inkspan-owned persistence or host authority
+- Added a machine-checkable canonical-documentation contract that keeps required files, ADR index links, browser-security evidence, standards references, rollback sections, and host-vs-Inkspan authority boundaries synchronized
 - Added an authoritative standalone and modular MSA architecture contract with reviewable deployment, optimistic-concurrency, data-ownership, security, and acquisition-evidence diagrams and tables
 - Added a beginner-readable naruon compose and ui.panel integration guide covering narrow client hydration, server-selected strong validators, accessible conflict handling, host-owned Yjs lifecycle, contextual-orchestrator boundaries, and local-versus-shareable evidence
 - Added an opaque editing-context remount for the complete editor and autosave example, latest-generation asynchronous capture ordering, encoded document path segments, redacted recovery status, and lazy state-owned session identity to prevent cross-document state reuse
