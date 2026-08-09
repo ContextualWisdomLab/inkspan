@@ -22,9 +22,11 @@ describe('DOM capability reflection documentation contract', () => {
 
     expect(operatorGuide).toContain('## DOM capability failures');
     expect(operatorGuide).toContain(
-      'accessors, proxies, revoked proxies, or reflection failures',
+      'accessors, proxies, revoked proxies, reflection failures while selecting the ambient document',
     );
-    expect(operatorGuide).toContain('fail closed with `dom_unavailable`');
+    expect(operatorGuide).toContain(
+      'failures while invoking `createHTMLDocument()` fail closed with `dom_unavailable`',
+    );
     expect(operatorGuide).toContain(
       'inert-document creation failures remain `dom_unavailable`',
     );
