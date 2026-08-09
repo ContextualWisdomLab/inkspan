@@ -145,7 +145,7 @@ describe('canonical product documentation graph', () => {
     expect(contracts).toContain('degraded');
   });
 
-  it('keeps detailed ADRs indexed and explicit about failure and rollback', () => {
+  it('keeps detailed ADRs indexed and complete enough for acquisition review', () => {
     const index = repositoryFile('docs/adr/README.md');
 
     for (const path of requiredFiles.filter((path) => /docs\/adr\/\d{4}-/.test(path))) {
@@ -153,12 +153,19 @@ describe('canonical product documentation graph', () => {
       expect(filename).toBeDefined();
       expect(index).toContain(filename!);
       const adr = repositoryFile(path);
-      expect(adr).toContain('## Context');
-      expect(adr).toContain('## Decision');
-      expect(adr).toContain('## Consequences');
-      expect(adr).toContain('## Failure and recovery');
-      expect(adr).toContain('## Verification');
-      expect(adr).toContain('## Rollback or supersession');
+      for (const heading of [
+        '## Context',
+        '## Alternatives considered',
+        '## Decision',
+        '## Consequences',
+        '## Failure and recovery',
+        '## Security and privacy impact',
+        '## Compatibility and migration',
+        '## Verification',
+        '## Rollback or supersession',
+      ]) {
+        expect(adr).toContain(heading);
+      }
     }
   });
 });
