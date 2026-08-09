@@ -60,7 +60,9 @@ describe('canonical architecture decision coverage', () => {
     expect(fitness).toContain('implemented_on_protected_main');
     expect(fitness).toContain('implemented_on_active_pr');
     expect(fitness).toContain('planned');
-    expect(fitness).toContain('PR #84');
+    expect(fitness).toMatch(
+      /Envelope schema identity \/ migration routing[^\n]*implemented_on_active_pr/u,
+    );
     expect(fitness).toContain('Issue #66');
   });
 
@@ -73,7 +75,9 @@ describe('canonical architecture decision coverage', () => {
     expect(traceability).toContain('Envelope version routing');
     expect(traceability).toContain('Cross-engine release assurance');
     expect(traceability).toContain('RFC 7493');
-    expect(traceability).toContain('PR #84');
+    expect(traceability).toMatch(
+      /Envelope version routing[^\n]*Active-PR evidence is not shipped authority/u,
+    );
   });
 
   it('keeps the conceptual ERD explicit without inventing Inkspan persistence', () => {
