@@ -16,6 +16,8 @@ export interface EditorFrameProps {
   formFieldName?: string;
   formId?: string;
   formFieldDisabled?: boolean;
+  /** Selected standalone value rendered into an explicitly named SSR field. */
+  formFieldInitialValue?: string;
   onFormReset?: (event: Event) => void;
   status?: ReactNode;
 }
@@ -35,6 +37,7 @@ export function EditorFrame({
   formFieldName,
   formId,
   formFieldDisabled,
+  formFieldInitialValue,
   onFormReset,
   status,
 }: EditorFrameProps) {
@@ -76,6 +79,7 @@ export function EditorFrame({
         name={formFieldName}
         formId={formId}
         disabled={formFieldDisabled}
+        initialValue={formFieldInitialValue}
         onFormReset={onFormReset}
       />
       {status}

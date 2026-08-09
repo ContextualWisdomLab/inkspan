@@ -10,6 +10,11 @@ export interface EditorFormFieldProps {
   name?: string;
   formId?: string;
   disabled?: boolean;
+  /**
+   * Selected standalone document value emitted in SSR markup and retained until
+   * the hydrated TipTap editor becomes authoritative for the native field.
+   */
+  initialValue?: string;
   onFormReset?: (event: Event) => void;
 }
 
@@ -22,10 +27,17 @@ export interface EditorFormFieldProps {
  * higher-level TipTap update event. The field's native value is written
  * synchronously before returning from each document transaction, so immediate
  * `FormData` construction or browser submission cannot observe a React-batched
- * stale value. Reset-only unnamed fields skip document serialization entirely.
- * When configured, the field observes the associated form's cancelable reset
- * event and schedules editor work in the next task, after native dispatch and
- * the reset algorithm have completed.
+ * stale value. During SSR-to-client handoff, the selected server value remains
+ * the controlled native value until TipTap reports that its document has been
+ * initialized; the create event then establishes editor authority without a
+ * transient empty submission value. The same serialized-value ref also backs
+ * React renders so a TipTap transaction-triggered parent render cannot restore
+ * an older server/default value after the synchronous DOM write. Every named
+ * field restores its live serialized value after the browser's native reset
+ * algorithm so a reset cannot silently desynchronize FormData from an editor
+ * that the host chose not to reset. Reset-only unnamed fields skip document
+ * serialization entirely. A configured host reset observer is invoked in the
+ * same next-task boundary, after native dispatch and reset processing.
  */
 export function EditorFormField({
   editor,
@@ -33,19 +45,29 @@ export function EditorFormField({
   name,
   formId,
   disabled,
+  initialValue = '',
   onFormReset,
 }: EditorFormFieldProps) {
   const fieldRef = useRef<HTMLInputElement | null>(null);
-  const serializedValueRef = useRef('');
+  const serializedValueRef = useRef(initialValue);
 
   useEffect(() => {
     const field = fieldRef.current;
     /* v8 ignore next -- the effect runs only after the rendered field mounts. */
     if (!field) return;
-    if (!editor || name === undefined) {
+    if (name === undefined) {
       serializedValueRef.current = '';
       field.value = '';
       return;
+    }
+    if (!editor) {
+      serializedValueRef.current = initialValue;
+      field.value = initialValue;
+      return;
+    }
+    if (editor.isInitialized === false) {
+      serializedValueRef.current = initialValue;
+      field.value = initialValue;
     }
 
     const synchronizeValue = () => {
@@ -61,15 +83,17 @@ export function EditorFormField({
       if (transaction.docChanged) synchronizeValue();
     };
 
-    synchronizeValue();
+    if (editor.isInitialized !== false) synchronizeValue();
+    editor.on('create', synchronizeValue);
     editor.on('transaction', handleTransaction);
     return () => {
+      editor.off('create', synchronizeValue);
       editor.off('transaction', handleTransaction);
     };
-  }, [editor, mode, name]);
+  }, [editor, initialValue, mode, name]);
 
   useEffect(() => {
-    if (!onFormReset) return;
+    if (name === undefined && !onFormReset) return;
     const field = fieldRef.current;
     /* v8 ignore next -- the effect runs only after the rendered field mounts. */
     if (!field) return;
@@ -82,7 +106,7 @@ export function EditorFormField({
         pendingResetTasks.delete(pendingTask);
         if (event.defaultPrevented) return;
         if (name !== undefined) field.value = serializedValueRef.current;
-        onFormReset(event);
+        onFormReset?.(event);
       }, 0);
       pendingResetTasks.add(pendingTask);
     };
@@ -104,6 +128,16 @@ export function EditorFormField({
       name={name}
       form={formId}
       disabled={disabled}
+      readOnly
+      value={
+        name === undefined
+          ? ''
+          : editor?.isInitialized === false
+            ? initialValue
+            : editor
+              ? serializedValueRef.current
+              : initialValue
+      }
       data-inkspan-form-field=""
     />
   );
