@@ -8,6 +8,10 @@ coverage/
 .eslintcache
 *.tsbuildinfo
 
+# Browser release evidence is ephemeral exact-head CI output.
+tests/browser/.browser-evidence/
+tests/browser/test-results/
+
 # Python build, test, and environment artifacts
 __pycache__/
 *.py[cod]
