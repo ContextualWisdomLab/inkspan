@@ -55,6 +55,16 @@ export interface DocumentAutosaveSessionOptions {
   readonly initialStrongEntityTag: string;
   /** Host-owned authorized compare-and-swap operation. */
   readonly save: DocumentAutosaveDurableSaveFunction;
+  /**
+   * Optional bounded observer invoked after distinct session lifecycle changes.
+   *
+   * Inkspan retains only this callback, never invokes it during construction,
+   * and ignores callback exceptions. The emitted snapshot contains lifecycle
+   * metadata and the current durable validator, but never a document body.
+   */
+  readonly onSnapshotChange?: (
+    snapshot: DocumentAutosaveSessionSnapshot,
+  ) => void;
 }
 
 /** Frozen document-free lifecycle metadata for one durable autosave session. */
@@ -132,6 +142,7 @@ const STRONG_HTTP_ENTITY_TAG =
 const DOCUMENT_AUTOSAVE_SESSION_OPTION_KEYS = [
   'initialStrongEntityTag',
   'save',
+  'onSnapshotChange',
 ] as const;
 
 /**
@@ -170,13 +181,14 @@ function createInvalidRecoveryValidatorError(): DocumentAutosaveQueueError {
  *
  * The descriptor-only boundary rejects unknown fields, symbols, accessors,
  * non-enumerable fields, and hostile reflection while accepting transparent
- * proxies whose target owns the two documented data properties.
+ * proxies whose target owns the required data fields and optional observer.
  */
 function readDocumentAutosaveSessionOptions(
   options: DocumentAutosaveSessionOptions,
 ): Readonly<{
   initialStrongEntityTag: string;
   save: DocumentAutosaveDurableSaveFunction;
+  onSnapshotChange: ((snapshot: DocumentAutosaveSessionSnapshot) => void) | null;
 }> {
   try {
     if (typeof options !== 'object' || options === null) {
@@ -184,7 +196,8 @@ function readDocumentAutosaveSessionOptions(
     }
     const optionKeys = Reflect.ownKeys(options);
     if (
-      optionKeys.length !== DOCUMENT_AUTOSAVE_SESSION_OPTION_KEYS.length ||
+      optionKeys.length < 2 ||
+      optionKeys.length > DOCUMENT_AUTOSAVE_SESSION_OPTION_KEYS.length ||
       optionKeys.some(
         (optionKey) =>
           typeof optionKey !== 'string' ||
@@ -200,6 +213,10 @@ function readDocumentAutosaveSessionOptions(
       'initialStrongEntityTag',
     );
     const saveDescriptor = Object.getOwnPropertyDescriptor(options, 'save');
+    const observerDescriptor = Object.getOwnPropertyDescriptor(
+      options,
+      'onSnapshotChange',
+    );
     if (
       initialStrongEntityTagDescriptor === undefined ||
       saveDescriptor === undefined ||
@@ -209,7 +226,11 @@ function readDocumentAutosaveSessionOptions(
         initialStrongEntityTagDescriptor,
         'value',
       ) ||
-      !Object.prototype.hasOwnProperty.call(saveDescriptor, 'value')
+      !Object.prototype.hasOwnProperty.call(saveDescriptor, 'value') ||
+      (observerDescriptor !== undefined &&
+        (!observerDescriptor.enumerable ||
+          !Object.prototype.hasOwnProperty.call(observerDescriptor, 'value') ||
+          typeof observerDescriptor.value !== 'function'))
     ) {
       throw createInvalidSessionOptionsError();
     }
@@ -218,7 +239,16 @@ function readDocumentAutosaveSessionOptions(
     if (!isStrongHttpEntityTag(initialStrongEntityTag) || typeof save !== 'function') {
       throw createInvalidSessionOptionsError();
     }
-    return Object.freeze({ initialStrongEntityTag, save });
+    return Object.freeze({
+      initialStrongEntityTag,
+      save,
+      onSnapshotChange:
+        observerDescriptor === undefined
+          ? null
+          : (observerDescriptor.value as (
+              snapshot: DocumentAutosaveSessionSnapshot,
+            ) => void),
+    });
   } catch {
     throw createInvalidSessionOptionsError();
   }
@@ -303,9 +333,10 @@ function isSessionFlushTerminal(snapshot: InternalQueueSnapshot): boolean {
  * validator to exactly one host callback at a time, and advances it only after a
  * syntactically valid `saved` result supplies the server's replacement tag.
  * Conflict and failure recovery remain host-owned and explicit through
- * `resume(nextStrongEntityTag)`.
+ * `resume(nextStrongEntityTag)`. An optional observer receives distinct frozen
+ * document-free snapshots after the durable validator and queue state agree.
  *
- * @param options - Initial server validator and host-owned durable save callback.
+ * @param options - Initial server validator, save callback, and optional observer.
  * @returns A frozen standalone autosave session with no framework dependency.
  * @throws {DocumentAutosaveQueueError} When options are malformed.
  */
@@ -314,6 +345,10 @@ export function createDocumentAutosaveSession(
 ): DocumentAutosaveSession {
   const validatedOptions = readDocumentAutosaveSessionOptions(options);
   let durableStrongEntityTag = validatedOptions.initialStrongEntityTag;
+  let lastObservedSnapshotJson: string | null = null;
+  const observedRequestSettlements = new WeakSet<
+    Promise<DocumentAutosaveRequestOutcome>
+  >();
   const internalQueue = createInternalDocumentAutosaveQueue({
     async save(internalEvidence) {
       const evidence =
@@ -332,6 +367,37 @@ export function createDocumentAutosaveSession(
     },
   }) as unknown as InternalQueueAdapter;
 
+  /** Create a current document-free snapshot. */
+  function getSnapshot(): DocumentAutosaveSessionSnapshot {
+    return createDocumentAutosaveSessionSnapshot(
+      internalQueue.getSnapshot() as DocumentAutosaveQueueSnapshot,
+      durableStrongEntityTag,
+    );
+  }
+
+  /** Notify the retained observer only after distinct coherent state changes. */
+  function emitSnapshotChange(): void {
+    if (validatedOptions.onSnapshotChange === null) return;
+    const snapshot = getSnapshot();
+    const snapshotJson = JSON.stringify(snapshot);
+    if (snapshotJson === lastObservedSnapshotJson) return;
+    lastObservedSnapshotJson = snapshotJson;
+    try {
+      validatedOptions.onSnapshotChange(snapshot);
+    } catch {
+      // Presentation/telemetry failures cannot alter validator or queue state.
+    }
+  }
+
+  /** Observe eventual queue settlement at most once per shared promise. */
+  function observeRequestSettlement(
+    request: Promise<DocumentAutosaveRequestOutcome>,
+  ): void {
+    if (observedRequestSettlements.has(request)) return;
+    observedRequestSettlements.add(request);
+    void request.then(emitSnapshotChange, emitSnapshotChange);
+  }
+
   /** Queue one detached immutable revision. */
   function enqueue(
     evidence: DocumentAutosaveRevisionEvidence,
@@ -343,15 +409,10 @@ export function createDocumentAutosaveSession(
         'Document revision evidence is invalid.',
       );
     }
-    return internalQueue.enqueue(detachedEvidence);
-  }
-
-  /** Create a current document-free snapshot. */
-  function getSnapshot(): DocumentAutosaveSessionSnapshot {
-    return createDocumentAutosaveSessionSnapshot(
-      internalQueue.getSnapshot() as DocumentAutosaveQueueSnapshot,
-      durableStrongEntityTag,
-    );
+    const request = internalQueue.enqueue(detachedEvidence);
+    emitSnapshotChange();
+    observeRequestSettlement(request);
+    return request;
   }
 
   /** Resume blocked work only after installing a valid recovered validator. */
@@ -368,6 +429,7 @@ export function createDocumentAutosaveSession(
     durableStrongEntityTag = nextStrongEntityTag;
     const resumed = internalQueue.resume();
     if (!resumed) durableStrongEntityTag = previousStrongEntityTag;
+    emitSnapshotChange();
     return resumed;
   }
 
@@ -388,7 +450,10 @@ export function createDocumentAutosaveSession(
 
   /** Close queue progression and attach the final durable validator. */
   async function close(): Promise<DocumentAutosaveSessionSnapshot> {
-    const snapshot = await internalQueue.close();
+    const closing = internalQueue.close();
+    emitSnapshotChange();
+    const snapshot = await closing;
+    emitSnapshotChange();
     return createDocumentAutosaveSessionSnapshot(
       snapshot as DocumentAutosaveQueueSnapshot,
       durableStrongEntityTag,

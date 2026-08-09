@@ -129,6 +129,7 @@ const evidence = Object.freeze({
   }),
 });
 let calls = 0;
+const queueSnapshots = [];
 const queue = createDocumentAutosaveQueue({
   async save(received) {
     calls += 1;
@@ -140,12 +141,20 @@ const queue = createDocumentAutosaveQueue({
     assert.equal(Object.isFrozen(received.revision), true);
     return { status: 'saved' };
   },
+  onSnapshotChange(snapshot) {
+    assert.equal(Object.isFrozen(snapshot), true);
+    assert.equal(JSON.stringify(snapshot).includes('documentJson'), false);
+    queueSnapshots.push(snapshot);
+  },
 });
 assert.deepEqual(await queue.enqueue(evidence), {
   status: 'saved',
   strongEntityTag: evidence.revision.strongEntityTag,
 });
+await Promise.resolve();
 assert.equal(calls, 1);
+assert.equal(queueSnapshots[0].state, 'saving');
+assert.equal(queueSnapshots.at(-1).state, 'idle');
 
 const mutableTextNode = { type: 'text', text: 'original' };
 const partiallyFrozenEvidence = Object.freeze({
@@ -169,24 +178,36 @@ mutableTextNode.text = 'mutated after rejection';
 assert.equal(calls, 1);
 assert.equal((await queue.flush()).state, 'idle');
 assert.equal((await queue.close()).state, 'closed');
+assert.equal(queueSnapshots.at(-1).state, 'closed');
 
 let durableRequest;
+const sessionSnapshots = [];
 const session = createDocumentAutosaveSession({
   initialStrongEntityTag: '"server-one"',
   save(request) {
     durableRequest = request;
     return { status: 'saved', nextStrongEntityTag: '"server-two"' };
   },
+  onSnapshotChange(snapshot) {
+    assert.equal(Object.isFrozen(snapshot), true);
+    assert.equal(JSON.stringify(snapshot).includes('documentJson'), false);
+    sessionSnapshots.push(snapshot);
+  },
 });
 assert.equal(Object.isFrozen(session), true);
 assert.equal((await session.enqueue(evidence)).status, 'saved');
+await Promise.resolve();
 assert.equal(Object.isFrozen(durableRequest), true);
 assert.equal(durableRequest.ifMatchStrongEntityTag, '"server-one"');
 assert.notEqual(durableRequest.evidence, evidence);
 assert.equal(Object.isFrozen(durableRequest.evidence), true);
 assert.deepEqual(durableRequest.evidence, evidence);
+assert.equal(sessionSnapshots[0].state, 'saving');
+assert.equal(sessionSnapshots.at(-1).state, 'idle');
+assert.equal(sessionSnapshots.at(-1).durableStrongEntityTag, '"server-two"');
 assert.equal(session.getSnapshot().durableStrongEntityTag, '"server-two"');
 assert.equal((await session.close()).durableStrongEntityTag, '"server-two"');
+assert.equal(sessionSnapshots.at(-1).state, 'closed');
 `,
     'utf8',
   );
@@ -217,28 +238,43 @@ const evidence = Object.freeze({
     strongEntityTag: \`"sha256-\${digestHex}"\`,
   }),
 });
+const queueSnapshots = [];
 const queue = autosave.createDocumentAutosaveQueue({
   save() {
     return { status: 'conflict' };
+  },
+  onSnapshotChange(snapshot) {
+    assert.equal(Object.isFrozen(snapshot), true);
+    queueSnapshots.push(snapshot);
   },
 });
 void queue.enqueue(evidence).then(async (outcome) => {
   assert.equal(outcome.status, 'conflict');
   assert.equal((await queue.flush()).blockedReason, 'conflict');
+  assert.equal(queueSnapshots.at(-1).state, 'blocked');
   assert.equal((await queue.close()).state, 'closed');
+  assert.equal(queueSnapshots.at(-1).state, 'closed');
 
   let durableRequest;
+  const sessionSnapshots = [];
   const session = autosave.createDocumentAutosaveSession({
     initialStrongEntityTag: '"server-one"',
     save(request) {
       durableRequest = request;
       return { status: 'conflict' };
     },
+    onSnapshotChange(snapshot) {
+      assert.equal(Object.isFrozen(snapshot), true);
+      sessionSnapshots.push(snapshot);
+    },
   });
   assert.equal((await session.enqueue(evidence)).status, 'conflict');
   assert.equal(durableRequest.ifMatchStrongEntityTag, '"server-one"');
+  assert.equal(sessionSnapshots.at(-1).state, 'blocked');
+  assert.equal(sessionSnapshots.at(-1).durableStrongEntityTag, '"server-one"');
   assert.equal(session.getSnapshot().durableStrongEntityTag, '"server-one"');
   assert.equal((await session.close()).state, 'closed');
+  assert.equal(sessionSnapshots.at(-1).state, 'closed');
 }).catch((error) => {
   console.error(error);
   process.exitCode = 1;
@@ -262,6 +298,7 @@ function verifyDeclarationConsumer() {
   createDocumentAutosaveSession,
   type DocumentAutosaveDurableSaveRequest,
   type DocumentAutosaveQueueErrorCode,
+  type DocumentAutosaveQueueSnapshot,
   type DocumentAutosaveRequestOutcome,
   type DocumentAutosaveRevisionEvidence,
   type DocumentAutosaveSessionSnapshot,
@@ -270,6 +307,10 @@ function verifyDeclarationConsumer() {
 declare const evidence: DocumentAutosaveRevisionEvidence;
 const queue = createDocumentAutosaveQueue({
   save: async () => ({ status: 'saved' }),
+  onSnapshotChange(snapshot) {
+    const state: DocumentAutosaveQueueSnapshot['state'] = snapshot.state;
+    void state;
+  },
 });
 const outcome: Promise<DocumentAutosaveRequestOutcome> = queue.enqueue(evidence);
 const recoveryErrorCode: DocumentAutosaveQueueErrorCode =
@@ -280,6 +321,10 @@ const session = createDocumentAutosaveSession({
     status: 'saved' as const,
     nextStrongEntityTag: request.ifMatchStrongEntityTag,
   }),
+  onSnapshotChange(snapshot) {
+    const durableSnapshot: DocumentAutosaveSessionSnapshot = snapshot;
+    void durableSnapshot;
+  },
 });
 const snapshot: DocumentAutosaveSessionSnapshot = session.getSnapshot();
 void outcome;

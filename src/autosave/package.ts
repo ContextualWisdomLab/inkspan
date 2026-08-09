@@ -109,6 +109,14 @@ export type DocumentAutosaveSaveFunction = (
 export interface DocumentAutosaveQueueOptions {
   /** Host-owned operation used for every revision that becomes active. */
   readonly save: DocumentAutosaveSaveFunction;
+  /**
+   * Optional bounded observer invoked after distinct lifecycle transitions.
+   *
+   * Inkspan retains at most this one callback, never invokes it during queue
+   * construction, and ignores callback exceptions so presentation or telemetry
+   * code cannot change persistence ordering. Snapshots contain no document body.
+   */
+  readonly onSnapshotChange?: (snapshot: DocumentAutosaveQueueSnapshot) => void;
 }
 
 /** Outcome for a revision that the host reported as durably saved. */
@@ -219,6 +227,78 @@ export interface DocumentAutosaveQueue {
   getSnapshot(): DocumentAutosaveQueueSnapshot;
 }
 
+const DOCUMENT_AUTOSAVE_QUEUE_OPTION_KEYS = ['save', 'onSnapshotChange'] as const;
+
+/** Create one redacted invalid-options error for the framework-free boundary. */
+function createInvalidQueueOptionsError(): InternalDocumentAutosaveQueueError {
+  return new InternalDocumentAutosaveQueueError(
+    'invalid_options',
+    'Document autosave queue options are invalid.',
+  );
+}
+
+/**
+ * Read exact queue option values without invoking accessors or retaining extras.
+ *
+ * The optional observer must be an enumerable data property when present.
+ * Unknown keys, symbols, accessors, non-enumerable fields, and reflection
+ * failures are rejected before any host callback can execute.
+ */
+function readDocumentAutosaveQueueOptions(
+  options: DocumentAutosaveQueueOptions,
+): Readonly<{
+  save: DocumentAutosaveSaveFunction;
+  onSnapshotChange: ((snapshot: DocumentAutosaveQueueSnapshot) => void) | null;
+}> {
+  try {
+    if (typeof options !== 'object' || options === null) {
+      throw createInvalidQueueOptionsError();
+    }
+    const optionKeys = Reflect.ownKeys(options);
+    if (
+      optionKeys.length < 1 ||
+      optionKeys.length > DOCUMENT_AUTOSAVE_QUEUE_OPTION_KEYS.length ||
+      optionKeys.some(
+        (optionKey) =>
+          typeof optionKey !== 'string' ||
+          !DOCUMENT_AUTOSAVE_QUEUE_OPTION_KEYS.includes(
+            optionKey as (typeof DOCUMENT_AUTOSAVE_QUEUE_OPTION_KEYS)[number],
+          ),
+      )
+    ) {
+      throw createInvalidQueueOptionsError();
+    }
+    const saveDescriptor = Object.getOwnPropertyDescriptor(options, 'save');
+    const observerDescriptor = Object.getOwnPropertyDescriptor(
+      options,
+      'onSnapshotChange',
+    );
+    if (
+      saveDescriptor === undefined ||
+      !saveDescriptor.enumerable ||
+      !Object.prototype.hasOwnProperty.call(saveDescriptor, 'value') ||
+      typeof saveDescriptor.value !== 'function' ||
+      (observerDescriptor !== undefined &&
+        (!observerDescriptor.enumerable ||
+          !Object.prototype.hasOwnProperty.call(observerDescriptor, 'value') ||
+          typeof observerDescriptor.value !== 'function'))
+    ) {
+      throw createInvalidQueueOptionsError();
+    }
+    return Object.freeze({
+      save: saveDescriptor.value as DocumentAutosaveSaveFunction,
+      onSnapshotChange:
+        observerDescriptor === undefined
+          ? null
+          : (observerDescriptor.value as (
+              snapshot: DocumentAutosaveQueueSnapshot,
+            ) => void),
+    });
+  } catch {
+    throw createInvalidQueueOptionsError();
+  }
+}
+
 /**
  * Create a framework-independent single-flight document autosave queue.
  *
@@ -226,31 +306,89 @@ export interface DocumentAutosaveQueue {
  * public declarations behaviorally identical while preventing editor-framework
  * types from leaking into standalone autosave consumers. Every accepted request
  * is normalized into a detached frozen snapshot before the internal queue can
- * retain it or invoke host transport.
+ * retain it or invoke host transport. An optional lifecycle observer receives
+ * only distinct document-free snapshots and cannot alter queue outcomes by
+ * throwing.
  *
- * @param options - Exact object containing the host-owned save callback.
+ * @param options - Exact object containing the host-owned save callback and optional observer.
  * @returns A frozen provider-neutral autosave queue.
+ * @throws {DocumentAutosaveQueueError} When options are malformed.
  */
 export function createDocumentAutosaveQueue(
   options: DocumentAutosaveQueueOptions,
 ): DocumentAutosaveQueue {
-  const internalQueue = createInternalDocumentAutosaveQueue(
-    options as never,
-  ) as unknown as DocumentAutosaveQueue;
+  const validatedOptions = readDocumentAutosaveQueueOptions(options);
+  const internalQueue = createInternalDocumentAutosaveQueue({
+    save: validatedOptions.save as never,
+  }) as unknown as DocumentAutosaveQueue;
+  let lastObservedSnapshotJson =
+    validatedOptions.onSnapshotChange === null
+      ? null
+      : JSON.stringify(internalQueue.getSnapshot());
+  const observedRequestSettlements = new WeakSet<
+    Promise<DocumentAutosaveRequestOutcome>
+  >();
+
+  /** Notify the retained observer only when externally visible state changed. */
+  function emitSnapshotChange(): void {
+    if (validatedOptions.onSnapshotChange === null) return;
+    const snapshot = internalQueue.getSnapshot();
+    const snapshotJson = JSON.stringify(snapshot);
+    if (snapshotJson === lastObservedSnapshotJson) return;
+    lastObservedSnapshotJson = snapshotJson;
+    try {
+      validatedOptions.onSnapshotChange(snapshot);
+    } catch {
+      // Observer code is presentation/telemetry only and cannot affect saving.
+    }
+  }
+
+  /** Observe one eventual request settlement at most once per shared promise. */
+  function observeRequestSettlement(
+    request: Promise<DocumentAutosaveRequestOutcome>,
+  ): void {
+    if (observedRequestSettlements.has(request)) return;
+    observedRequestSettlements.add(request);
+    void request.then(emitSnapshotChange, emitSnapshotChange);
+  }
+
+  /** Queue one detached revision and publish its current lifecycle transition. */
+  function enqueue(
+    evidence: DocumentAutosaveRevisionEvidence,
+  ): Promise<DocumentAutosaveRequestOutcome> {
+    const detachedEvidence = createDetachedAutosaveRevisionEvidence(evidence);
+    if (detachedEvidence === null) {
+      throw new InternalDocumentAutosaveQueueError(
+        'invalid_revision_evidence',
+        'Document revision evidence is invalid.',
+      );
+    }
+    const request = internalQueue.enqueue(detachedEvidence);
+    emitSnapshotChange();
+    observeRequestSettlement(request);
+    return request;
+  }
+
+  /** Resume blocked progression and publish the resulting current state. */
+  function resume(): boolean {
+    const resumed = internalQueue.resume();
+    emitSnapshotChange();
+    return resumed;
+  }
+
+  /** Close local progression and publish closing or closed lifecycle state. */
+  function close(): Promise<DocumentAutosaveQueueSnapshot> {
+    const closing = internalQueue.close();
+    emitSnapshotChange();
+    void closing.then(emitSnapshotChange);
+    return closing;
+  }
+
   return Object.freeze({
-    enqueue(evidence: DocumentAutosaveRevisionEvidence) {
-      const detachedEvidence = createDetachedAutosaveRevisionEvidence(evidence);
-      if (detachedEvidence === null) {
-        throw new InternalDocumentAutosaveQueueError(
-          'invalid_revision_evidence',
-          'Document revision evidence is invalid.',
-        );
-      }
-      return internalQueue.enqueue(detachedEvidence);
-    },
-    resume: internalQueue.resume,
+    enqueue,
+    resume,
     flush: internalQueue.flush,
-    close: internalQueue.close,
+    close,
     getSnapshot: internalQueue.getSnapshot,
   });
 }
