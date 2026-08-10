@@ -47,6 +47,12 @@ function activeEditor(editor: Editor | null): Editor | null {
   return editor && !editor.isDestroyed ? editor : null;
 }
 
+/** Return an editor that currently permits user-facing history commands. */
+function editableHistoryEditor(editor: Editor | null): Editor | null {
+  const current = activeEditor(editor);
+  return current?.isEditable ? current : null;
+}
+
 /** Expose the stable host-control contract shared by editor surfaces. */
 export function useEditorHandle(
   ref: ForwardedRef<CwlEditorHandle>,
@@ -63,10 +69,12 @@ export function useEditorHandle(
       blur: () => {
         activeEditor(editor)?.commands.blur();
       },
-      canUndo: () => activeEditor(editor)?.can().undo() ?? false,
-      undo: () => activeEditor(editor)?.chain().focus().undo().run() ?? false,
-      canRedo: () => activeEditor(editor)?.can().redo() ?? false,
-      redo: () => activeEditor(editor)?.chain().focus().redo().run() ?? false,
+      canUndo: () => editableHistoryEditor(editor)?.can().undo() ?? false,
+      undo: () =>
+        editableHistoryEditor(editor)?.chain().focus().undo().run() ?? false,
+      canRedo: () => editableHistoryEditor(editor)?.can().redo() ?? false,
+      redo: () =>
+        editableHistoryEditor(editor)?.chain().focus().redo().run() ?? false,
       getValue: () => {
         const current = activeEditor(editor);
         if (!current) return '';
