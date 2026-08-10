@@ -17,7 +17,11 @@ describe('autonomous maintenance and acquisition documentation', () => {
     for (const guidance of [agents, claude]) {
       expect(guidance).toContain('scheduler-control incident');
       expect(guidance).toContain('zero completion credit');
+      expect(guidance).toContain('rebuild the live Inkspan queue');
+      expect(guidance).toContain('continue repository execution in the same invocation');
       expect(guidance).toContain('two materially distinct executable repository actions');
+      expect(guidance).toContain('fresh queue rebuild');
+      expect(guidance).toContain('every other lane is currently non-actionable');
       expect(guidance).toContain('reset the two-sweep count');
       expect(guidance).toContain('simplify the external prompt');
     }
