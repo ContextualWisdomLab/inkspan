@@ -418,3 +418,119 @@ jobs:
             gh release verify-asset "$GITHUB_REF_NAME" "$artifact" \
               --repo "$GITHUB_REPOSITORY"
           done
+
+  publish-npm:
+    if: ${{ github.repository == 'ContextualWisdomLab/inkspan' && !contains(github.ref_name, '-') }}
+    needs: [publish-release]
+    runs-on: ubuntu-24.04
+    environment: npm
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - name: Download exact validated release artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: inkspan-release-${{ github.ref_name }}
+          path: release
+      - name: Verify exact npm artifact identity
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum --check SHA256SUMS
+          cd ..
+          mapfile -t npm_assets < <(
+            find release -maxdepth 1 -type f -name '*.tgz' -printf '%p\n' | LC_ALL=C sort
+          )
+          if [[ ${#npm_assets[@]} -ne 1 ]]; then
+            echo "::error::npm publication requires exactly one validated tarball."
+            exit 1
+          fi
+          npm_asset="${npm_assets[0]}"
+          package_json="$(tar -xOf "$npm_asset" package/package.json)"
+          package_name="$(jq -r '.name // empty' <<< "$package_json")"
+          package_version="$(jq -r '.version // empty' <<< "$package_json")"
+          expected_version="${GITHUB_REF_NAME#v}"
+          if [[ "$package_name" != '@contextualwisdomlab/cwl-editor' ]]; then
+            echo "::error::Unexpected npm package identity."
+            exit 1
+          fi
+          if [[ "$package_version" != "$expected_version" ]]; then
+            echo "::error::npm package version must match stable release version $expected_version."
+            exit 1
+          fi
+          echo "INKSPAN_NPM_ASSET=$npm_asset" >> "$GITHUB_ENV"
+      - name: Set up trusted-publishing Node.js runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+      - name: Verify npm Trusted Publishing runtime floor
+        run: |
+          set -euo pipefail
+          npm_version="$(npm --version)"
+          node - "$npm_version" <<'NODE'
+          const version = process.argv[2] ?? '';
+          const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version);
+          if (!match) throw new Error(`Unable to parse npm version: ${version}`);
+          const [major, minor, patch] = match.slice(1).map(Number);
+          const supported = major > 11 || (major === 11 && (minor > 5 || (minor === 5 && patch >= 1)));
+          if (!supported) throw new Error(`npm version must be at least 11.5.1; found ${version}`);
+          NODE
+      - name: Publish exact npm artifact through OIDC Trusted Publishing
+        run: |
+          set -euo pipefail
+          npm_asset="$INKSPAN_NPM_ASSET"
+          npm publish "$npm_asset" --access public
+
+  publish-pypi:
+    if: ${{ github.repository == 'ContextualWisdomLab/inkspan' && !contains(github.ref_name, '-') }}
+    needs: [publish-release]
+    runs-on: ubuntu-24.04
+    environment: pypi
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - name: Download exact validated release artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: inkspan-release-${{ github.ref_name }}
+          path: release
+      - name: Verify and isolate exact Office wheel
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum --check SHA256SUMS
+          cd ..
+          mapfile -t wheel_assets < <(
+            find release -maxdepth 1 -type f -name '*.whl' -printf '%p\n' | LC_ALL=C sort
+          )
+          if [[ ${#wheel_assets[@]} -ne 1 ]]; then
+            echo "::error::PyPI publication requires exactly one validated Office wheel."
+            exit 1
+          fi
+          wheel_asset="${wheel_assets[0]}"
+          metadata="$(unzip -p "$wheel_asset" '*/METADATA')"
+          office_name="$(awk -F': ' '$1 == "Name" { print $2; exit }' <<< "$metadata" | tr -d '\r')"
+          office_version="$(awk -F': ' '$1 == "Version" { print $2; exit }' <<< "$metadata" | tr -d '\r')"
+          expected_version="${GITHUB_REF_NAME#v}"
+          if [[ "$office_name" != 'inkspan-office' ]]; then
+            echo "::error::Unexpected Office package identity."
+            exit 1
+          fi
+          if [[ "$office_version" != "$expected_version" ]]; then
+            echo "::error::Office package version must match stable release version $expected_version."
+            exit 1
+          fi
+          mkdir -p pypi-release
+          cp -- "$wheel_asset" pypi-release/
+          if [[ "$(find pypi-release -maxdepth 1 -type f -name '*.whl' | wc -l)" -ne 1 ]]; then
+            echo "::error::PyPI publication directory must contain exactly one wheel."
+            exit 1
+          fi
+      - name: Publish exact Office wheel through OIDC Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          packages-dir: pypi-release/
