@@ -3,7 +3,10 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-const styles = readFileSync(resolve(process.cwd(), 'src/styles.css'), 'utf8');
+const repositoryFile = (path: string): string =>
+  readFileSync(resolve(process.cwd(), path), 'utf8');
+
+const styles = repositoryFile('src/styles.css');
 
 describe('print stylesheet contract', () => {
   it('defines an explicit paged-document print media boundary', () => {
@@ -44,5 +47,23 @@ describe('print stylesheet contract', () => {
     expect(styles).toMatch(
       /\.cwl-editor__content a\s*\{[^}]*text-decoration:\s*underline\s*;/u,
     );
+  });
+
+  it('requires package and browser evidence to use the exported built stylesheet', () => {
+    const packageVerifier = repositoryFile('tests/package/verify-package.mjs');
+    const browserSpecification = repositoryFile(
+      'tests/browser/specs/print.browser.spec.ts',
+    );
+    const browserConfiguration = repositoryFile(
+      'tests/browser/playwright.config.ts',
+    );
+
+    expect(packageVerifier).toContain("readFileSync(join(repositoryRoot, 'dist', 'cwl-editor.css')");
+    expect(packageVerifier).toContain("'@media print'");
+    expect(packageVerifier).toContain("'break-inside: avoid'");
+    expect(packageVerifier).toContain("'text-decoration: underline'");
+    expect(browserSpecification).toContain('/dist/cwl-editor.css');
+    expect(browserSpecification).not.toContain('/src/styles.css');
+    expect(browserConfiguration).toContain('pnpm --dir ../.. build');
   });
 });
