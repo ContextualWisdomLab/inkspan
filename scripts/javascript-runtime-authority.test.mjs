@@ -17,22 +17,26 @@ test('ignores loader-shaped text in comments and string literals', () => {
   assert.deepEqual(findRuntimeModuleAuthority(source, 'benign.js'), []);
 });
 
-test('finds executable static and dynamic module authority', () => {
+test('reports executable module authority with actionable specifiers', () => {
   const source = [
     "import value from 'static-package';",
     "export { value as other } from 'reexport-package';",
     "const required = require('commonjs-package');",
     "const lazy = import('dynamic-package');",
-    'void [value, required, lazy];',
+    'const unknown = require(runtimePackageName);',
+    'void [value, required, lazy, unknown];',
   ].join('\n');
 
   assert.deepEqual(
-    findRuntimeModuleAuthority(source, 'authority.js').map(({ kind }) => kind),
+    findRuntimeModuleAuthority(source, 'authority.js').map(
+      ({ kind, specifier }) => ({ kind, specifier }),
+    ),
     [
-      'static-import',
-      'static-reexport',
-      'commonjs-require',
-      'dynamic-import',
+      { kind: 'static-import', specifier: 'static-package' },
+      { kind: 'static-reexport', specifier: 'reexport-package' },
+      { kind: 'commonjs-require', specifier: 'commonjs-package' },
+      { kind: 'dynamic-import', specifier: 'dynamic-package' },
+      { kind: 'commonjs-require', specifier: undefined },
     ],
   );
 });
