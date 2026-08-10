@@ -296,7 +296,8 @@ export interface MarkdownToEmailHtmlOptions {
   languageTag?: string;
   /**
    * Base writing direction for the generated root `<html>` element.
-   * Applied only when `fullDocument` is true.
+   * Applied only when `fullDocument` is true. Runtime callers are validated as
+   * well as TypeScript callers so untyped input cannot create raw attributes.
    */
   textDirection?: 'ltr' | 'rtl' | 'auto';
 }
@@ -314,6 +315,16 @@ function canonicalizeEmailLanguageTag(value: string | undefined): string | undef
   }
 }
 
+/** Validate one optional full-document direction at the runtime trust boundary. */
+function validateEmailTextDirection(
+  value: MarkdownToEmailHtmlOptions['textDirection'],
+): 'ltr' | 'rtl' | 'auto' | undefined {
+  if (value === undefined || value === 'ltr' || value === 'rtl' || value === 'auto') {
+    return value;
+  }
+  throw new RangeError('Email document direction must be ltr, rtl, or auto.');
+}
+
 /**
  * Convert Markdown to HTML suitable for **email compose / send** paths
  * (inkspan.io, naruon mail, etc.).
@@ -326,7 +337,8 @@ function canonicalizeEmailLanguageTag(value: string | undefined): string | undef
  * - Returns a body fragment by default; set `fullDocument: true` for a
  *   self-contained document shell
  * - Full documents can preserve a canonicalized document language and explicit
- *   `ltr`, `rtl`, or `auto` base direction on the root `<html>` element
+ *   runtime-validated `ltr`, `rtl`, or `auto` base direction on the root
+ *   `<html>` element
  *
  * This is the intentional commercial bridge from the editor's Markdown mode
  * to an HTML email body — not a full MIME multipart builder.
@@ -339,11 +351,12 @@ export function markdownToEmailHtml(
   if (!options.fullDocument) return body;
   const title = escapeHtml(options.title ?? 'Message');
   const languageTag = canonicalizeEmailLanguageTag(options.languageTag);
+  const textDirection = validateEmailTextDirection(options.textDirection);
   const languageAttribute = languageTag
     ? ` lang="${escapeHtml(languageTag)}"`
     : '';
-  const directionAttribute = options.textDirection
-    ? ` dir="${options.textDirection}"`
+  const directionAttribute = textDirection
+    ? ` dir="${textDirection}"`
     : '';
   return [
     '<!DOCTYPE html>',
