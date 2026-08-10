@@ -42,6 +42,12 @@ request = {
             "headers": ["Metric", "Value"],
             "rows": [["Revenue", 120], ["Churn", 0.03]],
         },
+        {
+            "type": "image",
+            "source": "data:image/png;base64,iVBORw0KGgo...",
+            "alt_text": "Quarterly retention chart",
+            "width_px": 960,
+        },
     ],
 }
 
@@ -71,10 +77,46 @@ Python call stack before contract validation.
 
 Supported shapes are deliberately small and predictable:
 
-- DOCX: headings, paragraphs, ordered/unordered lists, tables, page breaks.
+- DOCX: headings, paragraphs, ordered/unordered lists, tables, **informative
+  inline PNG figures**, and page breaks.
 - XLSX: multiple worksheets, scalar cells, header styling, freeze panes,
   filters, and bounded automatic column sizing.
 - PPTX: title/subtitle slides and title/bullet slides with nesting levels.
+
+### DOCX informative PNG figures
+
+A DOCX `image` block is intentionally narrower than Inkspan's interactive image
+surface. It accepts only the exact `data:image/png;base64,...` form and therefore
+never downloads a remote image or reads a caller-controlled filesystem path.
+JPEG, SVG/vector content, data-URL parameters, percent-encoded payloads, and
+external Office relationships are outside this initial contract.
+
+Every figure must provide:
+
+- strict base64 PNG bytes with a valid PNG signature and IHDR;
+- positive bounded intrinsic dimensions;
+- at most 10 MiB decoded bytes, 10,000 pixels on either axis, and 40 million
+  pixels in total;
+- a `width_px` from 1 through 2,400, interpreted as CSS pixels at exactly 9,525
+  English Metric Units per pixel while preserving the intrinsic aspect ratio;
+- non-empty `alt_text` up to 1,000 characters.
+
+The alternative text is written to the Word drawing `docPr/@descr` metadata and
+is verified in the generated OOXML package. P0 supports **informative** figures
+only. Decorative images are rejected rather than represented by an accidental
+empty description, because modern Office decorative-object semantics use a
+separate accessibility extension and require a dedicated compatibility
+contract.
+
+Image failures are fail-closed and redacted. The source data URI and decoded
+bytes are not reflected into ordinary error messages, and a failed image
+request cannot publish a partial output through `write_office_document`.
+Inkspan Office still does not decide whether a user is authorized to export a
+document or where the resulting file may be stored; those remain host
+responsibilities.
+
+The standards and primary-library basis for this boundary is recorded in
+[`docs/doctoring/docx-inline-png-figures.md`](../docs/doctoring/docx-inline-png-figures.md).
 
 ## Spreadsheet safety
 
@@ -105,10 +147,12 @@ python -m pip wheel . --no-deps --wheel-dir dist
 ```
 
 The suite re-opens every rendered format with its native library and verifies
-byte-for-byte deterministic output. CI installs runtime and test dependencies
-from `requirements-ci.txt` with wheel hashes and executes the complete Office
-matrix on Python 3.11, Python 3.12, Python 3.13, and Python 3.14. The package
-metadata rejects unverified Python 3.15+ installs until that runtime is added to
-the tested support matrix. CI enforces 100% statement/branch and shipped-symbol
+byte-for-byte deterministic output. DOCX image acceptance additionally inspects
+the generated ZIP/OOXML package for the exact embedded PNG bytes, dimensions,
+and accessible description. CI installs runtime and test dependencies from
+`requirements-ci.txt` with wheel hashes and executes the complete Office matrix
+on Python 3.11, Python 3.12, Python 3.13, and Python 3.14. The package metadata
+rejects unverified Python 3.15+ installs until that runtime is added to the
+tested support matrix. CI enforces 100% statement/branch and shipped-symbol
 docstring coverage, then builds and inspects the distributable wheel. Code and
 all three direct runtime dependencies are MIT-licensed.
