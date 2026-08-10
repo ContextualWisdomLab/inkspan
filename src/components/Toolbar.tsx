@@ -215,6 +215,8 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
         return;
       }
 
+      if (editor.isDestroyed || !editor.isEditable) return;
+
       const alternativeText = window.prompt(
         'Image alternative text. Leave empty only if this image is decorative.',
         '',
