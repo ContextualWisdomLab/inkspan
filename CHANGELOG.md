@@ -30,6 +30,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Added CSS-only paged-media output that removes interactive editor chrome and screen-only clipping in print, preserves authored document structure, and is exercised against the packed stylesheet in Chromium, Firefox, and WebKit without introducing a PDF service or network authority.
 - Added normalized programmatic editor placeholder semantics so visible placeholder guidance and `aria-placeholder` remain aligned for standalone and collaborative editing without unnecessary editor remounts.
 - Expanded deterministic DOCX fidelity with bounded informative inline PNG figures and alternative text, rich-text paragraph runs, and bounded paragraph and heading alignment while preserving fail-closed schema/runtime limits and Python 3.11–3.14 verification.
+- Added bounded relationship-backed external HTTP(S) hyperlinks to DOCX rich-text runs while preserving deterministic network-free rendering, existing run emphasis, fail-closed URI validation, redacted errors, and Python 3.11–3.14 verification.
 
 ### Reliability
 - Lifecycle observers receive only distinct frozen document-free snapshots; observer exceptions cannot alter save ordering, conflict/failure recovery, queue outcomes, or durable-validator handoff
