@@ -25,7 +25,7 @@ The protected standalone product provides:
 - dependency-locked Chromium/Firefox/WebKit rich-clipboard release assurance; and
 - a network-free Office renderer for deterministic DOCX, XLSX, and PPTX output.
 
-Hosts own transport, authentication, authorization, tenant isolation, durable persistence, credentials, migration, retention, deployment, durable audit, model-use policy, print destination policy, and any durable PDF/print-service authority.
+Hosts own transport, authorization, tenant isolation, persistence, credentials, migration, retention, and model-use policy. They also own authentication, deployment, durable audit, print destination policy, and any durable PDF/print-service authority; persistence includes durable storage and commit authority.
 
 Inkspan therefore never opens a production collaboration connection, chooses a tenant, stores a provider secret, creates a durable database transaction, decides a retention schedule, authorizes an AI operation, or claims that a browser print destination constitutes a durable authorized export. A standalone adopter can provide those capabilities directly; a CWL host can provide them through shared platform services.
 
