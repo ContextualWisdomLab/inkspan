@@ -1,14 +1,14 @@
 # ADR 0026: Bounded external hyperlinks in deterministic DOCX rich text
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
-Inkspan Office already preserves bounded DOCX rich-text runs, paragraph/heading alignment, and informative inline PNG figures. Protected `main` does **not** yet expose a hyperlink target in `rich_paragraph.runs[]`; active PR #137 implements that additive fidelity surface. Without a public contract, hosts either flatten linked text to plain text or invent private OOXML outside Inkspan's deterministic renderer.
+Inkspan Office already preserves bounded DOCX rich-text runs, paragraph/heading alignment, and informative inline PNG figures. Protected `main` now exposes an optional hyperlink target in `rich_paragraph.runs[]`, implemented on protected `main` through PR #137. Without the public contract, hosts would have to flatten linked text to plain text or invent private OOXML outside Inkspan's deterministic renderer.
 
 WordprocessingML represents a hyperlink with a `w:hyperlink` element whose `r:id` identifies a relationship carrying the target. ECMA-376 defines the Office Open XML vocabulary and package model, and Microsoft documents the `w:hyperlink r:id` relationship structure. `python-docx` 1.2.0 can read hyperlinks but still documents external hyperlink creation as not yet implemented, so Inkspan cannot rely on a stable public `Paragraph.add_hyperlink()` writer API.
 
-The design must preserve Inkspan's network-free Office boundary while avoiding a second broad URL policy that silently expands the interactive editor's authority.
+The design preserves Inkspan's network-free Office boundary while avoiding a second broad URL policy that silently expands the interactive editor's authority.
 
 ## Alternatives considered
 
@@ -20,7 +20,7 @@ The design must preserve Inkspan's network-free Office boundary while avoiding a
 
 ## Decision
 
-An active `rich_paragraph.runs[]` item may optionally declare `href` under the following bounded contract:
+A `rich_paragraph.runs[]` item may optionally declare `href` under the following bounded contract:
 
 - type: JSON string;
 - length: 1 through 4,096 characters;
@@ -35,7 +35,7 @@ The renderer creates the normal formatted Word run first, then moves that exact 
 
 Visible run text remains fully Unicode-capable. The ASCII restriction applies only to the external target string. A host that needs an internationalized destination must supply an already authorized ASCII URI representation before calling Inkspan Office.
 
-This ADR remains **Proposed** while #137 is an active PR. It becomes eligible for `Accepted` only after the unchanged implementation is integrated on protected `main` with the repository's applicable exact-head verification evidence.
+This decision is Accepted because the unchanged implementation integrated on protected `main` through PR #137 with the repository's applicable exact-head CI, Security Scan, SAST, Office Python 3.11–3.14, branch-coverage, docstring, package, schema, and deterministic OOXML evidence.
 
 ## Consequences and ownership trade-offs
 
@@ -57,13 +57,13 @@ A syntactically accepted URL is not a safety or trust verdict. Hosts remain resp
 
 ## Compatibility and migration
 
-The schema change is additive for producers that omit `href`. Older Inkspan Office versions reject the new field because rich-run objects are strict; producers requiring hyperlink preservation must negotiate/target a renderer version that advertises this contract or omit the field.
+The schema change is additive for producers that omit `href`. Older Inkspan Office versions reject the new field because rich-run objects are strict; producers requiring hyperlink preservation must negotiate or target a renderer version that advertises this contract, or omit the field.
 
 No database, persisted schema, document-envelope, or host migration is introduced. If a future contract broadens URI support, it must specify normalization, cross-language parity, migration/compatibility, and security evidence explicitly rather than silently widening this decision.
 
 ## Verification and acceptance evidence
 
-Active PR #137 is required to prove the boundary at the produced OOXML package, not merely through visible text:
+Protected PR #137 proves the boundary at the produced OOXML package rather than merely through visible text:
 
 - `w:hyperlink@r:id` resolves through `word/_rels/document.xml.rels`;
 - relationship type is the external hyperlink relationship and `TargetMode` is `External`;
@@ -71,10 +71,10 @@ Active PR #137 is required to prove the boundary at the produced OOXML package, 
 - existing bold/italic/underline formatting and visible text are preserved;
 - malformed, local, executable/data/mail/telephone, relative/protocol-relative, credential-bearing, whitespace/control/backslash, oversized, non-string, mapping/proxy-like, and non-ASCII targets fail closed without target reflection;
 - repeated rendering of the same accepted request is byte-identical;
-- Python 3.11–3.14 Office lanes retain 100% shipped production statement/branch coverage, 100% shipped-symbol docstrings, wheel/schema/license checks, and existing deterministic/atomic-publication behavior;
-- repository CI, Security Scan, SAST, live-base compatibility, and applicable review/merge policy pass on the unchanged final head.
+- Python 3.11–3.14 Office lanes retain 100% shipped production statement/branch coverage, 100% shipped-symbol docstrings, wheel/schema/license checks, and existing deterministic/atomic-publication behavior; and
+- repository CI, Security Scan, SAST, live-base compatibility, and applicable review/merge policy passed on the unchanged integrated head.
 
-Historical failed heads are diagnostic evidence only and do not transfer acceptance to a changed head.
+Historical failed heads remain diagnostic evidence only and do not transfer acceptance to a changed head or later release candidate.
 
 ## Rollback or supersession
 
