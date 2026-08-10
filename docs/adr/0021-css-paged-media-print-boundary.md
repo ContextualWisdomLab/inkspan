@@ -1,12 +1,12 @@
 # ADR 0021: CSS paged-media print boundary
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
-Inkspan ships an opt-in interactive editor stylesheet. Protected `main` currently has no explicit `@media print` contract: screen-oriented overflow/max-height behavior and interactive toolbar/collaboration/caret/placeholder chrome can therefore affect browser print and print-to-PDF output.
+Inkspan ships an opt-in interactive editor stylesheet. Before PR #116, protected `main` had no explicit `@media print` contract: screen-oriented overflow/max-height behavior and interactive toolbar/collaboration/caret/placeholder chrome could therefore affect browser print and print-to-PDF output.
 
-Issue #115 and active PR #116 define a bounded product slice that treats printing as a presentation concern of the shipped stylesheet rather than as a new Inkspan PDF service. Because #116 is not yet protected-main authority, this ADR records the intended decision as Proposed.
+Issue #115 and PR #116 defined and integrated a bounded product slice that treats printing as a presentation concern of the shipped stylesheet rather than as a new Inkspan PDF service. PR #116 is now protected-main authority, so this ADR records the implemented decision as Accepted.
 
 Media Queries Level 3 is a W3C Recommendation and defines the `print` media type. CSS Fragmentation Level 3 defines fragmentation controls such as break behavior, widows, and orphans; CSS Paged Media Level 3 defines the paged-media page model while delegating fragmentation to CSS Fragmentation. The latter modules are not promoted here to certification claims beyond their actual publication status.
 
@@ -30,7 +30,7 @@ Selected. Inkspan owns only the CSS it ships: it removes its screen-only constra
 
 ## Decision
 
-When PR #116 or a verified successor reaches protected `main`, Inkspan's shipped stylesheet will contain a declarative `@media print` boundary that:
+Inkspan's shipped stylesheet contains a declarative `@media print` boundary that:
 
 1. hides interactive-only toolbar, collaboration status, remote caret/cursor labels, and placeholder pseudo-content;
 2. removes screen-only editor overflow and maximum-height clipping so the complete authored document can participate in pagination;
@@ -53,13 +53,13 @@ The browser/user agent remains the pagination renderer. Inkspan does not claim p
 
 A regression that prints interactive chrome, clips the document surface, exposes placeholder UI, or hides authored content fails the print contract. Recovery is to repair the shipped CSS/test boundary, not to inject print-only document mutations or silently remove content.
 
-If a browser ignores a draft fragmentation property, authored content must still remain available; unsupported hints must degrade to ordinary browser pagination rather than false success or content loss.
+If a browser ignores a fragmentation property, authored content must still remain available; unsupported hints degrade to ordinary browser pagination rather than false success or content loss.
 
 ## Security and privacy impact
 
 The print stylesheet does not authorize disclosure. Browser print can expose the full authored document to a printer, PDF destination, or OS spooler selected by the user/host, so hosts remain responsible for document authorization, classification, printing policy, local device controls, retention, and any durable exported artifact.
 
-Inkspan must not add actor, tenant, timestamp, signature, or document-body telemetry merely to support print styling.
+Inkspan does not add actor, tenant, timestamp, signature, or document-body telemetry merely to support print styling.
 
 ## Compatibility and migration
 
@@ -69,18 +69,20 @@ Embedding applications with their own print stylesheet can continue to override 
 
 ## Verification and acceptance evidence
 
-Before this ADR becomes Accepted:
+Accepted evidence includes:
 
-- a permanent test must prove protected source previously lacked the required print boundary and then prove the implemented selectors/properties;
-- existing screen and forced-colors contracts must remain unchanged;
-- real-browser print-media evidence should be added where practical using the existing pinned browser infrastructure without weakening the rich-clipboard gate;
-- exact-head CI, Security Scan, SAST, package verification, Office gates, and exact owned coverage policy must pass;
-- canonical accessibility/print/export documentation must be reconciled after overlapping writers clear; and
-- protected integration must complete before the behavior is called shipped.
+- a permanent fail-first stylesheet contract proving the protected predecessor lacked the print boundary;
+- source-level checks for the implemented selectors and properties without weakening screen or forced-colors behavior;
+- package verification against the built `dist/cwl-editor.css` public stylesheet artifact;
+- real Chromium, Firefox, and WebKit print-media evidence using the pinned Playwright infrastructure and the built public stylesheet;
+- exact-head CI, Security Scan, SAST, package verification, Office Python 3.11–3.14 gates, and owned-code coverage on PR #116; and
+- protected integration through PR #116 before this ADR was reconciled to Accepted.
+
+Browser evidence proves bounded semantic print behavior, not byte-identical pagination or PDF conformance.
 
 ## Rollback or supersession
 
-Before protected integration, rollback closes/supersedes the active print slice without changing current screen CSS. After integration, rollback may remove only the new print overrides if a regression is proven, while documenting the print-support regression explicitly.
+A proven regression may be rolled back by removing only the print overrides while documenting the resulting print-support regression. Rollback does not mutate canonical document content or invalidate prior user-generated print/PDF artifacts.
 
 A dedicated PDF renderer, print service, or archival-document product supersedes this decision only through a new ADR defining artifact authority, rendering engine, fonts, pagination fidelity, security/privacy, reproducibility, storage, provenance, and operational recovery.
 

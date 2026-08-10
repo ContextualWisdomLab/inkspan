@@ -1,6 +1,6 @@
 # Browser print and paged-media assurance
 
-Status: Active PR / Proposed
+Status: Implemented on protected main
 
 ## Decision scope
 
