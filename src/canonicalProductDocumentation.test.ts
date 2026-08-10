@@ -41,6 +41,10 @@ const requiredFiles = [
   'docs/adr/0015-envelope-schema-migration-routing.md',
   'docs/adr/0016-cross-engine-browser-assurance.md',
   'docs/adr/0017-security-disclosure-lifecycle.md',
+  'docs/adr/0018-revision-scoped-w3c-text-position-selector.md',
+  'docs/adr/0019-unified-release-version-train.md',
+  'docs/adr/0020-framework-neutral-markdown-package-boundary.md',
+  'docs/adr/0021-css-paged-media-print-boundary.md',
   'src/fonts/OFL.txt',
   'src/fonts/NOTICE',
   'src/fonts/fonts.css',
@@ -119,12 +123,18 @@ describe('canonical product documentation graph', () => {
     expect(trd).toContain('Autosave lifecycle observation is implemented on protected `main`');
     expect(trd).toContain('SafeClipboard is implemented on protected `main`');
     expect(trd).toContain('Envelope identity routing is implemented on protected `main`');
+    expect(trd).toContain('W3C text-position evidence are implemented on protected `main`');
+    expect(trd).toContain('React-free text-position-selector package surface is also protected-main behavior');
+    expect(trd).toContain('ADR 0019 is Accepted on protected `main`');
+    expect(trd).toContain('PR #114');
+    expect(trd).toContain('PR #116');
+    expect(trd).not.toContain('Any W3C text-position interoperability implemented on an active branch');
+    expect(trd).not.toContain('Active feature branches such as W3C text-position selector interoperability');
     expect(trd).not.toContain('PR #84 implements');
     expect(trd).not.toMatch(/Envelope identity routing is `implemented_on_active_pr`/u);
 
     expect(contracts).toContain('Envelope identity routing is implemented on protected `main`');
     expect(contracts).not.toContain('PR #84 adds an active-PR identity-routing contract');
-    expect(contracts).not.toContain('implemented_on_active_pr');
 
     expect(dataModel).toContain('`document_schema_identity`: `implemented_on_protected_main`');
     expect(dataModel).not.toContain('`document_schema_identity`: `implemented_on_active_pr`');
@@ -137,6 +147,9 @@ describe('canonical product documentation graph', () => {
     expect(fitness).toContain('Autosave lifecycle observation');
     expect(fitness).toMatch(/Autosave lifecycle observation[^\n]*implemented_on_protected_main/u);
     expect(fitness).toMatch(/Envelope schema identity \/ migration routing[^\n]*implemented_on_protected_main/u);
+    expect(fitness).toMatch(/Unified stable registry release train[^\n]*implemented_on_protected_main/u);
+    expect(fitness).toMatch(/Framework-neutral Markdown package boundary[^\n]*implemented_on_active_pr/u);
+    expect(fitness).toMatch(/CSS paged-media print boundary[^\n]*implemented_on_active_pr/u);
   });
 
   it('records host ownership and deterministic Inkspan authority consistently', () => {
