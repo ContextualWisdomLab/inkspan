@@ -9,43 +9,49 @@ A release starts only from a pushed semantic-version tag in the canonical `Conte
 - the tag has the form `vMAJOR.MINOR.PATCH`, with an optional semantic-version prerelease suffix;
 - the tag exactly matches the JavaScript package version in `package.json`;
 - `CHANGELOG.md` contains a release section for that version;
-- package metadata still identifies the canonical public repository;
-- the tagged commit is already reachable from the canonical `main` branch.
+- package metadata still identifies the canonical public repository; and
+- the tagged commit is already reachable from the canonical `main` branch and is the exact current protected-main tip required by the release workflow.
 
-The main-ancestry gate prevents an unmerged or otherwise unreviewed commit from becoming an official release merely because a matching tag was created.
+The protected-main identity gate prevents an unmerged, stale, or otherwise unreviewed commit from becoming an official release merely because a matching tag was created.
+
+For stable registry releases, the root and Office package versions must both equal the stable release tag. Prerelease tags remain GitHub-Release-only until an explicit cross-ecosystem prerelease mapping is accepted.
 
 ## Privilege-separated release design
 
-Release execution is divided into two jobs with a one-way artifact boundary:
+The GitHub Release path has a source-bearing build stage followed by a source-free publication stage, and external registry publication is downstream of that validated artifact boundary:
 
-1. `build-release-artifacts` has read-only repository access. It checks identity and ancestry, installs dependencies, runs all quality gates, builds both distributions, and creates checksums.
-2. `publish-release` receives only the validated files through GitHub's workflow artifact service. This smaller job alone receives `contents: write`, `id-token: write`, and `attestations: write`.
+1. `build-release-artifacts` has read-only repository access. It checks identity, installs dependencies, runs all quality gates, builds both distributions, and creates checksums.
+2. `publish-release` receives only the validated files through GitHub's workflow artifact service. This smaller job alone receives the GitHub release, OpenID Connect, and attestation authority needed to create the immutable GitHub Release.
+3. `publish-npm` and `publish-pypi` consume the same validated npm tarball and Office wheel after the GitHub Release boundary. They receive OIDC only inside their protected registry environments and do not rebuild the packages.
+4. `verify-registry-publication` has no publishing credential. It performs post-publication digest verification against the public npm and PyPI registry identities and the exact validated local artifacts.
 
-The build job cannot modify releases or request an OpenID Connect signing identity. The publish job does not check out or execute repository source, install package dependencies, run package scripts, or rebuild artifacts. This reduces the amount of third-party and repository-controlled code exposed to publication credentials.
+The build job cannot modify releases or request an OpenID Connect signing identity. Registry publishing jobs do not check out or execute repository source under publication credentials. The verification job does not receive `id-token: write`. This limits the amount of repository-controlled or third-party code exposed to publication authority.
 
 The transferred workflow artifact is retained for one day and stored without redundant compression. Its SHA-256 manifest is checked again after download before attestation or publication.
 
 ## Release gates
 
-The release workflow repeats the merge gates against the tagged source rather than reusing untrusted or stale build output:
+The release workflow repeats merge and product gates against the tagged source rather than reusing untrusted or stale build output:
 
-1. complete-history checkout and canonical-main ancestry verification;
+1. complete-history checkout and exact current protected-main-tip verification;
 2. frozen JavaScript dependency installation;
 3. TypeScript type checking;
 4. repository-required 100% TypeScript coverage;
 5. all production library builds;
-6. packed-package consumer verification for ESM, CommonJS, declarations, CSS, fonts, collaboration, and converter surfaces;
+6. packed-package consumer verification for ESM, CommonJS, declarations, CSS, fonts, collaboration, converter, and headless package surfaces;
 7. demo build;
-8. hash-locked Office dependency installation on Python 3.14;
-9. Office dependency consistency, 100% shipped-symbol docstring coverage, and 100% branch coverage;
-10. Office wheel construction and inspection for the bundled schema and license;
-11. SHA-256 checksum generation for every distributable artifact;
-12. checksum verification after the privilege boundary; and
-13. exact draft asset inventory and digest verification before publication.
+8. stable root/Office/tag version equality before registry publication;
+9. hash-locked Office dependency installation on Python 3.14 for the release build;
+10. Office dependency consistency, 100% shipped-symbol docstring coverage, and 100% branch coverage;
+11. Office wheel construction and inspection for the bundled schema and license;
+12. SHA-256 checksum generation for every distributable artifact;
+13. checksum verification after the privilege boundary;
+14. exact draft asset inventory and digest verification before GitHub publication; and
+15. public npm and PyPI post-publication digest verification for stable registry releases.
 
-No release draft is created or modified unless every build gate succeeds on the tagged commit.
+No release draft is created or modified unless every source-bearing build gate succeeds on the tagged commit. A stable release is not treated as registry-complete until both registry publication jobs and the downstream public digest verification succeed.
 
-## Immutable publication
+## Immutable GitHub publication
 
 Immutable releases must be enabled for the canonical repository before a release tag is pushed. Reading or changing that repository setting requires Administration permission, which the release workflow intentionally does not receive. Instead, the workflow verifies the immutable state of the published release through the ordinary release API available to its narrowly scoped contents token.
 
@@ -56,7 +62,7 @@ Publication follows GitHub's immutable-release sequence:
 3. attach the complete attested artifact set while the release is still mutable;
 4. verify the exact draft asset inventory and GitHub-reported digests;
 5. publish the draft;
-6. require GitHub to report `isImmutable: true` for the published release;
+6. require GitHub to report `isImmutable: true` for the published release; and
 7. verify the release attestation and every expected uploaded asset through GitHub CLI.
 
 ### Exact draft asset inventory
@@ -81,57 +87,65 @@ If GitHub reports that the newly published release is mutable, the workflow imme
 
 A failed rerun may repair same-name assets in an existing draft with `--clobber`, but it can never overwrite a published release. A new successful release identity therefore requires a new reviewed version and tag unless the previous attempt ended only as a deleted mutable release or an unpublished draft. Any unrelated asset left in that unpublished draft is a hard pre-publication failure rather than silently retained content.
 
-Enabling immutable releases is an administrative repository control. Repository owners can enable it in GitHub settings or with the `PUT /repos/ContextualWisdomLab/inkspan/immutable-releases` endpoint using a credential with repository Administration write permission. The release workflow cannot weaken or silently enable the policy.
+Enabling immutable releases is an administrative repository control. Repository owners can enable it in GitHub settings or with the immutable-releases repository API using a credential with repository Administration write permission. The release workflow cannot weaken or silently enable the policy.
 
 ## Published artifacts
 
 Each successful GitHub release contains:
 
 - the exact npm tarball produced by `npm pack`;
-- the `inkspan-office` wheel built from `office/`;
+- the `inkspan-office` wheel built from `office/`; and
 - `SHA256SUMS` covering both distributable artifacts.
 
-The workflow does not rebuild artifacts after the read-only build job. The same transferred files are checksum-verified, attested, uploaded, inventory-checked against the draft, and then published.
+The workflow does not rebuild artifacts after the read-only build job. The same transferred files are checksum-verified, attested, uploaded, inventory-checked against the draft, published to GitHub, and—on stable releases—forwarded to npm and PyPI.
 
 ## Provenance and verification
 
-The isolated publish job requests a short-lived OpenID Connect identity and uses GitHub artifact attestations to create signed SLSA provenance for the npm tarball, Office wheel, and checksum manifest. The repository is public, so the attestation is backed by the public Sigstore transparency infrastructure used by GitHub.
+The isolated GitHub publication job requests a short-lived OpenID Connect identity and uses GitHub artifact attestations to create signed SLSA provenance for the npm tarball, Office wheel, and checksum manifest. The repository is public, so the attestation is backed by the public Sigstore transparency infrastructure used by GitHub.
 
-Consumers should verify release-level and file-level provenance as well as checksums:
+Consumers should verify release-level and file-level provenance as well as checksums, using the actual version and filenames from the selected release:
 
 ```bash
-gh release verify v0.4.2 --repo ContextualWisdomLab/inkspan
+VERSION=0.6.0
 
-gh release verify-asset v0.4.2 contextualwisdomlab-cwl-editor-0.4.2.tgz \
+gh release verify "v${VERSION}" --repo ContextualWisdomLab/inkspan
+
+gh release verify-asset "v${VERSION}" "contextualwisdomlab-cwl-editor-${VERSION}.tgz" \
   --repo ContextualWisdomLab/inkspan
 
-gh attestation verify inkspan_office-0.1.0-py3-none-any.whl \
+gh attestation verify "inkspan_office-${VERSION}-py3-none-any.whl" \
   --repo ContextualWisdomLab/inkspan
 
 sha256sum --check SHA256SUMS
 ```
 
-Use the actual version and filenames from the selected release. A successful attestation proves which repository, workflow, event, and commit built an artifact; it does not by itself prove that the source code is defect-free. Consumers must still apply their own vulnerability, license, policy, and deployment review.
+A successful attestation proves which repository, workflow, event, and commit built an artifact; it does not by itself prove that the source code is defect-free. Consumers must still apply their own vulnerability, license, policy, and deployment review.
+
+## External registries
+
+Stable npm and PyPI publication is implemented on protected `main` through OIDC Trusted Publishing. The protected `publish-npm` job uses environment `npm`; the protected `publish-pypi` job uses environment `pypi`. Registry owners must configure those environments and registry-side Trusted Publisher identities for the canonical repository and `.github/workflows/release.yml`. No long-lived npm or PyPI publishing token is part of the supported path.
+
+The registry jobs consume the same validated npm tarball and Office wheel that passed the GitHub Release artifact boundary. They do not rebuild, rewrite, normalize, or infer package versions while publication authority is present. Stable registry publication requires the root and Office package versions to equal the stable release tag. Under ADR 0019, prerelease tags remain GitHub-Release-only until a separately reviewed SemVer/PEP 440 prerelease mapping exists.
+
+Public registry identity is verified after publication. `verify-registry-publication` compares the public npm tarball and PyPI wheel digest evidence against the exact validated local artifacts and fails closed if publication does not converge. A source merge, tag, GitHub Release, successful npm job, or successful PyPI job alone is not post-publication digest verification.
+
+npm and PyPI are independent immutable publication domains. If one registry accepts a stable version and the other registry or downstream verification fails, the release is a partial-publication incident rather than a success that can be repaired by overwriting the accepted version. Recovery preserves evidence, uses registry-supported deprecation or yank controls when appropriate, and prepares a new corrective Inkspan version. `skip-existing`, retagging an immutable version, or long-lived token fallback are not supported recovery mechanisms.
 
 ## Workflow security properties
 
 - Every third-party GitHub Action is pinned to a complete commit SHA.
-- The default and build-job workflow tokens are read-only.
-- Write, OpenID Connect, and attestation permissions exist only in the source-free publish job.
-- Release tags must identify a commit already merged into `main`.
-- The draft asset set and every GitHub-reported SHA-256 asset digest must exactly match the transferred local release set before publication.
-- The published release must report an immutable state; a mutable outcome is deleted and rejected.
+- The default and source-bearing build-job workflow tokens are read-only.
+- GitHub release, OpenID Connect, and attestation permissions are scoped to the source-free jobs that actually require them.
+- Release tags must identify the exact current protected-main tip.
+- Stable root, Office, and tag versions must match before registry publication.
+- The draft asset set and every GitHub-reported SHA-256 asset digest must exactly match the transferred local release set before GitHub publication.
+- The published GitHub release must report an immutable state; a mutable outcome is deleted and rejected.
 - Existing published assets are never refreshed, replaced, or deleted by a successful workflow path.
+- Stable npm and PyPI publication uses protected OIDC environments rather than long-lived registry secrets.
+- Public registry artifacts are compared against the exact validated local artifacts after publication.
 - No issue, pull-request body, comment, branch name, or other untrusted free text is interpolated into executable release commands.
 - Publication is restricted to the canonical repository and tag-push event.
-- The workflow uses no long-lived npm, PyPI, cloud, or signing secret.
 - Concurrency is scoped to the release tag and does not cancel an in-progress publication.
-
-## External registries
-
-GitHub releases are the initial authenticated distribution channel. npm and PyPI publication should use their respective Trusted Publishing mechanisms rather than repository secrets. Registry publication remains disabled until the package owners configure the canonical repository and release workflow as trusted publishers and establish the required protected environment approval policy.
-
-Enabling registry publication is a separate, reviewed change because a publishing workflow is security-equivalent to a package registry credential. It must not be enabled speculatively or with a long-lived automation token. A registry publishing job should consume the same validated artifact boundary and must not rebuild packages under publication credentials.
 
 ## MSA and interoperability boundary
 

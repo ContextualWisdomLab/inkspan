@@ -6,6 +6,11 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-08-10
+
+### Release
+- Unified the npm editor and `inkspan-office` package manifests at **0.6.0** for the accepted stable OIDC release train; source preparation does not claim registry publication, and public npm/PyPI digest verification remains separate operational acceptance.
+
 ### Fixed
 - Added the selected standalone Markdown or HTML value to an explicitly configured SSR native form field, preserving controlled-value precedence, external form association, React attribute escaping, and the synchronous post-hydration TipTap transaction mirror
 
@@ -14,6 +19,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Kept SSR document disclosure opt-in through `formFieldName`; hidden-field values remain client-controlled submission data and do not replace host authentication, authorization, tenant isolation, CSRF defenses, server validation, durable concurrency, or persistence controls
 - Kept collaborative Yjs document content out of server markup until the host-owned client collaboration lifecycle is bound
 - Added packed headless Markdown authority verification that rejects external runtime imports, dynamic module loaders, ambient network/environment credential access, React/TipTap/Yjs runtime coupling, CWL host coupling, and model credential references from the dedicated conversion artifact
+- Added OIDC Trusted Publishing for the exact validated npm tarball and Office wheel with registry-side credentials kept out of source, build jobs, and long-lived repository secrets; registry publication is verified against the exact artifact digests after publication.
 
 ### Added
 - Added `@contextualwisdomlab/cwl-editor/markdown` as a headless ESM/CommonJS/TypeScript conversion subpath exposing the existing deterministic Markdown/HTML/email/plain-text serializers while sharing framework-neutral safe-link and strict inline-raster policy with the editor instead of importing the React/TipTap extension graph
@@ -21,6 +27,9 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Added one optional construction-time `onSnapshotChange` callback to the framework-free autosave queue and durable autosave session so hosts can observe saving, pending, blocked, recovery, idle, and shutdown state without polling or introducing a subscriber collection
 - Added privacy-minimized revision-scoped selection evidence through `getSelectionRevisionEvidence()`, binding frozen ProseMirror coordinates to the SHA-256 strong revision of the exact same immutable editor state before asynchronous hashing begins
 - Added privacy-minimized document transition evidence for validated previous and resulting canonical revisions through the framework-independent `revision-evidence` subpath, with object/JSON and strict UTF-8 entry points, deterministic previous-then-resulting SHA-256 derivation, frozen revision-only results, and no document body, actor, tenant, time, authorization, signature, transport, model, or durable-write claim
+- Added CSS-only paged-media output that removes interactive editor chrome and screen-only clipping in print, preserves authored document structure, and is exercised against the packed stylesheet in Chromium, Firefox, and WebKit without introducing a PDF service or network authority.
+- Added normalized programmatic editor placeholder semantics so visible placeholder guidance and `aria-placeholder` remain aligned for standalone and collaborative editing without unnecessary editor remounts.
+- Expanded deterministic DOCX fidelity with bounded informative inline PNG figures and alternative text, rich-text paragraph runs, and bounded paragraph and heading alignment while preserving fail-closed schema/runtime limits and Python 3.11–3.14 verification.
 
 ### Reliability
 - Lifecycle observers receive only distinct frozen document-free snapshots; observer exceptions cannot alter save ordering, conflict/failure recovery, queue outcomes, or durable-validator handoff
@@ -41,7 +50,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ### Documentation
 - Added browser-assurance doctoring, operability, test-strategy, clipboard-security, and documentation-fitness coverage for the **dependency-locked Chromium/Firefox/WebKit** release boundary, including Playwright 1.62.0 provenance, exact-head/corpus identity, standards-backed difference policy, evidence minimization, fail-closed behavior, and rollback
-- Added a canonical acquisition documentation spine covering product requirements, technical requirements, public interface/integration contracts, Mermaid UML, a conceptual data/evidence model, a threat model, test strategy, operability/recovery, standards/evidence traceability, and seventeen linked architecture decision records without inventing Inkspan-owned persistence or host authority; the newest decisions make envelope schema identity/host-owned migration routing, cross-engine browser-semantic release assurance, and the protected security-disclosure lifecycle first-class while keeping unimplemented capabilities explicitly planned
+- Added a canonical acquisition documentation spine covering product requirements, technical requirements, public interface/integration contracts, Mermaid UML, a conceptual data/evidence model, a threat model, test strategy, operability/recovery, standards/evidence traceability, and linked architecture decision records without inventing Inkspan-owned persistence or host authority; the newest decisions make envelope schema identity/host-owned migration routing, cross-engine browser-semantic release assurance, protected security disclosure, headless conversion, paged-media presentation, and deterministic Office fidelity first-class while keeping unimplemented capabilities explicitly planned
 - Added machine-checkable canonical-documentation decision coverage that keeps required files, ADR index links and completeness, migration-routing and browser-assurance UML/data-model/traceability evidence, physical-ERD non-applicability, browser-security evidence, offline font provenance/no-runtime-font-egress, standards references, rollback sections, host-vs-Inkspan authority boundaries, implemented-vs-active-PR status, and work-conserving autonomous-maintenance guidance synchronized
 - Documented work-conserving autonomous-maintenance governance in `AGENTS.md` and `CLAUDE.md`: a blocked PR blocks only its lane, status/report/prompt/documentation milestones are intermediate while safe work remains, and the external scheduler owns cadence rather than becoming an Inkspan runtime capability
 - Added a repository-native security disclosure and vulnerability-handling policy with supported pre-1.0 release lines, private GitHub Security Advisory routing and safe public fallback, minimized evidence guidance, explicit Inkspan-versus-host ownership boundaries, no-SLA and non-conformance claim limits, deterministic documentation tests, and APA 7th doctoring grounded in current ISO/IEC 29147:2018, ISO/IEC 30111:2019, final NIST SP 800-218 SSDF 1.1, the draft-status boundary for SSDF 1.2, and GitHub primary documentation
@@ -57,7 +66,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Added deterministic documentation contract tests and APA 7th doctoring grounded in RFC 9110, WCAG 2.2, NIST SP 800-204, NIST SP 800-204D, OWASP ASVS 5.0.0, React, current Next.js App Router guidance, and GitHub Actions primary documentation
 - Added APA 7th doctoring for the SSR native form field, including the WHATWG hidden-input/form-entry contract, React server/hydration continuity, client-controlled-data boundary, host-owned CSRF and acceptance controls, collaboration exclusion, and rollback
 - Added lifecycle-observation doctoring covering bounded callback retention, local-versus-shareable evidence, durable-validator coherence, WCAG 2.2 status-message responsibilities, rollback, and APA 7 references to RFC 9110, WCAG 2.2, and optimistic concurrency research
-- Added headless Markdown package doctoring and standards traceability grounded in CommonMark 0.31.2 and Node.js package exports, with explicit active-PR maturity, shared-policy authority, packed artifact verification, and rollback boundaries
+- Added headless Markdown package doctoring and standards traceability grounded in CommonMark 0.31.2 and Node.js package exports, with explicit protected-main maturity, shared-policy authority, packed artifact verification, and rollback boundaries
 
 ## [0.5.29] — 2026-08-05
 
@@ -133,7 +142,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Evidence inspection uses an iterative traversal bounded to the active envelope's 1,000,000-value and 128-level default ceilings, avoiding recursive call-stack growth on hostile inputs
 
 ### Tests
-- Added deterministic single-flight, re-entrant enqueue, pending supersession, same-revision coalescing, durable-shortcut invalidation, last-saved ordering, blocked durable requeue, conflict pause/resume, callback failure recovery, invalid result, shutdown, frozen-value, hostile-reflection, bounded-flush-waiter, and repository-wide 100% production statement/branch coverage verification
+- Added deterministic single-flight, re-entrant enqueue, pending supersession, same-revision coalescing, durable-shortcut invalidation, last-saved ordering, blocked durable requeue, conflict pause/resume, callback failure recovery, invalid result, shutdown, frozen-value, hostile-reflection, bounded-flush-waiter, and repository-wide 100% production statement, branch, function, and line coverage verification
 - Added realistic adversarial evidence tests for partially frozen document nodes, getters, reflection failures, aliases, cycles, sparse and accessor arrays, unsupported prototypes, non-JSON primitives, excessive depth, and the maximum JSON-value boundary
 - Added exact packed-artifact ESM, CommonJS, and strict TypeScript consumers in an isolated temporary package tree without React, React DOM, TipTap, ProseMirror, or Yjs installed; the packed ESM consumer also proves that mutable nested evidence is rejected before transport
 
@@ -141,7 +150,9 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Added the autosave architecture and doctoring record with APA 7th references to RFC 9110, RFC 8785, Herlihy and Wing (1990), and ISO/IEC 25010:2023
 - Added an operator guide covering correct durable-base `If-Match` usage, local versus durable ownership, SSR/worker compatibility, observability minimization, and CWL/naruon modular integration boundaries
 
-## Pending 0.6.0 — Safe rich clipboard ingestion
+## Historical development note — Safe rich clipboard ingestion
+
+The detailed notes below were maintained while the rich-clipboard work was targeting the future 0.6.0 line. The implemented behavior and its cross-engine release assurance are now summarized in the 0.6.0 release section above; this section remains historical engineering detail rather than a second release identity.
 
 ### Added
 - Added a default `SafeClipboard` TipTap extension and `sanitizeRichClipboardHtml()` API that reconstruct browser-provided `text/html` through a strict semantic allowlist before ProseMirror parsing

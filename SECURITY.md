@@ -11,6 +11,8 @@ Inkspan is still pre-1.0, so security support follows the newest released line r
 | `@contextualwisdomlab/cwl-editor` | latest released `0.5.x` | Security fixes target the newest released editor line. Older pre-1.0 releases may be superseded rather than backported unless a coordinated advisory requires a bounded backport. |
 | `inkspan-office` | latest released `0.1.x` | Security fixes target the newest released Office renderer line and its deterministic packaged artifacts. |
 
+Package manifests and release-candidate changelog headings may move ahead of these public support lines during reviewed release preparation. Only successful public registry publication and its post-publication verification advance a `latest released` support line.
+
 Unreleased branches and pull requests are development evidence, not supported releases. A finding against an unreleased head is still useful and should be reported privately, but support and disclosure decisions are made against affected released artifacts as well as the development fix.
 
 A future stable release may define a broader support window. Until then, this table is the public support contract; an enterprise support agreement may define additional maintained versions separately.
