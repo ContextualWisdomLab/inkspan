@@ -12,6 +12,7 @@ export default defineConfig({
         'src/policy/safeLinkPolicy.ts',
         'src/policy/inlineImagePolicy.ts',
         'src/converter/base64.ts',
+        'src/types/turndown-plugin-gfm.d.ts',
       ],
       exclude: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'src/**/*.spec.ts'],
       rollupTypes: false,
