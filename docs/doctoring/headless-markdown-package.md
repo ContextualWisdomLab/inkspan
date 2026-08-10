@@ -50,6 +50,23 @@ explicit ESM, CommonJS, and TypeScript declaration targets; consumers are not
 expected to reach internal source files. Adding the subpath is additive, while a
 future removal or incompatible signature change is a semantic-versioning event.
 
+Turndown 7.2.4 publishes separate browser and Node entrypoints. Its package
+metadata maps the normal ESM/CommonJS files to browser variants through the
+`browser` field, while the Node entry depends on `@mixmark-io/domino`. Turndown's
+security guidance states that standalone string parsing uses its custom Domino
+parser and that this parser does not execute scripts or download external
+resources. Vite's client-oriented default `resolve.mainFields` prefers
+`browser` before `module`; therefore a nominally headless library build can
+silently select Turndown's browser entry and require a global `document` unless
+the build resolution policy is explicit.
+
+The dedicated Markdown build excludes `browser` from its resolution order and
+bundles Turndown's Node path, including the non-fetching parser, into the package
+artifact. This is a product authority decision rather than a build-performance
+tweak: browser-field selection previously caused the packed Node consumer to
+fail with `ReferenceError: document is not defined` at the actual
+HTML-to-Markdown boundary.
+
 ## Runtime authority and security
 
 The dedicated build produces a self-contained JavaScript artifact. Packed
@@ -63,7 +80,10 @@ consumer verification rejects:
   credential references.
 
 HTML-to-Markdown remains usable in Node without a browser DOM through the
-existing bounded non-fetching parser fallback. The package performs no network
+bundled non-fetching parser path. The packed ESM and CommonJS consumers install a
+throwing `globalThis.document` accessor before loading/calling the Markdown
+subpath, so successful conversion proves that the artifact does not silently
+fall back to ambient browser-document authority. The package performs no network
 request and does not own MIME delivery, recipients, authentication,
 authorization, tenancy, durable persistence, retention, or audit. Full-document
 email output is deterministic content only.
@@ -73,8 +93,10 @@ email output is deterministic content only.
 Permanent tests and packed-artifact checks cover:
 
 - public export-map discovery;
+- explicit non-browser Vite main-field resolution;
 - ESM and CommonJS consumers outside the source tree;
 - strict TypeScript declarations;
+- browserless Node HTML-to-Markdown with hostile ambient `document` access;
 - safe and rejected hyperlinks;
 - plain-text projection;
 - normalization;
@@ -97,4 +119,10 @@ policies.
 
 MacFarlane, J. (2024, January 28). *CommonMark specification* (Version 0.31.2). CommonMark. https://spec.commonmark.org/0.31.2/
 
+Mixmark-io. (2026). *Turndown* (Version 7.2.4) [Computer software]. GitHub. https://github.com/mixmark-io/turndown
+
+Mixmark-io. (2026). *Turndown security policy*. GitHub. https://github.com/mixmark-io/turndown/security
+
 Node.js contributors. (2026). *Modules: Packages*. Node.js documentation. https://nodejs.org/api/packages.html
+
+Vite contributors. (2026). *Shared options: resolve.mainFields*. Vite documentation. https://vite.dev/config/shared-options.html
