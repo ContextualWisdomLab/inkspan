@@ -42,6 +42,11 @@ function createCurrentDocumentEnvelope(
   return createDocumentEnvelope(editor.getJSON(), limits);
 }
 
+/** Return the current usable editor instance, if one still exists. */
+function activeEditor(editor: Editor | null): Editor | null {
+  return editor && !editor.isDestroyed ? editor : null;
+}
+
 /** Expose the stable host-control contract shared by editor surfaces. */
 export function useEditorHandle(
   ref: ForwardedRef<CwlEditorHandle>,
@@ -51,51 +56,50 @@ export function useEditorHandle(
   useImperativeHandle(
     ref,
     (): CwlEditorHandle => ({
-      getEditor: () =>
-        editor && !editor.isDestroyed ? editor : null,
+      getEditor: () => activeEditor(editor),
       focus: () => {
-        editor?.chain().focus().run();
+        activeEditor(editor)?.chain().focus().run();
       },
       blur: () => {
-        editor?.commands.blur();
+        activeEditor(editor)?.commands.blur();
       },
-      canUndo: () =>
-        editor && !editor.isDestroyed ? editor.can().undo() : false,
-      undo: () =>
-        editor && !editor.isDestroyed
-          ? editor.chain().focus().undo().run()
-          : false,
-      canRedo: () =>
-        editor && !editor.isDestroyed ? editor.can().redo() : false,
-      redo: () =>
-        editor && !editor.isDestroyed
-          ? editor.chain().focus().redo().run()
-          : false,
+      canUndo: () => activeEditor(editor)?.can().undo() ?? false,
+      undo: () => activeEditor(editor)?.chain().focus().undo().run() ?? false,
+      canRedo: () => activeEditor(editor)?.can().redo() ?? false,
+      redo: () => activeEditor(editor)?.chain().focus().redo().run() ?? false,
       getValue: () => {
-        if (!editor) return '';
-        return editorHtmlToValue(editor.getHTML(), modeRef.current);
+        const current = activeEditor(editor);
+        if (!current) return '';
+        return editorHtmlToValue(current.getHTML(), modeRef.current);
       },
-      getHTML: () => editor?.getHTML() ?? '',
+      getHTML: () => activeEditor(editor)?.getHTML() ?? '',
       getMarkdown: () => {
-        if (!editor) return '';
-        return editorHtmlToValue(editor.getHTML(), 'markdown');
+        const current = activeEditor(editor);
+        if (!current) return '';
+        return editorHtmlToValue(current.getHTML(), 'markdown');
       },
       getSnapshot: () =>
-        createEditorDocumentSnapshot(editor, modeRef.current),
-      getDocumentEnvelope: (limits) =>
-        editor ? createCurrentDocumentEnvelope(editor, limits) : null,
-      getDocumentEnvelopeJson: (limits) =>
-        editor
+        createEditorDocumentSnapshot(activeEditor(editor), modeRef.current),
+      getDocumentEnvelope: (limits) => {
+        const current = activeEditor(editor);
+        return current ? createCurrentDocumentEnvelope(current, limits) : null;
+      },
+      getDocumentEnvelopeJson: (limits) => {
+        const current = activeEditor(editor);
+        return current
           ? serializeValidatedDocumentEnvelope(
-              createCurrentDocumentEnvelope(editor, limits),
+              createCurrentDocumentEnvelope(current, limits),
             )
-          : '',
-      getDocumentEnvelopeBytes: (limits) =>
-        editor
+          : '';
+      },
+      getDocumentEnvelopeBytes: (limits) => {
+        const current = activeEditor(editor);
+        return current
           ? encodeValidatedDocumentEnvelope(
-              createCurrentDocumentEnvelope(editor, limits),
+              createCurrentDocumentEnvelope(current, limits),
             )
-          : new Uint8Array(),
+          : new Uint8Array();
+      },
       getDocumentEnvelopeRevision: (limits, digestProvider) =>
         editor
           ? createValidatedDocumentEnvelopeRevision(
@@ -142,20 +146,25 @@ export function useEditorHandle(
         return Object.freeze({ revision, selector, textProjection });
       },
       setValue: (next: string) => {
-        if (!editor) return;
-        editor.commands.setContent(
+        const current = activeEditor(editor);
+        if (!current) return;
+        current.commands.setContent(
           editorValueToHtml(next, modeRef.current),
           false,
         );
       },
-      validateDocumentEnvelope: (source, limits) =>
-        editor
-          ? validateDocumentEnvelopeForEditor(editor, source, limits)
-          : false,
-      validateDocumentEnvelopeBytes: (source, limits) =>
-        editor
-          ? validateDocumentEnvelopeBytesForEditor(editor, source, limits)
-          : false,
+      validateDocumentEnvelope: (source, limits) => {
+        const current = activeEditor(editor);
+        return current
+          ? validateDocumentEnvelopeForEditor(current, source, limits)
+          : false;
+      },
+      validateDocumentEnvelopeBytes: (source, limits) => {
+        const current = activeEditor(editor);
+        return current
+          ? validateDocumentEnvelopeBytesForEditor(current, source, limits)
+          : false;
+      },
       restoreDocumentEnvelope: (source, limits) =>
         editor ? restoreDocumentEnvelope(editor, source, limits) : null,
       restoreDocumentEnvelopeBytes: (source, limits) =>
@@ -190,8 +199,10 @@ export function useEditorHandle(
               digestProvider,
             )
           : Promise.resolve(null),
-      validateDocumentJson: (documentJson) =>
-        editor ? validateDocumentJson(editor, documentJson) : false,
+      validateDocumentJson: (documentJson) => {
+        const current = activeEditor(editor);
+        return current ? validateDocumentJson(current, documentJson) : false;
+      },
       setDocumentJson: (documentJson) => {
         if (!editor) return;
         const documentNode = parseDocumentJsonForEditor(editor, documentJson);
@@ -210,9 +221,9 @@ export function useEditorHandle(
         editor.chain().focus().insertContent(documentJson).run();
       },
       clear: () => {
-        editor?.commands.clearContent(true);
+        activeEditor(editor)?.commands.clearContent(true);
       },
-      isEmpty: () => editor?.isEmpty ?? true,
+      isEmpty: () => activeEditor(editor)?.isEmpty ?? true,
     }),
     [editor, modeRef],
   );
