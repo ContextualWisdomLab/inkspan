@@ -29,6 +29,7 @@ import {
   parseDocumentJsonForEditor,
   validateDocumentJson,
 } from '../documentSchema.js';
+import { createTextPositionSelector } from '../textPositionSelectorEvidence.js';
 import type { CwlEditorHandle, EditorMode } from '../types.js';
 import { createEditorDocumentSnapshot } from './editorDocumentSnapshot.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
@@ -112,6 +113,20 @@ export function useEditorHandle(
           digestProvider,
         );
         return Object.freeze({ revision, selection });
+      },
+      getTextPositionSelectorEvidence: async (limits, digestProvider) => {
+        if (!editor) return null;
+        const state = editor.state;
+        const { selector, textProjection } = createTextPositionSelector(
+          state.doc,
+          state.selection,
+        );
+        const envelope = createDocumentEnvelope(state.doc.toJSON(), limits);
+        const revision = await createValidatedDocumentEnvelopeRevision(
+          envelope,
+          digestProvider,
+        );
+        return Object.freeze({ revision, selector, textProjection });
       },
       setValue: (next: string) => {
         if (!editor) return;
