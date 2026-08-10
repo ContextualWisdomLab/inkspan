@@ -1,6 +1,6 @@
 # Browser print and paged-output contract
 
-Status: Active PR / Proposed
+Status: Implemented on protected main
 
 Inkspan's shipped stylesheet is an opt-in presentation contract for the interactive editor. The print boundary defined here makes the same authored document suitable for browser print preview and print-to-PDF without turning Inkspan into a PDF renderer, print service, persistence layer, or durable-export authority.
 
