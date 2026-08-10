@@ -116,9 +116,10 @@ describe('OIDC registry trusted-publishing release contract', () => {
     expect(doctoring).toContain('non-atomic');
     expect(doctoring).toContain('corrective release');
     expect(doctoring).toContain('one release version train');
-    expect(adr).toContain('Status: Proposed');
+    expect(adr).toContain('Status: Accepted');
     expect(adr).toContain('Unified npm and Office release version train');
     expect(adr).toContain('GitHub Release path');
+    expect(adr).toContain('separate operational acceptance evidence');
     expect(doctoring).not.toMatch(/long-lived (?:npm|PyPI) (?:write )?token required/iu);
   });
 });
