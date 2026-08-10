@@ -6,14 +6,6 @@ import { describe, expect, it } from 'vitest';
 const repositoryFile = (path: string): string =>
   readFileSync(resolve(process.cwd(), path), 'utf8');
 
-const releasedMinorLine = (version: string): string => {
-  const [major, minor] = version.split('.');
-  if (major === undefined || minor === undefined) {
-    throw new Error('Expected a semantic package version');
-  }
-  return `${major}.${minor}.x`;
-};
-
 describe('security disclosure and vulnerability-handling documentation', () => {
   it('publishes a repository-native private reporting boundary', () => {
     const policy = repositoryFile('SECURITY.md');
@@ -31,28 +23,23 @@ describe('security disclosure and vulnerability-handling documentation', () => {
     );
   });
 
-  it('keeps each supported release row synchronized with its package manifest', () => {
+  it('keeps supported release rows bound to published artifacts rather than unreleased manifests', () => {
     const policy = repositoryFile('SECURITY.md');
-    const packageManifest = JSON.parse(repositoryFile('package.json')) as {
-      version: string;
-    };
-    const officeManifest = repositoryFile('office/pyproject.toml');
-    const officeVersionMatch = officeManifest.match(
-      /^version = "([^"\r\n]+)"$/m,
+
+    expect(policy).toMatch(
+      /^\| `@contextualwisdomlab\/cwl-editor` \| latest released `\d+\.\d+\.x` \|/mu,
     );
-
-    expect(officeVersionMatch).not.toBeNull();
-    const officeVersion = officeVersionMatch?.[1];
-    expect(officeVersion).toBeDefined();
-    if (officeVersion === undefined) {
-      throw new Error('Expected office/pyproject.toml to declare a version');
-    }
-
-    expect(policy).toContain(
-      `| \`@contextualwisdomlab/cwl-editor\` | latest released \`${releasedMinorLine(packageManifest.version)}\` |`,
+    expect(policy).toMatch(
+      /^\| `inkspan-office` \| latest released `\d+\.\d+\.x` \|/mu,
     );
     expect(policy).toContain(
-      `| \`inkspan-office\` | latest released \`${releasedMinorLine(officeVersion)}\` |`,
+      'Package manifests and release-candidate changelog headings may move ahead of these public support lines during reviewed release preparation.',
+    );
+    expect(policy).toContain(
+      'Only successful public registry publication and its post-publication verification advance a `latest released` support line.',
+    );
+    expect(policy).toContain(
+      'Unreleased branches and pull requests are development evidence, not supported releases.',
     );
   });
 
