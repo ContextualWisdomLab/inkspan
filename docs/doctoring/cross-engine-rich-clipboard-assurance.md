@@ -1,12 +1,12 @@
 # Cross-engine rich-clipboard release assurance
 
-Status: Implemented on active PR
+Status: Implemented on protected main
 
 ## Decision boundary
 
-Inkspan's SafeClipboard runtime is already integrated on protected `main`, but HTML fragment parsing, DOM reconstruction, CSS interpretation, serialization, and ProseMirror parsing are browser semantics. jsdom remains useful deterministic unit evidence; it is not real-engine conformance. The 0.6.0 rich-clipboard publication boundary therefore requires the same committed synthetic fixtures to execute through the supported TipTap/ProseMirror paste path in real Chromium, Firefox, and WebKit on one exact source head.
+Inkspan's SafeClipboard runtime and the cross-engine browser release gate are integrated on protected `main`. HTML fragment parsing, DOM reconstruction, CSS interpretation, serialization, and ProseMirror parsing remain browser semantics. jsdom remains useful deterministic unit evidence; it is not real-engine conformance. The 0.6.0 rich-clipboard publication boundary therefore requires the same committed synthetic fixtures to execute through the supported TipTap/ProseMirror paste path in real Chromium, Firefox, and WebKit on one exact release-candidate source head.
 
-This active implementation uses **Playwright 1.62.0** from the isolated `tests/browser/pnpm-lock.yaml`. The official Playwright **Release notes: Version 1.62** identify Chromium 151.0.7922.34, Mozilla Firefox 153.0, and WebKit 26.5 as the bundled browser versions for that release. The CI evidence records the actual `browser.version()` value for each engine, the Playwright version, operating-system identity, corpus version, SHA-256 of the browser-test `pnpm-lock.yaml`, the exact source head, one fresh browser-run identity, and—on the release path—the SHA-256 of the exact packed npm artifact under test. Those observed values, rather than this prose, are the release evidence when a browser revision changes.
+The protected implementation uses **Playwright 1.62.0** from the isolated `tests/browser/pnpm-lock.yaml`. The official Playwright **Release notes: Version 1.62** identify Chromium 151.0.7922.34, Mozilla Firefox 153.0, and WebKit 26.5 as the bundled browser versions for that release. The CI evidence records the actual `browser.version()` value for each engine, the Playwright version, operating-system identity, corpus version, SHA-256 of the browser-test `pnpm-lock.yaml`, the exact source head, one fresh browser-run identity, and—on the release path—the SHA-256 of the exact packed npm artifact under test. Those observed values, rather than this prose, are the release evidence when a browser revision changes.
 
 ## Test-first evidence
 
@@ -42,7 +42,7 @@ The same rule applies when one project is missing, skipped, cancelled, unable to
 
 Playwright/browser upgrades are compatibility events. Update the immutable browser-test lock, rerun every engine and the complete corpus, review any difference against current standards, and accept the new evidence only on the unchanged exact head. Do not transfer browser evidence from a predecessor commit or prior workflow attempt.
 
-If the browser gate itself is faulty, rollback may revert the gate change while explicitly leaving the 0.6.0 rich-clipboard publication claim unaccepted. After protected integration, removing a required engine, weakening the corpus, broadening normalization beyond unordered JSON object-member canonicalization, dropping packed-artifact binding/current-run identity/lock revalidation, or replacing the exact-head evidence contract requires a superseding ADR and new threat analysis. A sanitizer defect discovered by the gate is fixed at the runtime boundary test-first rather than hidden in an engine-specific expectation.
+If the browser gate itself is faulty, rollback may revert the gate change while explicitly leaving the 0.6.0 rich-clipboard publication claim unaccepted. Removing a required engine, weakening the corpus, broadening normalization beyond unordered JSON object-member canonicalization, dropping packed-artifact binding/current-run identity/lock revalidation, or replacing the exact-head evidence contract requires a superseding ADR and new threat analysis. A sanitizer defect discovered by the gate is fixed at the runtime boundary test-first rather than hidden in an engine-specific expectation.
 
 ## Claim limits
 
