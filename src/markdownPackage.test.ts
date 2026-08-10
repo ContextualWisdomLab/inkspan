@@ -53,7 +53,7 @@ describe('headless deterministic Markdown package contract', () => {
     expect(existsSync(resolve(process.cwd(), 'src/markdown/package.ts'))).toBe(true);
   });
 
-  it('pins the headless build to Turndown Node resolution rather than Vite browser defaults', () => {
+  it('pins the headless build to Turndown Node resolution and transforms its mixed CommonJS edge', () => {
     const configuration = repositoryFile('vite.markdown.config.ts');
     expect(configuration).toContain(
       "mainFields: ['module', 'jsnext:main', 'jsnext', 'main']",
@@ -62,6 +62,8 @@ describe('headless deterministic Markdown package contract', () => {
     expect(configuration).not.toContain(
       "mainFields: ['browser', 'module', 'jsnext:main', 'jsnext']",
     );
+    expect(configuration).toContain('commonjsOptions:');
+    expect(configuration).toContain('transformMixedEsModules: true');
   });
 
   it('requires serializers to depend on framework-neutral link and image policy modules', () => {
