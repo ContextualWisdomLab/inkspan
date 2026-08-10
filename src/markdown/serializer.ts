@@ -286,6 +286,32 @@ export interface MarkdownToEmailHtmlOptions {
   fullDocument?: boolean;
   /** Document `<title>` when `fullDocument` is true. Default `"Message"`. */
   title?: string;
+  /**
+   * Primary document language for the generated root `<html>` element.
+   *
+   * Applied only when `fullDocument` is true. Blank values are omitted. A
+   * non-blank value must be accepted by the runtime's ECMA-402 locale parser;
+   * the canonicalized locale is emitted as the BCP 47 `lang` value.
+   */
+  languageTag?: string;
+  /**
+   * Base writing direction for the generated root `<html>` element.
+   * Applied only when `fullDocument` is true.
+   */
+  textDirection?: 'ltr' | 'rtl' | 'auto';
+}
+
+/** Canonicalize one optional full-document language tag or fail closed. */
+function canonicalizeEmailLanguageTag(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  if (!normalized) return undefined;
+  try {
+    return Intl.getCanonicalLocales(normalized).join('');
+  } catch {
+    throw new RangeError(
+      'Email document language must be a valid BCP 47 language tag supported by Intl.',
+    );
+  }
 }
 
 /**
@@ -299,6 +325,8 @@ export interface MarkdownToEmailHtmlOptions {
  *   targets are emitted as ordinary text rather than clickable anchors
  * - Returns a body fragment by default; set `fullDocument: true` for a
  *   self-contained document shell
+ * - Full documents can preserve a canonicalized document language and explicit
+ *   `ltr`, `rtl`, or `auto` base direction on the root `<html>` element
  *
  * This is the intentional commercial bridge from the editor's Markdown mode
  * to an HTML email body — not a full MIME multipart builder.
@@ -310,9 +338,16 @@ export function markdownToEmailHtml(
   const body = markdownToHtml(markdown).trim();
   if (!options.fullDocument) return body;
   const title = escapeHtml(options.title ?? 'Message');
+  const languageTag = canonicalizeEmailLanguageTag(options.languageTag);
+  const languageAttribute = languageTag
+    ? ` lang="${escapeHtml(languageTag)}"`
+    : '';
+  const directionAttribute = options.textDirection
+    ? ` dir="${options.textDirection}"`
+    : '';
   return [
     '<!DOCTYPE html>',
-    '<html>',
+    `<html${languageAttribute}${directionAttribute}>`,
     '<head>',
     '<meta charset="utf-8" />',
     `<title>${title}</title>`,
