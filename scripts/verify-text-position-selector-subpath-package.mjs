@@ -29,11 +29,16 @@ const packageDirectory = join(
   ...packageJson.name.split('/'),
 );
 
-// The selector bundle is intentionally self-contained. Type-only ProseMirror
-// declarations are allowed, but emitted JavaScript must not acquire runtime
-// authority through any external static/dynamic import, re-export, or require.
+// The selector bundle is intentionally self-contained. Any dynamic module-loader
+// call is authority-bearing regardless of whether its argument is a string,
+// template literal, identifier, or computed expression, so reject the call form
+// before considering static imports and re-exports.
+const dynamicLoaderPattern = /(?:\bimport\s*\(|\brequire\s*\()/u;
+
+// Static imports and re-exports are rejected across line breaks as well. The
+// emitted selector bundle should have no external runtime module dependency.
 const externalRuntimeImportPattern =
-  /(?:\bimport\s*(?:\(\s*['"][^'"]+['"]\s*\)|(?:[^'"\n;]*?\sfrom\s*)?['"][^'"]+['"])|\bexport\s+[^'"\n;]*?\sfrom\s*['"][^'"]+['"]|\brequire\s*\(\s*['"][^'"]+['"]\s*\))/u;
+  /(?:\bimport\s+(?:[^'";]*?\sfrom\s*)?['"][^'"]+['"]|\bexport\s+[^'";]*?\sfrom\s*['"][^'"]+['"])/u;
 
 // A self-contained bundle must also remain free of ambient network and common
 // environment-backed credential authority even when no module import is needed.
@@ -90,6 +95,11 @@ function verifyAuthorityFreeBundles() {
   ]) {
     const bundlePath = join(packageDirectory, 'dist', filename);
     const bundleSource = readFileSync(bundlePath, 'utf8');
+    assert.equal(
+      dynamicLoaderPattern.test(bundleSource),
+      false,
+      `${filename} must not invoke dynamic module loaders`,
+    );
     assert.doesNotMatch(
       bundleSource,
       externalRuntimeImportPattern,
