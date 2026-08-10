@@ -102,4 +102,28 @@ describe('accessible editor placeholder semantics', () => {
       collaborationDocument.destroy();
     }
   });
+
+  it('omits collaborative placeholder guidance when the host supplies none', async () => {
+    const collaborationDocument = new Y.Doc();
+    const editorRef = createRef<CwlEditorHandle>();
+    try {
+      render(
+        <CollaborativeCwlEditor
+          ref={editorRef}
+          document={collaborationDocument}
+          ariaLabel="Shared report editor"
+          hideToolbar
+        />,
+      );
+
+      const textbox = await screen.findByRole('textbox', {
+        name: 'Shared report editor',
+      });
+      await waitFor(() => expect(editorRef.current?.getEditor()).not.toBeNull());
+      expect(textbox).not.toHaveAttribute('aria-placeholder');
+      expect(visualPlaceholder(textbox)).toBeNull();
+    } finally {
+      collaborationDocument.destroy();
+    }
+  });
 });
