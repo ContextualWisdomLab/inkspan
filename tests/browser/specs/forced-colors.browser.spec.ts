@@ -35,7 +35,7 @@ test.beforeEach(async ({ page }) => {
         </nav>
         <div class="cwl-collaboration-status">Connected</div>
         <div class="cwl-editor__surface">
-          <article class="cwl-editor__content">
+          <article class="cwl-editor__content" contenteditable="true">
             <p class="is-editor-empty" data-placeholder="Placeholder"></p>
             <p><a href="https://example.invalid/">Link</a> <code>code</code></p>
             <pre>pre</pre>
@@ -132,5 +132,19 @@ test('preserves state and structural cues in forced colors', async ({ page }) =>
     cellBorderWidth: '1px',
     caretBorderWidth: '2px',
     labelVisible: true,
+  });
+
+  const editable = page.locator('.cwl-editor__content');
+  await editable.focus();
+  const editableFocusEvidence = await editable.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      outlineStyle: style.outlineStyle,
+      outlineWidth: style.outlineWidth,
+    };
+  });
+  expect(editableFocusEvidence).toEqual({
+    outlineStyle: 'solid',
+    outlineWidth: '2px',
   });
 });
