@@ -36,7 +36,11 @@ request = {
     "title": "Quarterly brief",
     "blocks": [
         {"type": "heading", "level": 1, "text": "Executive summary"},
-        {"type": "paragraph", "text": "Revenue grew while churn fell."},
+        {
+            "type": "paragraph",
+            "text": "Revenue grew while churn fell.",
+            "alignment": "justify",
+        },
         {
             "type": "rich_paragraph",
             "runs": [
@@ -44,6 +48,7 @@ request = {
                 {"text": "improved", "italic": True},
                 {"text": " year over year.", "underline": True},
             ],
+            "alignment": "center",
         },
         {
             "type": "table",
@@ -86,7 +91,8 @@ Python call stack before contract validation.
 Supported shapes are deliberately small and predictable:
 
 - DOCX: headings, plain and **bounded rich-text paragraphs**, ordered/unordered
-  lists, tables, **informative inline PNG figures**, and page breaks.
+  lists, tables, **informative inline PNG figures**, and page breaks. Plain and
+  rich paragraphs may also preserve one bounded horizontal alignment.
 - XLSX: multiple worksheets, scalar cells, header styling, freeze panes,
   filters, and bounded automatic column sizing.
 - PPTX: title/subtitle slides and title/bullet slides with nesting levels.
@@ -119,6 +125,27 @@ another source format into the Office request. The standards and library basis
 is recorded in
 [`docs/doctoring/docx-rich-text-runs.md`](../docs/doctoring/docx-rich-text-runs.md),
 and ADR 0023 records the protected boundary.
+
+### DOCX bounded paragraph alignment
+
+DOCX `paragraph` and `rich_paragraph` blocks may optionally declare an exact
+`alignment` value of `left`, `center`, `right`, or `justify`. Both shapes use the
+same public JSON Schema and runtime mapping. Omitting `alignment` preserves the
+Word style/default and does not force a justification property into the output.
+
+Alignment is deliberately fail-closed: case variants, whitespace-padded values,
+aliases, numbers, booleans, null, and unsupported strings are rejected rather
+than normalized or coerced. The renderer maps accepted strings through the
+public `python-docx` paragraph alignment API and verifies explicit output in
+WordprocessingML while preserving deterministic bytes and atomic publication.
+
+This contract does not grant arbitrary paragraph-style authority. Heading,
+list, table, title, spacing, indentation, tab, font, color, page-layout, or raw
+OOXML control remains outside this protected slice. Hosts continue to own
+source-format interpretation and layout policy. The standards and library basis
+is recorded in
+[`docs/doctoring/docx-paragraph-alignment.md`](../docs/doctoring/docx-paragraph-alignment.md),
+and ADR 0024 records the protected boundary.
 
 ### DOCX informative PNG figures
 
@@ -186,12 +213,15 @@ python -m pip wheel . --no-deps --wheel-dir dist
 The suite re-opens every rendered format with its native library and verifies
 byte-for-byte deterministic output. DOCX rich-paragraph acceptance additionally
 inspects ordered run text and explicit Word run properties while enforcing the
-shared 4,096-run and non-empty-text contract. DOCX image acceptance additionally
-inspects the generated ZIP/OOXML package for the exact embedded PNG bytes,
-dimensions, and accessible description. CI installs runtime and test dependencies
-from `requirements-ci.txt` with wheel hashes and executes the complete Office
-matrix on Python 3.11, Python 3.12, Python 3.13, and Python 3.14. The package
-metadata rejects unverified Python 3.15+ installs until that runtime is added to
-the tested support matrix. CI enforces 100% statement/branch and shipped-symbol
+shared 4,096-run and non-empty-text contract. DOCX paragraph-alignment
+acceptance additionally reopens plain/rich paragraphs and inspects explicit
+WordprocessingML justification while preserving inherited/default behavior when
+the field is omitted. DOCX image acceptance additionally inspects the generated
+ZIP/OOXML package for the exact embedded PNG bytes, dimensions, and accessible
+description. CI installs runtime and test dependencies from
+`requirements-ci.txt` with wheel hashes and executes the complete Office matrix
+on Python 3.11, Python 3.12, Python 3.13, and Python 3.14. The package metadata
+rejects unverified Python 3.15+ installs until that runtime is added to the
+tested support matrix. CI enforces 100% statement/branch and shipped-symbol
 docstring coverage, then builds and inspects the distributable wheel. Code and
 all three direct runtime dependencies are MIT-licensed.
