@@ -193,28 +193,38 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
       if (!editor.isEditable) return false;
       const images = files.filter((file) => file.type.startsWith('image/'));
       if (images.length === 0) return false;
-      for (const file of images) {
-        imageFileToInlineDataUri(file, options)
-          .then((src) => {
+
+      const insertInSourceOrder = async () => {
+        let insertionPosition = at;
+        for (const file of images) {
+          try {
+            const src = await imageFileToInlineDataUri(file, options);
             if (editor.isDestroyed || !editor.isEditable) return;
             const alternativeText = window.prompt(
               'Image alternative text. Leave empty only if this image is decorative.',
               '',
             );
-            if (alternativeText === null) return;
+            if (alternativeText === null) continue;
             const node = editor.schema.nodes.image.create({
               src,
               alt: alternativeText,
             });
             const pos =
-              typeof at === 'number' ? at : editor.state.selection.from;
+              typeof insertionPosition === 'number'
+                ? insertionPosition
+                : editor.state.selection.from;
             const transaction = editor.state.tr.insert(pos, node);
             editor.view.dispatch(transaction);
-          })
-          .catch((error: unknown) => {
+            if (typeof insertionPosition === 'number') {
+              insertionPosition = pos + node.nodeSize;
+            }
+          } catch (error: unknown) {
             options.onError?.(normalizeImageError(error));
-          });
-      }
+          }
+        }
+      };
+
+      void insertInSourceOrder();
       return true;
     };
 
