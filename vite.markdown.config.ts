@@ -4,7 +4,14 @@ import dts from 'vite-plugin-dts';
 
 // Headless deterministic serializer build: bundle the conversion dependencies so
 // consumers can use the public subpath without importing the React/TipTap graph.
+// Vite's client defaults prefer a package's `browser` field. Turndown uses that
+// field to select a browser-only build that expects a global `document`, whereas
+// its Node entry bundles the non-fetching Domino parser. This headless package
+// therefore deliberately excludes `browser` from main-field resolution.
 export default defineConfig({
+  resolve: {
+    mainFields: ['module', 'jsnext:main', 'jsnext', 'main'],
+  },
   plugins: [
     dts({
       include: [
