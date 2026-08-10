@@ -18,10 +18,10 @@ describe('inline image decoded-size preflight', () => {
         } satisfies Partial<Base64SizeError>),
       );
       expect(
-        decodeSpy.mock.calls.some(
-          ([value, encoding]) =>
-            value === 'QUJDRA==' && encoding === 'base64',
-        ),
+        decodeSpy.mock.calls.some((call) => {
+          const args = call as unknown as readonly unknown[];
+          return args[0] === 'QUJDRA==' && args[1] === 'base64';
+        }),
       ).toBe(false);
     } finally {
       decodeSpy.mockRestore();
