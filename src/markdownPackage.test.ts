@@ -77,16 +77,35 @@ describe('headless deterministic Markdown package contract', () => {
       process.cwd(),
       'scripts/verify-markdown-subpath-package.mjs',
     );
+    const authorityScannerPath = resolve(
+      process.cwd(),
+      'scripts/javascript-runtime-authority.mjs',
+    );
+    const authorityScannerTestPath = resolve(
+      process.cwd(),
+      'scripts/javascript-runtime-authority.test.mjs',
+    );
     expect(existsSync(verifierPath)).toBe(true);
-    if (!existsSync(verifierPath)) return;
+    expect(existsSync(authorityScannerPath)).toBe(true);
+    expect(existsSync(authorityScannerTestPath)).toBe(true);
+    if (!existsSync(verifierPath) || !existsSync(authorityScannerPath)) return;
 
     const verifier = readFileSync(verifierPath, 'utf8');
-    expect(verifier).toContain('externalRuntimeImportPattern');
-    expect(verifier).toContain('dynamicLoaderPattern');
+    const authorityScanner = readFileSync(authorityScannerPath, 'utf8');
+    expect(verifier).toContain('findRuntimeModuleAuthority');
+    expect(verifier).toContain('moduleAuthority.length');
     expect(verifier).toContain('ambientAuthorityPattern');
     expect(verifier).toContain('ambient document access is forbidden');
     expect(verifier).toContain('React');
     expect(verifier).toContain('@tiptap');
     expect(verifier).toContain('yjs');
+    expect(authorityScanner).toContain('ts.createSourceFile');
+    expect(authorityScanner).toContain('static-import');
+    expect(authorityScanner).toContain('static-reexport');
+    expect(authorityScanner).toContain('commonjs-require');
+    expect(authorityScanner).toContain('dynamic-import');
+    expect(packageMetadata.scripts['test:package-config']).toContain(
+      'javascript-runtime-authority.test.mjs',
+    );
   });
 });
