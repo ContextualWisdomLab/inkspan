@@ -196,7 +196,7 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
       for (const file of images) {
         imageFileToInlineDataUri(file, options)
           .then((src) => {
-            if (editor.isDestroyed) return;
+            if (editor.isDestroyed || !editor.isEditable) return;
             const alternativeText = window.prompt(
               'Image alternative text. Leave empty only if this image is decorative.',
               '',
