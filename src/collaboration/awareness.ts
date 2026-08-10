@@ -29,7 +29,7 @@ export function serializeCollaborationUser(
   user: CollaborationUser,
 ): CollaborationCursorUser {
   const id = user.userId.trim();
-  const name = user.displayName.trim();
+  const name = user.displayName.trim().slice(0, MAX_CURSOR_LABEL_LENGTH);
   const color = user.cursorColor.trim();
 
   if (id === '') {
