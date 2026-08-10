@@ -75,5 +75,29 @@ describe('CwlEditor imperative history control', () => {
     expect(handle.undo()).toBe(false);
     expect(handle.canRedo()).toBe(false);
     expect(handle.redo()).toBe(false);
+
+    expect(handle.getValue()).toBe('');
+    expect(handle.getHTML()).toBe('');
+    expect(handle.getMarkdown()).toBe('');
+    expect(handle.getSnapshot()).toEqual({
+      mode: 'markdown',
+      value: '',
+      html: '',
+      markdown: '',
+      plainText: '',
+      documentJson: null,
+      isEmpty: true,
+    });
+    expect(handle.getDocumentEnvelope()).toBeNull();
+    expect(handle.getDocumentEnvelopeJson()).toBe('');
+    expect(handle.getDocumentEnvelopeBytes()).toEqual(new Uint8Array());
+    expect(handle.validateDocumentEnvelope({})).toBe(false);
+    expect(handle.validateDocumentEnvelopeBytes(new Uint8Array())).toBe(false);
+    expect(handle.validateDocumentJson({ type: 'doc', content: [] })).toBe(false);
+    expect(handle.isEmpty()).toBe(true);
+    expect(() => handle.focus()).not.toThrow();
+    expect(() => handle.blur()).not.toThrow();
+    expect(() => handle.setValue('ignored')).not.toThrow();
+    expect(() => handle.clear()).not.toThrow();
   });
 });
