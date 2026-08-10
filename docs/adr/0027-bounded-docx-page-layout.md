@@ -69,7 +69,7 @@ Acceptance requires all of the following on one exact live-base-integrated head:
 
 PR #141 currently supplies the implementation and exact-head machine evidence but remains Draft because issue #118 still owns the 0.6.0 registry operational boundary. This ADR therefore remains Proposed.
 
-## Rollback and supersession
+## Rollback or supersession
 
 Before protected integration, rollback is branch closure. After a future accepted merge, rollback is a normal revert that removes the optional schema field, page-layout adapter, tests, and associated release documentation together. A revert must not leave documentation claiming support that protected code no longer provides. Any later widening to multiple sections or arbitrary dimensions should supersede this ADR explicitly.
 
