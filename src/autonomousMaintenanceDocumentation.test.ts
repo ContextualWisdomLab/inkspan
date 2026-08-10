@@ -6,6 +6,9 @@ import { describe, expect, it } from 'vitest';
 const repositoryFile = (path: string): string =>
   readFileSync(resolve(process.cwd(), path), 'utf8');
 
+const assessmentPath =
+  'docs/assessments/2026-08-10-conversation-documentation-reassessment.md';
+
 describe('autonomous maintenance and acquisition documentation', () => {
   it('treats user-reported premature stopping as a control-plane incident', () => {
     const agents = repositoryFile('AGENTS.md');
@@ -20,30 +23,44 @@ describe('autonomous maintenance and acquisition documentation', () => {
     }
   });
 
-  it('keeps release source readiness separate from registry operational acceptance', () => {
-    const fitness = repositoryFile('docs/DOCUMENTATION_FITNESS.md');
-    const traceability = repositoryFile('docs/TRACEABILITY.md');
+  it('keeps the dated whole-conversation reassessment discoverable', () => {
+    const index = repositoryFile('docs/README.md');
+    const assessment = repositoryFile(assessmentPath);
 
-    expect(fitness).toContain('protected manifests now agree at `0.6.0`');
-    expect(fitness).toContain('registry operational acceptance remains open under issue #118');
-    expect(fitness).not.toContain('next stable registry release still requires one coherent npm/Office/tag version');
-    expect(traceability).toContain('Unified 0.6.0 source candidate');
-    expect(traceability).toContain('public npm/PyPI digest verification remains operational evidence');
+    expect(index).toContain(
+      'assessments/2026-08-10-conversation-documentation-reassessment.md',
+    );
+    expect(assessment).toContain('## Fitness matrix');
+    expect(assessment).toContain('## Whole-conversation coverage decision');
+    expect(assessment).toContain('## Sufficiency decision');
+    expect(assessment).toContain('physical relational ERD');
+    expect(assessment).toContain('`not_applicable`');
+  });
+
+  it('keeps release source readiness separate from registry operational acceptance', () => {
+    const assessment = repositoryFile(assessmentPath);
+
+    expect(assessment).toContain('protected manifests now agree at `0.6.0`');
+    expect(assessment).toContain(
+      'Registry operational acceptance remains open under issue #118',
+    );
+    expect(assessment).toContain(
+      'Source integration does not prove that `v0.6.0` exists',
+    );
   });
 
   it('records the current DOCX hyperlink line without promoting it to shipped behavior', () => {
-    const fitness = repositoryFile('docs/DOCUMENTATION_FITNESS.md');
-    const traceability = repositoryFile('docs/TRACEABILITY.md');
+    const assessment = repositoryFile(assessmentPath);
 
-    expect(fitness).toMatch(
-      /DOCX bounded external hyperlinks[^\n]*owned_by_separate_active_pr[^\n]*implemented_on_active_pr/u,
+    expect(assessment).toMatch(
+      /ADR graph[^\n]*owned by active PR #137/u,
     );
-    expect(fitness).toContain('PR #137');
-    expect(traceability).toMatch(
-      /DOCX bounded external hyperlinks[^\n]*Active PR #137[^\n]*Proposed/u,
+    expect(assessment).toContain(
+      'PR #137 implements the current proposed bounded external-hyperlink contract',
     );
-    expect(traceability).not.toMatch(
-      /DOCX bounded external hyperlinks[^\n]*implemented on protected `main`/iu,
+    expect(assessment).toContain('It is `implemented_on_active_pr`');
+    expect(assessment).not.toMatch(
+      /PR #137[^\n]*implemented_on_protected_main/u,
     );
   });
 });
