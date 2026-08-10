@@ -90,6 +90,7 @@ describe('CwlEditor form accessibility metadata', () => {
 
     const editor = await screen.findByRole('textbox', { name: 'Archived body' });
     fireEvent.keyDown(editor, { key: 'k', ctrlKey: true });
+    fireEvent.keyDown(editor, { key: 'k', metaKey: true });
 
     expect(prompt).not.toHaveBeenCalled();
   });
