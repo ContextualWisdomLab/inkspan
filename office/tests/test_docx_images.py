@@ -22,6 +22,8 @@ _PNG_BYTES = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WlXkWQAAAAASUVORK5CYII="
 )
 _PNG_DATA_URI = "data:image/png;base64," + base64.b64encode(_PNG_BYTES).decode("ascii")
+_MAX_IMAGE_BYTES = 10 * 1024 * 1024
+_MAX_BASE64_CHARACTERS = ((_MAX_IMAGE_BYTES + 2) // 3) * 4
 
 
 def _png_header(width: int, height: int) -> bytes:
@@ -143,6 +145,24 @@ def test_docx_image_rejects_non_png_and_non_strict_data_urls() -> None:
         render_office_document(_request(source="data:image/png;base64,"))
     with pytest.raises(OfficeDocumentError, match="strict base64 PNG data"):
         render_office_document(_request(source="data:image/png;base64,not base64!"))
+
+
+def test_docx_image_enforces_encoded_and_decoded_byte_budgets() -> None:
+    """Both the pre-decode character ceiling and exact decoded-byte ceiling must fail closed."""
+
+    too_many_encoded_characters = (
+        "data:image/png;base64," + "A" * (_MAX_BASE64_CHARACTERS + 1)
+    )
+    with pytest.raises(OfficeDocumentError, match="PNG payload exceeds"):
+        render_office_document(_request(source=too_many_encoded_characters))
+
+    # 10 MiB is congruent to 1 modulo 3, so 10 MiB + 1 byte has the same
+    # base64 character length as the allowed maximum and reaches the exact
+    # post-decode byte guard instead of the cheaper encoded-length guard.
+    one_byte_over_decoded_limit = b"x" * (_MAX_IMAGE_BYTES + 1)
+    assert len(base64.b64encode(one_byte_over_decoded_limit)) == _MAX_BASE64_CHARACTERS
+    with pytest.raises(OfficeDocumentError, match="PNG payload exceeds"):
+        render_office_document(_request(source=_data_uri(one_byte_over_decoded_limit)))
 
 
 def test_docx_image_rejects_malformed_and_unsafe_png_dimensions() -> None:
