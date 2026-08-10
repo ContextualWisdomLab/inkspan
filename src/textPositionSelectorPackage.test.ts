@@ -81,4 +81,15 @@ describe('React-free text-position selector package contract', () => {
     expect(guide).toMatch(/any external runtime module import/iu);
     expect(guide).toMatch(/ambient network[^.]*credential/iu);
   });
+
+  it('rejects every dynamic import and require call regardless of argument syntax', () => {
+    const verifier = repositoryFile(
+      'scripts/verify-text-position-selector-subpath-package.mjs',
+    );
+
+    expect(verifier).toContain('dynamicLoaderPattern');
+    expect(verifier).toContain('\\bimport\\s*\\(');
+    expect(verifier).toContain('\\brequire\\s*\\(');
+    expect(verifier).toContain('dynamicLoaderPattern.test(bundleSource)');
+  });
 });
