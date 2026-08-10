@@ -7,6 +7,8 @@ export type EditorAriaInvalid = boolean | 'grammar' | 'spelling';
 export interface EditorAccessibilityOptions {
   /** Fallback accessible name when no host label reference is supplied. */
   defaultLabel: string;
+  /** Visual empty-editor guidance mirrored to `aria-placeholder` when non-blank. */
+  placeholder?: string;
   /** BCP 47 language tag for the authored document. */
   languageTag?: string;
   /** Base writing direction for the authored document. */
@@ -40,13 +42,14 @@ function normalizedAccessibilityValue(
  * collaborative editor surfaces.
  *
  * A visible label referenced with `aria-labelledby` takes precedence over the
- * fallback string label. Optional language and ID-reference values are omitted
- * when blank so browsers and assistive technologies never receive empty
- * metadata relationships.
+ * fallback string label. Optional placeholder, language, and ID-reference
+ * values are omitted when blank. Placeholder guidance remains supplemental and
+ * never replaces the accessible name.
  */
 export function buildEditorAccessibilityAttributes(
   options: EditorAccessibilityOptions,
 ): Record<string, string> {
+  const placeholder = normalizedAccessibilityValue(options.placeholder);
   const languageTag = normalizedAccessibilityValue(options.languageTag);
   const labelledBy = normalizedAccessibilityValue(options.ariaLabelledBy);
   const describedBy = normalizedAccessibilityValue(options.ariaDescribedBy);
@@ -59,6 +62,7 @@ export function buildEditorAccessibilityAttributes(
     'aria-readonly': String(!options.editable),
   };
 
+  if (placeholder) attributes['aria-placeholder'] = placeholder;
   if (languageTag) attributes.lang = languageTag;
   if (options.textDirection) attributes.dir = options.textDirection;
   if (labelledBy) {
