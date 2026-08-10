@@ -30,6 +30,9 @@ describe('OIDC registry trusted-publishing release contract', () => {
     expect(npmJob).toContain('contents: read');
     expect(npmJob).toContain('id-token: write');
     expect(npmJob).toContain("node-version: '24'");
+    expect(npmJob).toContain(
+      'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020',
+    );
     expect(npmJob).toContain("!contains(github.ref_name, '-')");
     expect(npmJob).toContain('package/package.json');
     expect(npmJob).toContain('npm package version must match stable release version');
@@ -41,7 +44,7 @@ describe('OIDC registry trusted-publishing release contract', () => {
   });
 
   it('publishes only the validated matching-version Office wheel through the immutable official PyPA action', () => {
-    const pypiJob = workflowJob(workflow, 'publish-pypi');
+    const pypiJob = workflowJob(workflow, 'publish-pypi', 'verify-registry-publication');
 
     expect(pypiJob).toContain('needs: [publish-release]');
     expect(pypiJob).toContain('runs-on: ubuntu-24.04');
@@ -59,6 +62,22 @@ describe('OIDC registry trusted-publishing release contract', () => {
     expect(pypiJob).not.toMatch(/skip-existing:\s*true/u);
   });
 
+  it('verifies public npm and PyPI registry identity against the exact validated artifacts', () => {
+    const verificationJob = workflowJob(workflow, 'verify-registry-publication');
+
+    expect(verificationJob).toContain('needs: [publish-npm, publish-pypi]');
+    expect(verificationJob).toContain('permissions:\n      contents: read');
+    expect(verificationJob).not.toContain('id-token: write');
+    expect(verificationJob).toContain('sha256sum --check SHA256SUMS');
+    expect(verificationJob).toContain('npm view');
+    expect(verificationJob).toContain('dist.tarball');
+    expect(verificationJob).toContain('registry.npmjs.org');
+    expect(verificationJob).toContain('pypi.org/pypi/inkspan-office');
+    expect(verificationJob).toContain('digests.sha256');
+    expect(verificationJob).toContain('Registry publication verification did not converge');
+    expect(verificationJob).not.toMatch(/secrets\./u);
+  });
+
   it('keeps OIDC authority out of build and workflow-global permissions', () => {
     const jobsIndex = workflow.indexOf('\njobs:');
     expect(jobsIndex).toBeGreaterThan(-1);
@@ -70,7 +89,7 @@ describe('OIDC registry trusted-publishing release contract', () => {
     expect(buildJob).not.toContain('id-token: write');
   });
 
-  it('records external trust prerequisites and non-atomic registry recovery', () => {
+  it('records external trust prerequisites, post-publish verification, and non-atomic recovery', () => {
     const doctoring = repositoryFile('docs/doctoring/registry-trusted-publishing.md');
     const adr = repositoryFile('docs/adr/0019-unified-release-version-train.md');
 
@@ -81,6 +100,8 @@ describe('OIDC registry trusted-publishing release contract', () => {
     expect(doctoring).toContain('environment `pypi`');
     expect(doctoring).toContain('npm CLI 11.5.1');
     expect(doctoring).toContain('Node 22.14.0');
+    expect(doctoring).toContain('post-publish');
+    expect(doctoring).toContain('exact artifact');
     expect(doctoring).toContain('non-atomic');
     expect(doctoring).toContain('corrective release');
     expect(doctoring).toContain('one release version train');
