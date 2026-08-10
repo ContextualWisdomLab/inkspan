@@ -38,7 +38,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
           cache-dependency-path: office/requirements-ci.txt
-      - name: Verify release identity and main ancestry
+      - name: Verify release identity and current main tip
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
@@ -66,8 +66,9 @@ jobs:
           }
           NODE
           git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main; then
-            echo "::error::Release tags must point to a commit already reachable from main."
+          main_sha="$(git rev-parse refs/remotes/origin/main)"
+          if [[ "$GITHUB_SHA" != "$main_sha" ]]; then
+            echo "::error::Release tags must point to the current protected main tip."
             exit 1
           fi
       - name: Install JavaScript dependencies
