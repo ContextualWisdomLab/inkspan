@@ -91,13 +91,37 @@ describe('CwlEditor imperative history control', () => {
     expect(handle.getDocumentEnvelope()).toBeNull();
     expect(handle.getDocumentEnvelopeJson()).toBe('');
     expect(handle.getDocumentEnvelopeBytes()).toEqual(new Uint8Array());
+    await expect(handle.getDocumentEnvelopeRevision()).resolves.toBeNull();
+    await expect(
+      handle.getDocumentEnvelopeRevisionEvidence(),
+    ).resolves.toBeNull();
+    await expect(handle.getSelectionRevisionEvidence()).resolves.toBeNull();
+    await expect(handle.getTextPositionSelectorEvidence()).resolves.toBeNull();
     expect(handle.validateDocumentEnvelope({})).toBe(false);
     expect(handle.validateDocumentEnvelopeBytes(new Uint8Array())).toBe(false);
+    expect(handle.restoreDocumentEnvelope({})).toBeNull();
+    expect(handle.restoreDocumentEnvelopeBytes(new Uint8Array())).toBeNull();
+    await expect(
+      handle.restoreDocumentEnvelopeIfMatch('"sha256-deadbeef"', {}),
+    ).resolves.toBeNull();
+    await expect(
+      handle.restoreDocumentEnvelopeBytesIfMatch(
+        '"sha256-deadbeef"',
+        new Uint8Array(),
+      ),
+    ).resolves.toBeNull();
     expect(handle.validateDocumentJson({ type: 'doc', content: [] })).toBe(false);
     expect(handle.isEmpty()).toBe(true);
     expect(() => handle.focus()).not.toThrow();
     expect(() => handle.blur()).not.toThrow();
     expect(() => handle.setValue('ignored')).not.toThrow();
+    expect(() =>
+      handle.setDocumentJson({ type: 'doc', content: [] }),
+    ).not.toThrow();
+    expect(() => handle.insertValue('ignored')).not.toThrow();
+    expect(() =>
+      handle.insertDocumentJson({ type: 'paragraph' }),
+    ).not.toThrow();
     expect(() => handle.clear()).not.toThrow();
   });
 });
