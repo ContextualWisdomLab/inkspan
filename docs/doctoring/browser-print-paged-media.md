@@ -1,6 +1,6 @@
 # Browser print and paged-media assurance
 
-Status: Implemented on active PR
+Status: Active PR / Proposed
 
 ## Decision scope
 
@@ -36,7 +36,9 @@ The CSS path has no permission to fetch external resources, access credentials, 
 
 ## Verification and rollback
 
-Permanent tests require an explicit print media block, complete-document flow, suppression of interactive/transient chrome, placeholder suppression, conservative fragmentation controls, and color-independent link affordance. Normal exact-head CI, security scanning, package verification, real-browser clipboard assurance, and Office runtime gates remain independent acceptance authorities.
+Permanent source-level tests provide fast feedback that `src/styles.css` contains the intended print contract. Release evidence is stronger: after the normal library build copies that source into the exported public asset, package verification must inspect `dist/cwl-editor.css`, and real Chromium, Firefox, and WebKit print-media tests must load that same built asset. This keeps the public `@contextualwisdomlab/cwl-editor/styles.css` claim bound to the actual packaged CSS rather than source-only evidence.
+
+Those gates require an explicit print media block, complete-document flow, suppression of interactive/transient chrome, placeholder suppression, conservative fragmentation controls, and color-independent link affordance. Unsupported computed-style serialization for optional fragmentation hints is feature-detected rather than misclassified as a product failure. Normal exact-head CI, security scanning, package verification, real-browser assurance, and Office runtime gates remain independent acceptance authorities.
 
 Rollback removes the print overrides and documentation without changing document envelopes, saved content, collaboration state, serializers, or Office artifacts. Previously printed output is not reinterpreted or revoked by rollback.
 
