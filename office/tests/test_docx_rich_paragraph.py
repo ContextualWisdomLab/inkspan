@@ -123,6 +123,29 @@ def test_docx_rich_paragraph_rejects_runtime_run_overflow() -> None:
         render_office_document(_rich_payload([{"text": "x"}] * 4097))
 
 
+def test_docx_rich_paragraph_schema_and_runtime_bounds_match() -> None:
+    """Schema and runtime must share the same run ceiling and empty-text rule."""
+
+    schema = load_schema()
+    rich_branch = next(
+        branch
+        for branch in schema["$defs"]["docxBlock"]["oneOf"]
+        if branch.get("properties", {}).get("type", {}).get("const")
+        == "rich_paragraph"
+    )
+    assert rich_branch["properties"]["runs"]["maxItems"] == 4096
+    assert schema["$defs"]["richTextRun"]["properties"]["text"]["minLength"] == 1
+
+    with pytest.raises(
+        OfficeDocumentError,
+        match=r"blocks\[0\]\.runs\[0\]\.text must not be empty",
+    ):
+        render_office_document(_rich_payload([{"text": ""}]))
+
+    rendered = render_office_document(_rich_payload([{"text": " "}]))
+    assert Document(BytesIO(rendered.data)).paragraphs[0].runs[0].text == " "
+
+
 @pytest.mark.parametrize(
     ("runs", "message"),
     [
