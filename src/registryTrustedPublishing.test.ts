@@ -99,7 +99,7 @@ describe('OIDC registry trusted-publishing release contract', () => {
     expect(doctoring).toContain('environment `npm`');
     expect(doctoring).toContain('environment `pypi`');
     expect(doctoring).toContain('npm CLI 11.5.1');
-    expect(doctoring).toContain('Node 22.14.0');
+    expect(doctoring).toContain('Node.js 22.14.0');
     expect(doctoring).toContain('post-publish');
     expect(doctoring).toContain('exact artifact');
     expect(doctoring).toContain('non-atomic');
