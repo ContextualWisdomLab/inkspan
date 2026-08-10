@@ -80,7 +80,7 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 4096,
-          "description": "Optional external hyperlink target. Runtime validation deliberately permits only absolute HTTP(S) URLs without credentials, literal whitespace/control characters, or backslashes; rendering remains network-free."
+          "description": "Optional external hyperlink target. Runtime validation deliberately permits only printable-ASCII absolute HTTP(S) URLs without credentials or backslashes; rendering remains network-free."
         }
       }
     },
