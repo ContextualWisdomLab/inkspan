@@ -5,14 +5,6 @@ import { describe, expect, it } from 'vitest';
 
 const styles = readFileSync(resolve(process.cwd(), 'src/styles.css'), 'utf8');
 
-/** Match one CSS rule body for an exact selector within the shipped stylesheet. */
-function ruleBody(selector: string): string {
-  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
-  const match = styles.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'u'));
-  if (!match?.[1]) throw new Error(`Missing CSS rule for ${selector}`);
-  return match[1];
-}
-
 describe('print stylesheet contract', () => {
   it('defines an explicit paged-document print media boundary', () => {
     expect(styles).toMatch(/@media\s+print\s*\{/u);
@@ -49,8 +41,8 @@ describe('print stylesheet contract', () => {
   });
 
   it('keeps authored links distinguishable independently of color', () => {
-    expect(ruleBody('.cwl-editor__content a')).toMatch(
-      /text-decoration:\s*underline\s*;/u,
+    expect(styles).toMatch(
+      /\.cwl-editor__content a\s*\{[^}]*text-decoration:\s*underline\s*;/u,
     );
   });
 });
