@@ -1,8 +1,17 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CwlEditor } from './CwlEditor.js';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe('CwlEditor form accessibility metadata', () => {
   it('binds language, direction, labels, validation, and live prop updates', async () => {
@@ -66,5 +75,22 @@ describe('CwlEditor form accessibility metadata', () => {
       expect(readOnlyEditor).not.toHaveAttribute('aria-describedby');
       expect(readOnlyEditor).not.toHaveAttribute('aria-errormessage');
     });
+  });
+
+  it('does not invoke editing shortcuts while the editor is read-only', async () => {
+    const prompt = vi.spyOn(window, 'prompt').mockReturnValue('https://example.com');
+
+    render(
+      <CwlEditor
+        defaultValue="Archived decision"
+        editable={false}
+        ariaLabel="Archived body"
+      />,
+    );
+
+    const editor = await screen.findByRole('textbox', { name: 'Archived body' });
+    fireEvent.keyDown(editor, { key: 'k', ctrlKey: true });
+
+    expect(prompt).not.toHaveBeenCalled();
   });
 });
