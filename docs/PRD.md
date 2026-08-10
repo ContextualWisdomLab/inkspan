@@ -48,13 +48,14 @@ The product promise is: **author, convert, collaborate, and prove document chang
 - Untrusted rich clipboard content is processed through the actual editor paste pipeline, not a disconnected helper.
 - Active, hidden, executable, externally fetching, malformed, or over-limit input fails closed or is removed only under a documented semantic allowlist.
 - Browser-parser differences that can change security semantics require real dependency-locked Chromium, Firefox, and WebKit differential acceptance on the exact release candidate before the relevant release line.
-- Browser evidence must be tied to one fresh run, exact source head, exact browser-test lock and browser revisions, and the exact packed npm artifact on the release path; stale, missing, package-mismatched, or divergent evidence fails closed.
+- Browser evidence must be tied to one fresh run, exact source head, exact browser-test lock and browser revisions, committed synthetic fixture/corpus identity, and the exact packed npm artifact SHA-256 digest on the release path; stale, missing, non-synthetic, non-SHA-256, package-mismatched, or divergent evidence fails closed.
 
 ### Evidence and concurrency
 
 - SHA-256 document revisions are equality evidence only, never authentication, tenant identity, authorization, signature, timestamp, or durable-write proof.
 - Selection and transition evidence bind to one exact immutable editor state and omit document bodies from ordinary metadata.
-- W3C text-position evidence is a separate versioned projection of that immutable state: `start` is inclusive, `end` is exclusive, offsets count Unicode code points in the named projection, and boundaries that split a grapheme cluster fail closed rather than being silently adjusted.
+- W3C text-position evidence is a separate versioned projection of that immutable state and satisfies `0 <= start <= end <= projectedCodePointLength`: `start` is inclusive, `end` is exclusive, offsets count Unicode code points in the named projection, and boundaries that split a grapheme cluster fail closed rather than being silently adjusted.
+- The producer derives the range from one valid ordered ProseMirror `Selection`; it does not accept arbitrary caller-supplied selector numbers. Any impossible emitted range violation is an internal defect and must not be normalized or published.
 - ProseMirror structural positions and W3C text positions are distinct coordinate systems even when numeric values happen to match for a simple document.
 - Text-position evidence remains revision-scoped and text-free. Hosts own annotation identifiers/bodies, source-resource identifiers, publication, durable persistence, authorization, tenant policy, and cross-revision re-anchoring.
 - Autosave remains single-flight with bounded active/pending work and explicit conflict/failure recovery.
