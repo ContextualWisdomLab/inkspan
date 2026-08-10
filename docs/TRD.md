@@ -12,7 +12,7 @@ Protected `main` is the implementation authority. Open PRs may provide Proposed 
 
 The root product may compose TipTap/ProseMirror, React-facing integration, deterministic conversion, revision evidence, autosave, collaboration adapters, email/base64 utilities, and Office rendering. Framework-independent subpaths must not accidentally require React, DOM globals, TipTap UI, ProseMirror view, Yjs, network, credentials, database clients, or model SDKs when their public contract excludes those dependencies.
 
-The active envelope-routing slice adds `@contextualwisdomlab/cwl-editor/envelope-identity` as a framework-independent ESM/CommonJS/strict-TypeScript surface. It must remain usable without the interactive editor graph and expose only routing metadata plus bounded input options.
+The protected envelope-routing contract includes `@contextualwisdomlab/cwl-editor/envelope-identity` as a framework-independent ESM/CommonJS/strict-TypeScript surface. It remains usable without the interactive editor graph and exposes only routing metadata plus bounded input options.
 
 Standalone use must not require naruon or contextual-orchestrator. A CWL host can compose Inkspan additively through stable interfaces.
 
@@ -20,7 +20,7 @@ Standalone use must not require naruon or contextual-orchestrator. A CWL host ca
 
 A versioned `document_envelope` is validated before canonicalization or hashing. Strict current-schema JSON text/byte handling rejects malformed input, duplicate object names, malformed UTF-8, unsupported schemas, hostile JavaScript object descriptors, and resource-limit violations according to the active contract.
 
-PR #84 implements the ADR 0015 identity-only routing boundary. `inspectDocumentEnvelopeIdentity()` and `inspectDocumentEnvelopeIdentityBytes()` require complete bounded envelope input and return only a frozen string `schemaId` plus positive safe-integer `schemaVersion`. They preserve duplicate-name, strict UTF-8/BOM, JSON-compatibility, resource-limit, descriptor/accessor/proxy-reflection, and redacted-error boundaries while deliberately not treating an unsupported `documentJson` as current TipTap/ProseMirror semantics.
+Envelope identity routing is implemented on protected `main` under ADR 0015. `inspectDocumentEnvelopeIdentity()` and `inspectDocumentEnvelopeIdentityBytes()` require complete bounded envelope input and return only a frozen string `schemaId` plus positive safe-integer `schemaVersion`. They preserve duplicate-name, strict UTF-8/BOM, JSON-compatibility, resource-limit, descriptor/accessor/proxy-reflection, and redacted-error boundaries while deliberately not treating an unsupported `documentJson` as current TipTap/ProseMirror semantics.
 
 `parseDocumentEnvelope()` remains strict and current-schema-only. Schema registry, migration selection/execution, authorization, tenant isolation, persistence, durable audit, retention, rollback, and recovery remain host-owned. A migrated value must pass the strict current parser before it becomes canonical Inkspan state.
 
@@ -34,7 +34,7 @@ TipTap/ProseMirror is the deterministic editing authority for supported Markdown
 
 SafeClipboard is implemented on protected `main`. Rich clipboard HTML is untrusted. Sanitization is installed in the actual TipTap/ProseMirror paste pipeline, uses bounded fail-closed semantic reconstruction, performs no external fetch or active execution, and preserves only supported semantic content. Pure sanitizer APIs and editor integration remain behaviorally consistent.
 
-Where browser fragment parsing or serialization can change security semantics, a release must run the same adversarial corpus through dependency-locked Playwright Chromium, Firefox, and WebKit projects. Differences require an explicit standards/threat rationale rather than an unconditional parity normalization. Issue #66 remains the separate browser-realistic release-assurance implementation lane and is no longer blocked by SafeClipboard integration.
+Where browser fragment parsing or serialization can change security semantics, a release must run the same adversarial corpus through dependency-locked Playwright Chromium, Firefox, and WebKit projects. Differences require an explicit standards/threat rationale rather than an unconditional parity normalization. The active cross-engine assurance PR implements Issue #66 on the protected SafeClipboard baseline and remains non-authoritative until protected integration.
 
 ## SSR and native forms
 
@@ -101,7 +101,7 @@ Toolbar shortcut metadata is implemented on protected `main`. Shipped keyboard b
 
 ## Packaging, compatibility, and release evidence
 
-The root package and framework-independent subpaths are verified from packed artifacts under ESM, CommonJS, and strict TypeScript consumers. PR #84 adds equivalent packed-artifact verification for `envelope-identity` without framework dependencies. Office Python surfaces are verified under the documented supported Python matrix, exact production statement/branch/function/line coverage, complete public docstrings, built wheel/package inspection, and license/dependency consistency.
+The root package and framework-independent subpaths are verified from packed artifacts under ESM, CommonJS, and strict TypeScript consumers. The protected `envelope-identity` subpath has equivalent packed-artifact verification without framework dependencies. Office Python surfaces are verified under the documented supported Python matrix, exact production statement/branch/function/line coverage, complete public docstrings, built wheel/package inspection, and license/dependency consistency.
 
 Release publication verifies one exact integrated protected source head, expected artifact inventory and digests, package/runtime compatibility, security/coverage/accessibility/document-fidelity gates, SBOM/provenance/reproducibility where configured, zero valid unresolved findings, formal review/branch-protection requirements, and post-publication artifact smoke evidence.
 
@@ -113,4 +113,4 @@ Queued, cancelled, skipped-required, absent, stale-head, predecessor-head, statu
 
 ## Implemented versus proposed
 
-Protected `main` is the sole implemented baseline. SafeClipboard, the security disclosure lifecycle, autosave lifecycle observation, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, and document-transition evidence are implemented on protected `main`. Envelope identity routing is `implemented_on_active_pr` in PR #84 and remains unshipped until protected integration. Cross-engine browser assurance remains `planned`, now unblocked and required before the SafeClipboard behavior enters the verified release line. Canonical docs distinguish target architecture from shipped behavior and must be updated when the protected implementation changes.
+Protected `main` is the sole implemented baseline. SafeClipboard, the security disclosure lifecycle, autosave lifecycle observation, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, document-transition evidence, and envelope identity routing are implemented on protected `main`. Cross-engine browser assurance is `implemented_on_active_pr` on the current release-assurance line and remains unshipped until protected integration. Canonical docs distinguish target architecture from shipped behavior and must be updated when the protected implementation changes.

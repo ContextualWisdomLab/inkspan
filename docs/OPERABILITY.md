@@ -39,6 +39,16 @@ Markdown/HTML/editor conversion and Office rendering are deterministic local ope
 
 File publication must follow the documented atomic/non-overwrite behavior. A caller-requested overwrite remains explicit. A failed write or validation does not authorize cleanup of unrelated host files.
 
+## Cross-engine clipboard assurance operations
+
+SafeClipboard is shipped on protected `main`; the browser-realistic release assurance is implemented on the active browser-assurance PR and remains non-authoritative until protected integration. That active gate uses dependency-locked **Playwright 1.62.0** Chromium, Firefox, and WebKit projects and binds every result to one **exact source head**, one browser-test lock digest, one corpus version, and one **fresh run identity**. On the tag release path it additionally tests the exact **packed npm artifact** produced by the release build and records the artifact's byte-derived **SHA-256**.
+
+Treat missing, skipped, cancelled, provisioning-failed, incomplete, stale-run, stale-lock, package-mismatched, or semantically divergent browser evidence as a **fail closed** release condition. Do not silently drop one engine or substitute predecessor-head results. The first response to divergence is to determine whether the difference is a sanitizer/integration defect, a standards-permitted serialization difference, or a test/environment defect. Unsafe behavior is repaired at the runtime boundary test-first. A safe difference is admitted only with focused regression evidence, current authoritative **standards** basis, threat analysis, exact affected engine/version evidence, canonical interpretation, compatibility impact, and explicit **rollback**.
+
+Browser evidence contains only committed synthetic fixtures and bounded version/hash/timing metadata; no tenant document, credential, model data, authorization context, or production clipboard payload belongs in the evidence bundle. The test scenario permits only loopback harness requests; browser installation happens before the scenario as a pinned build prerequisite. Release execution retains only the bounded `tests/browser/.browser-evidence/` directory, including its hidden run identity, as the reviewable browser evidence artifact. **Playwright screenshots**, traces, and the broader `test-results` directory are deliberately not retained by that release-evidence upload. Operators reviewing a release candidate must confirm that all three engine records share the current run identity, current lock SHA-256, exact source head, and exact packed npm artifact digest before treating the browser gate as satisfied.
+
+A Playwright/browser revision upgrade is an operational compatibility event. Rebuild the browser evidence from the new immutable lock on one exact source head and rerun the complete corpus. If browser provisioning is unavailable, only the rich-clipboard release lane is blocked; unrelated Inkspan work continues. Rolling back the browser gate leaves the 0.6.0 rich-clipboard publication claim unaccepted unless equivalent or stronger real-engine assurance replaces it.
+
 ## Release operations
 
 Release publication occurs only from an exact integrated protected head. Release evidence includes package artifacts, deterministic checksums, CI/security/package/provenance results, required review, zero valid unresolved findings, and repository-policy acceptance. The normative inventory and digest rules are defined by the `docs/CONTRACTS.md` Release and rollback contract.
@@ -72,7 +82,7 @@ Do not publish or reuse the artifact. Rebuild from exact source with determinist
 
 ### Browser/parser divergence
 
-When a browser-specific clipboard/security difference is found, add it to the cross-engine corpus. Accept a difference only with explicit standards basis and threat analysis. Do not normalize a security-relevant difference away solely to regain parity.
+When a browser-specific clipboard/security difference is found, reproduce it in the dependency-locked cross-engine corpus on the exact affected source head and browser versions. Classify the semantic/security result before changing expectations. Accept a difference only with explicit standards basis, threat analysis, compatibility consequence, and rollback. Do not normalize a security-relevant difference away solely to regain parity, and never convert an unavailable required browser into a successful result.
 
 ### Dependency or workflow incident
 
@@ -90,7 +100,8 @@ Rollback is boundary-specific:
 - autosave/observer feature: fall back to explicit `getSnapshot()`/host coordination without rewriting durable state;
 - collaboration adapter: detach the adapter without destroying the host provider or Yjs document;
 - Office renderer change: revert the deterministic renderer behavior and rebuild artifacts; do not modify host files outside the explicit output target;
+- browser assurance: revert the faulty gate only while keeping the affected rich-clipboard release claim unaccepted; never retain a release claim after removing its required engine evidence;
 - documentation: supersede inaccurate decisions with an ADR and synchronized canonical docs rather than deleting history;
 - release: issue a verified corrective release or supported withdrawal action; preserve provenance and incident evidence.
 
-Every rollback requires fresh exact-head tests and must not weaken authorization, tenant isolation, release provenance, or host ownership boundaries.
+Every rollback requires fresh exact-head tests and must not weaken authorization, tenant isolation, release provenance, browser-security evidence, or host ownership boundaries.

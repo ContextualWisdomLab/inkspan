@@ -20,17 +20,19 @@ This index records durable architectural decisions. Protected-main implementatio
 | [0012](0012-spreadsheet-formula-injection.md) | Proposed | Spreadsheet formula-injection handling |
 | [0013](0013-atomic-file-publication.md) | Proposed | Atomic file publication and explicit overwrite semantics |
 | [0014](0014-local-assets-font-licensing.md) | Proposed | Local assets and font-licensing boundary |
-| [0015](0015-envelope-schema-migration-routing.md) | Proposed | Envelope schema identity and host-owned migration routing |
+| [0015](0015-envelope-schema-migration-routing.md) | Accepted | Envelope schema identity and host-owned migration routing |
 | [0016](0016-cross-engine-browser-assurance.md) | Proposed | Cross-engine browser-semantic release assurance |
-| [0017](0017-security-disclosure-lifecycle.md) | Proposed | Security disclosure lifecycle and coordinated vulnerability handling |
+| [0017](0017-security-disclosure-lifecycle.md) | Accepted | Security disclosure lifecycle and coordinated vulnerability handling |
 
 ## Decision discipline
 
-- **Proposed**: documented or implemented on an unmerged branch; not protected-main authority.
-- **Accepted**: integrated into protected `main` with the applicable verification evidence.
+- **Proposed**: documented decision whose acceptance evidence is incomplete or whose governing implementation/operational boundary is still being validated; not protected-main implementation authority by status alone.
+- **Accepted**: decision has protected-main implementation or process authority with the applicable verification evidence and its canonical ADR status has been reconciled to that authority.
 - **Superseded**: retained for historical traceability but explicitly replaced by a later ADR.
 
-An ADR cannot promote an unmerged feature to shipped behavior. When a decision changes materially, add or supersede an ADR rather than silently rewriting history. A Proposed ADR may document a decision whose underlying implementation already exists on protected `main`; its own status remains Proposed until this ADR file is integrated, while implementation maturity is recorded separately in the canonical fitness/traceability records.
+ADR decision status and implementation maturity are related but distinct. An ADR file may be present on protected `main` while its decision remains Proposed; conversely, an implemented capability can expose stale documentation until the ADR is reconciled. Canonical fitness and traceability records state implementation maturity explicitly, and an ADR cannot promote an unmerged feature to shipped behavior.
+
+When a decision changes materially, add or supersede an ADR rather than silently rewriting history.
 
 ## ADR quality requirements
 

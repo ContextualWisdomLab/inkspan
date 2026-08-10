@@ -1,6 +1,6 @@
 # ADR 0017: Security disclosure lifecycle and coordinated vulnerability handling
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 

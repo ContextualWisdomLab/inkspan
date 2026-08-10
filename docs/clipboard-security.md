@@ -261,18 +261,35 @@ test-first evidence, standards interpretation, residual risk, and rollback.
 
 ## Browser evidence boundary
 
-The current deterministic corpus runs in jsdom and proves the repository's
-allowlist, bounds, error redaction, integration wiring, transform ordering, and
-known Office/Google fixtures. It does not by itself prove parser, CSS, or
-serialization parity across Chromium, Firefox, and WebKit. The doctoring record
-therefore treats cross-engine differential execution as a release-acceptance
-gate for the future 0.6.0 publication rather than claiming browser conformance
-from jsdom evidence.
+SafeClipboard itself is implemented on protected `main`. Deterministic jsdom
+coverage remains the fast structural/security regression layer, but real browser
+fragment parsing and serialization are a separate release-assurance authority.
+The active cross-engine assurance PR pins **Playwright 1.62.0** and executes one
+versioned synthetic **corpus version** through the supported TipTap/ProseMirror
+paste pipeline in Chromium, Firefox, and WebKit on one **exact source head**.
+
+The browser gate records the exact source head, corpus version, browser-test lock
+digest, Playwright version, actual engine versions, runner identity, and bounded
+synthetic observations. It compares sanitized HTML, resulting ProseMirror JSON,
+and rejection behavior and must fail closed when a required engine is missing,
+skipped, cancelled, incomplete, or divergent. It uses no generic normalization;
+a permitted difference requires a focused regression plus standards basis,
+threat analysis, compatibility consequence, and rollback. The committed browser
+fixtures are synthetic and the evidence contains no tenant document or
+production clipboard payload. The detailed implementation and claim limits are
+recorded in `docs/doctoring/cross-engine-rich-clipboard-assurance.md` and
+`docs/TEST_STRATEGY.md`.
+
+Until the active browser-assurance PR reaches protected integration, its results
+are `implemented_on_active_pr` evidence rather than shipped release authority.
+The 0.6.0 rich-clipboard line must not be published without equivalent or stronger
+exact-protected-head Chromium, Firefox, and WebKit acceptance.
 
 ## Ownership boundary
 
 Inkspan owns clipboard HTML validation, semantic reconstruction, shared editor
-integration, bounded errors, and deterministic tests. The host still owns:
+integration, bounded errors, deterministic tests, and its protected release
+assurance contract. The host still owns:
 
 - clipboard permissions or custom clipboard APIs;
 - user notification and recovery UX;
@@ -283,5 +300,7 @@ integration, bounded errors, and deterministic tests. The host still owns:
 - model or AI use of pasted content; and
 - legal, privacy, and information-governance policy.
 
-The feature introduces no network request, storage adapter, credential,
-database object, model call, or provider dependency.
+The feature introduces no application network request, storage adapter,
+credential, database object, model call, or provider dependency. Browser binary
+provisioning belongs to CI/build evidence and does not grant runtime egress to the
+sanitizer.

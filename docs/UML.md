@@ -93,7 +93,7 @@ flowchart TB
   Difference -->|unsafe, unexplained, missing browser, skipped or failed| Repair --> Blocked
 ```
 
-A queued, pending, skipped, cancelled, absent or failed required browser is not passing evidence. Differences are never normalized merely to make engines agree; any admitted difference is a reviewed compatibility artifact. ADR 0016 and Issue #66 own this planned release-assurance decision behind the SafeClipboard integration dependency.
+A queued, pending, skipped, cancelled, absent or failed required browser is not passing evidence. Differences are never normalized merely to make engines agree; any admitted difference is a reviewed compatibility artifact. ADR 0016 governs this decision, SafeClipboard is already protected-main authority, and Issue #66 is implemented on the active cross-engine assurance PR until protected integration.
 
 ## Author-to-model proposal sequence
 
@@ -147,7 +147,7 @@ Unsupported or lossy constructs are surfaced by the relevant contract instead of
 ```mermaid
 sequenceDiagram
   participant Host
-  participant Inspector as Planned bounded identity inspector
+  participant Inspector as Protected bounded identity inspector
   participant Registry as Host migration registry
   participant Migration as Host-owned version migration
   participant StrictParser as Current-schema strict parser
@@ -173,7 +173,7 @@ sequenceDiagram
   end
 ```
 
-The identity result does not contain the document body and does not prove migration, authorization, persistence or durable success. ADR 0015 and Issue #74 define this planned routing aid; the host continues to own schema registry, migration execution, persistence, audit and rollback.
+The identity result does not contain the document body and does not prove migration, authorization, persistence or durable success. ADR 0015 governs this protected-main routing aid; Issue #74 is historical implementation tracking. The host continues to own schema registry, migration execution, persistence, audit and rollback.
 
 ## Office render and file publication sequence
 

@@ -20,7 +20,7 @@ Package exports, declaration files, runtime support, and packed ESM/CommonJS/str
 
 The **document envelope** is a versioned boundary carrying schema identity and supported document content. Current-schema parsing validates strict JSON/UTF-8 and active schema requirements before canonicalization or hashing. Unknown schema migration remains host-owned.
 
-PR #84 adds an active-PR identity-routing contract through `inspectDocumentEnvelopeIdentity()` and `inspectDocumentEnvelopeIdentityBytes()`, exported by the root package and the framework-independent `./envelope-identity` subpath. The inspectors validate a complete bounded envelope and return only frozen `{ schemaId, schemaVersion }` routing metadata. They do not return `documentJson`, accept unknown document semantics as current, execute a migration, authorize access, or claim durable persistence. Until protected integration this is `implemented_on_active_pr` evidence rather than a shipped contract.
+Envelope identity routing is implemented on protected `main` through `inspectDocumentEnvelopeIdentity()` and `inspectDocumentEnvelopeIdentityBytes()`, exported by the root package and the framework-independent `./envelope-identity` subpath. The inspectors validate a complete bounded envelope and return only frozen `{ schemaId, schemaVersion }` routing metadata. They do not return `documentJson`, accept unknown document semantics as current, execute a migration, authorize access, or claim durable persistence.
 
 Canonical revision evidence is content-equality metadata only. It is not an actor identity, tenant identity, authorization grant, signature, timestamp, durable write receipt, or bearer credential. Identity routing does not weaken the strict current-schema parser or transfer schema-registry, migration, persistence, rollback, or recovery authority from the host.
 
@@ -119,7 +119,7 @@ Rollback must preserve readable canonical documents and must not require silentl
 | Contract surface | Inkspan authority | Host authority |
 | --- | --- | --- |
 | Markdown/HTML editing | deterministic editor state and supported import/export semantics | application workflow, document ownership, authorization |
-| document envelope/revision | schema validation, canonical bytes, local equality evidence | migration orchestration, durable storage, signatures, tenant binding |
+| document envelope/revision | schema validation, identity routing, canonical bytes, local equality evidence | migration orchestration, durable storage, signatures, tenant binding |
 | autosave | local ordering/state, callback contract, validator validation | transport, durable CAS, retry/offline policy, persistence |
 | collaboration | provider-neutral editor/Yjs binding | provider lifecycle, rooms, identity, authorization, persistence, awareness privacy |
 | Office rendering | deterministic bounded JSON→artifact conversion | file destination policy, downstream distribution, tenant authorization |

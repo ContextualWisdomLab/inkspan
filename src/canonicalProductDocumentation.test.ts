@@ -100,19 +100,43 @@ describe('canonical product documentation graph', () => {
   it('tracks protected and active implementation maturity semantically', () => {
     const prd = repositoryFile('docs/PRD.md');
     const trd = repositoryFile('docs/TRD.md');
+    const contracts = repositoryFile('docs/CONTRACTS.md');
+    const dataModel = repositoryFile('docs/DATA_MODEL.md');
+    const traceability = repositoryFile('docs/TRACEABILITY.md');
+    const routingDoctoring = repositoryFile(
+      'docs/doctoring/envelope-identity-routing.md',
+    );
     const fitness = repositoryFile('docs/DOCUMENTATION_FITNESS.md');
     const currentScope = prd.slice(prd.indexOf('## Current, proposed, and planned scope'));
 
     expect(currentScope).toMatch(/lifecycle observation[^.]*implemented on protected `main`/iu);
     expect(currentScope).toMatch(/SafeClipboard[^.]*implemented on protected `main`/u);
-    expect(currentScope).toMatch(/Envelope identity-only migration routing[^.]*implemented_on_active_pr/u);
+    expect(currentScope).toMatch(/Envelope identity(?:-only)? migration routing[^.]*implemented on protected `main`/iu);
+    expect(currentScope).not.toContain('PR #84');
+    expect(currentScope).not.toMatch(/Envelope identity[^.]*implemented_on_active_pr/iu);
     expect(currentScope).not.toMatch(/open development lines include[^.]*lifecycle observation/u);
+
     expect(trd).toContain('Autosave lifecycle observation is implemented on protected `main`');
     expect(trd).toContain('SafeClipboard is implemented on protected `main`');
-    expect(trd).toMatch(/Envelope identity routing is `implemented_on_active_pr`/u);
+    expect(trd).toContain('Envelope identity routing is implemented on protected `main`');
+    expect(trd).not.toContain('PR #84 implements');
+    expect(trd).not.toMatch(/Envelope identity routing is `implemented_on_active_pr`/u);
+
+    expect(contracts).toContain('Envelope identity routing is implemented on protected `main`');
+    expect(contracts).not.toContain('PR #84 adds an active-PR identity-routing contract');
+    expect(contracts).not.toContain('implemented_on_active_pr');
+
+    expect(dataModel).toContain('`document_schema_identity`: `implemented_on_protected_main`');
+    expect(dataModel).not.toContain('`document_schema_identity`: `implemented_on_active_pr`');
+    expect(traceability).toContain('Envelope version routing');
+    expect(traceability).toMatch(/protected-main evidence/iu);
+    expect(traceability).not.toContain('PR #84 is active implementation evidence');
+    expect(routingDoctoring).toContain('Status: Implemented on protected main');
+    expect(routingDoctoring).not.toContain('Status: Implemented on active PR');
+
     expect(fitness).toContain('Autosave lifecycle observation');
     expect(fitness).toMatch(/Autosave lifecycle observation[^\n]*implemented_on_protected_main/u);
-    expect(fitness).toMatch(/Envelope schema identity \/ migration routing[^\n]*implemented_on_active_pr/u);
+    expect(fitness).toMatch(/Envelope schema identity \/ migration routing[^\n]*implemented_on_protected_main/u);
   });
 
   it('records host ownership and deterministic Inkspan authority consistently', () => {
