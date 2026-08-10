@@ -87,7 +87,7 @@ describe('cross-engine clipboard documentation contract', () => {
     }
   });
 
-  it('records browser maturity in the exact canonical and changelog entries', () => {
+  it('records browser maturity in the exact protected canonical and changelog entries', () => {
     const fitness = repositoryFile('docs/DOCUMENTATION_FITNESS.md');
     const changelog = repositoryFile('CHANGELOG.md');
     const assuranceRow = tableRow(
@@ -99,9 +99,9 @@ describe('cross-engine clipboard documentation contract', () => {
       'cross-engine rich-clipboard release gate',
     );
 
-    expect(assuranceRow).toContain('`implemented_on_active_pr`');
-    expect(assuranceRow).toContain('SafeClipboard itself is `implemented_on_protected_main`');
-    expect(assuranceRow).not.toContain('`implemented_on_protected_main`; SafeClipboard itself');
+    expect(assuranceRow).toContain('`implemented_on_protected_main`');
+    expect(assuranceRow).toContain('SafeClipboard is also `implemented_on_protected_main`');
+    expect(assuranceRow).not.toContain('`implemented_on_active_pr`');
     expect(releaseBullet).toContain('dependency-locked Chromium/Firefox/WebKit');
     expect(releaseBullet).toContain('Playwright 1.62.0');
   });
