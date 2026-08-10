@@ -17,6 +17,13 @@ const securityDisclosureAdr =
 const textPositionAdr =
   'docs/adr/0018-revision-scoped-w3c-text-position-selector.md';
 
+const acceptedDecisionRows = [
+  /\| \[0015\]\(0015-envelope-schema-migration-routing\.md\) \| Accepted \| Envelope schema identity and host-owned migration routing \|/u,
+  /\| \[0016\]\(0016-cross-engine-browser-assurance\.md\) \| Accepted \| Cross-engine browser-semantic release assurance \|/u,
+  /\| \[0017\]\(0017-security-disclosure-lifecycle\.md\) \| Accepted \| Security disclosure lifecycle and coordinated vulnerability handling \|/u,
+  /\| \[0018\]\(0018-revision-scoped-w3c-text-position-selector\.md\) \| Accepted \| Revision-scoped W3C text-position selector authority \|/u,
+] as const;
+
 describe('canonical architecture decision coverage', () => {
   it('requires durable ADRs for protected authority decisions', () => {
     for (const path of [
@@ -29,14 +36,9 @@ describe('canonical architecture decision coverage', () => {
     }
 
     const index = repositoryFile('docs/adr/README.md');
-    expect(index).toContain('0015-envelope-schema-migration-routing.md');
-    expect(index).toContain('0016-cross-engine-browser-assurance.md');
-    expect(index).toContain('0017-security-disclosure-lifecycle.md');
-    expect(index).toContain('0018-revision-scoped-w3c-text-position-selector.md');
-    expect(index).toContain('Envelope schema identity and host-owned migration routing');
-    expect(index).toContain('Cross-engine browser-semantic release assurance');
-    expect(index).toContain('Security disclosure lifecycle and coordinated vulnerability handling');
-    expect(index).toContain('Revision-scoped W3C text-position selector authority');
+    for (const expectedRow of acceptedDecisionRows) {
+      expect(index).toMatch(expectedRow);
+    }
   });
 
   it('keeps decision status synchronized with protected implementation maturity', () => {
@@ -47,12 +49,11 @@ describe('canonical architecture decision coverage', () => {
     const index = repositoryFile('docs/adr/README.md');
 
     for (const adr of [migration, browser, security, textPosition]) {
-      expect(adr).toContain('Status: Accepted');
+      expect(adr).toMatch(/^Status: Accepted$/mu);
     }
-    expect(index).toMatch(/0015[^\n]*\| Accepted \|/u);
-    expect(index).toMatch(/0016[^\n]*\| Accepted \|/u);
-    expect(index).toMatch(/0017[^\n]*\| Accepted \|/u);
-    expect(index).toMatch(/0018[^\n]*\| Accepted \|/u);
+    for (const expectedRow of acceptedDecisionRows) {
+      expect(index).toMatch(expectedRow);
+    }
 
     for (const adr of [migration, browser, security, textPosition]) {
       for (const heading of [
@@ -118,6 +119,9 @@ describe('canonical architecture decision coverage', () => {
     expect(traceability).toMatch(
       /W3C text-position selector[^\n]*protected-main/iu,
     );
+    expect(traceability).toMatch(
+      /W3C text-position selector[^\n]*0 <= start <= end <= projectedCodePointLength/iu,
+    );
     expect(traceability).not.toContain('PR #84 is active implementation evidence');
   });
 
@@ -135,6 +139,9 @@ describe('canonical architecture decision coverage', () => {
     expect(dataModel).toContain('`document_schema_identity`: `implemented_on_protected_main`');
     expect(dataModel).toContain('`browser_assurance_evidence`: `implemented_on_protected_main`');
     expect(dataModel).toContain('`text_position_selector_evidence`: `implemented_on_protected_main`');
+    expect(dataModel).toContain('committed synthetic fixture/corpus identity');
+    expect(dataModel).toContain('exact packed npm artifact SHA-256 digest');
+    expect(dataModel).toContain('0 <= start <= end <= projectedCodePointLength');
     expect(dataModel).toContain('release-assurance evidence objects');
     expect(dataModel).toContain('does **not** own an application database');
     expect(dataModel).toContain('physical database ERD');
