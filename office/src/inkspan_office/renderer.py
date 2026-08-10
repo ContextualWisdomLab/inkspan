@@ -63,7 +63,7 @@ _INVALID_SHEET_NAME = re.compile(r"[\\/*?:\[\]]")
 _FORMULA_PREFIXES = ("=", "+", "-", "@")
 _MAX_DOCX_RICH_RUNS = 4096
 _MAX_DOCX_HYPERLINK_TARGET = 4096
-_FORBIDDEN_DOCX_HYPERLINK_CHARACTER = re.compile(r"[\x00-\x20\x7f-\x9f\\]")
+_FORBIDDEN_DOCX_HYPERLINK_CHARACTER = re.compile(r"[^\x21-\x7e]|\\")
 _DOCX_HYPERLINK_SCHEMES = {"http", "https"}
 _DOCX_PARAGRAPH_ALIGNMENTS = {
     "left": WD_ALIGN_PARAGRAPH.LEFT,
@@ -196,7 +196,7 @@ def _apply_docx_paragraph_alignment(
 
 
 def _validate_docx_hyperlink_target(value: Any, path: str) -> str:
-    """Validate one bounded absolute HTTP(S) target without reflecting its value."""
+    """Validate one bounded ASCII absolute HTTP(S) target without reflecting it."""
 
     href_path = f"{path}.href"
     if not isinstance(value, str):
