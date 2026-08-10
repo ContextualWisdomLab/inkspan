@@ -51,7 +51,11 @@ request = {
             "runs": [
                 {"text": "Retention ", "bold": True},
                 {"text": "improved", "italic": True},
-                {"text": " year over year.", "underline": True},
+                {
+                    "text": " year over year.",
+                    "underline": True,
+                    "href": "https://example.com/report",
+                },
             ],
             "alignment": "center",
         },
@@ -98,7 +102,8 @@ Supported shapes are deliberately small and predictable:
 - DOCX: headings, plain and **bounded rich-text paragraphs**, ordered/unordered
   lists, tables, **informative inline PNG figures**, and page breaks. Headings,
   plain paragraphs, and rich paragraphs may preserve one bounded horizontal
-  alignment.
+  alignment. Rich-text runs may additionally preserve one bounded external
+  HTTP(S) hyperlink target.
 - XLSX: multiple worksheets, scalar cells, header styling, freeze panes,
   filters, and bounded automatic column sizing.
 - PPTX: title/subtitle slides and title/bullet slides with nesting levels.
@@ -108,19 +113,19 @@ Supported shapes are deliberately small and predictable:
 A DOCX `rich_paragraph` preserves ordinary run-level emphasis without creating
 an arbitrary WordprocessingML or source-format parsing surface. `runs` must be a
 non-empty array containing no more than 4,096 entries. Each run requires a
-non-empty string `text` value and may contain only strict JSON boolean `bold`,
-`italic`, and `underline` fields. Whitespace-only text remains valid document
-content.
+non-empty string `text` value, may contain strict JSON boolean `bold`, `italic`,
+and `underline` fields, and may optionally declare one bounded `href` target.
+Whitespace-only text remains valid document content.
 
 Omitting a formatting field leaves that Word run property inherited/default;
 an explicit `true` or `false` maps directly to the corresponding `python-docx`
 run property. Inkspan does not expose tri-state JSON input, enumerated underline
-styles, arbitrary style names, fonts, colors, sizes, hyperlinks, field codes,
-raw OOXML, tracked changes, macros, embedded objects, or model-authored markup
-through this block.
+styles, arbitrary style names, fonts, colors, sizes, arbitrary relationship IDs,
+field codes, raw OOXML, tracked changes, macros, embedded objects, or
+model-authored markup through this block.
 
 The renderer preserves caller-supplied logical run order, including
-Unicode/CJK/combining/bidirectional text, and applies the same XML 1.0,
+Unicode/CJK/combining/bidirectional visible text, and applies the same XML 1.0,
 request/string resource, nesting, deterministic-output, and atomic-publication
 controls as the rest of Inkspan Office. Invalid run shapes fail closed and
 cannot publish a partial artifact through `write_office_document`.
@@ -128,9 +133,40 @@ cannot publish a partial artifact through `write_office_document`.
 Hosts continue to own source authoring policy, export authorization, tenant
 isolation, durable storage, distribution, and any mapping from editor marks or
 another source format into the Office request. The standards and library basis
-is recorded in
+for rich runs is recorded in
 [`docs/doctoring/docx-rich-text-runs.md`](../docs/doctoring/docx-rich-text-runs.md),
-and ADR 0023 records the protected boundary.
+and ADR 0023 records that protected boundary.
+
+### DOCX bounded external hyperlinks
+
+A rich-text run may declare one optional `href`. This contract is deliberately
+narrower than Inkspan's interactive editor link vocabulary: Inkspan Office
+accepts only **printable-ASCII absolute `http://` or `https://` URLs** up to
+4,096 characters. The renderer rejects relative and protocol-relative targets,
+UNC and backslash forms, local-file targets, executable/data/mail/telephone or
+unknown schemes, embedded credentials, literal whitespace/control characters,
+and non-ASCII targets rather than normalizing or guessing them. A host that
+needs an internationalized URI must provide an already authorized ASCII URI
+representation before submitting the Office request.
+
+The accepted target is stored as an external OOXML hyperlink relationship. The
+formatted Word run is moved beneath a `w:hyperlink` element whose `r:id` resolves
+through `word/_rels/document.xml.rels` to the exact accepted target. The
+renderer never dereferences the URI: it performs no DNS resolution, HTTP
+request, redirect handling, reachability check, local-file read, credential
+lookup, or content inspection.
+
+This relationship is document content, not trust evidence. Inkspan does not
+claim that a linked site is safe, reachable, authorized, tenant-approved, or
+unchanged. Hosts remain responsible for link authorization, phishing policy,
+destination allowlists, document distribution, and any stronger business
+validation. Rejected link diagnostics identify only the structural field path
+and do not reflect the untrusted target.
+
+The WordprocessingML/relationship and library basis is recorded in
+[`docs/doctoring/docx-external-hyperlinks.md`](../docs/doctoring/docx-external-hyperlinks.md),
+and Proposed ADR 0026 records the active feature decision until protected-main
+integration supplies acceptance authority.
 
 ### DOCX bounded paragraph and heading alignment
 
@@ -165,7 +201,7 @@ A DOCX `image` block is intentionally narrower than Inkspan's interactive image
 surface. It accepts only the exact `data:image/png;base64,...` form and therefore
 never downloads a remote image or reads a caller-controlled filesystem path.
 JPEG, SVG/vector content, data-URL parameters, percent-encoded payloads, and
-external Office relationships are outside this initial contract.
+external image relationships are outside this initial contract.
 
 Every figure must provide:
 
@@ -225,15 +261,19 @@ python -m pip wheel . --no-deps --wheel-dir dist
 The suite re-opens every rendered format with its native library and verifies
 byte-for-byte deterministic output. DOCX rich-paragraph acceptance additionally
 inspects ordered run text and explicit Word run properties while enforcing the
-shared 4,096-run and non-empty-text contract. DOCX paragraph/heading-alignment
-acceptance additionally reopens the applicable paragraphs and inspects explicit
-WordprocessingML justification while preserving inherited/default behavior when
-the field is omitted. DOCX image acceptance additionally inspects the generated
-ZIP/OOXML package for the exact embedded PNG bytes, dimensions, and accessible
-description. CI installs runtime and test dependencies from
-`requirements-ci.txt` with wheel hashes and executes the complete Office matrix
-on Python 3.11, Python 3.12, Python 3.13, and Python 3.14. The package metadata
-rejects unverified Python 3.15+ installs until that runtime is added to the
-tested support matrix. CI enforces 100% statement/branch and shipped-symbol
-docstring coverage, then builds and inspects the distributable wheel. Code and
-all three direct runtime dependencies are MIT-licensed.
+shared 4,096-run and non-empty-text contract. Hyperlink acceptance additionally
+inspects both `word/document.xml` and `word/_rels/document.xml.rels`, proves the
+relationship type and `TargetMode="External"`, verifies exact target and
+formatting preservation, rejects malformed/deceptive target classes without
+reflection, and exercises byte-identical repeated rendering. DOCX
+paragraph/heading-alignment acceptance additionally reopens the applicable
+paragraphs and inspects explicit WordprocessingML justification while preserving
+inherited/default behavior when the field is omitted. DOCX image acceptance
+additionally inspects the generated ZIP/OOXML package for the exact embedded PNG
+bytes, dimensions, and accessible description. CI installs runtime and test
+dependencies from `requirements-ci.txt` with wheel hashes and executes the
+complete Office matrix on Python 3.11, Python 3.12, Python 3.13, and Python 3.14.
+The package metadata rejects unverified Python 3.15+ installs until that runtime
+is added to the tested support matrix. CI enforces 100% statement/branch and
+shipped-symbol docstring coverage, then builds and inspects the distributable
+wheel. Code and all three direct runtime dependencies are MIT-licensed.
