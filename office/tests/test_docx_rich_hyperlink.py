@@ -6,7 +6,9 @@ from io import BytesIO
 from xml.etree import ElementTree
 from zipfile import ZipFile
 
-from inkspan_office import load_schema, render_office_document
+import pytest
+
+from inkspan_office import OfficeDocumentError, load_schema, render_office_document
 
 _WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 _REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
@@ -16,7 +18,7 @@ _HYPERLINK_REL = (
 )
 
 
-def _rich_link_payload(href: str) -> dict[str, object]:
+def _rich_link_payload(href: object) -> dict[str, object]:
     """Build one minimal DOCX request containing a linked rich-text run."""
 
     return {
@@ -28,12 +30,25 @@ def _rich_link_payload(href: str) -> dict[str, object]:
                     {
                         "text": "Inkspan documentation",
                         "bold": True,
+                        "italic": True,
+                        "underline": True,
                         "href": href,
                     }
                 ],
             }
         ],
     }
+
+
+def _relationship_parts(data: bytes) -> tuple[ElementTree.Element, ElementTree.Element]:
+    """Return parsed Word document and relationship XML roots from rendered bytes."""
+
+    with ZipFile(BytesIO(data)) as package:
+        document_root = ElementTree.fromstring(package.read("word/document.xml"))
+        relationships_root = ElementTree.fromstring(
+            package.read("word/_rels/document.xml.rels")
+        )
+    return document_root, relationships_root
 
 
 def test_docx_rich_run_schema_exposes_bounded_hyperlink_target() -> None:
@@ -45,24 +60,29 @@ def test_docx_rich_run_schema_exposes_bounded_hyperlink_target() -> None:
     assert href_schema["type"] == "string"
     assert href_schema["minLength"] == 1
     assert href_schema["maxLength"] == 4096
+    assert "HTTP" in href_schema["description"]
 
 
-def test_docx_rich_run_renders_external_hyperlink_relationship() -> None:
-    """One accepted HTTPS run must bind visible text to its exact relationship target."""
+@pytest.mark.parametrize(
+    "href",
+    [
+        "https://example.com/inkspan",
+        "http://example.com/reference?source=inkspan#section",
+    ],
+)
+def test_docx_rich_run_renders_external_hyperlink_relationship(href: str) -> None:
+    """Accepted HTTP(S) runs must bind visible formatted text to exact targets."""
 
-    href = "https://example.com/inkspan"
     rendered = render_office_document(_rich_link_payload(href))
-
-    with ZipFile(BytesIO(rendered.data)) as package:
-        document_root = ElementTree.fromstring(package.read("word/document.xml"))
-        relationships_root = ElementTree.fromstring(
-            package.read("word/_rels/document.xml.rels")
-        )
+    document_root, relationships_root = _relationship_parts(rendered.data)
 
     hyperlink = document_root.find(f".//{{{_WORD_NS}}}hyperlink")
     assert hyperlink is not None
     relationship_id = hyperlink.attrib[f"{{{_DOC_REL_NS}}}id"]
     assert "".join(hyperlink.itertext()) == "Inkspan documentation"
+    assert hyperlink.find(f".//{{{_WORD_NS}}}b") is not None
+    assert hyperlink.find(f".//{{{_WORD_NS}}}i") is not None
+    assert hyperlink.find(f".//{{{_WORD_NS}}}u") is not None
 
     relationship = next(
         relation
@@ -72,3 +92,48 @@ def test_docx_rich_run_renders_external_hyperlink_relationship() -> None:
     assert relationship.attrib["Type"] == _HYPERLINK_REL
     assert relationship.attrib["Target"] == href
     assert relationship.attrib["TargetMode"] == "External"
+
+
+@pytest.mark.parametrize(
+    "href",
+    [
+        None,
+        7,
+        "",
+        "https://example.com/" + "a" * 4096,
+        "javascript:alert(1)",
+        "data:text/plain,hello",
+        "mailto:security@example.com",
+        "tel:+15551234567",
+        "//example.com/path",
+        r"\\server\share",
+        "relative/path",
+        "https:/missing-authority",
+        "https://:443/path",
+        "https://[::1",
+        "https://example.com:bad-port/path",
+        "https://example.com/has space",
+        "https://example.com/control\npath",
+        "https://user:secret@example.com/private",
+    ],
+)
+def test_docx_rich_run_rejects_forbidden_hyperlink_targets_without_reflection(
+    href: object,
+) -> None:
+    """Unsafe, ambiguous, local, credential-bearing, or oversized targets fail closed."""
+
+    with pytest.raises(OfficeDocumentError) as captured:
+        render_office_document(_rich_link_payload(href))
+
+    message = str(captured.value)
+    assert "blocks[0].runs[0].href" in message
+    if isinstance(href, str) and href:
+        assert href not in message
+
+
+def test_docx_rich_run_hyperlink_rendering_is_deterministic() -> None:
+    """The same accepted hyperlink payload must canonicalize to identical DOCX bytes."""
+
+    payload = _rich_link_payload("https://example.com/inkspan")
+
+    assert render_office_document(payload).data == render_office_document(payload).data
