@@ -149,11 +149,18 @@ jobs:
           if (!Array.isArray(sbom.packages) || sbom.packages.length === 0) {
             throw new Error('Release SBOM package inventory must not be empty.');
           }
+          const sbomPackageNames = new Set(sbom.packages.map((pkg) => pkg.name));
           if (packageMetadata.name !== '@contextualwisdomlab/cwl-editor') {
             throw new Error('Release source has an unexpected editor package identity.');
           }
           if (!/^name\s*=\s*["']inkspan-office["']\s*$/m.test(officeMetadata)) {
             throw new Error('Release source has an unexpected Office package identity.');
+          }
+          if (!sbomPackageNames.has(packageMetadata.name)) {
+            throw new Error('Release SBOM inventory must include the editor package identity.');
+          }
+          if (!sbomPackageNames.has('inkspan-office')) {
+            throw new Error('Release SBOM inventory must include the Office package identity.');
           }
           NODE
       - name: Generate release checksums
