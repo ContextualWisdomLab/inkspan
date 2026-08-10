@@ -27,6 +27,12 @@ export default defineConfig({
     }),
   ],
   build: {
+    commonjsOptions: {
+      // Turndown's Node ESM surface crosses into CommonJS-only parser code.
+      // Transform require() in mixed modules so both emitted ESM and CommonJS
+      // packages keep that parser inside the authority-bounded bundle.
+      transformMixedEsModules: true,
+    },
     emptyOutDir: false,
     lib: {
       entry: resolve(__dirname, 'src/markdown/index.ts'),
