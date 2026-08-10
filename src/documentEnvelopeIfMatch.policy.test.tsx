@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import { createRef } from 'react';
 import { describe, expect, it } from 'vitest';
 import { CwlEditor } from './components/CwlEditor.js';
@@ -46,17 +46,19 @@ describe('revision-guarded restore editor policy', () => {
     });
 
     let caught: unknown;
-    try {
-      await restoreDocumentEnvelopeIfMatch(
-        editor,
-        revision.strongEntityTag,
-        policyRejected,
-        undefined,
-        DIGEST_PROVIDER,
-      );
-    } catch (error) {
-      caught = error;
-    }
+    await act(async () => {
+      try {
+        await restoreDocumentEnvelopeIfMatch(
+          editor,
+          revision.strongEntityTag,
+          policyRejected,
+          undefined,
+          DIGEST_PROVIDER,
+        );
+      } catch (error) {
+        caught = error;
+      }
+    });
 
     expect(caught).toBeInstanceOf(DocumentEnvelopeRestoreError);
     expect(String(caught)).not.toContain(rejectedSource);

@@ -120,9 +120,11 @@ describe('atomic document-envelope restore', () => {
     expect(validateDocumentEnvelopeForEditor(editor, policyRejected)).toBe(
       true,
     );
-    expect(() => restoreDocumentEnvelope(editor, policyRejected)).toThrow(
-      DocumentEnvelopeRestoreError,
-    );
+    await act(async () => {
+      expect(() => restoreDocumentEnvelope(editor, policyRejected)).toThrow(
+        DocumentEnvelopeRestoreError,
+      );
+    });
 
     expect(editorRef.current!.getSnapshot()).toEqual(before);
   });

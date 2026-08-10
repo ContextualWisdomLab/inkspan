@@ -1,4 +1,4 @@
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup, render, waitFor } from '@testing-library/react';
 import StarterKit from '@tiptap/starter-kit';
 import { DOMSerializer } from '@tiptap/pm/model';
 import { Editor } from '@tiptap/react';
@@ -194,15 +194,19 @@ describe('image source ingress enforcement', () => {
     );
     expect(editorRef.current!.getHTML()).not.toContain('remote.example');
 
-    editorRef.current!.setValue(
-      '<p>Set value</p><img src="blob:https://example.com/id">',
-    );
+    act(() => {
+      editorRef.current!.setValue(
+        '<p>Set value</p><img src="blob:https://example.com/id">',
+      );
+    });
     expect(editorRef.current!.getHTML()).toContain('Set value');
     expect(editorRef.current!.getHTML()).not.toContain('blob:');
 
-    editorRef.current!.insertValue(
-      '<p>Inserted text</p><img src="file:///tmp/secret.png">',
-    );
+    act(() => {
+      editorRef.current!.insertValue(
+        '<p>Inserted text</p><img src="file:///tmp/secret.png">',
+      );
+    });
     expect(editorRef.current!.getHTML()).toContain('Inserted text');
     expect(editorRef.current!.getHTML()).not.toContain('file:');
     expect(onError).toHaveBeenCalledTimes(3);
