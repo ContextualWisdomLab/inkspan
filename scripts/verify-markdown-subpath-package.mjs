@@ -109,6 +109,7 @@ function verifyRuntimeConsumers() {
     esmPath,
     `import assert from 'node:assert/strict';
 import {
+  htmlToMarkdown,
   markdownToEmailHtml,
   markdownToHtml,
   markdownToPlainText,
@@ -116,6 +117,7 @@ import {
 } from '${packageJson.name}/markdown';
 assert.match(markdownToHtml('[safe](https://example.com)'), /href="https:\/\/example\.com"/u);
 assert.doesNotMatch(markdownToHtml('[unsafe](javascript:alert(1))'), /href=/u);
+assert.equal(htmlToMarkdown('<p>Alpha <strong>Beta</strong></p>'), 'Alpha **Beta**');
 assert.equal(markdownToPlainText('**Alpha** [Beta](https://example.com)'), 'Alpha Beta');
 assert.match(normalizeMarkdown('**Alpha**'), /\*\*Alpha\*\*/u);
 const email = markdownToEmailHtml('Hello', {
@@ -134,7 +136,7 @@ assert.match(email, /<html lang="ko-KR" dir="ltr">/u);
     `const assert = require('node:assert/strict');
 const markdown = require('${packageJson.name}/markdown');
 assert.equal(typeof markdown.markdownToHtml, 'function');
-assert.equal(typeof markdown.htmlToMarkdown, 'function');
+assert.equal(markdown.htmlToMarkdown('<p>Gamma</p>'), 'Gamma');
 assert.equal(typeof markdown.markdownToEmailHtml, 'function');
 assert.equal(markdown.markdownToPlainText('# Title'), 'Title');
 `,
