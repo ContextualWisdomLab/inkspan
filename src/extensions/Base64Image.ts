@@ -190,6 +190,7 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
     const editor = this.editor;
 
     const insertFiles = (files: File[], at?: number) => {
+      if (!editor.isEditable) return false;
       const images = files.filter((file) => file.type.startsWith('image/'));
       if (images.length === 0) return false;
       for (const file of images) {
