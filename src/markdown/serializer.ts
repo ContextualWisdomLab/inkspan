@@ -286,6 +286,43 @@ export interface MarkdownToEmailHtmlOptions {
   fullDocument?: boolean;
   /** Document `<title>` when `fullDocument` is true. Default `"Message"`. */
   title?: string;
+  /**
+   * Primary document language for the generated root `<html>` element.
+   *
+   * Applied only when `fullDocument` is true. Blank values are omitted. A
+   * non-blank value must be accepted by the runtime's ECMA-402 locale parser;
+   * the canonicalized locale is emitted as the BCP 47 `lang` value.
+   */
+  languageTag?: string;
+  /**
+   * Base writing direction for the generated root `<html>` element.
+   * Applied only when `fullDocument` is true. Runtime callers are validated as
+   * well as TypeScript callers so untyped input cannot create raw attributes.
+   */
+  textDirection?: 'ltr' | 'rtl' | 'auto';
+}
+
+/** Canonicalize one optional full-document language tag or fail closed. */
+function canonicalizeEmailLanguageTag(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  if (!normalized) return undefined;
+  try {
+    return Intl.getCanonicalLocales(normalized).join('');
+  } catch {
+    throw new RangeError(
+      'Email document language must be a valid BCP 47 language tag supported by Intl.',
+    );
+  }
+}
+
+/** Validate one optional full-document direction at the runtime trust boundary. */
+function validateEmailTextDirection(
+  value: MarkdownToEmailHtmlOptions['textDirection'],
+): 'ltr' | 'rtl' | 'auto' | undefined {
+  if (value === undefined || value === 'ltr' || value === 'rtl' || value === 'auto') {
+    return value;
+  }
+  throw new RangeError('Email document direction must be ltr, rtl, or auto.');
 }
 
 /**
@@ -299,6 +336,9 @@ export interface MarkdownToEmailHtmlOptions {
  *   targets are emitted as ordinary text rather than clickable anchors
  * - Returns a body fragment by default; set `fullDocument: true` for a
  *   self-contained document shell
+ * - Full documents can preserve a canonicalized document language and explicit
+ *   runtime-validated `ltr`, `rtl`, or `auto` base direction on the root
+ *   `<html>` element
  *
  * This is the intentional commercial bridge from the editor's Markdown mode
  * to an HTML email body — not a full MIME multipart builder.
@@ -310,9 +350,17 @@ export function markdownToEmailHtml(
   const body = markdownToHtml(markdown).trim();
   if (!options.fullDocument) return body;
   const title = escapeHtml(options.title ?? 'Message');
+  const languageTag = canonicalizeEmailLanguageTag(options.languageTag);
+  const textDirection = validateEmailTextDirection(options.textDirection);
+  const languageAttribute = languageTag
+    ? ` lang="${escapeHtml(languageTag)}"`
+    : '';
+  const directionAttribute = textDirection
+    ? ` dir="${textDirection}"`
+    : '';
   return [
     '<!DOCTYPE html>',
-    '<html>',
+    `<html${languageAttribute}${directionAttribute}>`,
     '<head>',
     '<meta charset="utf-8" />',
     `<title>${title}</title>`,
