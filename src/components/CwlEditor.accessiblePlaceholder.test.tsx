@@ -103,7 +103,7 @@ describe('accessible editor placeholder semantics', () => {
     }
   });
 
-  it('omits collaborative placeholder guidance when the host supplies none', async () => {
+  it('omits whitespace-only collaborative placeholder guidance', async () => {
     const collaborationDocument = new Y.Doc();
     const editorRef = createRef<CwlEditorHandle>();
     try {
@@ -112,6 +112,7 @@ describe('accessible editor placeholder semantics', () => {
           ref={editorRef}
           document={collaborationDocument}
           ariaLabel="Shared report editor"
+          placeholder="   "
           hideToolbar
         />,
       );
