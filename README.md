@@ -71,6 +71,7 @@ runtime.
 | Revision evidence | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent canonical envelope, strong revision, and transition evidence |
 | Text-position selector | `@contextualwisdomlab/cwl-editor/text-position-selector` | React-free deterministic W3C `TextPositionSelector` projection core |
 | Autosave | `@contextualwisdomlab/cwl-editor/autosave` | Provider-neutral bounded single-flight persistence coordination |
+| Headless Markdown | `@contextualwisdomlab/cwl-editor/markdown` | React-free deterministic Markdown/HTML/email/plain-text conversion |
 | Styles | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
 | Full fonts | `@contextualwisdomlab/cwl-editor/fonts.css` | KR/EN/JP/SC/TC/VI offline font bundle |
 | Latin fonts | `@contextualwisdomlab/cwl-editor/fonts-latin.css` | Smaller Latin/Vietnamese-only bundle |
@@ -468,6 +469,35 @@ presence/privacy rules, lifecycle ownership, accessibility behavior, persistence
 model, and CWL/naruon service boundary.
 
 ## Markdown, HTML, and email serialization
+
+Server, worker, email-composition, and migration consumers that do not need the
+React editor can import the protected framework-neutral subpath directly:
+
+```ts
+import {
+  htmlToMarkdown,
+  htmlToPlainText,
+  markdownToEmailHtml,
+  markdownToHtml,
+  markdownToPlainText,
+  normalizeMarkdown,
+} from '@contextualwisdomlab/cwl-editor/markdown';
+
+const normalized = normalizeMarkdown(sourceMarkdown);
+const html = markdownToHtml(normalized);
+const plainText = markdownToPlainText(normalized);
+const emailHtml = markdownToEmailHtml(normalized);
+const roundTripMarkdown = htmlToMarkdown(html);
+const htmlText = htmlToPlainText(html);
+```
+
+The `@contextualwisdomlab/cwl-editor/markdown` surface performs deterministic
+local conversion only. It contains no editor UI and provides no MIME delivery,
+recipient handling, authentication, authorization, tenancy, durable persistence,
+network fetch, model call, naruon dependency, or contextual-orchestrator
+dependency. Hosts retain those responsibilities.
+
+The root package remains source-compatible for React/editor consumers:
 
 ```ts
 import {
