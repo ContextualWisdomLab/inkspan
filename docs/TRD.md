@@ -83,9 +83,13 @@ The Office JSON→DOCX/XLSX/PPTX renderer is **network-free**, **macro-free**, m
 - publish through race-safe file operations with explicit overwrite semantics; and
 - fail closed without reusing partial artifacts after validation or write failure.
 
-Protected DOCX fidelity includes informative bounded inline PNG figures under ADR 0022, bounded `rich_paragraph` bold/italic/underline runs under ADR 0023, and exact optional `left`/`center`/`right`/`justify` alignment for `paragraph` and `rich_paragraph` under ADR 0024. Omitted paragraph alignment preserves inherited/default Word semantics. These additive contracts do not grant arbitrary style, font, color, spacing, indentation, hyperlink, field-code, raw-OOXML, remote-resource, decorative-image, or source-format parsing authority.
+Protected DOCX fidelity includes informative bounded inline PNG figures under ADR 0022, bounded `rich_paragraph` bold/italic/underline runs under ADR 0023, exact optional `left`/`center`/`right`/`justify` alignment for `paragraph` and `rich_paragraph` under ADR 0024, and the same bounded alignment for `heading` under ADR 0025. Omitted alignment preserves inherited/default Word semantics.
 
-Format-fidelity claims are limited to tested supported constructs. The renderer does not execute macros, scripts, formula calculation, embedded external resources, or Desktop Office automation.
+Active PR #137 implements the Proposed ADR 0026 extension for one optional relationship-backed hyperlink on a rich-text run. That active contract deliberately permits only printable-ASCII absolute HTTP(S) targets up to 4,096 characters, rejects local/executable/data/mail/telephone/relative/protocol-relative/credential-bearing/backslash/whitespace-control/non-ASCII targets, preserves the exact accepted target and existing run emphasis, and remains network-free. Until protected integration, this is `implemented_on_active_pr`, not shipped authority.
+
+The protected additive fidelity contracts and active hyperlink proposal do not grant arbitrary style, font, color, spacing, indentation, arbitrary relationship IDs/types, internal/bookmark hyperlinks, field codes, raw OOXML, remote-resource fetching, decorative-image semantics, destination trust validation, or source-format parsing authority.
+
+Format-fidelity claims are limited to tested supported constructs. The renderer does not execute macros, scripts, formula calculation, embedded external resources, or Desktop Office automation. A stored external hyperlink relationship is document metadata, not permission to dereference or trust its destination.
 
 ## Print and paged-media presentation
 
@@ -105,9 +109,9 @@ Central `.github` automation, contextual-orchestrator, and other CWL repositorie
 
 ## Failure and diagnostic semantics
 
-Public failures are bounded, deterministic where practical, and redacted. Document bodies, credentials, tenant identifiers, complete provider metadata, callback values, private exception causes, prompts/model output, durable validators, and source-defined unsupported envelope fields are not reflected into generic public diagnostics unless a versioned authorized contract explicitly requires them.
+Public failures are bounded, deterministic where practical, and redacted. Document bodies, credentials, tenant identifiers, complete provider metadata, callback values, private exception causes, prompts/model output, durable validators, rejected Office hyperlink targets, and source-defined unsupported envelope fields are not reflected into generic public diagnostics unless a versioned authorized contract explicitly requires them.
 
-Identity inspection returns no partial routing object on malformed input. An unknown structurally valid identity is not proof of migration success or current-schema compatibility. Browser evidence does not contain tenant clipboard content and cannot become application authorization/audit evidence. Text-position projection failure does not mutate the document or manufacture an annotation. Cancellation, retry/offline policy, migration retry/recovery, network timeout budgets, durable reconciliation, print destination policy, and user-facing localized recovery remain host responsibilities when they involve host transport, persistence, or OS/browser output.
+Identity inspection returns no partial routing object on malformed input. An unknown structurally valid identity is not proof of migration success or current-schema compatibility. Browser evidence does not contain tenant clipboard content and cannot become application authorization/audit evidence. Text-position projection failure does not mutate the document or manufacture an annotation. Cancellation, retry/offline policy, migration retry/recovery, network timeout budgets, durable reconciliation, print destination policy, Office hyperlink destination authorization, and user-facing localized recovery remain host responsibilities when they involve host transport, persistence, policy, or OS/browser output.
 
 ## Accessibility and interaction semantics
 
@@ -135,6 +139,6 @@ Queued, cancelled, skipped-required, absent, stale-head, predecessor-head, statu
 
 ## Implemented versus proposed
 
-Protected `main` is the sole shipped implementation baseline. SafeClipboard, cross-engine browser assurance, the security disclosure lifecycle, autosave lifecycle observation, toolbar shortcut accessibility metadata, accessible editor placeholder semantics, SSR/native-form serialization, revision-scoped selection evidence, W3C text-position selector evidence, the React-free text-position-selector subpath, document-transition evidence, envelope identity routing, framework-neutral deterministic Markdown conversion, CSS paged-media print output, DOCX informative PNG figures, bounded rich-text runs, bounded paragraph alignment, and the OIDC-backed unified stable registry release train are `implemented_on_protected_main`.
+Protected `main` is the sole shipped implementation baseline. SafeClipboard, cross-engine browser assurance, the security disclosure lifecycle, autosave lifecycle observation, toolbar shortcut accessibility metadata, accessible editor placeholder semantics, SSR/native-form serialization, revision-scoped selection evidence, W3C text-position selector evidence, the React-free text-position-selector subpath, document-transition evidence, envelope identity routing, framework-neutral deterministic Markdown conversion, CSS paged-media print output, DOCX informative PNG figures, bounded rich-text runs, bounded paragraph alignment, bounded heading alignment, and the OIDC-backed unified stable registry release train are `implemented_on_protected_main`.
 
-Open branches may extend this boundary, but no active-PR capability becomes shipped merely because its design or tests are complete. Current protected documentation deliberately does not promote unmerged DOCX heading alignment or any future Office/style surface to protected authority.
+The bounded DOCX rich-run external hyperlink contract in #137 is `implemented_on_active_pr` under Proposed ADR 0026. Open branches may extend the protected boundary, but no active-PR capability becomes shipped merely because its design, tests, or documentation are complete.
