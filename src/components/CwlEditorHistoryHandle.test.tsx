@@ -22,23 +22,29 @@ describe('CwlEditor imperative history control', () => {
     expect(typeof handle.undo).toBe('function');
     expect(typeof handle.canRedo).toBe('function');
     expect(typeof handle.redo).toBe('function');
+    expect(handle.canUndo()).toBe(false);
+    expect(handle.canRedo()).toBe(false);
 
     await act(async () => {
       handle.getEditor()!.chain().focus('end').insertContent(' updated').run();
     });
     expect(handle.getMarkdown()).toBe('Original updated');
     expect(handle.canUndo()).toBe(true);
+    expect(handle.canRedo()).toBe(false);
 
     await act(async () => {
       expect(handle.undo()).toBe(true);
     });
     expect(handle.getMarkdown()).toBe('Original');
+    expect(handle.canUndo()).toBe(false);
     expect(handle.canRedo()).toBe(true);
 
     await act(async () => {
       expect(handle.redo()).toBe(true);
     });
     expect(handle.getMarkdown()).toBe('Original updated');
+    expect(handle.canUndo()).toBe(true);
+    expect(handle.canRedo()).toBe(false);
   });
 
   it('fails closed when the shared handle has no active editor instance', () => {
