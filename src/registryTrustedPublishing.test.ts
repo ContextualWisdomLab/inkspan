@@ -79,6 +79,16 @@ describe('OIDC registry trusted-publishing release contract', () => {
     expect(verificationJob).not.toMatch(/secrets\./u);
   });
 
+  it('uses the native Node 24 setup action throughout the release workflow', () => {
+    const currentSetupNode =
+      'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020';
+    const legacySetupNode =
+      'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020';
+
+    expect(workflow).not.toContain(legacySetupNode);
+    expect(workflow.split(currentSetupNode)).toHaveLength(5);
+  });
+
   it('keeps OIDC authority out of build and workflow-global permissions', () => {
     const jobsIndex = workflow.indexOf('\njobs:');
     expect(jobsIndex).toBeGreaterThan(-1);
