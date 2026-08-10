@@ -75,7 +75,13 @@
         "text": {"type": "string", "minLength": 1},
         "bold": {"type": "boolean"},
         "italic": {"type": "boolean"},
-        "underline": {"type": "boolean"}
+        "underline": {"type": "boolean"},
+        "href": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "description": "Optional external hyperlink target. Runtime validation deliberately permits only absolute HTTP(S) URLs without credentials, literal whitespace/control characters, or backslashes; rendering remains network-free."
+        }
       }
     },
     "docxBlock": {
