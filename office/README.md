@@ -35,7 +35,12 @@ request = {
     "format": "docx",
     "title": "Quarterly brief",
     "blocks": [
-        {"type": "heading", "level": 1, "text": "Executive summary"},
+        {
+            "type": "heading",
+            "level": 1,
+            "text": "Executive summary",
+            "alignment": "center",
+        },
         {
             "type": "paragraph",
             "text": "Revenue grew while churn fell.",
@@ -91,8 +96,9 @@ Python call stack before contract validation.
 Supported shapes are deliberately small and predictable:
 
 - DOCX: headings, plain and **bounded rich-text paragraphs**, ordered/unordered
-  lists, tables, **informative inline PNG figures**, and page breaks. Plain and
-  rich paragraphs may also preserve one bounded horizontal alignment.
+  lists, tables, **informative inline PNG figures**, and page breaks. Headings,
+  plain paragraphs, and rich paragraphs may preserve one bounded horizontal
+  alignment.
 - XLSX: multiple worksheets, scalar cells, header styling, freeze panes,
   filters, and bounded automatic column sizing.
 - PPTX: title/subtitle slides and title/bullet slides with nesting levels.
@@ -126,26 +132,32 @@ is recorded in
 [`docs/doctoring/docx-rich-text-runs.md`](../docs/doctoring/docx-rich-text-runs.md),
 and ADR 0023 records the protected boundary.
 
-### DOCX bounded paragraph alignment
+### DOCX bounded paragraph and heading alignment
 
-DOCX `paragraph` and `rich_paragraph` blocks may optionally declare an exact
-`alignment` value of `left`, `center`, `right`, or `justify`. Both shapes use the
-same public JSON Schema and runtime mapping. Omitting `alignment` preserves the
-Word style/default and does not force a justification property into the output.
+DOCX `paragraph`, `rich_paragraph`, and `heading` blocks may optionally declare
+an exact `alignment` value of `left`, `center`, `right`, or `justify`. All three
+shapes use the same public JSON Schema vocabulary and the renderer's shared
+paragraph-alignment mapping. Omitting `alignment` preserves the applicable Word
+style/default and does not force a justification property into the output.
 
 Alignment is deliberately fail-closed: case variants, whitespace-padded values,
 aliases, numbers, booleans, null, and unsupported strings are rejected rather
 than normalized or coerced. The renderer maps accepted strings through the
 public `python-docx` paragraph alignment API and verifies explicit output in
 WordprocessingML while preserving deterministic bytes and atomic publication.
+A heading therefore remains a normal Word heading paragraph with its level/style
+semantics; alignment does not grant a second style authority.
 
-This contract does not grant arbitrary paragraph-style authority. Heading,
-list, table, title, spacing, indentation, tab, font, color, page-layout, or raw
-OOXML control remains outside this protected slice. Hosts continue to own
+This contract does not grant arbitrary paragraph/heading styles, outline
+numbering, TOC generation, list/table/title alignment, spacing, indentation,
+tabs, fonts, colors, page layout, or raw OOXML control. Hosts continue to own
 source-format interpretation and layout policy. The standards and library basis
 is recorded in
-[`docs/doctoring/docx-paragraph-alignment.md`](../docs/doctoring/docx-paragraph-alignment.md),
-and ADR 0024 records the protected boundary.
+[`docs/doctoring/docx-paragraph-alignment.md`](../docs/doctoring/docx-paragraph-alignment.md)
+and
+[`docs/doctoring/docx-heading-alignment.md`](../docs/doctoring/docx-heading-alignment.md).
+ADR 0024 records the paragraph contract and ADR 0025 records the protected
+heading extension.
 
 ### DOCX informative PNG figures
 
@@ -213,8 +225,8 @@ python -m pip wheel . --no-deps --wheel-dir dist
 The suite re-opens every rendered format with its native library and verifies
 byte-for-byte deterministic output. DOCX rich-paragraph acceptance additionally
 inspects ordered run text and explicit Word run properties while enforcing the
-shared 4,096-run and non-empty-text contract. DOCX paragraph-alignment
-acceptance additionally reopens plain/rich paragraphs and inspects explicit
+shared 4,096-run and non-empty-text contract. DOCX paragraph/heading-alignment
+acceptance additionally reopens the applicable paragraphs and inspects explicit
 WordprocessingML justification while preserving inherited/default behavior when
 the field is omitted. DOCX image acceptance additionally inspects the generated
 ZIP/OOXML package for the exact embedded PNG bytes, dimensions, and accessible
