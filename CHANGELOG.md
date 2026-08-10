@@ -37,6 +37,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Durable-session notifications expose a newly committed server validator only after it is coherent with the emitted lifecycle state, preserving host-owned atomic RFC 9110 `If-Match` semantics
 
 ### Accessibility
+- Require explicit author alternative-text intent before inline image insertion: non-empty text is stored as `alt`, an explicitly submitted empty response marks the image decorative with `alt=""`, cancellation inserts nothing, and conversion failures still abort before prompting.
 - Added programmatic toolbar shortcut discoverability with WAI-ARIA `aria-keyshortcuts` for the implemented bold, italic, link, undo, and redo commands, preserving the same native-button behavior, visible labels, roving focus model, and host-owned shortcut-conflict policy
 - Completed redo shortcut metadata with `Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y`, matching the configured Tiptap history and collaboration behavior and exposing both `Ctrl/Cmd+Shift+Z` and `Ctrl/Cmd+Y` alternatives without adding new key handling
 - Corrected extension-scoped review evidence after exact-head repository review found the existing editor-surface `Ctrl/Cmd+K` link binding in `EditorFrame`; the link button now truthfully exposes `Control+K Meta+K` while the Tiptap Link extension itself remains documented as having no default shortcut
