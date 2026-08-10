@@ -58,7 +58,7 @@ Registry operational acceptance remains open under issue #118. Source integratio
 
 Protected `main` implements bounded external HTTP(S) hyperlinks for DOCX rich-text runs through PR #137. The merged contract preserves visible Unicode text and existing bold/italic/underline formatting under a relationship-backed `w:hyperlink`, accepts only a bounded printable-ASCII absolute HTTP(S) target subset, performs no network access, and leaves destination authorization, phishing policy, internationalized URI preparation, tenant policy, and distribution to hosts.
 
-The implementation reached protected `main` while ADR 0026 and its index remained Proposed and described #137 as active. This reconciliation changes only documentation maturity and release notes; it does not broaden URI vocabulary or runtime authority. ADR 0026 becomes Accepted, the protected evidence is added to fitness and traceability, and the 0.6.0 source-candidate changelog records the feature.
+The implementation reached protected `main` while ADR 0026 and its index remained Proposed and described #137 as active. This reconciliation changes documentation maturity and traceability only; it does not broaden URI vocabulary or runtime authority. ADR 0026 becomes Accepted and the protected evidence is added to fitness and traceability. Release-note reconciliation for the post-#135 protected-source change remains an issue #118 prerequisite before any tag or registry publication.
 
 ## Whole-conversation coverage decision
 
