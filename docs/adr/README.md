@@ -23,6 +23,7 @@ This index records durable architectural decisions. Protected-main implementatio
 | [0015](0015-envelope-schema-migration-routing.md) | Accepted | Envelope schema identity and host-owned migration routing |
 | [0016](0016-cross-engine-browser-assurance.md) | Accepted | Cross-engine browser-semantic release assurance |
 | [0017](0017-security-disclosure-lifecycle.md) | Accepted | Security disclosure lifecycle and coordinated vulnerability handling |
+| [0018](0018-revision-scoped-w3c-text-position-selector.md) | Accepted | Revision-scoped W3C text-position selector authority |
 
 ## Decision discipline
 
