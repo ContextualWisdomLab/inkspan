@@ -91,6 +91,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       () =>
         buildEditorAccessibilityAttributes({
           defaultLabel: 'Rich text editor',
+          placeholder,
           languageTag,
           textDirection,
           ariaLabel,
@@ -102,6 +103,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
           editable,
         }),
       [
+        placeholder,
         languageTag,
         textDirection,
         ariaLabel,
