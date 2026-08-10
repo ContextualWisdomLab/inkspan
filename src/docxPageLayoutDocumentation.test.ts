@@ -9,6 +9,7 @@ const repositoryText = (path: string): string =>
 const adrIndex = repositoryText('docs/adr/README.md');
 const adr = repositoryText('docs/adr/0027-bounded-docx-page-layout.md');
 const doctoring = repositoryText('docs/doctoring/docx-page-layout.md');
+const buyerGuide = repositoryText('docs/docx-page-layout.md');
 
 describe('DOCX page-layout documentation contract', () => {
   it('keeps the active decision discoverable without claiming protected-main maturity', () => {
@@ -17,6 +18,8 @@ describe('DOCX page-layout documentation contract', () => {
     expect(adr).toContain('Status: Proposed');
     expect(adr).toContain('`implemented_on_active_pr`');
     expect(adr).toContain('not protected-main behavior');
+    expect(buyerGuide).toContain('Status: `implemented_on_active_pr`');
+    expect(buyerGuide).toContain('not protected-main behavior');
   });
 
   it('records the bounded schema and excluded authorities', () => {
@@ -30,10 +33,14 @@ describe('DOCX page-layout documentation contract', () => {
       'single section',
     ]) {
       expect(adr).toContain(term);
+      expect(buyerGuide).toContain(term);
     }
     expect(adr).toMatch(/no network access/iu);
     expect(adr).toMatch(/print-service authority/iu);
     expect(adr).toMatch(/atomic publication/iu);
+    expect(buyerGuide).toMatch(/Hosts remain responsible/iu);
+    expect(buyerGuide).toMatch(/relationship-backed external hyperlinks/iu);
+    expect(buyerGuide).toMatch(/image alternative-description metadata/iu);
   });
 
   it('anchors doctoring in primary library and OOXML sources with rollback guidance', () => {
