@@ -28,6 +28,7 @@ This index records durable architectural decisions. Protected-main implementatio
 | [0020](0020-framework-neutral-markdown-package-boundary.md) | Proposed | Framework-neutral deterministic Markdown package boundary |
 | [0021](0021-css-paged-media-print-boundary.md) | Accepted | CSS paged-media print boundary |
 | [0022](0022-informative-docx-png-figures.md) | Accepted | Informative inline PNG figures in deterministic DOCX output |
+| [0023](0023-bounded-docx-rich-text-runs.md) | Accepted | Bounded rich-text runs in deterministic DOCX output |
 
 ## Decision discipline
 

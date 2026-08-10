@@ -38,6 +38,14 @@ request = {
         {"type": "heading", "level": 1, "text": "Executive summary"},
         {"type": "paragraph", "text": "Revenue grew while churn fell."},
         {
+            "type": "rich_paragraph",
+            "runs": [
+                {"text": "Retention ", "bold": True},
+                {"text": "improved", "italic": True},
+                {"text": " year over year.", "underline": True},
+            ],
+        },
+        {
             "type": "table",
             "headers": ["Metric", "Value"],
             "rows": [["Revenue", 120], ["Churn", 0.03]],
@@ -77,11 +85,40 @@ Python call stack before contract validation.
 
 Supported shapes are deliberately small and predictable:
 
-- DOCX: headings, paragraphs, ordered/unordered lists, tables, **informative
-  inline PNG figures**, and page breaks.
+- DOCX: headings, plain and **bounded rich-text paragraphs**, ordered/unordered
+  lists, tables, **informative inline PNG figures**, and page breaks.
 - XLSX: multiple worksheets, scalar cells, header styling, freeze panes,
   filters, and bounded automatic column sizing.
 - PPTX: title/subtitle slides and title/bullet slides with nesting levels.
+
+### DOCX bounded rich-text paragraphs
+
+A DOCX `rich_paragraph` preserves ordinary run-level emphasis without creating
+an arbitrary WordprocessingML or source-format parsing surface. `runs` must be a
+non-empty array containing no more than 4,096 entries. Each run requires a
+non-empty string `text` value and may contain only strict JSON boolean `bold`,
+`italic`, and `underline` fields. Whitespace-only text remains valid document
+content.
+
+Omitting a formatting field leaves that Word run property inherited/default;
+an explicit `true` or `false` maps directly to the corresponding `python-docx`
+run property. Inkspan does not expose tri-state JSON input, enumerated underline
+styles, arbitrary style names, fonts, colors, sizes, hyperlinks, field codes,
+raw OOXML, tracked changes, macros, embedded objects, or model-authored markup
+through this block.
+
+The renderer preserves caller-supplied logical run order, including
+Unicode/CJK/combining/bidirectional text, and applies the same XML 1.0,
+request/string resource, nesting, deterministic-output, and atomic-publication
+controls as the rest of Inkspan Office. Invalid run shapes fail closed and
+cannot publish a partial artifact through `write_office_document`.
+
+Hosts continue to own source authoring policy, export authorization, tenant
+isolation, durable storage, distribution, and any mapping from editor marks or
+another source format into the Office request. The standards and library basis
+is recorded in
+[`docs/doctoring/docx-rich-text-runs.md`](../docs/doctoring/docx-rich-text-runs.md),
+and ADR 0023 records the protected boundary.
 
 ### DOCX informative PNG figures
 
@@ -147,12 +184,14 @@ python -m pip wheel . --no-deps --wheel-dir dist
 ```
 
 The suite re-opens every rendered format with its native library and verifies
-byte-for-byte deterministic output. DOCX image acceptance additionally inspects
-the generated ZIP/OOXML package for the exact embedded PNG bytes, dimensions,
-and accessible description. CI installs runtime and test dependencies from
-`requirements-ci.txt` with wheel hashes and executes the complete Office matrix
-on Python 3.11, Python 3.12, Python 3.13, and Python 3.14. The package metadata
-rejects unverified Python 3.15+ installs until that runtime is added to the
-tested support matrix. CI enforces 100% statement/branch and shipped-symbol
+byte-for-byte deterministic output. DOCX rich-paragraph acceptance additionally
+inspects ordered run text and explicit Word run properties while enforcing the
+shared 4,096-run and non-empty-text contract. DOCX image acceptance additionally
+inspects the generated ZIP/OOXML package for the exact embedded PNG bytes,
+dimensions, and accessible description. CI installs runtime and test dependencies
+from `requirements-ci.txt` with wheel hashes and executes the complete Office
+matrix on Python 3.11, Python 3.12, Python 3.13, and Python 3.14. The package
+metadata rejects unverified Python 3.15+ installs until that runtime is added to
+the tested support matrix. CI enforces 100% statement/branch and shipped-symbol
 docstring coverage, then builds and inspects the distributable wheel. Code and
 all three direct runtime dependencies are MIT-licensed.
