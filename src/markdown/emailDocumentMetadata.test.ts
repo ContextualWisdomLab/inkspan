@@ -4,15 +4,10 @@ import {
   type MarkdownToEmailHtmlOptions,
 } from './serializer.js';
 
-interface FutureEmailDocumentOptions extends MarkdownToEmailHtmlOptions {
-  readonly languageTag?: string;
-  readonly textDirection?: 'ltr' | 'rtl' | 'auto';
-}
-
 const renderEmail = (
   markdown: string,
-  options: FutureEmailDocumentOptions,
-): string => markdownToEmailHtml(markdown, options as MarkdownToEmailHtmlOptions);
+  options: MarkdownToEmailHtmlOptions,
+): string => markdownToEmailHtml(markdown, options);
 
 describe('full email document language and direction metadata', () => {
   it('preserves Korean document language and explicit base direction on the root html element', () => {
