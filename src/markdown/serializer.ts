@@ -187,9 +187,9 @@ function sanitizeInertHtmlFragment(fragment: DocumentFragment): DocumentFragment
 
 /** Parse browser HTML into an inert, detached template document fragment. */
 function createInertBrowserFragment(html: string): DocumentFragment | null {
-  /* v8 ignore next -- the browserless path is exercised by packed Node consumers. */
-  if (typeof document === 'undefined') return null;
-  const template = document.createElement('template');
+  /* v8 ignore next -- browserless runtimes must not touch ambient document. */
+  if (typeof window === 'undefined') return null;
+  const template = window.document.createElement('template');
   template.innerHTML = html;
   return sanitizeInertHtmlFragment(template.content);
 }
