@@ -4,7 +4,7 @@ Status: Protected-main canonical baseline
 
 ## Authority and runtime boundary
 
-Inkspan owns deterministic editor, conversion, document-envelope, local evidence, local autosave ordering, accessibility metadata, package behavior, provider-neutral adapters, and the CSS presentation rules it ships. Hosts own network transport, authentication, authorization, tenant isolation, durable persistence, credentials, migrations, retention, durable audit storage, deployment, collaboration-provider lifecycle, model-use policy, and any durable PDF/print-service authority unless a later Accepted ADR explicitly transfers that ownership.
+Inkspan owns deterministic editor, conversion, document-envelope, local evidence, local autosave ordering, accessibility metadata, package behavior, provider-neutral adapters, Office rendering, and the CSS presentation rules it ships. Hosts own network transport, authentication, authorization, tenant isolation, durable persistence, credentials, migrations, retention, durable audit storage, deployment, collaboration-provider lifecycle, model-use policy, and any durable PDF/print-service authority unless a later Accepted ADR explicitly transfers that ownership.
 
 Protected `main` is the implementation authority. Open PRs may provide Proposed contracts or evidence but do not become shipped behavior until protected integration.
 
@@ -12,9 +12,9 @@ Protected `main` is the implementation authority. Open PRs may provide Proposed 
 
 The root product may compose TipTap/ProseMirror, React-facing integration, deterministic conversion, revision evidence, autosave, collaboration adapters, email/base64 utilities, and Office rendering. Framework-independent subpaths must not accidentally require React, DOM globals, TipTap UI, ProseMirror view, Yjs, network, credentials, database clients, naruon, contextual-orchestrator, or model SDKs when their public contract excludes those dependencies.
 
-Protected framework-independent surfaces include the package's bounded envelope-identity, revision/evidence, text-position-selector, autosave, converter, and other explicitly exported subpaths that are verified from packed artifacts. In particular, the protected React-free text-position-selector subpath reuses the deterministic projection contract without gaining editor-capture, persistence, authorization, or network authority.
+Protected framework-independent surfaces include the package's bounded envelope-identity, revision/evidence, text-position-selector, autosave, converter, and Markdown conversion subpaths that are verified from packed artifacts. In particular, the protected React-free text-position-selector subpath reuses the deterministic projection contract without gaining editor-capture, persistence, authorization, or network authority.
 
-ADR 0020 records the Proposed framework-neutral Markdown/HTML/email/plain-text package boundary implemented on active PR #114. Until that branch reaches protected `main`, the root package remains the shipped authority for those serializers and the proposed `./markdown` subpath must not be described as released.
+ADR 0020 is Accepted on protected `main`. The protected `./markdown` subpath exposes the same deterministic Markdown/HTML/email/plain-text serializer and framework-neutral safe-link/inline-image policy authority through explicit ESM, CommonJS, and declaration targets. The package boundary changes dependency topology, not conversion semantics, and does not gain MIME delivery, recipient, authentication, authorization, tenant, persistence, network, credential, collaboration-provider, or model authority.
 
 Standalone use must not require naruon or contextual-orchestrator. A CWL host can compose Inkspan additively through stable interfaces.
 
@@ -32,7 +32,7 @@ SHA-256 revision evidence identifies exact canonical current-schema content. Loc
 
 TipTap/ProseMirror is the deterministic editing authority for supported Markdown/HTML behavior. Import/export adapters must state supported and lossy constructs explicitly. Generated or rendered output does not silently replace canonical source state. Editor integrations validate extension/plugin configuration and public callback boundaries fail closed without executing accessors merely to inspect untrusted configuration.
 
-The deterministic serializer implementation and its safe-link/inline-image policy must remain one behavioral authority across root and any headless package surface. A framework-neutral package boundary may change dependency topology, not conversion semantics or trust ownership.
+The deterministic serializer implementation and its safe-link/inline-image policy remain one behavioral authority across root and the protected headless package surface. The framework-neutral package boundary changes dependency topology, not conversion semantics or trust ownership.
 
 ## Rich clipboard boundary
 
@@ -83,15 +83,15 @@ The Office JSON→DOCX/XLSX/PPTX renderer is **network-free**, **macro-free**, m
 - publish through race-safe file operations with explicit overwrite semantics; and
 - fail closed without reusing partial artifacts after validation or write failure.
 
+Protected DOCX fidelity includes informative bounded inline PNG figures under ADR 0022, bounded `rich_paragraph` bold/italic/underline runs under ADR 0023, and exact optional `left`/`center`/`right`/`justify` alignment for `paragraph` and `rich_paragraph` under ADR 0024. Omitted paragraph alignment preserves inherited/default Word semantics. These additive contracts do not grant arbitrary style, font, color, spacing, indentation, hyperlink, field-code, raw-OOXML, remote-resource, decorative-image, or source-format parsing authority.
+
 Format-fidelity claims are limited to tested supported constructs. The renderer does not execute macros, scripts, formula calculation, embedded external resources, or Desktop Office automation.
 
 ## Print and paged-media presentation
 
-Protected `main` does not yet contain the proposed paged-media stylesheet contract. Issue #115 and active PR #116 are `implemented_on_active_pr` only and are governed by Proposed ADR 0021.
+CSS paged-media print boundary is implemented on protected `main` under Accepted ADR 0021. The shipped stylesheet uses a declarative `@media print` boundary to hide Inkspan-owned interactive chrome, remove screen-only scroll/max-height clipping, suppress placeholder pseudo-content, keep authored links distinguishable without color alone, and apply conservative fragmentation hints while preserving authored content.
 
-The target contract is declarative CSS under `@media print`: hide Inkspan-owned interactive chrome, remove screen-only scroll/max-height clipping, suppress placeholder pseudo-content, keep authored links distinguishable without color alone, and apply conservative fragmentation hints while preserving authored content. It must not introduce JavaScript print orchestration, a PDF service, durable export authority, credentials, network access, identity, tenancy, or persistence.
-
-Until protected integration, browser printing remains subject to the current screen stylesheet and must not be advertised as the new paged-media behavior.
+The CSS contract does not introduce JavaScript print orchestration, a PDF service, durable export authority, credentials, network access, identity, tenancy, persistence, page-number/header/footer generation, signature authority, or PDF-conformance claims. Browser/OS print destination and durable artifact policy remain host/user responsibilities.
 
 ## Model-assisted authoring
 
@@ -113,11 +113,15 @@ Identity inspection returns no partial routing object on malformed input. An unk
 
 Toolbar shortcut metadata is implemented on protected `main`. Shipped keyboard behavior, focus behavior, native controls, `aria-pressed`, `aria-keyshortcuts`, programmatic save/conflict state, and visible shortcut documentation must agree. Repository-level keyboard behavior outranks extension-local defaults when determining metadata. Status must not depend on color alone. Inkspan exposes machine state sufficient for host WCAG-oriented messaging while leaving localization and application-specific live-region policy to the host.
 
-The Proposed print contract extends the same principle to paged output: Inkspan-owned interactive UI must not become document content, placeholder instruction must not print as authored text, and link semantics must remain visually distinguishable without relying on color alone.
+Accessible editor placeholder semantics are implemented on protected `main`. Standalone and collaborative textbox surfaces expose the same normalized non-blank host-supplied visual placeholder through `aria-placeholder`; whitespace-only guidance is omitted, and placeholder updates do not replace the current TipTap editor or host-owned Yjs binding. `aria-labelledby`/`aria-label` remain the accessible-name authority and placeholder guidance never grants editability.
+
+Protected paged-media behavior extends the same principle to print output: Inkspan-owned interactive UI does not become document content, placeholder instruction is suppressed rather than printed as authored text, and link semantics remain visually distinguishable without relying on color alone.
 
 ## Packaging, compatibility, and release evidence
 
-The root package and protected framework-independent subpaths are verified from packed artifacts under ESM, CommonJS, and strict TypeScript consumers according to each subpath's declared runtime boundary. Office Python surfaces are verified under the documented supported Python matrix, exact production statement/branch/function/line coverage, complete public docstrings, built wheel/package inspection, and license/dependency consistency.
+The root package and protected framework-independent subpaths are verified from packed artifacts under ESM, CommonJS, and strict TypeScript consumers according to each subpath's declared runtime boundary. ADR 0020 is Accepted on protected `main`; the protected `./markdown` package verifier rejects forbidden runtime imports/loaders and proves browserless deterministic conversion without granting ambient authority.
+
+Office Python surfaces are verified under the documented supported Python 3.11–3.14 matrix, exact shipped production statement/branch coverage, complete shipped-symbol docstrings, built wheel/package inspection, and license/dependency consistency.
 
 ADR 0019 is Accepted on protected `main`. Stable registry publication uses one shared `MAJOR.MINOR.PATCH` product release version for the npm editor package and `inkspan-office` wheel, excludes prerelease tags from the registry jobs under the current contract, consumes the exact validated release tarball/wheel rather than rebuilding them, publishes through OIDC Trusted Publishing, and verifies public registry artifacts against the exact release digests. A live external registry release remains operational acceptance evidence separate from the integrated workflow contract.
 
@@ -131,6 +135,6 @@ Queued, cancelled, skipped-required, absent, stale-head, predecessor-head, statu
 
 ## Implemented versus proposed
 
-Protected `main` is the sole shipped implementation baseline. SafeClipboard, cross-engine browser assurance, the security disclosure lifecycle, autosave lifecycle observation, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, W3C text-position selector evidence, the React-free text-position-selector subpath, document-transition evidence, envelope identity routing, and the OIDC-backed unified stable registry release train are `implemented_on_protected_main`.
+Protected `main` is the sole shipped implementation baseline. SafeClipboard, cross-engine browser assurance, the security disclosure lifecycle, autosave lifecycle observation, toolbar shortcut accessibility metadata, accessible editor placeholder semantics, SSR/native-form serialization, revision-scoped selection evidence, W3C text-position selector evidence, the React-free text-position-selector subpath, document-transition evidence, envelope identity routing, framework-neutral deterministic Markdown conversion, CSS paged-media print output, DOCX informative PNG figures, bounded rich-text runs, bounded paragraph alignment, and the OIDC-backed unified stable registry release train are `implemented_on_protected_main`.
 
-The framework-neutral deterministic Markdown package subpath in PR #114 and CSS paged-media print boundary in PR #116 are `implemented_on_active_pr` only. They must remain labeled unshipped until their exact heads satisfy repository policy and reach protected `main`.
+Open branches may extend this boundary, but no active-PR capability becomes shipped merely because its design or tests are complete. Current protected documentation deliberately does not promote unmerged DOCX heading alignment or any future Office/style surface to protected authority.

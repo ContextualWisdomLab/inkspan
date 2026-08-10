@@ -45,6 +45,9 @@ const requiredFiles = [
   'docs/adr/0019-unified-release-version-train.md',
   'docs/adr/0020-framework-neutral-markdown-package-boundary.md',
   'docs/adr/0021-css-paged-media-print-boundary.md',
+  'docs/adr/0022-informative-docx-png-figures.md',
+  'docs/adr/0023-bounded-docx-rich-text-runs.md',
+  'docs/adr/0024-bounded-docx-paragraph-alignment.md',
   'src/fonts/OFL.txt',
   'src/fonts/NOTICE',
   'src/fonts/fonts.css',
@@ -126,12 +129,15 @@ describe('canonical product documentation graph', () => {
     expect(trd).toContain('W3C text-position evidence are implemented on protected `main`');
     expect(trd).toContain('React-free text-position-selector package surface is also protected-main behavior');
     expect(trd).toContain('ADR 0019 is Accepted on protected `main`');
-    expect(trd).toContain('PR #114');
-    expect(trd).toContain('PR #116');
+    expect(trd).toContain('ADR 0020 is Accepted on protected `main`');
+    expect(trd).toContain('CSS paged-media print boundary is implemented on protected `main`');
+    expect(trd).toContain('Accessible editor placeholder semantics are implemented on protected `main`');
     expect(trd).not.toContain('Any W3C text-position interoperability implemented on an active branch');
     expect(trd).not.toContain('Active feature branches such as W3C text-position selector interoperability');
     expect(trd).not.toContain('PR #84 implements');
     expect(trd).not.toMatch(/Envelope identity routing is `implemented_on_active_pr`/u);
+    expect(trd).not.toMatch(/framework-neutral deterministic Markdown[^.]*implemented_on_active_pr/iu);
+    expect(trd).not.toMatch(/CSS paged-media[^.]*implemented_on_active_pr/iu);
 
     expect(contracts).toContain('Envelope identity routing is implemented on protected `main`');
     expect(contracts).not.toContain('PR #84 adds an active-PR identity-routing contract');
@@ -140,6 +146,8 @@ describe('canonical product documentation graph', () => {
     expect(dataModel).not.toContain('`document_schema_identity`: `implemented_on_active_pr`');
     expect(traceability).toContain('Envelope version routing');
     expect(traceability).toMatch(/protected-main evidence/iu);
+    expect(traceability).toMatch(/Headless deterministic Markdown conversion[^\n]*protected-main/iu);
+    expect(traceability).toMatch(/DOCX bounded paragraph alignment[^\n]*protected-main/iu);
     expect(traceability).not.toContain('PR #84 is active implementation evidence');
     expect(routingDoctoring).toContain('Status: Implemented on protected main');
     expect(routingDoctoring).not.toContain('Status: Implemented on active PR');
@@ -148,8 +156,10 @@ describe('canonical product documentation graph', () => {
     expect(fitness).toMatch(/Autosave lifecycle observation[^\n]*implemented_on_protected_main/u);
     expect(fitness).toMatch(/Envelope schema identity \/ migration routing[^\n]*implemented_on_protected_main/u);
     expect(fitness).toMatch(/Unified stable registry release train[^\n]*implemented_on_protected_main/u);
-    expect(fitness).toMatch(/Framework-neutral Markdown package boundary[^\n]*implemented_on_active_pr/u);
-    expect(fitness).toMatch(/CSS paged-media print boundary[^\n]*implemented_on_active_pr/u);
+    expect(fitness).toMatch(/Framework-neutral Markdown package boundary[^\n]*implemented_on_protected_main/u);
+    expect(fitness).toMatch(/CSS paged-media print boundary[^\n]*implemented_on_protected_main/u);
+    expect(fitness).toMatch(/Accessible editor placeholder semantics[^\n]*implemented_on_protected_main/u);
+    expect(fitness).toMatch(/DOCX bounded paragraph alignment[^\n]*implemented_on_protected_main/u);
   });
 
   it('records host ownership and deterministic Inkspan authority consistently', () => {
