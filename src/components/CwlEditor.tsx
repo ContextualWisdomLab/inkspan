@@ -10,7 +10,10 @@ import type { ClipboardSanitizationError } from '../extensions/SafeClipboard.js'
 import { buildExtensions } from '../extensions/kit.js';
 import type { CwlEditorHandle, CwlEditorProps } from '../types.js';
 import { EditorFrame } from './EditorFrame.js';
-import { buildEditorAccessibilityAttributes } from './editorAccessibility.js';
+import {
+  buildEditorAccessibilityAttributes,
+  normalizeEditorPlaceholder,
+} from './editorAccessibility.js';
 import { createEditorDocumentSnapshot } from './editorDocumentSnapshot.js';
 import { applyEditorFormReset } from './editorFormReset.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
@@ -87,11 +90,15 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       },
       [onClipboardErrorRef],
     );
+    const normalizedPlaceholder = useMemo(
+      () => normalizeEditorPlaceholder(placeholder),
+      [placeholder],
+    );
     const editorAttributes = useMemo(
       () =>
         buildEditorAccessibilityAttributes({
           defaultLabel: 'Rich text editor',
-          placeholder,
+          placeholder: normalizedPlaceholder,
           languageTag,
           textDirection,
           ariaLabel,
@@ -103,7 +110,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
           editable,
         }),
       [
-        placeholder,
+        normalizedPlaceholder,
         languageTag,
         textDirection,
         ariaLabel,
@@ -120,7 +127,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       immediatelyRender: false,
       editable,
       extensions: buildExtensions({
-        placeholder,
+        placeholder: normalizedPlaceholder ?? '',
         image,
         clipboard,
         onImageError: reportImageError,
