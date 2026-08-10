@@ -11,6 +11,7 @@ This directory is the discoverable index for Inkspan's product, technical, secur
 | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | Current protected-main implementation architecture and bounded-context ownership |
 | [`../SECURITY.md`](../SECURITY.md) | Protected-main private vulnerability reporting, supported security lines, coordinated disclosure, and claim limits |
 | [`DOCUMENTATION_FITNESS.md`](DOCUMENTATION_FITNESS.md) | Acquisition completeness matrix, implementation maturity, deliberate non-applicability and remaining canonical gaps |
+| [`assessments/2026-08-10-conversation-documentation-reassessment.md`](assessments/2026-08-10-conversation-documentation-reassessment.md) | Dated whole-conversation reassessment, protected/operational deltas, and scheduler-control remediation |
 | [`PRD.md`](PRD.md) | Product users, jobs, buyer outcomes, non-goals, acceptance and claim boundaries |
 | [`TRD.md`](TRD.md) | Technical invariants, runtime boundaries, failure semantics and release evidence |
 | [`CONTRACTS.md`](CONTRACTS.md) | Public package/API/event/schema/plugin/collaboration and host-integration contracts |
@@ -26,6 +27,8 @@ This directory is the discoverable index for Inkspan's product, technical, secur
 | [`adr/README.md`](adr/README.md) | Status-bearing architectural decision index, including ADR 0017 for the protected security-disclosure lifecycle |
 
 Root `SECURITY.md` is now implemented on protected `main` and remains the normative reporting/disclosure policy. ADR 0017 records the durable architecture/process decision and ownership/claim boundaries without duplicating policy prose. `CHANGELOG.md` records shipped/reviewable change history, while `AGENTS.md` and `CLAUDE.md` point contributors back to this canonical graph rather than becoming parallel architecture specifications.
+
+Dated reassessments capture a reviewed source generation and its active or operational deltas without placing mutable workflow-run identities into timeless architecture. They do not override protected `main`, accepted ADRs, or current exact-head evidence.
 
 ## Status discipline
 
