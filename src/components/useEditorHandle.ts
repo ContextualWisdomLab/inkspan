@@ -58,10 +58,18 @@ export function useEditorHandle(
       blur: () => {
         editor?.commands.blur();
       },
-      canUndo: () => editor?.can().undo() ?? false,
-      undo: () => editor?.chain().focus().undo().run() ?? false,
-      canRedo: () => editor?.can().redo() ?? false,
-      redo: () => editor?.chain().focus().redo().run() ?? false,
+      canUndo: () =>
+        editor && !editor.isDestroyed ? editor.can().undo() : false,
+      undo: () =>
+        editor && !editor.isDestroyed
+          ? editor.chain().focus().undo().run()
+          : false,
+      canRedo: () =>
+        editor && !editor.isDestroyed ? editor.can().redo() : false,
+      redo: () =>
+        editor && !editor.isDestroyed
+          ? editor.chain().focus().redo().run()
+          : false,
       getValue: () => {
         if (!editor) return '';
         return editorHtmlToValue(editor.getHTML(), modeRef.current);
