@@ -6,7 +6,7 @@ describe('Blob size preflight', () => {
     const blob = new Blob([new Uint8Array(8)], {
       type: 'application/octet-stream',
     });
-    const readSpy = vi.spyOn(blob, 'arrayBuffer');
+    const readSpy = vi.spyOn(FileReader.prototype, 'readAsArrayBuffer');
 
     await expect(blobToDataUri(blob, { maxBytes: 4 })).rejects.toBeInstanceOf(
       Base64SizeError,
