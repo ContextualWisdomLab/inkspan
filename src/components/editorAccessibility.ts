@@ -7,13 +7,15 @@ export type EditorAriaInvalid = boolean | 'grammar' | 'spelling';
 export interface EditorAccessibilityOptions {
   /** Fallback accessible name when no host label reference is supplied. */
   defaultLabel: string;
+  /** Visual empty-editor guidance mirrored to `aria-placeholder` when non-blank. */
+  placeholder?: string;
   /** BCP 47 language tag for the authored document. */
   languageTag?: string;
   /** Base writing direction for the authored document. */
   textDirection?: EditorTextDirection;
   /** Explicit string accessible name for the editable surface. */
   ariaLabel?: string;
-  /** Space-separated IDs of visible elements that label the surface. */
+  /** Space-separated IDs of elements that label the surface. */
   ariaLabelledBy?: string;
   /** Space-separated IDs of elements that describe the surface. */
   ariaDescribedBy?: string;
@@ -27,7 +29,7 @@ export interface EditorAccessibilityOptions {
   editable: boolean;
 }
 
-/** Normalize a host-supplied language, accessible-name, or ID-reference string. */
+/** Normalize an optional host-supplied accessibility string. */
 function normalizedAccessibilityValue(
   value: string | undefined,
 ): string | undefined {
@@ -36,17 +38,30 @@ function normalizedAccessibilityValue(
 }
 
 /**
+ * Normalize the shared visual and semantic empty-editor guidance.
+ *
+ * Returning `undefined` for blank input lets callers omit both the visual
+ * Placeholder extension text and `aria-placeholder` from the same source.
+ */
+export function normalizeEditorPlaceholder(
+  value: string | undefined,
+): string | undefined {
+  return normalizedAccessibilityValue(value);
+}
+
+/**
  * Build the complete semantic attribute contract shared by standalone and
  * collaborative editor surfaces.
  *
- * A visible label referenced with `aria-labelledby` takes precedence over the
- * fallback string label. Optional language and ID-reference values are omitted
- * when blank so browsers and assistive technologies never receive empty
- * metadata relationships.
+ * A non-blank `aria-labelledby` reference takes precedence over the fallback
+ * string label. Optional placeholder, language, and ID-reference values are
+ * omitted when blank. Placeholder guidance remains supplemental and never
+ * replaces the accessible name.
  */
 export function buildEditorAccessibilityAttributes(
   options: EditorAccessibilityOptions,
 ): Record<string, string> {
+  const placeholder = normalizeEditorPlaceholder(options.placeholder);
   const languageTag = normalizedAccessibilityValue(options.languageTag);
   const labelledBy = normalizedAccessibilityValue(options.ariaLabelledBy);
   const describedBy = normalizedAccessibilityValue(options.ariaDescribedBy);
@@ -59,6 +74,7 @@ export function buildEditorAccessibilityAttributes(
     'aria-readonly': String(!options.editable),
   };
 
+  if (placeholder) attributes['aria-placeholder'] = placeholder;
   if (languageTag) attributes.lang = languageTag;
   if (options.textDirection) attributes.dir = options.textDirection;
   if (labelledBy) {

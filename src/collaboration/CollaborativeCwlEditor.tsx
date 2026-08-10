@@ -10,7 +10,10 @@ import {
   useState,
 } from 'react';
 import { EditorFrame } from '../components/EditorFrame.js';
-import { buildEditorAccessibilityAttributes } from '../components/editorAccessibility.js';
+import {
+  buildEditorAccessibilityAttributes,
+  normalizeEditorPlaceholder,
+} from '../components/editorAccessibility.js';
 import { createEditorDocumentSnapshot } from '../components/editorDocumentSnapshot.js';
 import { applyEditorFormReset } from '../components/editorFormReset.js';
 import { editorHtmlToValue } from '../components/editorSerialization.js';
@@ -106,6 +109,10 @@ export const CollaborativeCwlEditor = forwardRef<
   }
 
   const normalizedField = field.trim();
+  const normalizedPlaceholder = useMemo(
+    () => normalizeEditorPlaceholder(placeholder),
+    [placeholder],
+  );
   const cursorUser = user ? serializeCollaborationUser(user) : undefined;
   const presenceEnabled = provider !== undefined && cursorUser !== undefined;
   const scopedProvider = useMemo(
@@ -134,6 +141,7 @@ export const CollaborativeCwlEditor = forwardRef<
   const onReadyRef = useLatestRef(onReady);
   const onDestroyRef = useLatestRef(onDestroy);
   const onFormResetRef = useLatestRef(onFormReset);
+  const placeholderRef = useLatestRef(normalizedPlaceholder ?? '');
   const reportImageError = useCallback((error: Error) => {
     onImageErrorRef.current?.(error);
   }, [onImageErrorRef]);
@@ -147,6 +155,7 @@ export const CollaborativeCwlEditor = forwardRef<
     () =>
       buildEditorAccessibilityAttributes({
         defaultLabel: 'Collaborative rich text editor',
+        placeholder: normalizedPlaceholder,
         languageTag,
         textDirection,
         ariaLabel,
@@ -158,6 +167,7 @@ export const CollaborativeCwlEditor = forwardRef<
         editable,
       }),
     [
+      normalizedPlaceholder,
       languageTag,
       textDirection,
       ariaLabel,
@@ -175,7 +185,7 @@ export const CollaborativeCwlEditor = forwardRef<
       immediatelyRender: false,
       editable,
       extensions: buildExtensions({
-        placeholder,
+        placeholder: () => placeholderRef.current,
         image,
         clipboard,
         onImageError: reportImageError,
