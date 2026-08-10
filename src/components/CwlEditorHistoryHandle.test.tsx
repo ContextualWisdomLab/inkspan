@@ -70,6 +70,7 @@ describe('CwlEditor imperative history control', () => {
 
     act(() => editor.destroy());
     expect(editor.isDestroyed).toBe(true);
+    expect(handle.getEditor()).toBeNull();
     expect(handle.canUndo()).toBe(false);
     expect(handle.undo()).toBe(false);
     expect(handle.canRedo()).toBe(false);
