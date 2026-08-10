@@ -115,17 +115,18 @@ import {
   markdownToPlainText,
   normalizeMarkdown,
 } from '${packageJson.name}/markdown';
-assert.match(markdownToHtml('[safe](https://example.com)'), /href="https:\/\/example\.com"/u);
+const safeHtml = markdownToHtml('[safe](https://example.com)');
+assert.equal(safeHtml.includes('href="https://example.com"'), true);
 assert.doesNotMatch(markdownToHtml('[unsafe](javascript:alert(1))'), /href=/u);
 assert.equal(htmlToMarkdown('<p>Alpha <strong>Beta</strong></p>'), 'Alpha **Beta**');
 assert.equal(markdownToPlainText('**Alpha** [Beta](https://example.com)'), 'Alpha Beta');
-assert.match(normalizeMarkdown('**Alpha**'), /\*\*Alpha\*\*/u);
+assert.equal(normalizeMarkdown('**Alpha**').includes('**Alpha**'), true);
 const email = markdownToEmailHtml('Hello', {
   fullDocument: true,
   languageTag: 'ko-kr',
   textDirection: 'ltr',
 });
-assert.match(email, /<html lang="ko-KR" dir="ltr">/u);
+assert.equal(email.includes('<html lang="ko-KR" dir="ltr">'), true);
 `,
     'utf8',
   );
