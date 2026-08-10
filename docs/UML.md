@@ -12,7 +12,7 @@ flowchart LR
   HostApp[Standalone host or naruon compose / ui.panel]
   EditorCore[Inkspan TipTap / ProseMirror editor]
   ClipboardBoundary[Safe rich clipboard]
-  EvidenceCore[Envelope revision selection transition evidence]
+  EvidenceCore[Envelope revision selection text-position transition evidence]
   AutosaveCore[Bounded local autosave]
   ConversionCore[Deterministic Markdown / HTML conversion]
   OfficeRenderer[Deterministic Office renderer]
@@ -63,9 +63,11 @@ Security-relevant browser fragment semantics require the same hostile corpus und
 
 ```mermaid
 flowchart TB
-  Head[One exact protected-source candidate head]
+  Head[One exact protected release-candidate head]
   Corpus[Committed synthetic adversarial clipboard corpus]
   Lock[Immutable package lock and Playwright/browser revisions]
+  Packed[Exact packed npm artifact + SHA-256]
+  Run[Fresh run identity]
   Chromium[Chromium project]
   Firefox[Firefox project]
   WebKit[WebKit project]
@@ -78,12 +80,20 @@ flowchart TB
 
   Head --> Corpus
   Head --> Lock
+  Head --> Packed
+  Head --> Run
   Corpus --> Chromium
   Corpus --> Firefox
   Corpus --> WebKit
   Lock --> Chromium
   Lock --> Firefox
   Lock --> WebKit
+  Packed --> Chromium
+  Packed --> Firefox
+  Packed --> WebKit
+  Run --> Chromium
+  Run --> Firefox
+  Run --> WebKit
   Chromium --> Semantic
   Firefox --> Semantic
   WebKit --> Semantic
@@ -93,7 +103,7 @@ flowchart TB
   Difference -->|unsafe, unexplained, missing browser, skipped or failed| Repair --> Blocked
 ```
 
-A queued, pending, skipped, cancelled, absent or failed required browser is not passing evidence. Differences are never normalized merely to make engines agree; any admitted difference is a reviewed compatibility artifact. ADR 0016 governs this decision, SafeClipboard is already protected-main authority, and Issue #66 is implemented on the active cross-engine assurance PR until protected integration.
+A queued, pending, skipped, cancelled, absent or failed required browser is not passing evidence. Differences are never normalized merely to make engines agree; any admitted difference is a reviewed compatibility artifact. ADR 0016 governs the protected-main release decision. Every later release candidate must generate fresh source/lock/run/browser evidence and prove the exact packed npm artifact rather than reuse predecessor or feature-branch evidence.
 
 ## Author-to-model proposal sequence
 
@@ -173,7 +183,7 @@ sequenceDiagram
   end
 ```
 
-The identity result does not contain the document body and does not prove migration, authorization, persistence or durable success. ADR 0015 governs this protected-main routing aid; Issue #74 is historical implementation tracking. The host continues to own schema registry, migration execution, persistence, audit and rollback.
+The identity result does not contain the document body and does not prove migration, authorization, persistence or durable success. ADR 0015 governs this protected-main routing aid. The host continues to own schema registry, migration execution, persistence, audit and rollback.
 
 ## Office render and file publication sequence
 
@@ -294,6 +304,37 @@ sequenceDiagram
   RevisionDerivation-->>Caller: frozen revision and structural coordinates
 ```
 
+## Revision-scoped W3C text-position selector evidence
+
+```mermaid
+sequenceDiagram
+  participant Caller
+  participant EditorState as Immutable EditorState
+  participant Projection as inkspan-prosemirror-text v1
+  participant Grapheme as Intl.Segmenter grapheme validator
+  participant Revision as Revision derivation
+  participant Host as Host annotation service
+
+  Caller->>EditorState: request text-position selector evidence
+  EditorState->>EditorState: capture doc + selection once
+  EditorState->>Projection: logical document + structural selection
+  Projection->>Projection: project LF block separators + U+FFFC leaves
+  Projection->>Grapheme: validate start/end boundaries
+  alt grapheme segmentation unavailable or boundary invalid
+    Grapheme-->>Caller: segmenter_unavailable or grapheme_boundary
+  else valid boundaries
+    Grapheme-->>Projection: valid boundaries
+    Projection->>Projection: count Unicode code points
+    EditorState->>Revision: canonical envelope from same captured doc
+    Revision-->>Caller: exact strong revision
+    Projection-->>Caller: frozen TextPositionSelector + projection identity
+    Caller->>Host: revision + selector + projection under host policy
+    Host->>Host: authorize source, persist/publish, re-anchor only if required
+  end
+```
+
+ProseMirror structural positions and W3C text positions are distinct coordinate systems. The selector remains valid only for the exact revision and named projection. Inkspan does not include selected quote text in ordinary evidence and does not own annotation identifiers/bodies, source-resource IRI policy, authentication, authorization, tenancy, durable persistence, audit, publication, or cross-revision re-anchoring. ADR 0018 governs this protected-main authority.
+
 ## Provider-neutral Yjs collaboration sequence
 
 ```mermaid
@@ -363,6 +404,7 @@ The diagram does not imply a required network service owned by Inkspan. The Offi
 flowchart TD
   Event{Failure boundary}
   Event -->|clipboard / import invalid| LocalReject[Reject safely; editor remains usable]
+  Event -->|text-position evidence invalid or segmenter unavailable| SelectorReject[No selector evidence; document remains unchanged]
   Event -->|durable save conflict / ambiguity| SaveBlocked[Blocked until explicit host recovery]
   Event -->|Yjs provider unavailable| CollabDegraded[Host chooses local edit / read-only / reconnect / block]
   Event -->|model gateway unavailable| ManualMode[Deterministic manual editing continues]
@@ -374,8 +416,8 @@ flowchart TD
 
 ```mermaid
 flowchart TB
-  InkspanAuthority[Inkspan deterministic authority] --> EditorSemantics[Editor / conversion / revision semantics]
-  HostAuthority[Host authority] --> HostServices[Transport / identity / tenancy / persistence / audit / model policy]
+  InkspanAuthority[Inkspan deterministic authority] --> EditorSemantics[Editor / conversion / revision / selector semantics]
+  HostAuthority[Host authority] --> HostServices[Transport / identity / tenancy / persistence / annotation / audit / model policy]
   MachineEvidence[Exact-head CI / security / package / browser / Office / provenance] --> ProtectedMerge[Protected merge]
   IndependentReview[Independent formal review where required] --> ProtectedMerge
   ProtectedMerge --> ReleaseAuthority[Exact protected release authority]

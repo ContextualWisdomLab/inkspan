@@ -34,7 +34,7 @@ TipTap/ProseMirror is the deterministic editing authority for supported Markdown
 
 SafeClipboard is implemented on protected `main`. Rich clipboard HTML is untrusted. Sanitization is installed in the actual TipTap/ProseMirror paste pipeline, uses bounded fail-closed semantic reconstruction, performs no external fetch or active execution, and preserves only supported semantic content. Pure sanitizer APIs and editor integration remain behaviorally consistent.
 
-Where browser fragment parsing or serialization can change security semantics, a release must run the same adversarial corpus through dependency-locked Playwright Chromium, Firefox, and WebKit projects. Differences require an explicit standards/threat rationale rather than an unconditional parity normalization. The active cross-engine assurance PR implements Issue #66 on the protected SafeClipboard baseline and remains non-authoritative until protected integration.
+Browser-semantic release assurance is also implemented on protected `main` under ADR 0016. Where browser fragment parsing or serialization can change security semantics, the same committed adversarial corpus runs through dependency-locked Playwright Chromium, Firefox, and WebKit projects on one exact source head. The gate binds browser results to the browser-test lock, fresh run identity, browser revisions, corpus, operating-system identity, and—on the tagged release path—the exact packed npm artifact digest. Differences require an explicit standards/threat rationale rather than unconditional normalization. Missing, stale, package-mismatched, skipped, cancelled, or semantically divergent evidence fails closed; feature-branch success never substitutes for fresh release-candidate evidence.
 
 ## SSR and native forms
 
@@ -46,7 +46,7 @@ The hidden/native field is never authentication, authorization, CSRF protection,
 
 Selection evidence captures structural coordinates and canonical document state from the same immutable editor snapshot before asynchronous hashing. Transition evidence validates previous and resulting envelopes before sequential revision derivation. Ordinary evidence contains revision/coordinate/change metadata rather than document bodies and does not synthesize actor, tenant, time, model identity, signature, authorization, transport result, or durable-persistence claims.
 
-Selection and transition evidence are implemented on protected `main`; their local equality/lineage claims remain intentionally narrower than host-owned authorization, occurrence provenance, durable audit, re-anchoring, and persistence authority.
+Selection and transition evidence are implemented on protected `main`; their local equality/lineage claims remain intentionally narrower than host-owned authorization, occurrence provenance, durable audit, re-anchoring, and persistence authority. Any W3C text-position interoperability implemented on an active branch remains separate from protected ProseMirror structural coordinates until that branch is integrated.
 
 ## Autosave state machine and durable concurrency
 
@@ -93,7 +93,7 @@ Central `.github` automation, contextual-orchestrator, and other CWL repositorie
 
 Public failures are bounded, deterministic where practical, and redacted. Document bodies, credentials, tenant identifiers, complete provider metadata, callback values, private exception causes, prompts/model output, durable validators, and source-defined unsupported envelope fields are not reflected into generic public diagnostics unless a versioned authorized contract explicitly requires them.
 
-Identity inspection returns no partial routing object on malformed input. An unknown structurally valid identity is not proof of migration success or current-schema compatibility. Cancellation, retry/offline policy, migration retry/recovery, network timeout budgets, durable reconciliation, and user-facing localized recovery remain host responsibilities when they involve host transport or persistence.
+Identity inspection returns no partial routing object on malformed input. An unknown structurally valid identity is not proof of migration success or current-schema compatibility. Browser evidence does not contain tenant clipboard content and cannot become application authorization/audit evidence. Cancellation, retry/offline policy, migration retry/recovery, network timeout budgets, durable reconciliation, and user-facing localized recovery remain host responsibilities when they involve host transport or persistence.
 
 ## Accessibility and interaction semantics
 
@@ -103,7 +103,7 @@ Toolbar shortcut metadata is implemented on protected `main`. Shipped keyboard b
 
 The root package and framework-independent subpaths are verified from packed artifacts under ESM, CommonJS, and strict TypeScript consumers. The protected `envelope-identity` subpath has equivalent packed-artifact verification without framework dependencies. Office Python surfaces are verified under the documented supported Python matrix, exact production statement/branch/function/line coverage, complete public docstrings, built wheel/package inspection, and license/dependency consistency.
 
-Release publication verifies one exact integrated protected source head, expected artifact inventory and digests, package/runtime compatibility, security/coverage/accessibility/document-fidelity gates, SBOM/provenance/reproducibility where configured, zero valid unresolved findings, formal review/branch-protection requirements, and post-publication artifact smoke evidence.
+Release publication verifies one exact integrated protected source head, expected artifact inventory and digests, package/runtime compatibility, security/coverage/accessibility/document-fidelity gates, fresh exact-source browser evidence bound to the exact packed npm artifact, SBOM/provenance/reproducibility where configured, zero valid unresolved findings, formal review/branch-protection requirements, and post-publication artifact smoke evidence.
 
 Queued, cancelled, skipped-required, absent, stale-head, predecessor-head, status-only, author-only, or synthetic-merge evidence is not success. A commit status, automated model verdict, comment, formal review, and merge authority are distinct evidence classes.
 
@@ -113,4 +113,4 @@ Queued, cancelled, skipped-required, absent, stale-head, predecessor-head, statu
 
 ## Implemented versus proposed
 
-Protected `main` is the sole implemented baseline. SafeClipboard, the security disclosure lifecycle, autosave lifecycle observation, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, document-transition evidence, and envelope identity routing are implemented on protected `main`. Cross-engine browser assurance is `implemented_on_active_pr` on the current release-assurance line and remains unshipped until protected integration. Canonical docs distinguish target architecture from shipped behavior and must be updated when the protected implementation changes.
+Protected `main` is the sole implemented baseline. SafeClipboard, cross-engine browser assurance, the security disclosure lifecycle, autosave lifecycle observation, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, document-transition evidence, and envelope identity routing are implemented on protected `main`. Active feature branches such as W3C text-position selector interoperability remain unshipped until their own protected integration. Canonical docs distinguish target architecture from shipped behavior and must be updated when the protected implementation changes.
