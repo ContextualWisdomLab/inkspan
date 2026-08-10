@@ -8,8 +8,12 @@ import { CwlEditor } from './CwlEditor.js';
 
 afterEach(cleanup);
 
+const visualPlaceholder = (textbox: HTMLElement): string | null =>
+  textbox.querySelector('[data-placeholder]')?.getAttribute('data-placeholder') ??
+  null;
+
 describe('accessible editor placeholder semantics', () => {
-  it('updates the standalone aria-placeholder without recreating the editor', async () => {
+  it('keeps standalone visual and semantic placeholder guidance normalized together', async () => {
     const editorRef = createRef<CwlEditorHandle>();
     const { rerender } = render(
       <CwlEditor
@@ -23,6 +27,7 @@ describe('accessible editor placeholder semantics', () => {
     await waitFor(() => expect(editorRef.current?.getEditor()).not.toBeNull());
     const editor = editorRef.current!.getEditor();
     expect(textbox).toHaveAttribute('aria-placeholder', 'Start the report…');
+    expect(visualPlaceholder(textbox)).toBe('Start the report…');
 
     rerender(
       <CwlEditor
@@ -37,6 +42,7 @@ describe('accessible editor placeholder semantics', () => {
         'Continue with evidence…',
       ),
     );
+    expect(visualPlaceholder(textbox)).toBe('Continue with evidence…');
     expect(editorRef.current!.getEditor()).toBe(editor);
 
     rerender(
@@ -47,10 +53,11 @@ describe('accessible editor placeholder semantics', () => {
       />,
     );
     await waitFor(() => expect(textbox).not.toHaveAttribute('aria-placeholder'));
+    expect(visualPlaceholder(textbox)).toBeNull();
     expect(editorRef.current!.getEditor()).toBe(editor);
   });
 
-  it('keeps collaborative placeholder updates semantic and Yjs-preserving', async () => {
+  it('keeps collaborative visual and semantic placeholder updates Yjs-preserving', async () => {
     const collaborationDocument = new Y.Doc();
     const editorRef = createRef<CwlEditorHandle>();
     try {
@@ -59,7 +66,7 @@ describe('accessible editor placeholder semantics', () => {
           ref={editorRef}
           document={collaborationDocument}
           ariaLabel="Shared report editor"
-          placeholder="Shared report…"
+          placeholder="  Shared report…  "
           hideToolbar
         />,
       );
@@ -71,6 +78,7 @@ describe('accessible editor placeholder semantics', () => {
       const editor = editorRef.current!.getEditor();
       const sharedFragment = collaborationDocument.getXmlFragment('default');
       expect(textbox).toHaveAttribute('aria-placeholder', 'Shared report…');
+      expect(visualPlaceholder(textbox)).toBe('Shared report…');
 
       rerender(
         <CollaborativeCwlEditor
@@ -84,6 +92,7 @@ describe('accessible editor placeholder semantics', () => {
       await waitFor(() =>
         expect(textbox).toHaveAttribute('aria-placeholder', 'Review together…'),
       );
+      expect(visualPlaceholder(textbox)).toBe('Review together…');
       expect(editorRef.current!.getEditor()).toBe(editor);
       expect(collaborationDocument.getXmlFragment('default')).toBe(sharedFragment);
     } finally {
