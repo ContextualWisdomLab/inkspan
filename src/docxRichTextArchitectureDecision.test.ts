@@ -6,6 +6,18 @@ import { describe, expect, it } from 'vitest';
 const repositoryFile = (path: string): string =>
   readFileSync(resolve(process.cwd(), path), 'utf8');
 
+const normalizeWhitespace = (text: string): string => text.replace(/\s+/gu, ' ');
+
+const expectRichParagraphContract = (document: string): void => {
+  const normalized = normalizeWhitespace(document);
+
+  expect(normalized).toMatch(/rich_paragraph/iu);
+  expect(normalized).toMatch(/runs.{0,80}4,096 entries/iu);
+  expect(normalized).toMatch(/(?:run|runs).{0,80}non-empty.{0,40}(?:string )?`?text`?/iu);
+  expect(normalized).toMatch(/bold.{0,120}italic.{0,120}underline/iu);
+  expect(normalized).toMatch(/hosts?.{0,160}(?:authoring|responsib)/iu);
+};
+
 describe('protected DOCX bounded rich-text architecture decision', () => {
   it('keeps the accepted decision discoverable from the canonical ADR index', () => {
     const adrPath = 'docs/adr/0023-bounded-docx-rich-text-runs.md';
@@ -17,11 +29,7 @@ describe('protected DOCX bounded rich-text architecture decision', () => {
       '[0023](0023-bounded-docx-rich-text-runs.md) | Accepted',
     );
     expect(adr).toContain('Status: Accepted');
-    expect(adr).toContain('4,096');
-    expect(adr).toContain('bold');
-    expect(adr).toContain('italic');
-    expect(adr).toContain('underline');
-    expect(adr).toContain('Hosts own authoring policy');
+    expectRichParagraphContract(adr);
   });
 
   it('keeps the protected Office guide and APA-7 doctoring aligned', () => {
@@ -29,12 +37,7 @@ describe('protected DOCX bounded rich-text architecture decision', () => {
     const doctoring = repositoryFile('docs/doctoring/docx-rich-text-runs.md');
 
     for (const document of [officeGuide, doctoring]) {
-      expect(document).toContain('rich_paragraph');
-      expect(document).toContain('4,096');
-      expect(document).toMatch(/bold/iu);
-      expect(document).toMatch(/italic/iu);
-      expect(document).toMatch(/underline/iu);
-      expect(document).toMatch(/host/iu);
+      expectRichParagraphContract(document);
     }
 
     expect(doctoring).toContain('Microsoft. (2024, January 12).');
