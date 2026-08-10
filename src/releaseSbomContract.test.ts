@@ -40,6 +40,22 @@ describe('release SBOM contract', () => {
     expect(validationStep).toContain('packages');
   });
 
+  it('requires both release package identities to exist in the generated SBOM inventory', () => {
+    const validationIndex = workflow.indexOf('- name: Validate release SBOM');
+    const checksumIndex = workflow.indexOf('- name: Generate release checksums');
+    const validationStep = workflow.slice(validationIndex, checksumIndex);
+
+    expect(validationStep).toContain(
+      'const sbomPackageNames = new Set(sbom.packages.map((pkg) => pkg.name));',
+    );
+    expect(validationStep).toContain(
+      'if (!sbomPackageNames.has(packageMetadata.name))',
+    );
+    expect(validationStep).toContain(
+      "if (!sbomPackageNames.has('inkspan-office'))",
+    );
+  });
+
   it('checksums, inventories, publishes, and provenance-attests the SBOM asset', () => {
     expect(workflow).toContain('sha256sum -- *.tgz *.whl inkspan.spdx.json > SHA256SUMS');
     expect(workflow).toContain('expected_asset_count=4');
