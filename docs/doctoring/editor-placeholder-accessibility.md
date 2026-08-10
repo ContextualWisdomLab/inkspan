@@ -6,7 +6,7 @@ Status: Implemented on active PR
 
 Inkspan's visual empty-editor hint is rendered by the TipTap Placeholder extension. The active accessibility change mirrors that same host-supplied placeholder into the ProseMirror textbox's `aria-placeholder` attribute so assistive-technology users can receive equivalent entry guidance without requiring every embedding host to duplicate the text in a separate description element.
 
-The placeholder remains **supplemental guidance**, not the editor's accessible name. Inkspan's existing accessible-name precedence remains unchanged: `aria-labelledby` when a host references a visible label, otherwise an explicit `aria-label`, otherwise the product fallback label.
+The placeholder remains **supplemental guidance**, not the editor's accessible name. Inkspan's existing accessible-name precedence remains unchanged: `aria-labelledby` whenever a host supplies a non-blank label reference, otherwise an explicit `aria-label`, otherwise the product fallback label.
 
 ## WAI-ARIA authority
 
@@ -16,7 +16,7 @@ Inkspan therefore exposes the placeholder only after trimming surrounding whites
 
 ## Lifecycle and ownership
 
-Standalone and provider-neutral collaborative surfaces use the same `buildEditorAccessibilityAttributes()` contract. A changed React `placeholder` prop updates the semantic textbox attribute without replacing the current TipTap editor or Yjs document binding. The change introduces no live region, network call, model call, persistence field, telemetry event, tenant identifier, authorization state, or collaboration-provider behavior.
+Standalone and provider-neutral collaborative surfaces use the same `buildEditorAccessibilityAttributes()` contract. A changed React `placeholder` prop updates the semantic textbox attribute and the visual TipTap placeholder from one normalized value without replacing the current TipTap editor or Yjs document binding. The change introduces no live region, network call, model call, persistence field, telemetry event, tenant identifier, authorization state, or collaboration-provider behavior.
 
 `aria-placeholder` does not assert that the document is editable. `aria-readonly` and the TipTap editable state remain the authority for editability. A read-only empty surface can still expose its configured placeholder guidance, but that guidance grants no editing capability.
 
@@ -28,7 +28,8 @@ The active test line includes:
 - normalized non-empty placeholder plus `aria-labelledby` name precedence;
 - standalone DOM verification and live placeholder-prop update without editor recreation;
 - collaborative DOM verification and live placeholder-prop update without editor or Yjs-fragment replacement;
-- blank/whitespace-only placeholder omission; and
+- blank/whitespace-only placeholder omission;
+- package-distribution verification through `pnpm build && pnpm verify:package`, whose npm-pack inventory check binds `dist/cwl-editor.js` to the publishable package and whose `node ./tests/package/verify-editor-placeholder-package.mjs` smoke verifies the public `CwlEditor.placeholder` visual and `aria-placeholder` semantics from that built entry; and
 - repository-wide exact production coverage, package, CI, security, and SAST gates before protected integration.
 
 ## References — APA 7th
