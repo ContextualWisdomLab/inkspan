@@ -1,7 +1,4 @@
-import {
-  Base64SizeError,
-  dataUriByteLength,
-} from '../converter/base64.js';
+import { Base64SizeError } from '../converter/base64.js';
 
 /** Strict raster-only data-URI form accepted by Inkspan document surfaces. */
 const INLINE_RASTER_SOURCE_PATTERN =
@@ -15,6 +12,13 @@ function redactImageSource(source: unknown): string {
   const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(source)?.[1];
   if (scheme) return `${scheme.toLowerCase()}:<redacted>`;
   return '<unrecognized>';
+}
+
+/** Return decoded bytes for a source that already passed the strict base64 grammar. */
+function inlineRasterByteLength(source: string): number {
+  const payloadLength = source.length - source.indexOf(',') - 1;
+  const padding = source.endsWith('==') ? 2 : Number(source.endsWith('='));
+  return (payloadLength / 4) * 3 - padding;
 }
 
 /** Error thrown when an image source violates Inkspan's inline raster policy. */
@@ -51,7 +55,7 @@ export function validateInlineImageSource(
     throw new Base64ImageSourceError(source);
   }
   if (maxSizeBytes > 0) {
-    const bytes = dataUriByteLength(source);
+    const bytes = inlineRasterByteLength(source);
     if (bytes > maxSizeBytes) {
       throw new Base64SizeError(bytes, maxSizeBytes);
     }
