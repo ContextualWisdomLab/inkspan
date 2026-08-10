@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 const HARNESS_URL = 'http://127.0.0.1:4173/tests/browser/harness.html';
-const STYLES_URL = 'http://127.0.0.1:4173/src/styles.css';
+const STYLES_URL = 'http://127.0.0.1:4173/dist/cwl-editor.css';
 
 const allowHarnessRequest = (requestUrl: string): boolean => {
   const url = new URL(requestUrl);
