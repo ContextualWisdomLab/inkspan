@@ -45,6 +45,7 @@ export function EditorFrame({
     (event: KeyboardEvent) => {
       /* v8 ignore next -- keyboard events cannot reach an unmounted editor. */
       if (!editor) return;
+      if (!editable) return;
       const modifier = event.metaKey || event.ctrlKey;
       if (modifier && event.key.toLowerCase() === 'k') {
         event.preventDefault();
@@ -65,7 +66,7 @@ export function EditorFrame({
         }
       }
     },
-    [editor],
+    [editable, editor],
   );
 
   return (
