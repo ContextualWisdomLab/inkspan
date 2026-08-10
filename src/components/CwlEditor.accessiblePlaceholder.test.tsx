@@ -8,9 +8,12 @@ import { CwlEditor } from './CwlEditor.js';
 
 afterEach(cleanup);
 
-const visualPlaceholder = (textbox: HTMLElement): string | null =>
-  textbox.querySelector('[data-placeholder]')?.getAttribute('data-placeholder') ??
-  null;
+const visualPlaceholder = (textbox: HTMLElement): string | null => {
+  const placeholder = textbox
+    .querySelector('[data-placeholder]')
+    ?.getAttribute('data-placeholder');
+  return placeholder?.trim() ? placeholder : null;
+};
 
 describe('accessible editor placeholder semantics', () => {
   it('keeps standalone visual and semantic placeholder guidance normalized together', async () => {
