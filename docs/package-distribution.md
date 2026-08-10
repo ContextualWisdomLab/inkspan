@@ -16,7 +16,7 @@ integrations.
 | `@contextualwisdomlab/cwl-editor/converter` | Framework-independent base64 and data-URI utilities |
 | `@contextualwisdomlab/cwl-editor/envelope-identity` | Framework-independent identity-only envelope routing for bounded schema identity inspection; migration remains host-owned |
 | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent revision evidence and document-transition evidence for local content equality/lineage claims |
-| `@contextualwisdomlab/cwl-editor/text-position-selector` | `implemented_on_active_pr` — React-free text-position projection core implementing W3C `TextPositionSelector`; interactive capture, revision binding, authorization, persistence, and re-anchoring remain outside this subpath |
+| `@contextualwisdomlab/cwl-editor/text-position-selector` | `implemented_on_protected_main` — React-free text-position projection core implementing W3C `TextPositionSelector`; interactive capture, revision binding, authorization, persistence, and re-anchoring remain outside this subpath |
 | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
 | `@contextualwisdomlab/cwl-editor/fonts.css` | Full offline KR/EN/JP/SC/TC/VI font bundle |
 | `@contextualwisdomlab/cwl-editor/fonts-latin.css` | Smaller Latin/Vietnamese font bundle |
