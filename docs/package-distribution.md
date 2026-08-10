@@ -16,7 +16,7 @@ integrations.
 | `@contextualwisdomlab/cwl-editor/converter` | Framework-independent base64 and data-URI utilities |
 | `@contextualwisdomlab/cwl-editor/envelope-identity` | Framework-independent identity-only envelope routing for bounded schema identity inspection; migration remains host-owned |
 | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent revision evidence and document-transition evidence for local content equality/lineage claims |
-| `@contextualwisdomlab/cwl-editor/text-position-selector` | React-free text-position projection core implementing W3C `TextPositionSelector`; interactive capture, revision binding, authorization, persistence, and re-anchoring remain outside this subpath |
+| `@contextualwisdomlab/cwl-editor/text-position-selector` | `implemented_on_active_pr` — React-free text-position projection core implementing W3C `TextPositionSelector`; interactive capture, revision binding, authorization, persistence, and re-anchoring remain outside this subpath |
 | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
 | `@contextualwisdomlab/cwl-editor/fonts.css` | Full offline KR/EN/JP/SC/TC/VI font bundle |
 | `@contextualwisdomlab/cwl-editor/fonts-latin.css` | Smaller Latin/Vietnamese font bundle |
@@ -104,11 +104,15 @@ production library build. The verification chain:
    runtime graph that its public contract excludes.
 
 The text-position-selector package check builds a real npm tarball, consumes the
-public subpath through ESM and CommonJS, compiles a strict TypeScript consumer,
-and rejects emitted runtime references to React, React DOM, TipTap UI/view, Yjs,
-naruon, contextual-orchestrator, network, credential, or database graphs. Its
-ProseMirror model/state inputs remain part of the selector's structural type
-contract rather than an interactive UI runtime authority.
+public subpath through ESM and CommonJS, and compiles a strict TypeScript
+consumer. Its emitted JavaScript rejects **any external runtime module import**,
+so framework, network, database, credential-provider, and model-SDK clients
+cannot enter the selector bundle through module dependencies. A separate check
+rejects **ambient network and credential authority** such as `fetch`,
+`XMLHttpRequest`, `WebSocket`, `EventSource`, `process.env`, `import.meta.env`,
+`Deno.env`, and `Bun.env`. Type-only ProseMirror model/state inputs remain part
+of the selector's structural contract and introduce no interactive runtime
+authority.
 
 A version is release-ready only when this package gate, repository-wide 100%
 TypeScript coverage, production builds, the Python Office matrix, applicable
