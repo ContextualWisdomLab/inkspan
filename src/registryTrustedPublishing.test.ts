@@ -21,15 +21,6 @@ function workflowJob(workflow: string, jobName: string, nextJobName?: string): s
 describe('OIDC registry trusted-publishing release contract', () => {
   const workflow = repositoryFile('.github/workflows/release.yml');
 
-  it('binds stable npm and Office artifacts to one semantic release version before publication', () => {
-    const buildJob = workflowJob(workflow, 'build-release-artifacts', 'browser-release-evidence');
-
-    expect(buildJob).toContain('office/pyproject.toml');
-    expect(buildJob).toContain('Office package version must match stable release version');
-    expect(buildJob).toContain('packageMetadata.version');
-    expect(buildJob).toContain('officeVersion');
-  });
-
   it('publishes the exact validated npm tarball through a least-privilege OIDC job', () => {
     const npmJob = workflowJob(workflow, 'publish-npm', 'publish-pypi');
 
@@ -40,6 +31,8 @@ describe('OIDC registry trusted-publishing release contract', () => {
     expect(npmJob).toContain('id-token: write');
     expect(npmJob).toContain("node-version: '24'");
     expect(npmJob).toContain("!contains(github.ref_name, '-')");
+    expect(npmJob).toContain('package/package.json');
+    expect(npmJob).toContain('npm package version must match stable release version');
     expect(npmJob).toContain('npm publish "$npm_asset" --access public');
     expect(npmJob).toContain('npm version must be at least 11.5.1');
     expect(npmJob).not.toContain('NODE_AUTH_TOKEN');
@@ -47,7 +40,7 @@ describe('OIDC registry trusted-publishing release contract', () => {
     expect(npmJob).not.toContain('--provenance=false');
   });
 
-  it('publishes only the validated Office wheel through the immutable official PyPA action', () => {
+  it('publishes only the validated matching-version Office wheel through the immutable official PyPA action', () => {
     const pypiJob = workflowJob(workflow, 'publish-pypi');
 
     expect(pypiJob).toContain('needs: [publish-release]');
@@ -56,6 +49,8 @@ describe('OIDC registry trusted-publishing release contract', () => {
     expect(pypiJob).toContain('contents: read');
     expect(pypiJob).toContain('id-token: write');
     expect(pypiJob).toContain("!contains(github.ref_name, '-')");
+    expect(pypiJob).toContain('METADATA');
+    expect(pypiJob).toContain('Office package version must match stable release version');
     expect(pypiJob).toContain(
       'pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33',
     );
