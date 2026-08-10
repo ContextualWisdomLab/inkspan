@@ -12,8 +12,8 @@
 import { Marked, type Tokens } from 'marked';
 import TurndownService from 'turndown';
 import { gfm } from 'turndown-plugin-gfm';
-import { validateInlineImageSource } from '../extensions/Base64Image.js';
-import { isSafeLinkHref } from '../extensions/SafeLink.js';
+import { validateInlineImageSource } from '../policy/inlineImagePolicy.js';
+import { isSafeLinkHref } from '../policy/safeLinkPolicy.js';
 
 const SERIALIZED_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
