@@ -24,12 +24,17 @@ const NUMERIC_IDENTIFIER_PATTERN = /^\d+$/;
 const FALLBACK_CURSOR_COLOR = '#475569';
 const MAX_CURSOR_LABEL_LENGTH = 80;
 
+/** Trim and bound a public cursor label without splitting Unicode code points. */
+function truncateCursorLabel(value: string): string {
+  return Array.from(value.trim()).slice(0, MAX_CURSOR_LABEL_LENGTH).join('');
+}
+
 /** Validate and serialize the only public fields permitted in awareness. */
 export function serializeCollaborationUser(
   user: CollaborationUser,
 ): CollaborationCursorUser {
   const id = user.userId.trim();
-  const name = user.displayName.trim().slice(0, MAX_CURSOR_LABEL_LENGTH);
+  const name = truncateCursorLabel(user.displayName);
   const color = user.cursorColor.trim();
 
   if (id === '') {
@@ -185,7 +190,7 @@ export function renderCollaborationCursor(
   const color = collaborationCursorColor(user);
   const name =
     typeof user.name === 'string' && user.name.trim() !== ''
-      ? user.name.trim().slice(0, MAX_CURSOR_LABEL_LENGTH)
+      ? truncateCursorLabel(user.name)
       : 'Collaborator';
 
   const caret = document.createElement('span');
