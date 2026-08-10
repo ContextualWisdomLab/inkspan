@@ -129,8 +129,9 @@ describe('image alternative-text toolbar', () => {
     expect(editor.getHTML()).toBe(before);
   });
 
-  it('gives toolbar-uploaded images an explicit decorative alt', async () => {
+  it('gives toolbar-uploaded images an explicit decorative alt after author intent', async () => {
     const editor = createEditor('<p>Before</p>');
+    const prompt = vi.spyOn(window, 'prompt').mockReturnValue('');
     const { container } = render(
       <Toolbar editor={editor} image={{ maxDimension: 0 }} />,
     );
@@ -144,6 +145,10 @@ describe('image alternative-text toolbar', () => {
     fireEvent.change(input, { target: { files: [file] } });
 
     await waitFor(() => {
+      expect(prompt).toHaveBeenCalledWith(
+        'Image alternative text. Leave empty only if this image is decorative.',
+        '',
+      );
       expect(editor.getHTML()).toContain('data:image/png;base64');
       expect(editor.getHTML()).toContain('alt=""');
     });
