@@ -2,6 +2,14 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
+import {
+  htmlToMarkdown,
+  htmlToPlainText,
+  markdownToEmailHtml,
+  markdownToHtml,
+  markdownToPlainText,
+  normalizeMarkdown,
+} from './markdown/index.js';
 
 /** Read one repository file as UTF-8 text. */
 function repositoryFile(path: string): string {
@@ -14,6 +22,21 @@ const packageMetadata = JSON.parse(repositoryFile('package.json')) as {
 };
 
 describe('headless deterministic Markdown package contract', () => {
+  it('executes the intended deterministic conversion surface through the source barrel', () => {
+    expect(markdownToHtml('**Alpha**')).toContain('<strong>Alpha</strong>');
+    expect(htmlToMarkdown('<p>Alpha</p>')).toBe('Alpha');
+    expect(normalizeMarkdown('**Alpha**')).toContain('**Alpha**');
+    expect(markdownToPlainText('[Alpha](https://example.com)')).toBe('Alpha');
+    expect(htmlToPlainText('<p>Alpha</p>')).toBe('Alpha');
+    expect(
+      markdownToEmailHtml('Alpha', {
+        fullDocument: true,
+        languageTag: 'ko-kr',
+        textDirection: 'ltr',
+      }),
+    ).toContain('<html lang="ko-KR" dir="ltr">');
+  });
+
   it('declares one independently built ESM CommonJS and TypeScript subpath', () => {
     expect(packageMetadata.exports['./markdown']).toEqual({
       types: './dist/markdown/index.d.ts',
