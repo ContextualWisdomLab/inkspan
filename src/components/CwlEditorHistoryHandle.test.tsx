@@ -55,4 +55,24 @@ describe('CwlEditor imperative history control', () => {
     expect(handle.canRedo()).toBe(false);
     expect(handle.redo()).toBe(false);
   });
+
+  it('fails closed on a retained handle after its editor is destroyed', async () => {
+    const editorRef = createRef<CwlEditorHandle>();
+    render(<CwlEditor ref={editorRef} defaultValue="Original" />);
+    await waitFor(() => expect(editorRef.current?.getEditor()).toBeTruthy());
+
+    const handle = editorRef.current!;
+    const editor = handle.getEditor()!;
+    await act(async () => {
+      editor.chain().focus('end').insertContent(' updated').run();
+    });
+    expect(handle.canUndo()).toBe(true);
+
+    act(() => editor.destroy());
+    expect(editor.isDestroyed).toBe(true);
+    expect(handle.canUndo()).toBe(false);
+    expect(handle.undo()).toBe(false);
+    expect(handle.canRedo()).toBe(false);
+    expect(handle.redo()).toBe(false);
+  });
 });
