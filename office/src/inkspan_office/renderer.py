@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
@@ -57,6 +58,12 @@ _FORMATS = {
 _INVALID_SHEET_NAME = re.compile(r"[\\/*?:\[\]]")
 _FORMULA_PREFIXES = ("=", "+", "-", "@")
 _MAX_DOCX_RICH_RUNS = 4096
+_DOCX_PARAGRAPH_ALIGNMENTS = {
+    "left": WD_ALIGN_PARAGRAPH.LEFT,
+    "center": WD_ALIGN_PARAGRAPH.CENTER,
+    "right": WD_ALIGN_PARAGRAPH.RIGHT,
+    "justify": WD_ALIGN_PARAGRAPH.JUSTIFY,
+}
 _MISSING = object()
 
 
@@ -120,16 +127,17 @@ def _render_docx(request: Mapping[str, Any]) -> bytes:
                 level=level,
             )
         elif block_type == "paragraph":
-            _reject_unknown(block, {"type", "text"}, path)
-            document.add_paragraph(
+            _reject_unknown(block, {"type", "text", "alignment"}, path)
+            paragraph = document.add_paragraph(
                 _string(
                     _require(block, "text", path),
                     f"{path}.text",
                     allow_empty=True,
                 )
             )
+            _apply_docx_paragraph_alignment(paragraph, block, path)
         elif block_type == "rich_paragraph":
-            _reject_unknown(block, {"type", "runs"}, path)
+            _reject_unknown(block, {"type", "runs", "alignment"}, path)
             _add_docx_rich_paragraph(document, block, path)
         elif block_type == "bullet_list":
             _reject_unknown(block, {"type", "items", "ordered"}, path)
@@ -161,6 +169,24 @@ def _render_docx(request: Mapping[str, Any]) -> bytes:
     return output.getvalue()
 
 
+def _apply_docx_paragraph_alignment(
+    paragraph: Any, block: Mapping[str, Any], path: str
+) -> None:
+    """Apply one explicit bounded Word paragraph alignment when present."""
+
+    if "alignment" not in block:
+        return
+    alignment_path = f"{path}.alignment"
+    alignment = _string(block["alignment"], alignment_path)
+    try:
+        paragraph.alignment = _DOCX_PARAGRAPH_ALIGNMENTS[alignment]
+    except KeyError:
+        allowed = ", ".join(_DOCX_PARAGRAPH_ALIGNMENTS)
+        raise OfficeDocumentError(
+            f"{alignment_path} must be one of: {allowed}"
+        ) from None
+
+
 def _add_docx_rich_paragraph(
     document: Document, block: Mapping[str, Any], path: str
 ) -> None:
@@ -175,6 +201,7 @@ def _add_docx_rich_paragraph(
         )
 
     paragraph = document.add_paragraph()
+    _apply_docx_paragraph_alignment(paragraph, block, path)
     for run_index, raw_run in enumerate(runs):
         run_path = f"{path}.runs[{run_index}]"
         run_spec = _mapping(raw_run, run_path)
