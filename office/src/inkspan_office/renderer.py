@@ -56,6 +56,7 @@ _FORMATS = {
 }
 _INVALID_SHEET_NAME = re.compile(r"[\\/*?:\[\]]")
 _FORMULA_PREFIXES = ("=", "+", "-", "@")
+_MAX_DOCX_RICH_RUNS = 4096
 _MISSING = object()
 
 
@@ -127,6 +128,9 @@ def _render_docx(request: Mapping[str, Any]) -> bytes:
                     allow_empty=True,
                 )
             )
+        elif block_type == "rich_paragraph":
+            _reject_unknown(block, {"type", "runs"}, path)
+            _add_docx_rich_paragraph(document, block, path)
         elif block_type == "bullet_list":
             _reject_unknown(block, {"type", "items", "ordered"}, path)
             items = _array(_require(block, "items", path), f"{path}.items")
@@ -155,6 +159,40 @@ def _render_docx(request: Mapping[str, Any]) -> bytes:
     output = BytesIO()
     document.save(output)
     return output.getvalue()
+
+
+def _add_docx_rich_paragraph(
+    document: Document, block: Mapping[str, Any], path: str
+) -> None:
+    """Append one bounded paragraph of explicitly formatted deterministic runs."""
+
+    runs = _array(_require(block, "runs", path), f"{path}.runs")
+    if not runs:
+        raise OfficeDocumentError(f"{path}.runs must contain at least one run")
+    if len(runs) > _MAX_DOCX_RICH_RUNS:
+        raise OfficeDocumentError(
+            f"{path}.runs must contain at most {_MAX_DOCX_RICH_RUNS} runs"
+        )
+
+    paragraph = document.add_paragraph()
+    for run_index, raw_run in enumerate(runs):
+        run_path = f"{path}.runs[{run_index}]"
+        run_spec = _mapping(raw_run, run_path)
+        _reject_unknown(run_spec, {"text", "bold", "italic", "underline"}, run_path)
+        text = _string(
+            _require(run_spec, "text", run_path),
+            f"{run_path}.text",
+            allow_empty=True,
+        )
+        if text == "":
+            raise OfficeDocumentError(f"{run_path}.text must not be empty")
+        run = paragraph.add_run(text)
+        if "bold" in run_spec:
+            run.bold = _boolean(run_spec["bold"], f"{run_path}.bold")
+        if "italic" in run_spec:
+            run.italic = _boolean(run_spec["italic"], f"{run_path}.italic")
+        if "underline" in run_spec:
+            run.underline = _boolean(run_spec["underline"], f"{run_path}.underline")
 
 
 def _add_docx_table(document: Document, block: Mapping[str, Any], path: str) -> None:

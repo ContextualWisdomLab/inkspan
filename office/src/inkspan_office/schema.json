@@ -6,81 +6,46 @@
   "oneOf": [
     {
       "type": "object",
-      "required": [
-        "format",
-        "blocks"
-      ],
+      "required": ["format", "blocks"],
       "additionalProperties": false,
       "properties": {
-        "format": {
-          "const": "docx"
-        },
-        "title": {
-          "$ref": "#/$defs/nonEmptyString"
-        },
-        "author": {
-          "$ref": "#/$defs/nonEmptyString"
-        },
-        "subject": {
-          "$ref": "#/$defs/nonEmptyString"
-        },
+        "format": {"const": "docx"},
+        "title": {"$ref": "#/$defs/nonEmptyString"},
+        "author": {"$ref": "#/$defs/nonEmptyString"},
+        "subject": {"$ref": "#/$defs/nonEmptyString"},
         "blocks": {
           "type": "array",
-          "items": {
-            "$ref": "#/$defs/docxBlock"
-          }
+          "items": {"$ref": "#/$defs/docxBlock"}
         }
       }
     },
     {
       "type": "object",
-      "required": [
-        "format",
-        "sheets"
-      ],
+      "required": ["format", "sheets"],
       "additionalProperties": false,
       "properties": {
-        "format": {
-          "const": "xlsx"
-        },
-        "title": {
-          "$ref": "#/$defs/nonEmptyString"
-        },
-        "author": {
-          "$ref": "#/$defs/nonEmptyString"
-        },
+        "format": {"const": "xlsx"},
+        "title": {"$ref": "#/$defs/nonEmptyString"},
+        "author": {"$ref": "#/$defs/nonEmptyString"},
         "sheets": {
           "type": "array",
           "minItems": 1,
-          "items": {
-            "$ref": "#/$defs/sheet"
-          }
+          "items": {"$ref": "#/$defs/sheet"}
         }
       }
     },
     {
       "type": "object",
-      "required": [
-        "format",
-        "slides"
-      ],
+      "required": ["format", "slides"],
       "additionalProperties": false,
       "properties": {
-        "format": {
-          "const": "pptx"
-        },
-        "title": {
-          "$ref": "#/$defs/nonEmptyString"
-        },
-        "author": {
-          "$ref": "#/$defs/nonEmptyString"
-        },
+        "format": {"const": "pptx"},
+        "title": {"$ref": "#/$defs/nonEmptyString"},
+        "author": {"$ref": "#/$defs/nonEmptyString"},
         "slides": {
           "type": "array",
           "minItems": 1,
-          "items": {
-            "$ref": "#/$defs/slide"
-          }
+          "items": {"$ref": "#/$defs/slide"}
         }
       }
     }
@@ -91,256 +56,157 @@
       "pattern": "\\S"
     },
     "scalar": {
-      "type": [
-        "string",
-        "number",
-        "integer",
-        "boolean",
-        "null"
-      ]
+      "type": ["string", "number", "integer", "boolean", "null"]
     },
     "excelScalar": {
       "description": "Excel strings are bounded to the OOXML cell limit. Runtime validation also rejects integers with more than 15 significant decimal digits.",
       "oneOf": [
-        {
-          "type": "string",
-          "maxLength": 32767
-        },
-        {
-          "type": "number"
-        },
-        {
-          "type": "boolean"
-        },
-        {
-          "type": "null"
-        }
+        {"type": "string", "maxLength": 32767},
+        {"type": "number"},
+        {"type": "boolean"},
+        {"type": "null"}
       ]
+    },
+    "richTextRun": {
+      "type": "object",
+      "required": ["text"],
+      "additionalProperties": false,
+      "properties": {
+        "text": {"type": "string", "minLength": 1},
+        "bold": {"type": "boolean"},
+        "italic": {"type": "boolean"},
+        "underline": {"type": "boolean"}
+      }
     },
     "docxBlock": {
       "oneOf": [
         {
           "type": "object",
-          "required": [
-            "type",
-            "text",
-            "level"
-          ],
+          "required": ["type", "text", "level"],
           "additionalProperties": false,
           "properties": {
-            "type": {
-              "const": "heading"
-            },
-            "text": {
-              "$ref": "#/$defs/nonEmptyString"
-            },
-            "level": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 9
-            }
+            "type": {"const": "heading"},
+            "text": {"$ref": "#/$defs/nonEmptyString"},
+            "level": {"type": "integer", "minimum": 1, "maximum": 9}
           }
         },
         {
           "type": "object",
-          "required": [
-            "type",
-            "text"
-          ],
+          "required": ["type", "text"],
           "additionalProperties": false,
           "properties": {
-            "type": {
-              "const": "paragraph"
-            },
-            "text": {
-              "type": "string"
-            }
+            "type": {"const": "paragraph"},
+            "text": {"type": "string"}
           }
         },
         {
           "type": "object",
-          "required": [
-            "type",
-            "items"
-          ],
+          "required": ["type", "runs"],
           "additionalProperties": false,
           "properties": {
-            "type": {
-              "const": "bullet_list"
-            },
-            "ordered": {
-              "type": "boolean",
-              "default": false
-            },
-            "items": {
+            "type": {"const": "rich_paragraph"},
+            "runs": {
               "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "minItems": 1,
+              "maxItems": 4096,
+              "items": {"$ref": "#/$defs/richTextRun"}
             }
           }
         },
         {
           "type": "object",
-          "required": [
-            "type",
-            "rows"
-          ],
+          "required": ["type", "items"],
           "additionalProperties": false,
           "properties": {
-            "type": {
-              "const": "table"
-            },
-            "headers": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/scalar"
-              }
-            },
+            "type": {"const": "bullet_list"},
+            "ordered": {"type": "boolean", "default": false},
+            "items": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "rows"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"const": "table"},
+            "headers": {"type": "array", "items": {"$ref": "#/$defs/scalar"}},
             "rows": {
               "type": "array",
-              "items": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/scalar"
-                }
-              }
+              "items": {"type": "array", "items": {"$ref": "#/$defs/scalar"}}
             }
           }
         },
         {
           "type": "object",
-          "required": [
-            "type",
-            "source",
-            "alt_text",
-            "width_px"
-          ],
+          "required": ["type", "source", "alt_text", "width_px"],
           "additionalProperties": false,
           "properties": {
-            "type": {
-              "const": "image"
-            },
+            "type": {"const": "image"},
             "source": {
               "type": "string",
               "maxLength": 13981038,
               "pattern": "^data:image/png;base64,[A-Za-z0-9+/]+={0,2}$"
             },
-            "alt_text": {
-              "type": "string",
-              "pattern": "\\S",
-              "maxLength": 1000
-            },
-            "width_px": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 2400
-            }
+            "alt_text": {"type": "string", "pattern": "\\S", "maxLength": 1000},
+            "width_px": {"type": "integer", "minimum": 1, "maximum": 2400}
           }
         },
         {
           "type": "object",
-          "required": [
-            "type"
-          ],
+          "required": ["type"],
           "additionalProperties": false,
-          "properties": {
-            "type": {
-              "const": "page_break"
-            }
-          }
+          "properties": {"type": {"const": "page_break"}}
         }
       ]
     },
     "sheet": {
       "type": "object",
-      "required": [
-        "name",
-        "rows"
-      ],
+      "required": ["name", "rows"],
       "additionalProperties": false,
       "properties": {
-        "name": {
-          "$ref": "#/$defs/nonEmptyString",
-          "maxLength": 31
-        },
+        "name": {"$ref": "#/$defs/nonEmptyString", "maxLength": 31},
         "rows": {
           "type": "array",
           "maxItems": 1048576,
           "items": {
             "type": "array",
             "maxItems": 16384,
-            "items": {
-              "$ref": "#/$defs/excelScalar"
-            }
+            "items": {"$ref": "#/$defs/excelScalar"}
           }
         },
-        "header_row": {
-          "type": "boolean",
-          "default": false
-        },
+        "header_row": {"type": "boolean", "default": false},
         "freeze_panes": {
           "type": "string",
           "pattern": "^[A-Za-z]{1,3}[1-9][0-9]{0,6}$",
           "description": "A simple A1 coordinate; runtime validation further limits it to XFD1048576."
         },
-        "auto_filter": {
-          "type": "boolean",
-          "default": false
-        }
+        "auto_filter": {"type": "boolean", "default": false}
       }
     },
     "bullet": {
       "oneOf": [
-        {
-          "type": "string"
-        },
+        {"type": "string"},
         {
           "type": "object",
-          "required": [
-            "text"
-          ],
+          "required": ["text"],
           "additionalProperties": false,
           "properties": {
-            "text": {
-              "type": "string"
-            },
-            "level": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 8,
-              "default": 0
-            }
+            "text": {"type": "string"},
+            "level": {"type": "integer", "minimum": 0, "maximum": 8, "default": 0}
           }
         }
       ]
     },
     "slide": {
       "type": "object",
-      "required": [
-        "title"
-      ],
+      "required": ["title"],
       "additionalProperties": false,
       "properties": {
-        "title": {
-          "$ref": "#/$defs/nonEmptyString"
-        },
-        "subtitle": {
-          "$ref": "#/$defs/nonEmptyString"
-        },
-        "bullets": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/bullet"
-          }
-        }
+        "title": {"$ref": "#/$defs/nonEmptyString"},
+        "subtitle": {"$ref": "#/$defs/nonEmptyString"},
+        "bullets": {"type": "array", "items": {"$ref": "#/$defs/bullet"}}
       },
-      "not": {
-        "required": [
-          "subtitle",
-          "bullets"
-        ]
-      }
+      "not": {"required": ["subtitle", "bullets"]}
     }
   }
 }
