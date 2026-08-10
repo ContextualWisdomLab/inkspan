@@ -27,11 +27,14 @@ describe('release SBOM contract', () => {
     expect(generationStep).toContain('path: .');
     expect(generationStep).toContain('format: spdx-json');
     expect(generationStep).toContain('output-file: release/inkspan.spdx.json');
+    expect(generationStep).toContain('syft-version: v1.50.0');
     expect(generationStep).toContain('upload-artifact: false');
     expect(generationStep).toContain('upload-release-assets: false');
 
     const validationStep = workflow.slice(validationIndex, checksumIndex);
     expect(validationStep).toContain('release/inkspan.spdx.json');
+    expect(validationStep).toContain('16 * 1024 * 1024');
+    expect(validationStep).toContain('SPDX-2.3');
     expect(validationStep).toContain('@contextualwisdomlab/cwl-editor');
     expect(validationStep).toContain('inkspan-office');
     expect(validationStep).toContain('packages');
