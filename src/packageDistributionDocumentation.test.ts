@@ -26,6 +26,18 @@ describe('package distribution documentation contract', () => {
     }
   });
 
+  it('keeps every static public package export discoverable from the root README', () => {
+    for (const exportPath of Object.keys(packageMetadata.exports).filter(
+      (path) => !path.includes('*'),
+    )) {
+      const publicSpecifier =
+        exportPath === '.'
+          ? '@contextualwisdomlab/cwl-editor'
+          : `@contextualwisdomlab/cwl-editor/${exportPath.slice(2)}`;
+      expect(rootReadme).toContain(`\`${publicSpecifier}\``);
+    }
+  });
+
   it('describes the framework-independent evidence and autosave subpaths explicitly', () => {
     expect(distributionGuide).toContain(
       '`@contextualwisdomlab/cwl-editor/autosave`',
