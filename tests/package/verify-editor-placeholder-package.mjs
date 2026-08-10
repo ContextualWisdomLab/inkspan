@@ -1,6 +1,19 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { JSDOM } from 'jsdom';
 import React from 'react';
+
+const packResult = JSON.parse(
+  execFileSync(
+    'npm',
+    ['pack', '--dry-run', '--json', '--ignore-scripts'],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] },
+  ),
+)[0];
+assert.ok(
+  packResult.files.some(({ path }) => path === 'dist/cwl-editor.js'),
+  'npm package must include the exact root ESM entry exercised by this smoke test',
+);
 
 const dom = new JSDOM('<!doctype html><html><body></body></html>', {
   url: 'https://inkspan.invalid/',
