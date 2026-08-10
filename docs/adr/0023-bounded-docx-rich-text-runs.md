@@ -39,7 +39,7 @@ The feature does not introduce network access, credentials, macros, external Off
 
 ## Compatibility and migration
 
-The change is additive to the Office JSON contract. Existing requests remain valid. Consumers that do not understand `rich_paragraph` can continue emitting plain paragraphs. Future richer inline semantics require a separate versioned decision rather than widening this object silently.
+The change is additive to the Office JSON contract. New renderers continue accepting every previously valid plain `paragraph` request unchanged. A host targeting an older renderer that does not advertise `rich_paragraph` support must convert or emit the existing plain `paragraph` fallback before sending the request. Future richer inline semantics require a separate versioned decision rather than widening this object silently.
 
 ## Verification and acceptance evidence
 
