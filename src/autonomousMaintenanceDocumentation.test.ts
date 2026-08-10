@@ -50,6 +50,9 @@ describe('autonomous maintenance and acquisition documentation', () => {
     expect(assessment).toContain(
       'Source integration does not prove that `v0.6.0` exists',
     );
+    expect(assessment).toContain(
+      'Release-note reconciliation for the post-#135 protected-source change remains an issue #118 prerequisite',
+    );
   });
 
   it('reconciles the protected DOCX hyperlink decision', () => {
@@ -59,7 +62,6 @@ describe('autonomous maintenance and acquisition documentation', () => {
     const adrIndex = repositoryFile('docs/adr/README.md');
     const fitness = repositoryFile('docs/DOCUMENTATION_FITNESS.md');
     const traceability = repositoryFile('docs/TRACEABILITY.md');
-    const changelog = repositoryFile('CHANGELOG.md');
 
     expect(adr).toContain('Status: Accepted');
     expect(adr).toContain('implemented on protected `main` through PR #137');
@@ -73,9 +75,6 @@ describe('autonomous maintenance and acquisition documentation', () => {
     );
     expect(traceability).toMatch(
       /DOCX bounded external hyperlinks[^\n]*protected-main #137/u,
-    );
-    expect(changelog).toMatch(
-      /Expanded deterministic DOCX fidelity[^\n]*bounded external HTTP\(S\) hyperlinks/u,
     );
   });
 });
