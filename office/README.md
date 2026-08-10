@@ -188,10 +188,10 @@ byte-for-byte deterministic output. DOCX rich-paragraph acceptance additionally
 inspects ordered run text and explicit Word run properties while enforcing the
 shared 4,096-run and non-empty-text contract. DOCX image acceptance additionally
 inspects the generated ZIP/OOXML package for the exact embedded PNG bytes,
-dimensions, and accessible description. CI installs runtime and test
-dependencies from `requirements-ci.txt` with wheel hashes and executes the
-complete Office matrix on Python 3.11, Python 3.12, Python 3.13, and Python
-3.14. The package metadata rejects unverified Python 3.15+ installs until that
-runtime is added to the tested support matrix. CI enforces 100% statement/branch
-and shipped-symbol docstring coverage, then builds and inspects the distributable
-wheel. Code and all three direct runtime dependencies are MIT-licensed.
+dimensions, and accessible description. CI installs runtime and test dependencies
+from `requirements-ci.txt` with wheel hashes and executes the complete Office
+matrix on Python 3.11, Python 3.12, Python 3.13, and Python 3.14. The package
+metadata rejects unverified Python 3.15+ installs until that runtime is added to
+the tested support matrix. CI enforces 100% statement/branch and shipped-symbol
+docstring coverage, then builds and inspects the distributable wheel. Code and
+all three direct runtime dependencies are MIT-licensed.
