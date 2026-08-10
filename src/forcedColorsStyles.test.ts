@@ -4,19 +4,23 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const styles = readFileSync(resolve(process.cwd(), 'src/styles.css'), 'utf8');
-const forcedColorsIndex = styles.indexOf('@media (forced-colors: active)');
+const printIndex = styles.indexOf('@media print');
+const screenStyles = printIndex >= 0 ? styles.slice(0, printIndex) : styles;
+const forcedColorsIndex = screenStyles.indexOf('@media (forced-colors: active)');
 const forcedColorsStyles =
-  forcedColorsIndex >= 0 ? styles.slice(forcedColorsIndex) : '';
-const forcedColorsBlocks = styles.match(/@media \(forced-colors: active\)/gu) ?? [];
+  forcedColorsIndex >= 0 ? screenStyles.slice(forcedColorsIndex) : '';
+const forcedColorsBlocks =
+  screenStyles.match(/@media \(forced-colors: active\)/gu) ?? [];
 const lastBaseStateIndex = Math.max(
-  styles.lastIndexOf('.cwl-editor__content a {'),
-  styles.lastIndexOf('.cwl-editor__content blockquote {'),
-  styles.lastIndexOf('.cwl-collaboration-status {'),
-  styles.lastIndexOf('.collaboration-cursor__label {'),
+  screenStyles.lastIndexOf('.cwl-editor__content a {'),
+  screenStyles.lastIndexOf('.cwl-editor__content blockquote {'),
+  screenStyles.lastIndexOf('.cwl-collaboration-status {'),
+  screenStyles.lastIndexOf('.collaboration-cursor__label {'),
 );
 
 describe('forced-colors stylesheet contract', () => {
-  it('defines one final forced-colors override layer after the base state rules', () => {
+  it('defines one final screen forced-colors override layer after base state rules', () => {
+    expect(printIndex).toBeGreaterThan(-1);
     expect(forcedColorsIndex).toBeGreaterThan(-1);
     expect(forcedColorsBlocks).toHaveLength(1);
     expect(lastBaseStateIndex).toBeGreaterThan(-1);
