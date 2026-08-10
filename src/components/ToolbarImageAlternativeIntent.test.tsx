@@ -11,7 +11,7 @@ const PNG_BYTES = new Uint8Array([
   0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4, 0x89,
 ]);
 
-const openEditors: Editor[] = [];
+const openEditors: Array<{ editor: Editor; element: HTMLDivElement }> = [];
 
 function makeEditor(): Editor {
   const element = document.createElement('div');
@@ -21,7 +21,7 @@ function makeEditor(): Editor {
     extensions: buildExtensions({ image: { maxDimension: 0 } }),
     content: '<p>before</p>',
   });
-  openEditors.push(editor);
+  openEditors.push({ editor, element });
   return editor;
 }
 
@@ -36,8 +36,9 @@ function choosePng(): void {
 
 afterEach(() => {
   cleanup();
-  for (const editor of openEditors.splice(0)) {
+  for (const { editor, element } of openEditors.splice(0)) {
     if (!editor.isDestroyed) editor.destroy();
+    element.remove();
   }
   vi.restoreAllMocks();
 });
