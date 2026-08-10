@@ -1,6 +1,6 @@
 # Browser print and paged-output contract
 
-Status: Implemented on active PR
+Status: Active PR / Proposed
 
 Inkspan's shipped stylesheet is an opt-in presentation contract for the interactive editor. The print boundary defined here makes the same authored document suitable for browser print preview and print-to-PDF without turning Inkspan into a PDF renderer, print service, persistence layer, or durable-export authority.
 
@@ -41,7 +41,9 @@ The print CSS must remain usable without JavaScript, network access, model calls
 
 ## Verification
 
-The repository contains a machine-checkable stylesheet contract that requires the print media boundary, complete-document flow, interactive-chrome suppression, placeholder suppression, conservative fragmentation rules, and color-independent link affordance. Normal exact-head CI continues to run the complete JavaScript coverage/build/package gates, the pinned real-browser rich-clipboard suite, SAST/Security Scan, and Office Python 3.11-3.14 gates so this presentation change cannot bypass unrelated release assurance.
+The repository keeps a source-level stylesheet contract for fast regression feedback and separately requires post-build package verification against `dist/cwl-editor.css`, the exact target exported as `@contextualwisdomlab/cwl-editor/styles.css`. Real Chromium, Firefox, and WebKit print-media evidence must load that built public stylesheet artifact rather than `src/styles.css`. Together these gates require the print media boundary, complete-document flow, interactive-chrome suppression, placeholder suppression, conservative fragmentation rules, and color-independent link affordance on the shipped package surface.
+
+Normal exact-head CI continues to run complete JavaScript coverage/build/package gates, pinned real-browser evidence, SAST/Security Scan, and Office Python 3.11-3.14 gates so this presentation change cannot bypass unrelated release assurance.
 
 The exact standards rationale and maturity/claim limits are recorded in [`doctoring/browser-print-paged-media.md`](doctoring/browser-print-paged-media.md).
 
