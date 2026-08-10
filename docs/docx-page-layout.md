@@ -33,7 +33,7 @@ Inkspan Office's proposed DOCX `page_layout` contract makes basic paper geometry
 
 The implementation applies layout only after the normal bounded DOCX content renderer has produced the document, then canonicalizes the resulting OOXML package. It therefore keeps the existing renderer payload contract intact while adding one section-level transformation.
 
-The page-layout pass must preserve already-supported document semantics, including rich runs and relationship-backed external hyperlinks. Regression tests inspect the generated WordprocessingML relationship after page-layout application rather than treating successful file creation as fidelity proof. Repeated rendering of the same validated request remains byte-identical.
+The page-layout pass must preserve already-supported document semantics, including rich runs and relationship-backed external hyperlinks. Regression tests inspect the generated WordprocessingML relationship after page-layout application rather than treating successful file creation as fidelity proof. A second regression reopens the rendered package to prove inline PNG shape geometry and image alternative-description metadata survive the same page-layout pass. Repeated rendering of the same validated request remains byte-identical.
 
 Inkspan rejects a package with more than one DOCX section for this contract instead of guessing which sections should inherit layout. Invalid page-layout input cannot publish a partial file through `write_office_document`.
 
@@ -53,6 +53,7 @@ Acceptance requires the exact active head to pass:
 - multi-section rejection;
 - no-partial-publication failure evidence;
 - relationship-preservation regression evidence for existing DOCX hyperlinks;
+- image-fidelity regression evidence for inline PNG shape geometry and image alternative-description metadata;
 - byte-identical deterministic rendering;
 - the full Office Python 3.11–3.14 matrix, 100% owned production statement/branch coverage, public-docstring coverage, wheel/package verification, repository CI, Security Scan, and SAST.
 
