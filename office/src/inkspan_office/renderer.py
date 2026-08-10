@@ -16,9 +16,13 @@ from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.opc.constants import RELATIONSHIP_TYPE
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
@@ -58,6 +62,9 @@ _FORMATS = {
 _INVALID_SHEET_NAME = re.compile(r"[\\/*?:\[\]]")
 _FORMULA_PREFIXES = ("=", "+", "-", "@")
 _MAX_DOCX_RICH_RUNS = 4096
+_MAX_DOCX_HYPERLINK_TARGET = 4096
+_FORBIDDEN_DOCX_HYPERLINK_CHARACTER = re.compile(r"[\x00-\x20\x7f-\x9f\\]")
+_DOCX_HYPERLINK_SCHEMES = {"http", "https"}
 _DOCX_PARAGRAPH_ALIGNMENTS = {
     "left": WD_ALIGN_PARAGRAPH.LEFT,
     "center": WD_ALIGN_PARAGRAPH.CENTER,
@@ -188,6 +195,49 @@ def _apply_docx_paragraph_alignment(
         ) from None
 
 
+def _validate_docx_hyperlink_target(value: Any, path: str) -> str:
+    """Return one bounded absolute HTTP(S) link without reflecting untrusted input."""
+
+    href_path = f"{path}.href"
+    if not isinstance(value, str):
+        raise OfficeDocumentError(f"{href_path} must be a string")
+    if not value or len(value) > _MAX_DOCX_HYPERLINK_TARGET:
+        raise OfficeDocumentError(
+            f"{href_path} must contain between 1 and {_MAX_DOCX_HYPERLINK_TARGET} characters"
+        )
+    if _FORBIDDEN_DOCX_HYPERLINK_CHARACTER.search(value):
+        raise OfficeDocumentError(f"{href_path} must be a safe absolute HTTP(S) URL")
+    try:
+        parsed = urlsplit(value)
+        parsed.port
+    except ValueError:
+        raise OfficeDocumentError(f"{href_path} must be a safe absolute HTTP(S) URL") from None
+    if parsed.scheme.lower() not in _DOCX_HYPERLINK_SCHEMES:
+        raise OfficeDocumentError(f"{href_path} must be a safe absolute HTTP(S) URL")
+    if not parsed.netloc:
+        raise OfficeDocumentError(f"{href_path} must be a safe absolute HTTP(S) URL")
+    if parsed.hostname is None:
+        raise OfficeDocumentError(f"{href_path} must be a safe absolute HTTP(S) URL")
+    if (parsed.username, parsed.password) != (None, None):
+        raise OfficeDocumentError(f"{href_path} must be a safe absolute HTTP(S) URL")
+    return value
+
+
+def _wrap_docx_run_in_external_hyperlink(paragraph: Any, run: Any, href: str) -> None:
+    """Move one already-formatted run beneath an external hyperlink OOXML element."""
+
+    relationship_id = paragraph.part.relate_to(
+        href,
+        RELATIONSHIP_TYPE.HYPERLINK,
+        is_external=True,
+    )
+    hyperlink = OxmlElement("w:hyperlink")
+    hyperlink.set(qn("r:id"), relationship_id)
+    paragraph._p.remove(run._r)
+    hyperlink.append(run._r)
+    paragraph._p.append(hyperlink)
+
+
 def _add_docx_rich_paragraph(
     document: Document, block: Mapping[str, Any], path: str
 ) -> None:
@@ -206,7 +256,7 @@ def _add_docx_rich_paragraph(
     for run_index, raw_run in enumerate(runs):
         run_path = f"{path}.runs[{run_index}]"
         run_spec = _mapping(raw_run, run_path)
-        _reject_unknown(run_spec, {"text", "bold", "italic", "underline"}, run_path)
+        _reject_unknown(run_spec, {"text", "bold", "italic", "underline", "href"}, run_path)
         text = _string(
             _require(run_spec, "text", run_path),
             f"{run_path}.text",
@@ -214,6 +264,9 @@ def _add_docx_rich_paragraph(
         )
         if text == "":
             raise OfficeDocumentError(f"{run_path}.text must not be empty")
+        href = None
+        if "href" in run_spec:
+            href = _validate_docx_hyperlink_target(run_spec["href"], run_path)
         run = paragraph.add_run(text)
         if "bold" in run_spec:
             run.bold = _boolean(run_spec["bold"], f"{run_path}.bold")
@@ -221,6 +274,8 @@ def _add_docx_rich_paragraph(
             run.italic = _boolean(run_spec["italic"], f"{run_path}.italic")
         if "underline" in run_spec:
             run.underline = _boolean(run_spec["underline"], f"{run_path}.underline")
+        if href is not None:
+            _wrap_docx_run_in_external_hyperlink(paragraph, run, href)
 
 
 def _add_docx_table(document: Document, block: Mapping[str, Any], path: str) -> None:
@@ -361,141 +416,52 @@ def _render_pptx(request: Mapping[str, Any]) -> bytes:
 
     for slide_index, raw_slide in enumerate(slides):
         path = f"slides[{slide_index}]"
-        slide_spec = _mapping(raw_slide, path)
-        _reject_unknown(slide_spec, {"title", "subtitle", "bullets"}, path)
-        slide_title = _string(
-            _require(slide_spec, "title", path), f"{path}.title"
-        )
-        subtitle = _optional_string(
-            slide_spec.get("subtitle", _MISSING), f"{path}.subtitle"
-        )
-        bullets = _array(slide_spec.get("bullets", []), f"{path}.bullets")
-        if subtitle is not None and "bullets" in slide_spec:
-            raise OfficeDocumentError(f"{path}.subtitle cannot be combined with bullets")
-
-        if subtitle is not None:
-            slide = presentation.slides.add_slide(presentation.slide_layouts[0])
-            slide.shapes.title.text = slide_title
-            slide.placeholders[1].text = subtitle
-            continue
-
-        slide = presentation.slides.add_slide(presentation.slide_layouts[1])
-        slide.shapes.title.text = slide_title
-        text_frame = slide.placeholders[1].text_frame
-        text_frame.clear()
-        for bullet_index, bullet in enumerate(bullets):
-            text, level = _normalize_bullet(bullet, f"{path}.bullets[{bullet_index}]")
-            paragraph = text_frame.paragraphs[0] if bullet_index == 0 else text_frame.add_paragraph()
-            paragraph.text = text
-            paragraph.level = level
+        slide = _mapping(raw_slide, path)
+        _reject_unknown(slide, {"title", "subtitle", "bullets"}, path)
+        title_text = _string(_require(slide, "title", path), f"{path}.title")
+        has_subtitle = "subtitle" in slide
+        has_bullets = "bullets" in slide
+        if has_subtitle and has_bullets:
+            raise OfficeDocumentError(f"{path} cannot define both subtitle and bullets")
+        if has_bullets:
+            layout = presentation.slide_layouts[1]
+        else:
+            layout = presentation.slide_layouts[0]
+        rendered_slide = presentation.slides.add_slide(layout)
+        rendered_slide.shapes.title.text = title_text
+        if has_subtitle:
+            rendered_slide.placeholders[1].text = _string(
+                slide["subtitle"], f"{path}.subtitle"
+            )
+        elif has_bullets:
+            text_frame = rendered_slide.placeholders[1].text_frame
+            text_frame.clear()
+            bullets = _array(slide["bullets"], f"{path}.bullets")
+            for bullet_index, raw_bullet in enumerate(bullets):
+                bullet_path = f"{path}.bullets[{bullet_index}]"
+                if isinstance(raw_bullet, Mapping):
+                    bullet = _mapping(raw_bullet, bullet_path)
+                    _reject_unknown(bullet, {"text", "level"}, bullet_path)
+                    bullet_text = _string(
+                        _require(bullet, "text", bullet_path), f"{bullet_path}.text"
+                    )
+                    level = _integer(
+                        bullet.get("level", 0), f"{bullet_path}.level", minimum=0, maximum=8
+                    )
+                else:
+                    bullet_text = _string(raw_bullet, bullet_path)
+                    level = 0
+                paragraph = text_frame.paragraphs[0] if bullet_index == 0 else text_frame.add_paragraph()
+                paragraph.text = bullet_text
+                paragraph.level = level
 
     output = BytesIO()
     presentation.save(output)
     return output.getvalue()
 
 
-def _normalize_bullet(value: Any, path: str) -> tuple[str, int]:
-    """Normalize one string-or-object bullet into text and nesting level."""
-
-    if isinstance(value, str):
-        return value, 0
-    if isinstance(value, Mapping):
-        _reject_unknown(value, {"text", "level"}, path)
-        text = _string(
-            _require(value, "text", path), f"{path}.text", allow_empty=True
-        )
-        level = _integer(value.get("level", 0), f"{path}.level", minimum=0, maximum=8)
-        return text, level
-    raise OfficeDocumentError(f"{path} must be a string or object")
-
-
-def _require(mapping: Mapping[str, Any], key: str, path: str) -> Any:
-    """Return a required mapping field or raise a path-qualified error."""
-
-    if key not in mapping:
-        raise OfficeDocumentError(f"{path}.{key} is required")
-    return mapping[key]
-
-
-def _reject_unknown(
-    mapping: Mapping[str, Any], allowed: set[str], path: str
-) -> None:
-    """Reject undeclared fields so generated requests cannot be ambiguous."""
-
-    unexpected = sorted(set(mapping) - allowed)
-    if unexpected:
-        label = "field" if len(unexpected) == 1 else "fields"
-        raise OfficeDocumentError(
-            f"{path} has unexpected {label}: {', '.join(unexpected)}"
-        )
-
-
-def _mapping(value: Any, path: str) -> Mapping[str, Any]:
-    """Validate and return a string-keyed mapping value."""
-
-    if not isinstance(value, Mapping):
-        raise OfficeDocumentError(f"{path} must be an object")
-    if any(not isinstance(key, str) for key in value):
-        raise OfficeDocumentError(f"{path} object keys must be strings")
-    return value
-
-
-def _array(value: Any, path: str) -> list[Any]:
-    """Validate and materialize a non-string sequence as a list."""
-
-    if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)):
-        raise OfficeDocumentError(f"{path} must be an array")
-    return list(value)
-
-
-def _string(value: Any, path: str, *, allow_empty: bool = False) -> str:
-    """Validate a string, optionally permitting empty or whitespace-only text."""
-
-    if not isinstance(value, str):
-        raise OfficeDocumentError(f"{path} must be a string")
-    if not allow_empty and not value.strip():
-        raise OfficeDocumentError(f"{path} must not be empty")
-    return value
-
-
-def _optional_string(value: Any, path: str) -> str | None:
-    """Return an absent optional string as ``None`` and validate present values."""
-
-    if value is _MISSING:
-        return None
-    return _string(value, path)
-
-
-def _boolean(value: Any, path: str) -> bool:
-    """Validate and return a strict JSON boolean."""
-
-    if not isinstance(value, bool):
-        raise OfficeDocumentError(f"{path} must be a boolean")
-    return value
-
-
-def _integer(value: Any, path: str, *, minimum: int, maximum: int) -> int:
-    """Validate a non-boolean integer inside an inclusive range."""
-
-    if not isinstance(value, int) or isinstance(value, bool):
-        raise OfficeDocumentError(f"{path} must be an integer")
-    if value < minimum or value > maximum:
-        raise OfficeDocumentError(f"{path} must be between {minimum} and {maximum}")
-    return value
-
-
-def _scalar(value: Any, path: str) -> str | int | float | bool | None:
-    """Validate a finite JSON scalar suitable for an Office cell or table."""
-
-    if isinstance(value, float) and not math.isfinite(value):
-        raise OfficeDocumentError(f"{path} must be a finite JSON number")
-    if value is None or isinstance(value, (str, int, float, bool)):
-        return value
-    raise OfficeDocumentError(f"{path} must be a JSON scalar")
-
-
 def _normalize_rows(rows: list[Any], path: str) -> list[list[Any]]:
-    """Validate nested row arrays and normalize every cell to a JSON scalar."""
+    """Validate nested rows and normalize scalar values for Office writers."""
 
     normalized: list[list[Any]] = []
     for row_index, raw_row in enumerate(rows):
@@ -506,7 +472,106 @@ def _normalize_rows(rows: list[Any], path: str) -> list[list[Any]]:
     return normalized
 
 
-def _display(value: Any) -> str:
-    """Convert an Office table value to display text without spelling ``None``."""
+def _scalar(value: Any, path: str) -> Any:
+    """Validate scalar values accepted by table and spreadsheet cells."""
 
-    return "" if value is None else str(value)
+    if value is None or isinstance(value, (str, bool)):
+        return value
+    if isinstance(value, int):
+        if isinstance(value, bool):
+            return value
+        return _safe_number(value, path)
+    if isinstance(value, float):
+        return _safe_number(value, path)
+    raise OfficeDocumentError(f"{path} must be a string, number, boolean, or null")
+
+
+def _safe_number(value: int | float, path: str) -> int | float:
+    """Reject non-finite numbers and integers that Excel cannot represent exactly."""
+
+    if isinstance(value, float) and not math.isfinite(value):
+        raise OfficeDocumentError(f"{path} must be finite")
+    if isinstance(value, int) and len(str(abs(value))) > 15:
+        raise OfficeDocumentError(f"{path} integer exceeds Excel precision boundary")
+    return value
+
+
+def _display(value: Any) -> str:
+    """Return a stable text representation for document/table cells."""
+
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
+def _require(mapping: Mapping[str, Any], key: str, path: str) -> Any:
+    """Return a required field or fail with its structural path."""
+
+    if key not in mapping:
+        raise OfficeDocumentError(f"{path}.{key} is required")
+    return mapping[key]
+
+
+def _mapping(value: Any, path: str) -> Mapping[str, Any]:
+    """Return a mapping or fail without reflecting untrusted object content."""
+
+    if not isinstance(value, Mapping):
+        raise OfficeDocumentError(f"{path} must be an object")
+    return value
+
+
+def _array(value: Any, path: str) -> list[Any]:
+    """Return a concrete bounded list from an array-like request value."""
+
+    if isinstance(value, (str, bytes, bytearray)) or not isinstance(value, Sequence):
+        raise OfficeDocumentError(f"{path} must be an array")
+    return list(value)
+
+
+def _string(value: Any, path: str, *, allow_empty: bool = False) -> str:
+    """Return a string while enforcing XML-safe non-emptiness at this layer."""
+
+    if not isinstance(value, str):
+        raise OfficeDocumentError(f"{path} must be a string")
+    if not allow_empty and value == "":
+        raise OfficeDocumentError(f"{path} must not be empty")
+    return value
+
+
+def _optional_string(value: Any, path: str) -> str | None:
+    """Return an optional non-empty string when supplied."""
+
+    if value is _MISSING or value is None:
+        return None
+    return _string(value, path)
+
+
+def _boolean(value: Any, path: str) -> bool:
+    """Return a strict boolean rather than coercing truthy values."""
+
+    if not isinstance(value, bool):
+        raise OfficeDocumentError(f"{path} must be a boolean")
+    return value
+
+
+def _integer(value: Any, path: str, *, minimum: int, maximum: int) -> int:
+    """Return a non-boolean integer within a closed interval."""
+
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise OfficeDocumentError(f"{path} must be an integer")
+    if value < minimum or value > maximum:
+        raise OfficeDocumentError(f"{path} must be between {minimum} and {maximum}")
+    return value
+
+
+def _reject_unknown(mapping: Mapping[str, Any], allowed: set[str], path: str) -> None:
+    """Reject undeclared fields so generated requests cannot be ambiguous."""
+
+    unexpected = sorted(set(mapping) - allowed)
+    if unexpected:
+        label = "field" if len(unexpected) == 1 else "fields"
+        raise OfficeDocumentError(
+            f"{path} has unexpected {label}: {', '.join(unexpected)}"
+        )
