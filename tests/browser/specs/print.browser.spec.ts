@@ -106,6 +106,8 @@ test('switches screen editor chrome to a complete paged-document presentation', 
     const editorStyle = getComputedStyle(editor);
     const surfaceStyle = getComputedStyle(surface);
     const contentStyle = getComputedStyle(content);
+    const supportsOrphans = CSS.supports('orphans', '3');
+    const supportsWidows = CSS.supports('widows', '3');
     return {
       editorOverflow: editorStyle.overflow,
       editorBorderTopWidth: editorStyle.borderTopWidth,
@@ -117,8 +119,10 @@ test('switches screen editor chrome to a complete paged-document presentation', 
       labelDisplay: getComputedStyle(label).display,
       surfaceOverflowY: surfaceStyle.overflowY,
       surfaceMaxHeight: surfaceStyle.maxHeight,
-      contentOrphans: contentStyle.orphans,
-      contentWidows: contentStyle.widows,
+      supportsOrphans,
+      contentOrphans: supportsOrphans ? contentStyle.orphans : null,
+      supportsWidows,
+      contentWidows: supportsWidows ? contentStyle.widows : null,
       placeholderContent: getComputedStyle(placeholder, '::before').content,
       headingBreakAfter: getComputedStyle(heading).breakAfter,
       preBreakInside: getComputedStyle(pre).breakInside,
@@ -127,7 +131,7 @@ test('switches screen editor chrome to a complete paged-document presentation', 
     };
   });
 
-  expect(printed).toEqual({
+  expect(printed).toMatchObject({
     editorOverflow: 'visible',
     editorBorderTopWidth: '0px',
     editorBackground: 'rgb(255, 255, 255)',
@@ -138,12 +142,12 @@ test('switches screen editor chrome to a complete paged-document presentation', 
     labelDisplay: 'none',
     surfaceOverflowY: 'visible',
     surfaceMaxHeight: 'none',
-    contentOrphans: '3',
-    contentWidows: '3',
     placeholderContent: 'none',
     headingBreakAfter: 'avoid',
     preBreakInside: 'avoid',
     preOverflowX: 'visible',
     linkDecoration: 'underline',
   });
+  expect(printed.contentOrphans).toBe(printed.supportsOrphans ? '3' : null);
+  expect(printed.contentWidows).toBe(printed.supportsWidows ? '3' : null);
 });
