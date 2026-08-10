@@ -25,10 +25,13 @@ function makeEditor(): Editor {
   return editor;
 }
 
+function fileInput(): HTMLInputElement {
+  return document.querySelector('input[type="file"]') as HTMLInputElement;
+}
+
 function choosePng(): void {
-  const input = document.querySelector('input[type="file"]') as HTMLInputElement;
   const file = new File([PNG_BYTES], 'chart.png', { type: 'image/png' });
-  fireEvent.change(input, { target: { files: [file] } });
+  fireEvent.change(fileInput(), { target: { files: [file] } });
 }
 
 afterEach(() => {
@@ -56,5 +59,64 @@ describe('Toolbar image alternative-text intent', () => {
       );
       expect(editor.getHTML()).toContain('alt="Quarterly revenue chart"');
     });
+  });
+
+  it('stores an explicitly empty response as decorative image intent', async () => {
+    const editor = makeEditor();
+    const prompt = vi.spyOn(window, 'prompt').mockReturnValue('');
+    render(<Toolbar editor={editor} image={{ maxDimension: 0 }} />);
+
+    choosePng();
+
+    await waitFor(() => {
+      expect(prompt).toHaveBeenCalledTimes(1);
+      expect(editor.getHTML()).toContain('<img');
+      expect(editor.getHTML()).toContain('alt=""');
+    });
+  });
+
+  it('does not insert an image when the author cancels alternative-text intent', async () => {
+    const editor = makeEditor();
+    const prompt = vi.spyOn(window, 'prompt').mockReturnValue(null);
+    render(<Toolbar editor={editor} image={{ maxDimension: 0 }} />);
+
+    choosePng();
+
+    await waitFor(() => {
+      expect(prompt).toHaveBeenCalledTimes(1);
+    });
+    expect(editor.getHTML()).not.toContain('<img');
+  });
+
+  it('does not ask for alternative-text intent when no file is chosen', () => {
+    const editor = makeEditor();
+    const prompt = vi.spyOn(window, 'prompt').mockReturnValue('unused');
+    render(<Toolbar editor={editor} image={{ maxDimension: 0 }} />);
+
+    fireEvent.change(fileInput(), { target: { files: [] } });
+
+    expect(prompt).not.toHaveBeenCalled();
+    expect(editor.getHTML()).not.toContain('<img');
+  });
+
+  it('reports conversion failures without prompting or inserting an image', async () => {
+    const editor = makeEditor();
+    const prompt = vi.spyOn(window, 'prompt').mockReturnValue('unused');
+    const onImageError = vi.fn();
+    render(
+      <Toolbar
+        editor={editor}
+        image={{ maxDimension: 0, maxSizeBytes: 1 }}
+        onImageError={onImageError}
+      />,
+    );
+
+    choosePng();
+
+    await waitFor(() => {
+      expect(onImageError).toHaveBeenCalledTimes(1);
+    });
+    expect(prompt).not.toHaveBeenCalled();
+    expect(editor.getHTML()).not.toContain('<img');
   });
 });
