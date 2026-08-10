@@ -21,6 +21,15 @@ function workflowJob(workflow: string, jobName: string, nextJobName?: string): s
 describe('OIDC registry trusted-publishing release contract', () => {
   const workflow = repositoryFile('.github/workflows/release.yml');
 
+  it('binds npm and Office artifacts to one semantic release version before publication', () => {
+    const buildJob = workflowJob(workflow, 'build-release-artifacts', 'browser-release-evidence');
+
+    expect(buildJob).toContain('office/pyproject.toml');
+    expect(buildJob).toContain('Office package version must match release version');
+    expect(buildJob).toContain('packageMetadata.version');
+    expect(buildJob).toContain('officeVersion');
+  });
+
   it('publishes the exact validated npm tarball through a least-privilege OIDC job', () => {
     const npmJob = workflowJob(workflow, 'publish-npm', 'publish-pypi');
 
@@ -57,7 +66,7 @@ describe('OIDC registry trusted-publishing release contract', () => {
     const jobsIndex = workflow.indexOf('\njobs:');
     expect(jobsIndex).toBeGreaterThan(-1);
     const globalWorkflow = workflow.slice(0, jobsIndex);
-    const buildJob = workflowJob(workflow, 'build-release-artifacts', 'publish-release');
+    const buildJob = workflowJob(workflow, 'build-release-artifacts', 'browser-release-evidence');
 
     expect(globalWorkflow).toContain('permissions:\n  contents: read');
     expect(globalWorkflow).not.toContain('id-token: write');
@@ -66,6 +75,7 @@ describe('OIDC registry trusted-publishing release contract', () => {
 
   it('records external trust prerequisites and non-atomic registry recovery', () => {
     const doctoring = repositoryFile('docs/doctoring/registry-trusted-publishing.md');
+    const adr = repositoryFile('docs/adr/0019-unified-release-version-train.md');
 
     expect(doctoring).toContain('@contextualwisdomlab/cwl-editor');
     expect(doctoring).toContain('inkspan-office');
@@ -76,6 +86,9 @@ describe('OIDC registry trusted-publishing release contract', () => {
     expect(doctoring).toContain('Node 22.14.0');
     expect(doctoring).toContain('non-atomic');
     expect(doctoring).toContain('corrective release');
+    expect(doctoring).toContain('one release version train');
+    expect(adr).toContain('Status: Proposed');
+    expect(adr).toContain('Unified npm and Office release version train');
     expect(doctoring).not.toMatch(/long-lived (?:npm|PyPI) (?:write )?token required/iu);
   });
 });
