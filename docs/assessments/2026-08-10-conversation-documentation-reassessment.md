@@ -8,7 +8,7 @@ This assessment answers whether an independent product, engineering, security, o
 
 ## Evidence generation reviewed
 
-- Protected implementation generation reviewed: `main@f2a87bc32710574b54c0ccd1a4f33fee2c6f2224`, including the unified Inkspan 0.6.0 source candidate from #135 and bounded DOCX external hyperlinks from #137.
+- Protected implementation generation reviewed: `main@02251db320b2b5ed7c284635c4f3103ec2f67eb6`, including the unified Inkspan 0.6.0 source candidate from #135, bounded DOCX external hyperlinks from #137, and the corresponding protected 0.6.0 release-note reconciliation from #138.
 - Release operational-acceptance line reviewed separately: issue #118.
 - Repository guidance reviewed: `AGENTS.md`, `CLAUDE.md`, `docs/README.md`, `docs/DOCUMENTATION_FITNESS.md`, `docs/PRD.md`, `docs/TRD.md`, `ARCHITECTURE.md`, `docs/CONTRACTS.md`, `docs/UML.md`, `docs/DATA_MODEL.md`, `SECURITY.md`, `docs/THREAT_MODEL.md`, `docs/TEST_STRATEGY.md`, `docs/OPERABILITY.md`, `docs/TRACEABILITY.md`, and the ADR index.
 
@@ -52,13 +52,13 @@ The external scheduler still owns cadence and invocation execution. These reposi
 
 The protected manifests agree at `0.6.0` through PR #135. The former npm `0.5.29` versus Office `0.1.0` source mismatch is therefore no longer an open design or source-preparation defect.
 
-Registry operational acceptance remains open under issue #118. Source integration does not prove that `v0.6.0` exists, that GitHub Release publication succeeded, that npm and PyPI Trusted Publishers are configured, that both registries published the exact release artifacts, or that public artifact digests match release evidence. Those checks remain operational release evidence, not documentation or source-readiness evidence.
+Release-note reconciliation is protected through PR #138: the dated 0.6.0 candidate now includes the bounded DOCX hyperlink capability integrated by #137. Registry operational acceptance remains open under issue #118. Source integration and complete release metadata do not prove that `v0.6.0` exists, that GitHub Release publication succeeded, that npm and PyPI Trusted Publishers are configured, that both registries published the exact release artifacts, or that public artifact digests match release evidence. Those checks remain operational release evidence, not documentation or source-readiness evidence.
 
 ### 3. DOCX external hyperlinks are protected behavior and the decision record was stale
 
 Protected `main` implements bounded external HTTP(S) hyperlinks for DOCX rich-text runs through PR #137. The merged contract preserves visible Unicode text and existing bold/italic/underline formatting under a relationship-backed `w:hyperlink`, accepts only a bounded printable-ASCII absolute HTTP(S) target subset, performs no network access, and leaves destination authorization, phishing policy, internationalized URI preparation, tenant policy, and distribution to hosts.
 
-The implementation reached protected `main` while ADR 0026 and its index remained Proposed and described #137 as active. This reconciliation changes documentation maturity and traceability only; it does not broaden URI vocabulary or runtime authority. ADR 0026 becomes Accepted and the protected evidence is added to fitness and traceability. Release-note reconciliation for the post-#135 protected-source change remains an issue #118 prerequisite before any tag or registry publication.
+The implementation and release note reached protected `main` while ADR 0026 and its index remained Proposed and described #137 as active. This reconciliation changes documentation maturity and traceability only; it does not broaden URI vocabulary or runtime authority. ADR 0026 becomes Accepted and the protected evidence is added to fitness and traceability. Issue #118 remains the tag, GitHub Release, Trusted Publisher, registry-publication, and public-digest operational-acceptance line.
 
 ## Whole-conversation coverage decision
 
