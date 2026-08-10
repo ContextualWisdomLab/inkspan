@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from io import BytesIO
 
+import pytest
 from docx import Document
 
-from inkspan_office import load_schema, render_office_document
+from inkspan_office import OfficeDocumentError, load_schema, render_office_document
 
 
 def test_docx_contract_preserves_explicit_rich_text_runs() -> None:
@@ -57,3 +58,38 @@ def test_docx_contract_preserves_explicit_rich_text_runs() -> None:
         (None, None, True),
         (True, True, True),
     ]
+
+
+def test_docx_rich_paragraph_rejects_empty_run_collection() -> None:
+    """Runtime validation must reject a rich paragraph that contains no runs."""
+
+    with pytest.raises(
+        OfficeDocumentError,
+        match=r"blocks\[0\]\.runs must contain at least one run",
+    ):
+        render_office_document(
+            {
+                "format": "docx",
+                "blocks": [{"type": "rich_paragraph", "runs": []}],
+            }
+        )
+
+
+def test_docx_rich_paragraph_rejects_runtime_run_overflow() -> None:
+    """Runtime validation must retain a finite defense-in-depth run ceiling."""
+
+    with pytest.raises(
+        OfficeDocumentError,
+        match=r"blocks\[0\]\.runs must contain at most 4096 runs",
+    ):
+        render_office_document(
+            {
+                "format": "docx",
+                "blocks": [
+                    {
+                        "type": "rich_paragraph",
+                        "runs": [{"text": "x"}] * 4097,
+                    }
+                ],
+            }
+        )
