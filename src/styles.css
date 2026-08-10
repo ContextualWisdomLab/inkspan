@@ -259,3 +259,71 @@
 .cwl-editor__surface:has(.collaboration-cursor__caret) .cwl-editor__content {
   padding-top: calc(16px + 1.6em);
 }
+
+@media print {
+  .cwl-editor {
+    --cwl-fg: #000000;
+    --cwl-muted: #444444;
+    --cwl-border: #999999;
+    --cwl-bg: #ffffff;
+    --cwl-surface: #ffffff;
+    --cwl-accent: #000000;
+    --cwl-accent-soft: #ffffff;
+
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: #ffffff;
+    color: #000000;
+  }
+
+  .cwl-toolbar,
+  .cwl-collaboration-status,
+  .collaboration-cursor__caret,
+  .collaboration-cursor__label {
+    display: none !important;
+  }
+
+  .cwl-editor__surface {
+    overflow: visible;
+    max-height: none;
+  }
+
+  .cwl-editor__content {
+    min-height: 0;
+    padding: 0;
+    orphans: 3;
+    widows: 3;
+  }
+
+  .cwl-editor__content .is-editor-empty:first-child::before {
+    content: none;
+  }
+
+  .cwl-editor__content h1,
+  .cwl-editor__content h2,
+  .cwl-editor__content h3 {
+    break-after: avoid;
+  }
+
+  .cwl-editor__content pre,
+  .cwl-editor__content blockquote,
+  .cwl-editor__content img,
+  .cwl-editor__content tr {
+    break-inside: avoid;
+  }
+
+  .cwl-editor__content pre {
+    overflow: visible;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .cwl-editor__content thead {
+    display: table-header-group;
+  }
+
+  .cwl-editor__surface:has(.collaboration-cursor__caret) .cwl-editor__content {
+    padding-top: 0;
+  }
+}
