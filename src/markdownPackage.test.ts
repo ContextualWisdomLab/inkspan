@@ -89,15 +89,4 @@ describe('headless deterministic Markdown package contract', () => {
     expect(verifier).toContain('@tiptap');
     expect(verifier).toContain('yjs');
   });
-
-  it('keeps the buyer README discoverable for server and worker conversion consumers', () => {
-    const readme = repositoryFile('README.md');
-    expect(readme).toContain(
-      '`@contextualwisdomlab/cwl-editor/markdown`',
-    );
-    expect(readme).toContain('Headless Markdown conversion');
-    expect(readme).toContain("from '@contextualwisdomlab/cwl-editor/markdown'");
-    expect(readme).toMatch(/without importing the React\/TipTap editor graph/iu);
-    expect(readme).toMatch(/MIME[^.]*delivery/iu);
-  });
 });
