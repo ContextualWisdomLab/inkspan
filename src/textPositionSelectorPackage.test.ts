@@ -2,6 +2,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
+import {
+  TEXT_POSITION_PROJECTION_ID,
+  TEXT_POSITION_PROJECTION_VERSION,
+  TextPositionSelectorEvidenceError,
+  createTextPositionSelector,
+} from './text-position-selector/index.js';
 
 /** Read one repository file as UTF-8 text. */
 function repositoryFile(path: string): string {
@@ -14,6 +20,16 @@ const packageMetadata = JSON.parse(repositoryFile('package.json')) as {
 };
 
 describe('React-free text-position selector package contract', () => {
+  it('exposes the deterministic selector core through the source subpath', () => {
+    expect(TEXT_POSITION_PROJECTION_ID).toBe('inkspan-prosemirror-text');
+    expect(TEXT_POSITION_PROJECTION_VERSION).toBe(1);
+    expect(typeof createTextPositionSelector).toBe('function');
+    expect(new TextPositionSelectorEvidenceError('segmenter_unavailable')).toMatchObject({
+      name: 'TextPositionSelectorEvidenceError',
+      code: 'segmenter_unavailable',
+    });
+  });
+
   it('declares one independently consumable ESM CommonJS and TypeScript subpath', () => {
     expect(packageMetadata.exports['./text-position-selector']).toEqual({
       types: './dist/text-position-selector/index.d.ts',
