@@ -51,7 +51,8 @@ export function useEditorHandle(
   useImperativeHandle(
     ref,
     (): CwlEditorHandle => ({
-      getEditor: () => editor,
+      getEditor: () =>
+        editor && !editor.isDestroyed ? editor : null,
       focus: () => {
         editor?.chain().focus().run();
       },
