@@ -20,7 +20,7 @@ The protected standalone product provides:
 - a React-free text-position projection package surface;
 - compact content-lineage evidence that binds validated previous and resulting revisions without embedding either document body;
 - bounded single-flight autosave coordination and durable strong-validator session helpers;
-- deterministic Markdown/HTML/email/plain-text conversion through the current protected package authority;
+- deterministic Markdown/HTML/email/plain-text conversion through both the protected root package and the protected framework-neutral Markdown subpath;
 - framework-independent base64 conversion;
 - dependency-locked Chromium/Firefox/WebKit rich-clipboard release assurance; and
 - a network-free Office renderer for deterministic DOCX, XLSX, and PPTX output.
@@ -43,7 +43,7 @@ flowchart TB
   Selector[Protected text-position-selector subpath]
   Autosave[Protected autosave subpath]
   Converter[Protected converter subpath]
-  Markdown[Proposed markdown subpath\nactive PR #114]
+  Markdown[Protected markdown subpath\nframework-neutral deterministic conversion]
   SharedPolicy[Shared deterministic URI / inline-image policy]
   Serializers[Shared deterministic serializers]
 
@@ -58,7 +58,7 @@ flowchart TB
   Markdown --> Serializers
 ```
 
-The active `@contextualwisdomlab/cwl-editor/markdown` work in PR #114 is governed by Proposed ADR 0020. Its purpose is dependency isolation, not a second serializer authority. Until that PR or a verified successor integrates, the proposed subpath is unshipped and the protected root package remains the public authority for those serializers.
+The protected `@contextualwisdomlab/cwl-editor/markdown` subpath is governed by Accepted ADR 0020. Its purpose is dependency isolation, not a second serializer authority. It reuses the same deterministic serializers and framework-neutral safe-link/inline-image policy as the root package while avoiding the interactive React/TipTap/Yjs dependency graph for headless consumers.
 
 A framework-independent subpath must prove its declared dependency boundary from the packed npm artifact under ESM, CommonJS, and strict TypeScript consumers. Source-level import shape alone is insufficient release evidence.
 
