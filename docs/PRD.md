@@ -4,7 +4,7 @@ Status: Protected-main canonical baseline
 
 ## Product definition
 
-Inkspan is a standalone Markdown/HTML rich-text authoring and deterministic document-conversion product that can also be embedded as a modular CWL component. Protected `main` is the implementation authority for what Inkspan actually provides today. Safe rich clipboard handling, real Chromium/Firefox/WebKit rich-clipboard release assurance, lifecycle observation, security disclosure, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, document-transition evidence, and bounded envelope identity routing are implemented on protected `main`. Active PR / Proposed requirements remain target requirements rather than shipped claims until protected integration. Across current and proposed scope, Inkspan keeps host transport, authentication, authorization, tenant isolation, durable persistence, credentials, migrations, retention, deployment, audit storage, and model-use policy outside the product boundary unless a future accepted versioned contract explicitly changes that division.
+Inkspan is a standalone Markdown/HTML rich-text authoring and deterministic document-conversion product that can also be embedded as a modular CWL component. Protected `main` is the implementation authority for what Inkspan actually provides today. Safe rich clipboard handling, real Chromium/Firefox/WebKit rich-clipboard release assurance, lifecycle observation, security disclosure, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, W3C text-position selector evidence, document-transition evidence, and bounded envelope identity routing are implemented on protected `main`. Active PR / Proposed requirements remain target requirements rather than shipped claims until protected integration. Across current and proposed scope, Inkspan keeps host transport, authentication, authorization, tenant isolation, durable persistence, credentials, migrations, retention, deployment, audit storage, and model-use policy outside the product boundary unless a future accepted versioned contract explicitly changes that division.
 
 The product promise is: **author, convert, collaborate, and prove document changes without hiding authority inside the editor.**
 
@@ -22,14 +22,15 @@ The product promise is: **author, convert, collaborate, and prove document chang
 2. Paste rich content while rejecting or sanitizing unsafe active, hidden, or resource-bearing input before it becomes editor state.
 3. Import, export, and convert supported content deterministically, including independently reusable network-free Office DOCX/XLSX/PPTX rendering.
 4. Detect exact content equality and stale review/selection state without copying complete document bodies into ordinary evidence metadata.
-5. Save through a host-controlled durable boundary that prevents lost updates and makes conflict/ambiguous failure recoverable instead of silently successful.
-6. Embed safely in SSR/native-form products while treating browser-submitted values as untrusted host input.
-7. Add real-time collaboration without locking Inkspan to one provider or moving room authorization, awareness privacy, persistence, or tenant identity into the editor.
-8. Compose Inkspan inside naruon or another CWL host without making those hosts required runtime dependencies for standalone adopters.
-9. Offer model-assisted authoring only as host-approved untrusted proposals; deterministic editor/conversion validation remains authoritative.
-10. Produce reviewable package, security, compatibility, accessibility, SBOM/provenance, and release evidence tied to one exact protected source head.
-11. Give security researchers a discoverable private vulnerability-reporting and coordinated-disclosure path without promising unsupported SLAs, bounties, certification, or legal safe harbor.
-12. Identify a complete unsupported document-envelope generation safely enough for the host to select its own migration without accepting that generation as current Inkspan document semantics.
+5. Express a revision-scoped selection as a versioned W3C `TextPositionSelector` projection when interoperable text offsets are required, without relabeling ProseMirror structural positions or copying selected quote text.
+6. Save through a host-controlled durable boundary that prevents lost updates and makes conflict/ambiguous failure recoverable instead of silently successful.
+7. Embed safely in SSR/native-form products while treating browser-submitted values as untrusted host input.
+8. Add real-time collaboration without locking Inkspan to one provider or moving room authorization, awareness privacy, persistence, or tenant identity into the editor.
+9. Compose Inkspan inside naruon or another CWL host without making those hosts required runtime dependencies for standalone adopters.
+10. Offer model-assisted authoring only as host-approved untrusted proposals; deterministic editor/conversion validation remains authoritative.
+11. Produce reviewable package, security, compatibility, accessibility, SBOM/provenance, and release evidence tied to one exact protected source head.
+12. Give security researchers a discoverable private vulnerability-reporting and coordinated-disclosure path without promising unsupported SLAs, bounties, certification, or legal safe harbor.
+13. Identify a complete unsupported document-envelope generation safely enough for the host to select its own migration without accepting that generation as current Inkspan document semantics.
 
 ## Required outcomes
 
@@ -53,6 +54,9 @@ The product promise is: **author, convert, collaborate, and prove document chang
 
 - SHA-256 document revisions are equality evidence only, never authentication, tenant identity, authorization, signature, timestamp, or durable-write proof.
 - Selection and transition evidence bind to one exact immutable editor state and omit document bodies from ordinary metadata.
+- W3C text-position evidence is a separate versioned projection of that immutable state: `start` is inclusive, `end` is exclusive, offsets count Unicode code points in the named projection, and boundaries that split a grapheme cluster fail closed rather than being silently adjusted.
+- ProseMirror structural positions and W3C text positions are distinct coordinate systems even when numeric values happen to match for a simple document.
+- Text-position evidence remains revision-scoped and text-free. Hosts own annotation identifiers/bodies, source-resource identifiers, publication, durable persistence, authorization, tenant policy, and cross-revision re-anchoring.
 - Autosave remains single-flight with bounded active/pending work and explicit conflict/failure recovery.
 - Durable saves use a host/server-selected strong validator; conflict or ambiguous failure never silently advances it.
 - Lifecycle observation emits only distinct externally visible document-free state transitions; construction and no-op operations do not manufacture notifications.
@@ -100,7 +104,7 @@ The product promise is: **author, convert, collaborate, and prove document chang
 
 ## Non-goals
 
-Inkspan is not an identity provider, tenant database, durable document store, collaboration authorization server, deployment platform, credential manager, retention engine, model router, durable audit service, application migration owner, or merge/release authority for host products.
+Inkspan is not an identity provider, tenant database, durable document store, collaboration authorization server, deployment platform, credential manager, retention engine, model router, durable audit service, application migration owner, annotation database, cross-revision annotation re-anchoring service, or merge/release authority for host products.
 
 Inkspan does not promise universal HTML/Office round-trip fidelity, arbitrary executable document content, implicit network fetching, model-generated content as trusted source, silent migration of unknown document schemas, a security bounty, legal safe harbor, fixed vulnerability-response SLA, or certification from repository documentation alone.
 
@@ -111,17 +115,19 @@ Inkspan does not promise universal HTML/Office round-trip fidelity, arbitrary ex
 - Structurally valid unknown envelope identities return routing metadata only and do not prove current-schema compatibility or migration success.
 - Active or hidden rich content must not bypass the supported semantic clipboard policy.
 - Cross-engine evidence may contain only committed synthetic fixture results and bounded source/lock/browser/package/run metadata; tenant clipboard content and credentials never belong in it.
+- Text-position evidence contains positions, projection identity, revision evidence, and bounded error codes rather than selected quote text, a complete document envelope, actor/tenant identity, authorization, timestamp, signature, or durable-write claim.
 - Envelope identity output is routing metadata only and must not expose document-bearing source fields or become migration/authorization/durable-write evidence.
 - Spreadsheet formula-significant input must not silently become executable formulas unless a future explicit trusted formula contract says otherwise.
 - Document bodies, revision/entity tags, provider metadata, tenant identifiers, prompts, and model outputs must not enter generic public metrics or unauthenticated logs.
 - Vulnerability reporting must prefer private channels and minimized/synthetic evidence; public fallback must not disclose vulnerability details, secrets, proof-of-concept payloads, or customer data.
-- Host applications remain responsible for authentication, authorization, CSRF, tenant isolation, persistence, encryption, retention, audit storage, provider admission, schema migration, and external-model policy.
+- Host applications remain responsible for authentication, authorization, CSRF, tenant isolation, persistence, encryption, retention, audit storage, provider admission, schema migration, annotation publication/re-anchoring, and external-model policy.
 
 ## Reliability and operability requirements
 
 - Autosave is bounded, single-flight, idempotency-aware at its local contract, and explicit about blocked/conflict/failure state.
 - Observer failures cannot change save ordering, result classification, or durable-validator handoff.
-- Async revision/selection capture binds to one immutable editor state.
+- Async revision/selection/text-position capture binds to one immutable editor state.
+- A runtime without the required grapheme segmentation capability returns a stable failure instead of silently weakening text-position evidence.
 - Conversion/publication never reports a partial artifact as successful output.
 - Unsupported envelope identity inspection returns no partial routing result on malformed/unsafe input; a host migration failure leaves the original source unchanged.
 - Package/release operations fail closed on stale source, ambiguous artifact inventory, digest mismatch, missing required evidence, stale browser run/lock/package evidence, or stale review/check state.
@@ -138,4 +144,4 @@ Shareable acquisition evidence excludes production tenant content and credential
 
 Protected `main` is the sole implemented baseline. Open PRs may describe Proposed or Active work but are not shipped contracts until protected integration. Canonical documentation must state when a requirement is target architecture rather than current implementation.
 
-SafeClipboard, real Chromium/Firefox/WebKit release assurance, lifecycle observation, the root security disclosure lifecycle, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, document-transition evidence, and envelope identity migration routing are implemented on protected `main`. The current W3C text-position selector interoperability line is `implemented_on_active_pr` and remains non-authoritative until its own exact-head checks/reviews and protected integration succeed.
+SafeClipboard, real Chromium/Firefox/WebKit release assurance, lifecycle observation, the root security disclosure lifecycle, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, W3C text-position selector evidence, document-transition evidence, and envelope identity migration routing are implemented on protected `main`.
