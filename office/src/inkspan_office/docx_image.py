@@ -77,7 +77,11 @@ def _decode_inline_png(source: str, path: str) -> bytes:
         raise DocxImageContractError(
             f"{path}.source must contain strict base64 PNG data"
         ) from exc
-    if not image_bytes or len(image_bytes) > _MAX_IMAGE_BYTES:
+    # The exact encoded-length guard already excludes an empty decoded value;
+    # this second bound covers the final base64 quantum, which can decode one
+    # or two bytes beyond the nominal byte budget without exceeding its encoded
+    # character ceiling.
+    if len(image_bytes) > _MAX_IMAGE_BYTES:
         raise DocxImageContractError(
             f"{path}.source PNG payload exceeds the supported image boundary"
         )
