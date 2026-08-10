@@ -4,7 +4,7 @@ Status: Protected-main canonical baseline
 
 ## Product definition
 
-Inkspan is a standalone Markdown/HTML rich-text authoring and deterministic document-conversion product that can also be embedded as a modular CWL component. Protected `main` is the implementation authority for what Inkspan actually provides today. Safe rich clipboard handling, lifecycle observation, security disclosure, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, document-transition evidence, and bounded envelope identity routing are implemented on protected `main`. This canonical PRD also records Active PR / Proposed requirements such as cross-engine browser-semantic release assurance; such requirements are not shipped claims until protected integration. Across current and proposed scope, Inkspan keeps host transport, authentication, authorization, tenant isolation, durable persistence, credentials, migrations, retention, deployment, audit storage, and model-use policy outside the product boundary unless a future accepted versioned contract explicitly changes that division.
+Inkspan is a standalone Markdown/HTML rich-text authoring and deterministic document-conversion product that can also be embedded as a modular CWL component. Protected `main` is the implementation authority for what Inkspan actually provides today. Safe rich clipboard handling, real Chromium/Firefox/WebKit rich-clipboard release assurance, lifecycle observation, security disclosure, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, document-transition evidence, and bounded envelope identity routing are implemented on protected `main`. Active PR / Proposed requirements remain target requirements rather than shipped claims until protected integration. Across current and proposed scope, Inkspan keeps host transport, authentication, authorization, tenant isolation, durable persistence, credentials, migrations, retention, deployment, audit storage, and model-use policy outside the product boundary unless a future accepted versioned contract explicitly changes that division.
 
 The product promise is: **author, convert, collaborate, and prove document changes without hiding authority inside the editor.**
 
@@ -46,7 +46,8 @@ The product promise is: **author, convert, collaborate, and prove document chang
 
 - Untrusted rich clipboard content is processed through the actual editor paste pipeline, not a disconnected helper.
 - Active, hidden, executable, externally fetching, malformed, or over-limit input fails closed or is removed only under a documented semantic allowlist.
-- Browser-parser differences that can change security semantics require real Chromium, Firefox, and WebKit differential acceptance before the relevant release line.
+- Browser-parser differences that can change security semantics require real dependency-locked Chromium, Firefox, and WebKit differential acceptance on the exact release candidate before the relevant release line.
+- Browser evidence must be tied to one fresh run, exact source head, exact browser-test lock and browser revisions, and the exact packed npm artifact on the release path; stale, missing, package-mismatched, or divergent evidence fails closed.
 
 ### Evidence and concurrency
 
@@ -109,6 +110,7 @@ Inkspan does not promise universal HTML/Office round-trip fidelity, arbitrary ex
 - Malformed or unsafe envelope inputs fail closed without partial routing metadata.
 - Structurally valid unknown envelope identities return routing metadata only and do not prove current-schema compatibility or migration success.
 - Active or hidden rich content must not bypass the supported semantic clipboard policy.
+- Cross-engine evidence may contain only committed synthetic fixture results and bounded source/lock/browser/package/run metadata; tenant clipboard content and credentials never belong in it.
 - Envelope identity output is routing metadata only and must not expose document-bearing source fields or become migration/authorization/durable-write evidence.
 - Spreadsheet formula-significant input must not silently become executable formulas unless a future explicit trusted formula contract says otherwise.
 - Document bodies, revision/entity tags, provider metadata, tenant identifiers, prompts, and model outputs must not enter generic public metrics or unauthenticated logs.
@@ -122,7 +124,7 @@ Inkspan does not promise universal HTML/Office round-trip fidelity, arbitrary ex
 - Async revision/selection capture binds to one immutable editor state.
 - Conversion/publication never reports a partial artifact as successful output.
 - Unsupported envelope identity inspection returns no partial routing result on malformed/unsafe input; a host migration failure leaves the original source unchanged.
-- Package/release operations fail closed on stale source, ambiguous artifact inventory, digest mismatch, missing required evidence, or stale review/check state.
+- Package/release operations fail closed on stale source, ambiguous artifact inventory, digest mismatch, missing required evidence, stale browser run/lock/package evidence, or stale review/check state.
 - Security policy support rows and reporting mechanics must remain synchronized with package manifests and current repository capabilities.
 - Boundary-specific rollback must preserve canonical document readability and host-owned durable state.
 
@@ -136,4 +138,4 @@ Shareable acquisition evidence excludes production tenant content and credential
 
 Protected `main` is the sole implemented baseline. Open PRs may describe Proposed or Active work but are not shipped contracts until protected integration. Canonical documentation must state when a requirement is target architecture rather than current implementation.
 
-SafeClipboard, lifecycle observation, the root security disclosure lifecycle, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, document-transition evidence, and envelope identity migration routing are implemented on protected `main`. Cross-engine browser assurance is `implemented_on_active_pr` on the current release-assurance line and remains non-authoritative until protected integration; it must preserve the sanitizer's protected behavior and must not treat jsdom evidence as browser conformance.
+SafeClipboard, real Chromium/Firefox/WebKit release assurance, lifecycle observation, the root security disclosure lifecycle, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, document-transition evidence, and envelope identity migration routing are implemented on protected `main`. The current W3C text-position selector interoperability line is `implemented_on_active_pr` and remains non-authoritative until its own exact-head checks/reviews and protected integration succeed.
