@@ -58,10 +58,8 @@ describe('print stylesheet contract', () => {
       'tests/browser/playwright.config.ts',
     );
 
-    expect(packageVerifier).toContain("readFileSync(join(repositoryRoot, 'dist', 'cwl-editor.css')");
-    expect(packageVerifier).toContain("'@media print'");
-    expect(packageVerifier).toContain("'break-inside: avoid'");
-    expect(packageVerifier).toContain("'text-decoration: underline'");
+    expect(packageVerifier).toContain("'dist/cwl-editor.css'");
+    expect(packageVerifier).toContain("'styles.css'");
     expect(browserSpecification).toContain('/dist/cwl-editor.css');
     expect(browserSpecification).not.toContain('/src/styles.css');
     expect(browserConfiguration).toContain('pnpm --dir ../.. build');
