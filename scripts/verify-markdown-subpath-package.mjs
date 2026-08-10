@@ -13,6 +13,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { findRuntimeModuleAuthority } from './javascript-runtime-authority.mjs';
+
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const packageJson = JSON.parse(
   readFileSync(join(repositoryRoot, 'package.json'), 'utf8'),
@@ -26,12 +28,10 @@ const packageDirectory = join(
   ...packageJson.name.split('/'),
 );
 
-// The shipped serializer bundle must be self-contained: any external runtime
-// import, re-export, or dynamic loader would add authority not visible in the
-// narrow deterministic conversion contract.
-const dynamicLoaderPattern = /(?:\bimport\s*\(|\brequire\s*\()/u;
-const externalRuntimeImportPattern =
-  /(?:\bimport\s+(?:[^'";]*?\sfrom\s*)?['"][^'"]+['"]|\bexport\s+[^'";]*?\sfrom\s*['"][^'"]+['"])/u;
+// The shipped serializer bundle must be self-contained. Parse executable syntax
+// rather than raw text so bundled dependency comments cannot masquerade as
+// module authority while real imports, re-exports, require(), and import()
+// remain fail-closed findings.
 const ambientAuthorityPattern =
   /(?:\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b|\bEventSource\b|\bprocess\.env\b|\bimport\.meta\.env\b|\bDeno\.env\b|\bBun\.env\b)/u;
 const forbiddenProductGraphPattern =
@@ -79,15 +79,11 @@ function verifyAuthorityFreeBundles() {
       join(packageDirectory, 'dist', filename),
       'utf8',
     );
+    const moduleAuthority = findRuntimeModuleAuthority(bundleSource, filename);
     assert.equal(
-      dynamicLoaderPattern.test(bundleSource),
-      false,
-      `${filename} must not invoke dynamic module loaders`,
-    );
-    assert.doesNotMatch(
-      bundleSource,
-      externalRuntimeImportPattern,
-      `${filename} must not import external runtime authority`,
+      moduleAuthority.length,
+      0,
+      `${filename} must not contain executable runtime module authority: ${JSON.stringify(moduleAuthority)}`,
     );
     assert.doesNotMatch(
       bundleSource,
