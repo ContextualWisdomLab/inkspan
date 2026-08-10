@@ -1,14 +1,14 @@
 # Inkspan Interface and Integration Contracts
 
-Status: Protected-main canonical baseline
+Status: Protected-main canonical baseline with active W3C selector reconciliation
 
 This document is the discoverable contract index for Inkspan's public product boundaries. Protected `main` remains the implementation authority. Open pull requests may describe Proposed behavior, but they are not shipped until protected integration and exact-head acceptance.
 
 ## Contract principles
 
-Inkspan owns deterministic editor state, versioned document-envelope semantics, local revision/evidence primitives, local autosave ordering, deterministic conversion, accessibility metadata, and provider-neutral adapter behavior. The embedding **host** owns transport, authentication, authorization, tenant isolation, durable persistence, credentials, migrations, retention, deployment, durable audit storage, collaboration-provider lifecycle, and model-use policy.
+Inkspan owns deterministic editor state, versioned document-envelope semantics, local revision/evidence primitives, local autosave ordering, deterministic conversion, accessibility metadata, and provider-neutral adapter behavior. The embedding **host** owns transport, authentication, authorization, tenant isolation, durable persistence, credentials, migrations, retention, deployment, durable audit storage, collaboration-provider lifecycle, annotation identity/storage/publication/re-anchoring, and model-use policy.
 
-Every contract is versioned or otherwise compatibility-bounded, deterministic where the domain permits it, fail closed on malformed or unsupported inputs, and explicit about degraded behavior. No contract silently promotes generated output, model output, a local digest, a browser field, a collaboration update, or a workflow status into authorization or durable-persistence authority.
+Every contract is versioned or otherwise compatibility-bounded, deterministic where the domain permits it, fail closed on malformed or unsupported inputs, and explicit about degraded behavior. No contract silently promotes generated output, model output, a local digest, a browser field, a collaboration update, selector coordinates, or a workflow status into authorization or durable-persistence authority.
 
 ## Public package and module contract
 
@@ -30,11 +30,11 @@ Compatibility rule: a new schema or incompatible interpretation requires an expl
 
 Markdown/HTML authoring uses the supported TipTap/ProseMirror editor surface as the deterministic editing authority. Import/export adapters must state which constructs are supported, lossy, or rejected. Rendered or exported representations do not silently become the canonical source document.
 
-The editor surface may expose callbacks and handles for local state, revision capture, selection evidence, autosave coordination, and accessibility metadata. Callbacks are ordinary host code and cannot be trusted to preserve product invariants; Inkspan isolates callback failures at documented boundaries.
+The editor surface may expose callbacks and handles for local state, revision capture, selection evidence, W3C position evidence, autosave coordination, and accessibility metadata. Callbacks are ordinary host code and cannot be trusted to preserve product invariants; Inkspan isolates callback failures at documented boundaries.
 
-## Event and evidence contract
+## Event, review, and annotation evidence contract
 
-Local evidence records describe narrowly scoped facts such as revision identity, document transition, selection coordinates, lifecycle state, conversion warnings, or publication outcome. Evidence classes remain separate:
+Local evidence records describe narrowly scoped facts such as revision identity, document transition, selection coordinates, text-position coordinates, lifecycle state, conversion warnings, or publication outcome. Evidence classes remain separate:
 
 - local deterministic evidence;
 - workflow/check evidence;
@@ -43,7 +43,22 @@ Local evidence records describe narrowly scoped facts such as revision identity,
 - durable persistence evidence; and
 - release/publication evidence.
 
-No single status collapses those authorities. Ordinary evidence must avoid embedding complete document bodies, credentials, tenant identifiers, prompts, model outputs, or private exception causes unless a separate authorized contract explicitly requires them.
+No single status collapses those authorities. Ordinary evidence must avoid embedding complete document bodies, selected quote text, credentials, tenant identifiers, prompts, model outputs, or private exception causes unless a separate authorized contract explicitly requires them.
+
+Protected `getSelectionRevisionEvidence()` binds ProseMirror structural coordinates to the exact local document revision. Those structural positions are not W3C text offsets and must not be serialized as `TextPositionSelector` values by identity.
+
+The active `getTextPositionSelectorEvidence()` contract adds an explicit versioned projection and W3C-compatible selector while preserving the same exact-revision boundary:
+
+- `selector.type` is `TextPositionSelector`;
+- `start` is inclusive and `end` is exclusive;
+- offsets count Unicode code points in projection `inkspan-prosemirror-text` version `1`;
+- projection v1 uses logical document order, U+000A block separation, and U+FFFC for supported non-text leaf nodes;
+- grapheme-cluster boundaries are validated with `Intl.Segmenter`;
+- missing grapheme segmentation fails closed as `segmenter_unavailable`;
+- a boundary inside a grapheme cluster fails closed as `grapheme_boundary`; and
+- invalid boundaries are never silently shifted.
+
+This position evidence contains no selected quote text by default and is brittle across source changes by design. It is not a durable cross-revision anchor, source-resource identifier, actor/time/auth record, signature, server-selected validator, or persistence receipt. Hosts own annotation IDs/bodies, source IRI policy, authorization, tenancy, storage, publication, retention, durable audit, Yjs-relative or other collaborative anchors, and any re-anchoring after a revision changes.
 
 ## Autosave contract
 
@@ -57,15 +72,15 @@ Degraded behavior: when host persistence is unavailable or ambiguous, Inkspan pr
 
 ## Collaboration contract
 
-Inkspan collaboration is **provider-neutral**. A host may supply Yjs-compatible document, awareness, and provider bindings, but Inkspan does not own production room admission, user identity, authorization, provider credentials, reconnect policy, update persistence, retention, encryption, or durable audit.
+Inkspan collaboration is **provider-neutral**. A host may supply Yjs-compatible document, awareness, and provider bindings, but Inkspan does not own production room admission, user identity, authorization, provider credentials, reconnect policy, update persistence, retention, encryption, durable audit, or annotation re-anchoring.
 
-Collaboration document content and awareness state are untrusted tenant data. Awareness presence is not authorization. Provider outage is a host-owned degraded mode; Inkspan must not synthesize remote durability or identity from local Yjs state.
+Collaboration document content and awareness state are untrusted tenant data. Awareness presence is not authorization. Provider outage is a host-owned degraded mode; Inkspan must not synthesize remote durability or identity from local Yjs state. W3C position selectors do not silently become Yjs relative positions.
 
 No secret is required by the framework-independent collaboration contract itself. Provider credentials remain host-owned and must not be embedded in editor configuration or document content.
 
 ## Naruon modular composition contract
 
-A naruon host may compose Inkspan through narrow `compose` / `ui.panel` integration while Inkspan remains independently usable. The host supplies serializable non-secret configuration, authenticated API transport, durable validators, provider lifecycle, tenant/document identity, accessible conflict/recovery UX, and optional model routing.
+A naruon host may compose Inkspan through narrow `compose` / `ui.panel` integration while Inkspan remains independently usable. The host supplies serializable non-secret configuration, authenticated API transport, durable validators, provider lifecycle, tenant/document identity, annotation/review policy, accessible conflict/recovery UX, and optional model routing.
 
 Inkspan does not directly access a naruon application database, credential store, tenant table, message bus, or deployment control plane. Cross-document mounts require explicit host identity/state so local editor/autosave state cannot bleed between documents.
 
@@ -75,7 +90,7 @@ No database is owned by this composition contract. Durable host data models and 
 
 Model-assisted authoring is separate from deterministic conversion and validation. A host may submit selected or derived context to an approved model path and receive a proposal. The proposal is untrusted content until the host/user accepts it and Inkspan's deterministic document/clipboard/conversion validators accept the resulting state.
 
-The host owns model/provider selection, credentials, external-data-use approval, redaction, prompt retention, model logging, tenancy, authorization, human approval, and audit. No model may authorize a save, bypass deterministic validation, or redefine a revision/durable-validator contract.
+The host owns model/provider selection, credentials, external-data-use approval, redaction, prompt retention, model logging, tenancy, authorization, human approval, and audit. No model may authorize a save, bypass deterministic validation, or redefine a revision/durable-validator/selector contract.
 
 ## Deterministic Office conversion contract
 
@@ -85,15 +100,17 @@ File publication is explicit about overwrite semantics and uses race-safe public
 
 ## Security and data authority contract
 
-Untrusted clipboard HTML, DOM capabilities, native form values, Office structures, host callbacks, collaboration updates, and model proposals are data, not instruction or authority. Active content, external resource fetching, macros, formula execution, malicious descriptors/accessors, and malformed structures remain behind explicit fail-closed boundaries.
+Untrusted clipboard HTML, DOM capabilities, native form values, Office structures, host callbacks, collaboration updates, selector state, and model proposals are data, not instruction or authority. Active content, external resource fetching, macros, formula execution, malicious descriptors/accessors, and malformed structures remain behind explicit fail-closed boundaries.
 
-No secret, credential, durable validator, tenant identifier, complete document body, or model prompt belongs in generic public diagnostics or telemetry. Hosts own authenticated transport, authorization, encryption, retention, tenant isolation, durable audit, incident response, and deployment controls.
+No secret, credential, durable validator, tenant identifier, complete document body, selected quote, or model prompt belongs in generic public diagnostics or telemetry. Hosts own authenticated transport, authorization, encryption, retention, tenant isolation, durable audit, annotation lifecycle, incident response, and deployment controls.
 
 ## Versioning and schema evolution
 
-Public types, schema identifiers, event/evidence shapes, package subpaths, and host integration behavior must evolve compatibly or under a new explicit version. Breaking behavior requires documented migration and rollback guidance. Unknown versions fail closed unless a specifically bounded identity-routing contract allows inspection without interpretation.
+Public types, schema identifiers, event/evidence shapes, projection identifiers, package subpaths, and host integration behavior must evolve compatibly or under a new explicit version. Breaking behavior requires documented migration and rollback guidance. Unknown document schema versions fail closed unless a specifically bounded identity-routing contract allows inspection without interpretation.
 
-A compatibility claim must be backed by packed-package consumers, schema fixtures, migration/rollback evidence where relevant, and the supported runtime/version matrix.
+Projection v1 semantics must not be silently changed. A future change to text normalization, separator rules, leaf-node representation, code-point interpretation, logical-order semantics, or grapheme policy requires a new projection version and compatibility guidance. Consumers must not treat an unknown projection version as version 1.
+
+A compatibility claim must be backed by packed-package consumers, schema/known-answer fixtures, migration/rollback evidence where relevant, and the supported runtime/version matrix.
 
 ## Failure and degraded-mode contract
 
@@ -102,17 +119,22 @@ Expected degraded states are explicit rather than mapped to false success:
 - host persistence unavailable or ambiguous -> local save state remains blocked/failed;
 - collaboration provider unavailable -> local editing may continue only according to host policy, with no remote-durability claim;
 - unsupported or malformed document schema -> fail closed or route through an explicit host migration path;
+- W3C selector grapheme segmentation unavailable -> selector evidence fails with `segmenter_unavailable`, while ordinary editing remains available;
+- W3C selector boundary splits a grapheme cluster -> selector evidence fails with `grapheme_boundary` without shifting the user's range;
+- source revision changed -> host must reject direct reuse of stale text-position coordinates and choose an explicit re-anchoring/reconciliation path;
 - conversion validation/publication failure -> no successful artifact claim;
 - model/provider unavailable -> deterministic authoring/conversion remains authoritative and the model proposal path is unavailable;
 - review/check/release evidence missing -> merge/release remains blocked even if source-local tests pass.
 
 ## Release and rollback contract
 
-A public release binds one exact integrated protected source head to package/artifact identity, applicable CI/security/accessibility/document-fidelity evidence, owned production coverage, public-docstring evidence, SBOM/provenance/reproducibility where configured, formal review requirements, rollback guidance, and post-publication smoke verification.
+A public release binds one exact integrated protected source head to package/artifact identity, applicable CI/security/accessibility/document-fidelity/browser evidence, owned production coverage, public-docstring evidence, SBOM/provenance/reproducibility where configured, formal review requirements, rollback guidance, and post-publication smoke verification.
 
 Before immutable publication, the canonical draft inventory is **exactly three regular top-level files**: exactly one npm tarball, exactly one Inkspan Office wheel, and `SHA256SUMS`. Missing, stale, unexpected, duplicate, non-regular, incompletely uploaded, or digest-mismatched assets fail closed. After upload and before publication, the authenticated paginated GitHub Releases API inventory must equal the local release directory by exact asset name, every remote asset must report an uploaded state, and every GitHub-reported `sha256:` digest must equal the digest of the exact transferred local file. The workflow does not silently delete an unexpected remote asset to make an ambiguous draft look clean.
 
-Rollback must preserve readable canonical documents and must not require silently reinterpreting persisted schema semantics. Host-owned migrations, persistence rollback, tenant recovery, and deployment rollback remain host responsibilities unless a future versioned contract explicitly assigns them to Inkspan.
+The protected browser release gate re-verifies the packed npm artifact through Chromium, Firefox, and WebKit and retains bounded exact-source/package/run evidence. A green source-tree browser test alone is not equivalent release evidence.
+
+Rollback must preserve readable canonical documents and must not require silently reinterpreting persisted schema or selector-projection semantics. Host-owned migrations, annotation re-anchoring, persistence rollback, tenant recovery, and deployment rollback remain host responsibilities unless a future versioned contract explicitly assigns them to Inkspan.
 
 ## Contract-to-authority map
 
@@ -120,21 +142,24 @@ Rollback must preserve readable canonical documents and must not require silentl
 | --- | --- | --- |
 | Markdown/HTML editing | deterministic editor state and supported import/export semantics | application workflow, document ownership, authorization |
 | document envelope/revision | schema validation, identity routing, canonical bytes, local equality evidence | migration orchestration, durable storage, signatures, tenant binding |
+| ProseMirror selection evidence | exact-revision structural coordinates | cross-revision mapping, durable review identity, authorization |
+| W3C text-position evidence | versioned local text projection, code-point selector, grapheme validation | source IRI, annotation body/ID, auth/tenancy, persistence/publication/re-anchoring |
 | autosave | local ordering/state, callback contract, validator validation | transport, durable CAS, retry/offline policy, persistence |
 | collaboration | provider-neutral editor/Yjs binding | provider lifecycle, rooms, identity, authorization, persistence, awareness privacy |
 | Office rendering | deterministic bounded JSON→artifact conversion | file destination policy, downstream distribution, tenant authorization |
-| naruon composition | stable local package/module boundary | authenticated compose transport, tenancy, provider/model policy |
+| naruon composition | stable local package/module boundary | authenticated compose transport, tenancy, provider/model/annotation policy |
 | model assistance | deterministic proposal acceptance boundary | provider, prompt/data policy, credentials, human approval |
-| release evidence | exact three-file draft inventory, package/artifact/digest verification and repository evidence | downstream deployment and operational rollout |
+| release evidence | exact draft inventory, packed browser/package/artifact/digest verification and repository evidence | downstream deployment and operational rollout |
 
 ## Related canonical documents
 
 - `docs/PRD.md` — buyer/user requirements and accepted outcomes.
 - `docs/TRD.md` — technical invariants and runtime boundaries.
 - `ARCHITECTURE.md` — protected-main implementation architecture.
+- `docs/selection-lifecycle.md` and ADR 0018 — protected ProseMirror selection semantics plus active W3C selector projection authority.
 - `docs/UML.md` and `docs/DATA_MODEL.md` — interaction and conceptual data/evidence views.
 - `docs/THREAT_MODEL.md` — threat analysis and trust boundaries.
-- `docs/TEST_STRATEGY.md` — machine evidence required for these contracts, including the exact release draft inventory/digest gate.
-- `docs/OPERABILITY.md` — failure, recovery, rollback, incident ownership, and release draft reconciliation.
+- `docs/TEST_STRATEGY.md` — machine evidence required for these contracts, including packed browser and selector evidence.
+- `docs/OPERABILITY.md` — failure, recovery, rollback, incident ownership, selector drift, and release draft reconciliation.
 - `docs/TRACEABILITY.md` — standards, research, and implementation evidence traceability.
 - `docs/adr/README.md` — detailed architectural decisions.
