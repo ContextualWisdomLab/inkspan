@@ -11,6 +11,9 @@ const packageMetadata = JSON.parse(repositoryText('package.json')) as {
 };
 const distributionGuide = repositoryText('docs/package-distribution.md');
 const documentationIndex = repositoryText('docs/README.md');
+const documentationFitness = repositoryText('docs/DOCUMENTATION_FITNESS.md');
+const rootReadme = repositoryText('README.md');
+const contracts = repositoryText('docs/CONTRACTS.md');
 
 describe('package distribution documentation contract', () => {
   it('discovers every declared public package export from one buyer-facing guide', () => {
@@ -36,6 +39,22 @@ describe('package distribution documentation contract', () => {
       '`@contextualwisdomlab/cwl-editor/revision-evidence`',
     );
     expect(distributionGuide).toMatch(/framework-independent revision evidence/iu);
+  });
+
+  it('reconciles the React-free selector subpath to protected-main authority', () => {
+    const selectorSpecifier =
+      '`@contextualwisdomlab/cwl-editor/text-position-selector`';
+    const selectorRow = distributionGuide
+      .split('\n')
+      .find((line) => line.includes(selectorSpecifier));
+
+    expect(selectorRow).toBeDefined();
+    expect(selectorRow).toContain('implemented_on_protected_main');
+    expect(selectorRow).not.toContain('implemented_on_active_pr');
+    expect(rootReadme).toContain(selectorSpecifier);
+    expect(contracts).toContain(selectorSpecifier);
+    expect(documentationFitness).toContain('React-free text-position selector subpath');
+    expect(documentationFitness).toContain('implemented_on_protected_main');
   });
 
   it('makes the buyer-facing distribution contract discoverable from the canonical index', () => {

@@ -46,13 +46,16 @@ describe('React-free text-position selector package contract', () => {
     expect(existsSync(resolve(process.cwd(), 'src/text-position-selector/index.ts'))).toBe(true);
   });
 
-  it('keeps the public distribution guide explicit about active implementation and the React-free boundary', () => {
+  it('keeps the public distribution guide explicit about protected implementation and the React-free boundary', () => {
     const guide = repositoryFile('docs/package-distribution.md');
     expect(guide).toContain(
       '`@contextualwisdomlab/cwl-editor/text-position-selector`',
     );
     expect(guide).toMatch(
-      /text-position-selector`\s*\|\s*`implemented_on_active_pr`[^\n]*React-free/iu,
+      /text-position-selector`\s*\|\s*`implemented_on_protected_main`[^\n]*React-free/iu,
+    );
+    expect(guide).not.toMatch(
+      /text-position-selector`\s*\|\s*`implemented_on_active_pr`/iu,
     );
     expect(guide).toMatch(/ESM[^\n]*CommonJS[^\n]*strict TypeScript/iu);
   });
