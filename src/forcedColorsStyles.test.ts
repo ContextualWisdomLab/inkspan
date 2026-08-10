@@ -7,24 +7,50 @@ const styles = readFileSync(resolve(process.cwd(), 'src/styles.css'), 'utf8');
 const printIndex = styles.indexOf('@media print');
 const screenStyles = printIndex >= 0 ? styles.slice(0, printIndex) : styles;
 const forcedColorsIndex = screenStyles.indexOf('@media (forced-colors: active)');
+
+const findCssBlockEnd = (source: string, startIndex: number): number => {
+  const openingBrace = source.indexOf('{', startIndex);
+  if (openingBrace < 0) return -1;
+
+  let depth = 0;
+  for (let index = openingBrace; index < source.length; index += 1) {
+    if (source[index] === '{') depth += 1;
+    if (source[index] !== '}') continue;
+    depth -= 1;
+    if (depth === 0) return index + 1;
+  }
+  return -1;
+};
+
+const forcedColorsEnd =
+  forcedColorsIndex >= 0 ? findCssBlockEnd(screenStyles, forcedColorsIndex) : -1;
 const forcedColorsStyles =
-  forcedColorsIndex >= 0 ? screenStyles.slice(forcedColorsIndex) : '';
+  forcedColorsEnd > forcedColorsIndex
+    ? screenStyles.slice(forcedColorsIndex, forcedColorsEnd)
+    : '';
+const beforeForcedColorsStyles =
+  forcedColorsIndex >= 0 ? screenStyles.slice(0, forcedColorsIndex) : screenStyles;
+const afterForcedColorsStyles =
+  forcedColorsEnd >= 0 ? screenStyles.slice(forcedColorsEnd) : screenStyles;
 const forcedColorsBlocks =
   screenStyles.match(/@media \(forced-colors: active\)/gu) ?? [];
-const lastBaseStateIndex = Math.max(
-  screenStyles.lastIndexOf('.cwl-editor__content a {'),
-  screenStyles.lastIndexOf('.cwl-editor__content blockquote {'),
-  screenStyles.lastIndexOf('.cwl-collaboration-status {'),
-  screenStyles.lastIndexOf('.collaboration-cursor__label {'),
-);
+const baseStateSelectors = [
+  '.cwl-editor__content a {',
+  '.cwl-editor__content blockquote {',
+  '.cwl-collaboration-status {',
+  '.collaboration-cursor__label {',
+];
 
 describe('forced-colors stylesheet contract', () => {
   it('defines one final screen forced-colors override layer after base state rules', () => {
     expect(printIndex).toBeGreaterThan(-1);
     expect(forcedColorsIndex).toBeGreaterThan(-1);
+    expect(forcedColorsEnd).toBeGreaterThan(forcedColorsIndex);
     expect(forcedColorsBlocks).toHaveLength(1);
-    expect(lastBaseStateIndex).toBeGreaterThan(-1);
-    expect(forcedColorsIndex).toBeGreaterThan(lastBaseStateIndex);
+    for (const selector of baseStateSelectors) {
+      expect(beforeForcedColorsStyles).toContain(selector);
+      expect(afterForcedColorsStyles).not.toContain(selector);
+    }
   });
 
   it('defines a forced-colors boundary using system colors', () => {
