@@ -21,7 +21,7 @@ This index records durable architectural decisions. Protected-main implementatio
 | [0013](0013-atomic-file-publication.md) | Proposed | Atomic file publication and explicit overwrite semantics |
 | [0014](0014-local-assets-font-licensing.md) | Proposed | Local assets and font-licensing boundary |
 | [0015](0015-envelope-schema-migration-routing.md) | Accepted | Envelope schema identity and host-owned migration routing |
-| [0016](0016-cross-engine-browser-assurance.md) | Proposed | Cross-engine browser-semantic release assurance |
+| [0016](0016-cross-engine-browser-assurance.md) | Accepted | Cross-engine browser-semantic release assurance |
 | [0017](0017-security-disclosure-lifecycle.md) | Accepted | Security disclosure lifecycle and coordinated vulnerability handling |
 
 ## Decision discipline
