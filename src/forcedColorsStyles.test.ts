@@ -7,8 +7,22 @@ const styles = readFileSync(resolve(process.cwd(), 'src/styles.css'), 'utf8');
 const forcedColorsIndex = styles.indexOf('@media (forced-colors: active)');
 const forcedColorsStyles =
   forcedColorsIndex >= 0 ? styles.slice(forcedColorsIndex) : '';
+const forcedColorsBlocks = styles.match(/@media \(forced-colors: active\)/gu) ?? [];
+const lastBaseStateIndex = Math.max(
+  styles.lastIndexOf('.cwl-editor__content a {'),
+  styles.lastIndexOf('.cwl-editor__content blockquote {'),
+  styles.lastIndexOf('.cwl-collaboration-status {'),
+  styles.lastIndexOf('.collaboration-cursor__label {'),
+);
 
 describe('forced-colors stylesheet contract', () => {
+  it('defines one final forced-colors override layer after the base state rules', () => {
+    expect(forcedColorsIndex).toBeGreaterThan(-1);
+    expect(forcedColorsBlocks).toHaveLength(1);
+    expect(lastBaseStateIndex).toBeGreaterThan(-1);
+    expect(forcedColorsIndex).toBeGreaterThan(lastBaseStateIndex);
+  });
+
   it('defines a forced-colors boundary using system colors', () => {
     expect(forcedColorsIndex).toBeGreaterThan(-1);
     expect(forcedColorsStyles).toContain('Canvas');
