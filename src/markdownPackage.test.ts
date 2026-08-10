@@ -53,12 +53,20 @@ describe('headless deterministic Markdown package contract', () => {
     expect(existsSync(resolve(process.cwd(), 'src/markdown/package.ts'))).toBe(true);
   });
 
-  it('pins the headless build to Turndown Node resolution and transforms its mixed CommonJS edge', () => {
+  it('pins the headless build to Turndown standalone resolution and transforms its mixed CommonJS edge', () => {
     const configuration = repositoryFile('vite.markdown.config.ts');
+    expect(configuration).toContain("createRequire(import.meta.url)");
+    expect(configuration).toContain(
+      "nodeRequire.resolve('turndown/lib/turndown.es.js')",
+    );
+    expect(configuration).toContain(".resolve(\n  '@mixmark-io/domino',\n)");
+    expect(configuration).toContain("find: /^turndown$/u");
+    expect(configuration).toContain("replacement: turndownStandaloneEntry");
+    expect(configuration).toContain("find: /^@mixmark-io\\/domino$/u");
+    expect(configuration).toContain("replacement: dominoStandaloneEntry");
     expect(configuration).toContain(
       "mainFields: ['module', 'jsnext:main', 'jsnext', 'main']",
     );
-    expect(configuration).toContain("excludes `browser` from main-field resolution");
     expect(configuration).not.toContain(
       "mainFields: ['browser', 'module', 'jsnext:main', 'jsnext']",
     );
