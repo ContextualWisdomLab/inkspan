@@ -32,7 +32,8 @@ function controlledFile(
   type: string,
   delayMs: number,
 ): File {
-  const file = new File([bytes], name, { type });
+  const part = bytes.slice() as unknown as BlobPart;
+  const file = new File([part], name, { type });
   Object.defineProperty(file, 'arrayBuffer', {
     configurable: true,
     value: () =>
