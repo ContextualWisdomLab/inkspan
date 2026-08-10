@@ -57,6 +57,6 @@ Protected-main implementation and regression tests verify:
 
 The standards/library traceability is maintained in `docs/doctoring/docx-rich-text-runs.md`.
 
-## Rollback and supersession
+## Rollback or supersession
 
 Rollback requires no schema migration: stop emitting `rich_paragraph` and emit ordinary `paragraph` blocks. Supersede this ADR if Inkspan later adopts a versioned inline-document model that changes run semantics, permits additional inline constructs, or moves source-format interpretation into Inkspan Office.
