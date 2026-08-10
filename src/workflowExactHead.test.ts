@@ -12,6 +12,8 @@ const workflow = repositoryFile('.github/workflows/ci.yml');
 
 const CHECKOUT_PIN =
   'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1';
+const SETUP_NODE_PIN =
+  'actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0';
 
 describe('exact-head CI workflow contract', () => {
   it('uses a fixed runner and checks out the immutable current PR head', () => {
@@ -41,6 +43,13 @@ describe('exact-head CI workflow contract', () => {
     for (const line of usesLines) {
       expect(line).toMatch(/@[0-9a-f]{40}(?:\s+#\s+v[^\s]+)?$/u);
     }
+  });
+
+  it('uses the current native-Node-24 setup-node release in every JavaScript job', () => {
+    expect(workflow.match(new RegExp(SETUP_NODE_PIN, 'g'))).toHaveLength(2);
+    expect(workflow).not.toContain(
+      'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0',
+    );
   });
 
   it('records the evidence boundary and unreleased hardening', () => {
