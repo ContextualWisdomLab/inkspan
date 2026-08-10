@@ -96,4 +96,28 @@ describe('Base64Image read-only file ingress', () => {
     expect(prompt).not.toHaveBeenCalled();
     expect(editor.getHTML()).toBe(before);
   });
+
+  it('does not mutate after an accepted paste becomes read-only during conversion', async () => {
+    const editor = makeReadOnlyEditor();
+    editor.setEditable(true);
+    const before = editor.getHTML();
+    const prompt = vi.spyOn(window, 'prompt').mockReturnValue('must not run');
+    const preventDefault = vi.fn();
+
+    expect(
+      paste(editor, {
+        clipboardData: {
+          items: [{ kind: 'file', getAsFile: () => pngFile() }],
+        },
+        preventDefault,
+      }),
+    ).toBe(true);
+    expect(preventDefault).toHaveBeenCalledOnce();
+
+    editor.setEditable(false);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(prompt).not.toHaveBeenCalled();
+    expect(editor.getHTML()).toBe(before);
+  });
 });
