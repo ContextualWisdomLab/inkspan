@@ -31,12 +31,12 @@ describe('autonomous maintenance and acquisition documentation', () => {
       'assessments/2026-08-10-conversation-documentation-reassessment.md',
     );
     expect(assessment).toContain(
-      'main@f2a87bc32710574b54c0ccd1a4f33fee2c6f2224',
+      'main@02251db320b2b5ed7c284635c4f3103ec2f67eb6',
     );
     expect(assessment).toContain('## Fitness matrix');
     expect(assessment).toContain('## Whole-conversation coverage decision');
     expect(assessment).toContain('## Sufficiency decision');
-    expect(assessment).toContain('physical relational ERD');
+    expect(assessment.toLowerCase()).toContain('physical relational erd');
     expect(assessment).toContain('`not_applicable`');
   });
 
@@ -45,13 +45,13 @@ describe('autonomous maintenance and acquisition documentation', () => {
 
     expect(assessment).toContain('protected manifests agree at `0.6.0`');
     expect(assessment).toContain(
+      'Release-note reconciliation is protected through PR #138',
+    );
+    expect(assessment).toContain(
       'Registry operational acceptance remains open under issue #118',
     );
     expect(assessment).toContain(
-      'Source integration does not prove that `v0.6.0` exists',
-    );
-    expect(assessment).toContain(
-      'Release-note reconciliation for the post-#135 protected-source change remains an issue #118 prerequisite',
+      'Source integration and complete release metadata do not prove that `v0.6.0` exists',
     );
   });
 
