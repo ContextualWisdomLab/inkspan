@@ -66,7 +66,8 @@ describe('OIDC registry trusted-publishing release contract', () => {
     const verificationJob = workflowJob(workflow, 'verify-registry-publication');
 
     expect(verificationJob).toContain('needs: [publish-npm, publish-pypi]');
-    expect(verificationJob).toContain('permissions:\n      contents: read');
+    expect(verificationJob).toContain('actions: read');
+    expect(verificationJob).toContain('contents: read');
     expect(verificationJob).not.toContain('id-token: write');
     expect(verificationJob).toContain('sha256sum --check SHA256SUMS');
     expect(verificationJob).toContain('npm view');
