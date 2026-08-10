@@ -14,7 +14,7 @@ npm's current Trusted Publishing documentation defines an OIDC-based publication
 
 The current documented runtime floor is **npm CLI 11.5.1** and **Node.js 22.14.0**. npm documents GitHub-hosted runners as supported for this feature and requires the publishing job to request `id-token: write`. For public packages published through Trusted Publishing from a public GitHub repository, npm automatically generates provenance. npm also requires `package.json.repository.url` to identify the GitHub repository correctly.
 
-Inkspan therefore uses a GitHub-hosted `ubuntu-24.04` registry job, Node 24, a runtime npm-version floor check, job-local `id-token: write`, and direct publication of the exact transferred `.tgz`. It does not set `NODE_AUTH_TOKEN`, `NPM_TOKEN`, or a long-lived npm automation secret.
+Inkspan therefore uses a GitHub-hosted `ubuntu-24.04` registry job, Node 24, the current native-Node-24 `actions/setup-node` release pinned by immutable commit, a runtime npm-version floor check, job-local `id-token: write`, and direct publication of the exact transferred `.tgz`. It does not set `NODE_AUTH_TOKEN`, `NPM_TOKEN`, or a long-lived npm automation secret.
 
 The external npm prerequisite cannot be created by repository code: package `@contextualwisdomlab/cwl-editor` must be configured on npmjs.com to trust `ContextualWisdomLab/inkspan`, workflow `release.yml`, **environment `npm`**, and the applicable publish action. Repository CI must never claim that trust relationship exists merely because the workflow syntax is correct.
 
@@ -33,6 +33,16 @@ The read-oriented release build remains responsible for source checkout, depende
 Registry jobs run only after that GitHub publication boundary succeeds. They download the same workflow artifact by its tag-scoped name, re-run `SHA256SUMS`, require exactly one relevant distributable, and publish that exact file. They do not check out source, install repository dependencies, run package scripts, rebuild either artifact, or receive repository write permission.
 
 OIDC authority is job-local. Workflow-global and build-job permissions remain read-only. This preserves least privilege and makes the registry identity a short-lived release capability rather than a reusable secret.
+
+## Post-publish exact-artifact verification
+
+A successful upload command is not the final registry acceptance signal. After **both** Trusted Publishing jobs succeed, a separate source-free, credential-free `verify-registry-publication` job downloads the same validated release artifact bundle, rechecks `SHA256SUMS`, and proves that the public registry representations resolve to the exact artifact identities that were reviewed and released.
+
+For npm, the verifier asks the public registry for `@contextualwisdomlab/cwl-editor@<release-version>` and obtains `dist.tarball`. The returned URL must remain on the canonical `registry.npmjs.org` HTTPS origin. The verifier downloads that registry tarball without following redirects and compares its SHA-256 digest with the exact local `.tgz` digest. A package-name/version response alone is insufficient because it would not prove that the served artifact bytes are the reviewed artifact.
+
+For PyPI, the verifier requests the version-specific JSON API for `inkspan-office`, selects the file whose filename exactly matches the validated wheel, requires one matching record, and compares its published `digests.sha256` with the exact local wheel SHA-256. The verification job does not receive OIDC permission or registry secrets.
+
+Registry visibility and CDN metadata can converge shortly after publication, so the verifier uses a small bounded retry window. Only not-yet-visible or not-yet-matching public metadata is retried. Exhausting that bound fails the release with `Registry publication verification did not converge`; it is never converted into a warning or synthetic success. This **post-publish** verification is operational evidence for the public artifact identities, while registry-generated provenance/attestation remains a separate registry authority to inspect during release acceptance.
 
 ## Unified stable release version identity
 
@@ -69,12 +79,13 @@ Repository-level acceptance verifies:
 - job-local OIDC permission is present and build/global OIDC permission is absent;
 - the official PyPA action is immutably pinned;
 - exact artifact download/checksum/isolation occurs without source rebuild;
+- post-publish npm tarball bytes and PyPI wheel digest are checked against the exact artifact identities;
 - duplicate-version permissiveness is absent;
 - stable package/tag release identity is enforced;
 - prerelease tags remain GitHub-only until a later version-mapping decision; and
 - non-atomic recovery and external prerequisites are documented.
 
-These checks do **not** prove that npmjs.com or PyPI has accepted the Trusted Publisher configuration, that a GitHub Environment reviewer approved a live deployment, or that a package has been published. Those are live release-acceptance facts and must be verified from the registry after the actual exact-tip stable release run.
+These repository checks still do **not** prove that npmjs.com or PyPI has accepted the Trusted Publisher configuration before a release starts, that a GitHub Environment reviewer approved a live deployment, or that registry-generated provenance is semantically complete. Those remain live release-acceptance facts. A successful exact-tip stable release must include the public exact-artifact verification job and then inspect the registry-native provenance/attestation surfaces where supported.
 
 ## References — APA 7th
 
