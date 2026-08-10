@@ -20,7 +20,8 @@ import type { ImageConfig } from '../types.js';
 
 /** Options for constructing the shared Inkspan extension collection. */
 export interface BuildExtensionsOptions {
-  placeholder?: string;
+  /** Static or lazily resolved visual empty-editor guidance. */
+  placeholder?: string | (() => string);
   image?: ImageConfig;
   /** Bounded rich-HTML paste policy shared by all editor surfaces. */
   clipboard?: ClipboardConfig;
