@@ -1,12 +1,12 @@
 # ADR 0016: Cross-engine browser-semantic release assurance
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
 Inkspan's safe rich-clipboard boundary depends on browser HTML fragment parsing, DOM construction, serialization, hidden-content interpretation, and TipTap/ProseMirror integration. Unit and jsdom evidence is valuable but cannot prove that Chromium, Firefox, and WebKit expose identical security-relevant behavior. Earlier development already found a CSSOM mismatch around proprietary Office style handling, demonstrating that one simulated DOM is not a sufficient publication boundary.
 
-SafeClipboard is now integrated on protected `main`. Issue #66 owns the browser-realistic differential release gate and is implemented on the active cross-engine assurance PR. The architectural decision is how browser-semantic differences are admitted into a release without turning engine disagreement into either an unbounded compatibility promise or an excuse to normalize away a security defect. Until that active implementation reaches protected `main`, its evidence remains non-authoritative for release.
+SafeClipboard and the browser-realistic differential release gate are now integrated on protected `main`. The architectural decision is how browser-semantic differences are admitted into a release without turning engine disagreement into either an unbounded compatibility promise or an excuse to normalize away a security defect. The protected implementation makes that gate release authority for the rich-clipboard line; predecessor PR evidence remains historical and cannot substitute for an exact protected release candidate.
 
 ## Alternatives considered
 
@@ -19,11 +19,11 @@ SafeClipboard is now integrated on protected `main`. Issue #66 owns the browser-
 
 Before a release line can claim the rich-clipboard boundary as supported, the same committed adversarial corpus must execute through Inkspan's public sanitizer and supported paste integration in named Playwright `chromium`, `firefox`, and `webkit` projects on one exact source head.
 
-The suite is hermetic and network-free, depends on immutable package/workflow pins, and does not require operating-system clipboard permissions. It covers strict element/attribute allowlisting; unsafe-link handling; scripts, resources, embeds, forms, metadata, media, SVG/MathML and images; interactive/obsolete fallback structures; hidden and Office-specific content; malformed fragment/table/list/formatting/namespace cases; hostile DOM capabilities; bounded bytes/nodes/depth; stable redacted failures; and representative performance alarms.
+The suite is hermetic and network-free during the browser scenario, depends on immutable package/workflow pins, and does not require operating-system clipboard permissions. It covers strict element/attribute allowlisting; unsafe-link handling; scripts, resources, embeds, forms, metadata, media, SVG/MathML and images; interactive/obsolete fallback structures; hidden and Office-specific content; malformed fragment/table/list/formatting/namespace cases; hostile DOM capabilities; bounded bytes/nodes/depth; stable redacted failures; and representative performance alarms.
 
 Security-relevant semantic decisions must agree across required engines. A serialization difference may be allowlisted only when a focused fixture, authoritative standards basis, threat analysis, exact affected engine/version evidence, expected canonical interpretation, and rollback note show that the difference does not weaken the trust boundary. An allowlist is code-reviewed evidence, not a generic normalizer.
 
-The gate fails closed when a required browser is absent, skipped, cancelled, unsuccessful, or cannot produce the required evidence. Queued or pending execution is not success. Exact-head evidence records the package lock, Playwright version, browser revisions, operating system, corpus version, and source SHA without exposing private clipboard data or local paths.
+The gate fails closed when a required browser is absent, skipped, cancelled, unsuccessful, or cannot produce the required evidence. Queued or pending execution is not success. Exact-head evidence records the package lock, Playwright version, browser revisions, operating system, corpus version, source SHA, fresh run identity, and exact packed npm artifact digest without exposing private clipboard data or local paths.
 
 ## Consequences
 
@@ -39,7 +39,7 @@ Do not delete a failing engine, weaken the corpus, convert a required project to
 
 ## Security and privacy impact
 
-The differential corpus contains committed synthetic fixtures only. Browser jobs receive no tenant document, production clipboard payload, provider credential, model credential, or persistence secret. Network access is disabled for the test scenario where practical, and logs/artifacts must not emit raw hostile input outside the public fixture set.
+The differential corpus contains committed synthetic fixtures only. Browser jobs receive no tenant document, production clipboard payload, provider credential, model credential, or persistence secret. Network access is restricted to the loopback harness during the test scenario, and logs/artifacts must not emit raw hostile input outside the public fixture set.
 
 The design reduces parser-confusion, hidden-content, active-resource, serialization, and regression risk. It does not replace host CSP, egress policy, authorization, tenant isolation, or application security testing.
 
@@ -47,19 +47,19 @@ The design reduces parser-confusion, hidden-content, active-resource, serializat
 
 Each accepted browser/Playwright revision is part of release evidence rather than a forever-supported browser guarantee. Upgrading Playwright or its browser revisions requires the complete corpus to rerun before the new evidence becomes authoritative. A future browser difference that is safe only behind a narrower supported construct must be reflected in the public compatibility contract rather than silently normalized.
 
-The active gate starts from the already integrated SafeClipboard boundary and does not change existing document-envelope or persistence migration semantics. Until protected integration, it remains active-PR release evidence only.
+The protected gate builds on the integrated SafeClipboard boundary and does not change document-envelope or persistence migration semantics. Source movement after browser evidence is generated invalidates that evidence for the new source generation.
 
 ## Verification
 
-Issue #66 defines the test-first implementation acceptance. The active implementation includes a permanent differential oracle, an intentionally failing historical RED lineage from the superseded predecessor branch, real Playwright Chromium/Firefox/WebKit execution through the supported paste pipeline, deterministic corpus/evidence-generation tests, representative performance bounds, and exact-head CI/security/package evidence. Any head movement invalidates predecessor evidence and requires the exact current head to re-prove the gate.
+The protected implementation includes the permanent differential oracle, historical RED lineage retained in the superseded predecessor work, real Playwright Chromium/Firefox/WebKit execution through the supported paste pipeline, deterministic corpus/evidence-generation tests, representative performance bounds, fresh-run and lock validation, semantic JSON comparison, exact packed-artifact digest binding, bounded evidence retention, and exact-head CI/security/package evidence. Any source movement requires the new exact release candidate to re-prove the gate.
 
-Protected acceptance additionally requires zero valid unresolved findings, any actually required qualifying independent review, repository policy, and protected integration. The canonical documentation and test strategy continue to state that jsdom-only evidence is not real-engine conformance and that differences are never normalized merely to make engines agree.
+Protected acceptance requires zero valid unresolved findings, any actually required qualifying independent review, repository policy, and exact integrated release evidence. The canonical documentation and test strategy continue to state that jsdom-only evidence is not real-engine conformance and that differences are never normalized merely to make engines agree.
 
 ## Rollback or supersession
 
-Before protected integration, rollback removes the proposed browser gate while leaving the rich-clipboard release line explicitly unaccepted for publication. After integration, disabling a required engine or loosening difference admission is a security/release-policy change requiring a superseding ADR and new threat analysis.
+After integration, disabling a required engine, removing packed-artifact verification, weakening fresh-run/lock/source binding, or loosening difference admission is a security/release-policy change requiring a superseding ADR and new threat analysis. Rolling back the browser gate necessarily leaves the affected rich-clipboard publication claim unaccepted unless equivalent or stronger real-engine evidence replaces it.
 
-Supersession is acceptable only if a later harness provides equivalent or stronger real-engine coverage and preserves exact-head, fail-closed, synthetic-fixture, and reviewed-difference boundaries.
+Supersession is acceptable only if a later harness provides equivalent or stronger real-engine coverage and preserves exact-head, fail-closed, synthetic-fixture, packed-artifact, fresh-run, and reviewed-difference boundaries.
 
 ## References
 
