@@ -16,9 +16,13 @@ from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.opc.constants import RELATIONSHIP_TYPE
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
@@ -58,6 +62,9 @@ _FORMATS = {
 _INVALID_SHEET_NAME = re.compile(r"[\\/*?:\[\]]")
 _FORMULA_PREFIXES = ("=", "+", "-", "@")
 _MAX_DOCX_RICH_RUNS = 4096
+_MAX_DOCX_HYPERLINK_TARGET = 4096
+_FORBIDDEN_DOCX_HYPERLINK_CHARACTER = re.compile(r"[^\x21-\x7e]|\\")
+_DOCX_HYPERLINK_SCHEMES = {"http", "https"}
 _DOCX_PARAGRAPH_ALIGNMENTS = {
     "left": WD_ALIGN_PARAGRAPH.LEFT,
     "center": WD_ALIGN_PARAGRAPH.CENTER,
@@ -188,6 +195,47 @@ def _apply_docx_paragraph_alignment(
         ) from None
 
 
+def _validate_docx_hyperlink_target(value: Any, path: str) -> str:
+    """Validate one bounded ASCII absolute HTTP(S) target without reflecting it."""
+
+    href_path = f"{path}.href"
+    if not isinstance(value, str):
+        raise OfficeDocumentError(f"{href_path} must be a string")
+    if not value or len(value) > _MAX_DOCX_HYPERLINK_TARGET:
+        raise OfficeDocumentError(
+            f"{href_path} must contain between 1 and {_MAX_DOCX_HYPERLINK_TARGET} characters"
+        )
+    if _FORBIDDEN_DOCX_HYPERLINK_CHARACTER.search(value):
+        raise OfficeDocumentError(f"{href_path} must be a safe absolute HTTP(S) URL")
+    try:
+        parsed = urlsplit(value)
+        parsed.port
+    except ValueError:
+        raise OfficeDocumentError(f"{href_path} must be a safe absolute HTTP(S) URL") from None
+    if parsed.scheme.lower() not in _DOCX_HYPERLINK_SCHEMES:
+        raise OfficeDocumentError(f"{href_path} must be a safe absolute HTTP(S) URL")
+    if not parsed.netloc or parsed.hostname is None:
+        raise OfficeDocumentError(f"{href_path} must be a safe absolute HTTP(S) URL")
+    if parsed.username is not None or parsed.password is not None:
+        raise OfficeDocumentError(f"{href_path} must be a safe absolute HTTP(S) URL")
+    return value
+
+
+def _wrap_docx_run_in_external_hyperlink(paragraph: Any, run: Any, href: str) -> None:
+    """Move one formatted run under an external hyperlink OOXML element."""
+
+    relationship_id = paragraph.part.relate_to(
+        href,
+        RELATIONSHIP_TYPE.HYPERLINK,
+        is_external=True,
+    )
+    hyperlink = OxmlElement("w:hyperlink")
+    hyperlink.set(qn("r:id"), relationship_id)
+    paragraph._p.remove(run._r)
+    hyperlink.append(run._r)
+    paragraph._p.append(hyperlink)
+
+
 def _add_docx_rich_paragraph(
     document: Document, block: Mapping[str, Any], path: str
 ) -> None:
@@ -206,7 +254,7 @@ def _add_docx_rich_paragraph(
     for run_index, raw_run in enumerate(runs):
         run_path = f"{path}.runs[{run_index}]"
         run_spec = _mapping(raw_run, run_path)
-        _reject_unknown(run_spec, {"text", "bold", "italic", "underline"}, run_path)
+        _reject_unknown(run_spec, {"text", "bold", "italic", "underline", "href"}, run_path)
         text = _string(
             _require(run_spec, "text", run_path),
             f"{run_path}.text",
@@ -214,6 +262,11 @@ def _add_docx_rich_paragraph(
         )
         if text == "":
             raise OfficeDocumentError(f"{run_path}.text must not be empty")
+        href = (
+            _validate_docx_hyperlink_target(run_spec["href"], run_path)
+            if "href" in run_spec
+            else None
+        )
         run = paragraph.add_run(text)
         if "bold" in run_spec:
             run.bold = _boolean(run_spec["bold"], f"{run_path}.bold")
@@ -221,6 +274,8 @@ def _add_docx_rich_paragraph(
             run.italic = _boolean(run_spec["italic"], f"{run_path}.italic")
         if "underline" in run_spec:
             run.underline = _boolean(run_spec["underline"], f"{run_path}.underline")
+        if href is not None:
+            _wrap_docx_run_in_external_hyperlink(paragraph, run, href)
 
 
 def _add_docx_table(document: Document, block: Mapping[str, Any], path: str) -> None:
