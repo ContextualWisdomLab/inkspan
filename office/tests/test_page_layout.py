@@ -23,6 +23,10 @@ _DOC_REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationshi
 _HYPERLINK_REL = (
     "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
 )
+_PNG_DATA_URI = (
+    "data:image/png;base64,"
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WlXkWQAAAAASUVORK5CYII="
+)
 
 
 def _layout_payload() -> dict[str, object]:
@@ -157,6 +161,30 @@ def test_render_docx_page_layout_preserves_external_hyperlink_relationship() -> 
     assert relationship.attrib["Type"] == _HYPERLINK_REL
     assert relationship.attrib["Target"] == "https://example.com/report"
     assert relationship.attrib["TargetMode"] == "External"
+
+
+def test_render_docx_page_layout_preserves_inline_image_and_alt_text() -> None:
+    payload = _layout_payload()
+    payload["blocks"] = [
+        {
+            "type": "image",
+            "source": _PNG_DATA_URI,
+            "alt_text": "One-pixel layout fidelity fixture",
+            "width_px": 96,
+        }
+    ]
+
+    rendered = render_office_document(payload)
+    document = Document(BytesIO(rendered.data))
+    assert len(document.inline_shapes) == 1
+    assert document.inline_shapes[0].width == 96 * 9_525
+    assert document.inline_shapes[0].height == 96 * 9_525
+
+    with ZipFile(BytesIO(rendered.data)) as package:
+        image_parts = [name for name in package.namelist() if name.startswith("word/media/")]
+        assert len(image_parts) == 1
+        document_xml = package.read("word/document.xml").decode("utf-8")
+        assert 'descr="One-pixel layout fidelity fixture"' in document_xml
 
 
 def test_render_docx_page_layout_is_deterministic() -> None:
