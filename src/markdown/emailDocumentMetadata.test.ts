@@ -40,6 +40,17 @@ describe('full email document language and direction metadata', () => {
     ).toThrow(/BCP 47 language tag/u);
   });
 
+  it('fails closed when untyped JavaScript supplies an invalid root direction', () => {
+    const hostileDirection = 'rtl\" onload=\"alert(1)' as unknown as MarkdownToEmailHtmlOptions['textDirection'];
+
+    expect(() =>
+      renderEmail('unsafe direction', {
+        fullDocument: true,
+        textDirection: hostileDirection,
+      }),
+    ).toThrow(/document direction/u);
+  });
+
   it('treats a blank language as absent and leaves fragment mode unwrapped', () => {
     const fullDocument = renderEmail('blank', {
       fullDocument: true,
