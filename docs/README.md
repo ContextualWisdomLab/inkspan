@@ -15,6 +15,7 @@ This directory is the discoverable index for Inkspan's product, technical, secur
 | [`TRD.md`](TRD.md) | Technical invariants, runtime boundaries, failure semantics and release evidence |
 | [`CONTRACTS.md`](CONTRACTS.md) | Public package/API/event/schema/plugin/collaboration and host-integration contracts |
 | [`package-distribution.md`](package-distribution.md) | Buyer-facing public npm package entrypoints, packaged contents, runtime dependency boundaries, and consumer verification |
+| [`email-output.md`](email-output.md) | Active deterministic email fragment/full-document authority, language/direction metadata, accessibility and host-owned transport boundary |
 | [`UML.md`](UML.md) | Component, sequence, state and authority-flow diagrams |
 | [`DATA_MODEL.md`](DATA_MODEL.md) | Conceptual evidence/domain model and persistence ownership |
 | [`THREAT_MODEL.md`](THREAT_MODEL.md) | Trust boundaries, abuse cases, security/privacy controls and residual risks |
