@@ -487,6 +487,7 @@ export function sanitizeRichClipboardHtml(
     throw new ClipboardSanitizationError('invalid_html');
   }
   if (
+    sourceHtml.length > resolvedConfig.maxHtmlBytes ||
     new TextEncoder().encode(sourceHtml).byteLength > resolvedConfig.maxHtmlBytes
   ) {
     throw new ClipboardSanitizationError('input_too_large');
