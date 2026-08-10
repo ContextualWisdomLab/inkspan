@@ -53,6 +53,17 @@ describe('headless deterministic Markdown package contract', () => {
     expect(existsSync(resolve(process.cwd(), 'src/markdown/package.ts'))).toBe(true);
   });
 
+  it('pins the headless build to Turndown Node resolution rather than Vite browser defaults', () => {
+    const configuration = repositoryFile('vite.markdown.config.ts');
+    expect(configuration).toContain(
+      "mainFields: ['module', 'jsnext:main', 'jsnext', 'main']",
+    );
+    expect(configuration).toContain("excludes `browser` from main-field resolution");
+    expect(configuration).not.toContain(
+      "mainFields: ['browser', 'module', 'jsnext:main', 'jsnext']",
+    );
+  });
+
   it('requires serializers to depend on framework-neutral link and image policy modules', () => {
     const serializer = repositoryFile('src/markdown/serializer.ts');
     expect(serializer).toContain("../policy/safeLinkPolicy.js");
@@ -73,6 +84,7 @@ describe('headless deterministic Markdown package contract', () => {
     expect(verifier).toContain('externalRuntimeImportPattern');
     expect(verifier).toContain('dynamicLoaderPattern');
     expect(verifier).toContain('ambientAuthorityPattern');
+    expect(verifier).toContain('ambient document access is forbidden');
     expect(verifier).toContain('React');
     expect(verifier).toContain('@tiptap');
     expect(verifier).toContain('yjs');
