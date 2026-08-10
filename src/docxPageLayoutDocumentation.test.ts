@@ -10,6 +10,7 @@ const adrIndex = repositoryText('docs/adr/README.md');
 const adr = repositoryText('docs/adr/0027-bounded-docx-page-layout.md');
 const doctoring = repositoryText('docs/doctoring/docx-page-layout.md');
 const buyerGuide = repositoryText('docs/docx-page-layout.md');
+const traceability = repositoryText('docs/TRACEABILITY.md');
 
 describe('DOCX page-layout documentation contract', () => {
   it('keeps the active decision discoverable without claiming protected-main maturity', () => {
@@ -20,6 +21,9 @@ describe('DOCX page-layout documentation contract', () => {
     expect(adr).toContain('not protected-main behavior');
     expect(buyerGuide).toContain('Status: `implemented_on_active_pr`');
     expect(buyerGuide).toContain('not protected-main behavior');
+    expect(traceability).toContain('DOCX bounded single-section page layout');
+    expect(traceability).toContain('`implemented_on_active_pr`');
+    expect(traceability).toContain('not protected-main or released authority');
   });
 
   it('records the bounded schema and excluded authorities', () => {
