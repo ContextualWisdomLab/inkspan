@@ -31,7 +31,7 @@ This index records durable architectural decisions. Protected-main implementatio
 | [0023](0023-bounded-docx-rich-text-runs.md) | Accepted | Bounded rich-text runs in deterministic DOCX output |
 | [0024](0024-bounded-docx-paragraph-alignment.md) | Accepted | Bounded paragraph alignment in deterministic DOCX output |
 | [0025](0025-bounded-docx-heading-alignment.md) | Accepted | Bounded heading alignment in deterministic DOCX output |
-| [0026](0026-bounded-docx-external-hyperlinks.md) | Proposed | Bounded external hyperlinks in deterministic DOCX rich text |
+| [0026](0026-bounded-docx-external-hyperlinks.md) | Accepted | Bounded external hyperlinks in deterministic DOCX rich text |
 
 ## Decision discipline
 
@@ -42,19 +42,3 @@ This index records durable architectural decisions. Protected-main implementatio
 ADR decision status and implementation maturity are related but distinct. An ADR file may be present on protected `main` while its decision remains Proposed; conversely, an implemented capability can expose stale documentation until the ADR is reconciled. Canonical fitness and traceability records state implementation maturity explicitly, and an ADR cannot promote an unmerged feature to shipped behavior.
 
 When a decision changes materially, add or supersede an ADR rather than silently rewriting history.
-
-## ADR quality requirements
-
-Every material ADR records explicit sections for:
-
-1. context and the problem boundary;
-2. materially distinct alternatives considered;
-3. the selected decision;
-4. consequences and ownership trade-offs;
-5. failure and recovery semantics;
-6. security and privacy impact;
-7. compatibility and migration behavior;
-8. verification/acceptance evidence; and
-9. rollback or explicit supersession conditions.
-
-Accessibility, operability, research/standards traceability, and release implications are included wherever the decision affects them. Canonical PRD, TRD, Architecture, contracts, UML, data/evidence model, threat model, test strategy, operability, and traceability documents must remain synchronized with Accepted decisions.
