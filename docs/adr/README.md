@@ -25,7 +25,7 @@ This index records durable architectural decisions. Protected-main implementatio
 | [0017](0017-security-disclosure-lifecycle.md) | Accepted | Security disclosure lifecycle and coordinated vulnerability handling |
 | [0018](0018-revision-scoped-w3c-text-position-selector.md) | Accepted | Revision-scoped W3C text-position selector authority |
 | [0019](0019-unified-release-version-train.md) | Accepted | Unified stable npm and Office registry release version train |
-| [0020](0020-framework-neutral-markdown-package-boundary.md) | Proposed | Framework-neutral deterministic Markdown package boundary |
+| [0020](0020-framework-neutral-markdown-package-boundary.md) | Accepted | Framework-neutral deterministic Markdown package boundary |
 | [0021](0021-css-paged-media-print-boundary.md) | Proposed | CSS paged-media print boundary |
 | [0022](0022-informative-docx-png-figures.md) | Accepted | Informative inline PNG figures in deterministic DOCX output |
 
