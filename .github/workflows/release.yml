@@ -462,7 +462,7 @@ jobs:
           fi
           echo "INKSPAN_NPM_ASSET=$npm_asset" >> "$GITHUB_ENV"
       - name: Set up trusted-publishing Node.js runtime
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
       - name: Verify npm Trusted Publishing runtime floor
@@ -534,3 +534,116 @@ jobs:
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           packages-dir: pypi-release/
+
+  verify-registry-publication:
+    if: ${{ github.repository == 'ContextualWisdomLab/inkspan' && !contains(github.ref_name, '-') }}
+    needs: [publish-npm, publish-pypi]
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Download exact validated release artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: inkspan-release-${{ github.ref_name }}
+          path: release
+      - name: Set up read-only registry verification runtime
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+      - name: Verify public registries serve the exact release artifacts
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum --check SHA256SUMS
+          cd ..
+
+          mapfile -t npm_assets < <(
+            find release -maxdepth 1 -type f -name '*.tgz' -printf '%p\n' | LC_ALL=C sort
+          )
+          mapfile -t wheel_assets < <(
+            find release -maxdepth 1 -type f -name '*.whl' -printf '%p\n' | LC_ALL=C sort
+          )
+          if [[ ${#npm_assets[@]} -ne 1 || ${#wheel_assets[@]} -ne 1 ]]; then
+            echo "::error::Registry verification requires exactly one npm tarball and one Office wheel."
+            exit 1
+          fi
+
+          npm_asset="${npm_assets[0]}"
+          wheel_asset="${wheel_assets[0]}"
+          wheel_name="$(basename "$wheel_asset")"
+          expected_version="${GITHUB_REF_NAME#v}"
+          npm_local_sha="$(sha256sum -- "$npm_asset" | awk '{print $1}')"
+          wheel_local_sha="$(sha256sum -- "$wheel_asset" | awk '{print $1}')"
+          verification_dir="$(mktemp -d)"
+          trap 'rm -rf "$verification_dir"' EXIT
+
+          for attempt in $(seq 1 12); do
+            npm_verified=false
+            pypi_verified=false
+
+            npm_tarball_url="$(
+              npm view "@contextualwisdomlab/cwl-editor@$expected_version" dist.tarball \
+                --registry=https://registry.npmjs.org/ 2>/dev/null | tr -d '\r\n' || true
+            )"
+            if [[ -n "$npm_tarball_url" ]]; then
+              npm_origin="$(node - "$npm_tarball_url" <<'NODE'
+              const input = process.argv[2] ?? '';
+              const url = new URL(input);
+              if (
+                url.protocol !== 'https:' ||
+                url.hostname !== 'registry.npmjs.org' ||
+                url.username !== '' ||
+                url.password !== ''
+              ) {
+                process.exit(2);
+              }
+              process.stdout.write(url.origin);
+              NODE
+              )" || {
+                echo "::error::npm dist.tarball must stay on the canonical registry.npmjs.org HTTPS origin."
+                exit 1
+              }
+              if [[ "$npm_origin" == 'https://registry.npmjs.org' ]] && \
+                curl --fail --silent --show-error \
+                  --proto '=https' \
+                  --connect-timeout 5 \
+                  --max-time 20 \
+                  --output "$verification_dir/npm.tgz" \
+                  "$npm_tarball_url"; then
+                npm_remote_sha="$(sha256sum -- "$verification_dir/npm.tgz" | awk '{print $1}')"
+                if [[ "$npm_remote_sha" == "$npm_local_sha" ]]; then
+                  npm_verified=true
+                fi
+              fi
+            fi
+
+            pypi_json="$(
+              curl --fail --silent --show-error \
+                --proto '=https' \
+                --connect-timeout 5 \
+                --max-time 20 \
+                "https://pypi.org/pypi/inkspan-office/$expected_version/json" 2>/dev/null || true
+            )"
+            if [[ -n "$pypi_json" ]]; then
+              pypi_remote_sha="$(
+                jq -r --arg filename "$wheel_name" \
+                  '[.urls[] | select(.filename == $filename) | .digests.sha256] | if length == 1 then .[0] else empty end' \
+                  <<< "$pypi_json"
+              )"
+              if [[ "$pypi_remote_sha" == "$wheel_local_sha" ]]; then
+                pypi_verified=true
+              fi
+            fi
+
+            if [[ "$npm_verified" == true && "$pypi_verified" == true ]]; then
+              exit 0
+            fi
+            if [[ "$attempt" -lt 12 ]]; then
+              sleep 5
+            fi
+          done
+
+          echo "::error::Registry publication verification did not converge to the exact artifact digests."
+          exit 1
