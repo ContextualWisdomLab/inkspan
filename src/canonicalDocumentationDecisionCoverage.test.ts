@@ -78,6 +78,7 @@ describe('canonical architecture decision coverage', () => {
     expect(fitness).toContain('Cross-engine browser-semantic release assurance');
     expect(fitness).toContain('W3C text-position selector evidence');
     expect(fitness).toContain('SECURITY disclosure policy');
+    expect(fitness).toContain('ADR 0018');
     expect(fitness).toContain('present_current');
     expect(fitness).toContain('implemented_on_protected_main');
     expect(fitness).toContain('implemented_on_active_pr');
@@ -93,12 +94,17 @@ describe('canonical architecture decision coverage', () => {
     );
   });
 
-  it('makes protected decision paths reviewable as diagrams and standards traceability', () => {
+  it('makes protected decision paths reviewable as diagrams, contracts, and standards traceability', () => {
+    const contracts = repositoryFile('docs/CONTRACTS.md');
     const uml = repositoryFile('docs/UML.md');
     const traceability = repositoryFile('docs/TRACEABILITY.md');
 
     expect(uml).toContain('## Envelope identity and host-owned migration routing');
     expect(uml).toContain('## Cross-engine browser-semantic release assurance');
+    expect(uml).toContain('## Revision-scoped W3C text-position selector evidence');
+    expect(contracts).toContain('## W3C text-position selector evidence contract');
+    expect(contracts).toContain('inkspan-prosemirror-text');
+    expect(contracts).toMatch(/host[^\n]*(?:annotation|re-anchoring)/iu);
     expect(traceability).toContain('Envelope version routing');
     expect(traceability).toContain('Cross-engine release assurance');
     expect(traceability).toContain('W3C text-position selector');
