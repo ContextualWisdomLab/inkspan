@@ -1,15 +1,28 @@
+import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
+const nodeRequire = createRequire(import.meta.url);
+const turndownStandaloneEntry = nodeRequire.resolve('turndown/lib/turndown.es.js');
+const dominoStandaloneEntry = createRequire(turndownStandaloneEntry).resolve(
+  '@mixmark-io/domino',
+);
+
 // Headless deterministic serializer build: bundle the conversion dependencies so
 // consumers can use the public subpath without importing the React/TipTap graph.
-// Vite's client defaults prefer a package's `browser` field. Turndown uses that
-// field to select a browser-only build that expects a global `document`, whereas
-// its Node entry bundles the non-fetching Domino parser. This headless package
-// therefore deliberately excludes `browser` from main-field resolution.
+// Turndown publishes separate standalone and browser builds and its package
+// `browser` map replaces both the entry and Domino parser for browser-oriented
+// bundlers. This public subpath must work in browserless Node as well as browsers,
+// so pin the upstream standalone entry and its non-fetching Domino parser by
+// absolute path. Vite documents absolute paths as the required form for
+// file-system aliases.
 export default defineConfig({
   resolve: {
+    alias: [
+      { find: /^turndown$/u, replacement: turndownStandaloneEntry },
+      { find: /^@mixmark-io\/domino$/u, replacement: dominoStandaloneEntry },
+    ],
     mainFields: ['module', 'jsnext:main', 'jsnext', 'main'],
   },
   plugins: [
@@ -28,9 +41,9 @@ export default defineConfig({
   ],
   build: {
     commonjsOptions: {
-      // Turndown's Node ESM surface crosses into CommonJS-only parser code.
-      // Transform require() in mixed modules so both emitted ESM and CommonJS
-      // packages keep that parser inside the authority-bounded bundle.
+      // Turndown's standalone ESM surface crosses into CommonJS-only Domino
+      // parser code. Transform require() in mixed modules so both emitted ESM
+      // and CommonJS packages keep that parser inside the bounded bundle.
       transformMixedEsModules: true,
     },
     emptyOutDir: false,
