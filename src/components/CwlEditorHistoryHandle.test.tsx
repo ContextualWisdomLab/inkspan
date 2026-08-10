@@ -5,13 +5,6 @@ import type { CwlEditorHandle, EditorMode } from '../types.js';
 import { CwlEditor } from './CwlEditor.js';
 import { useEditorHandle } from './useEditorHandle.js';
 
-type HistoryHandle = CwlEditorHandle & {
-  canUndo?: () => boolean;
-  undo?: () => boolean;
-  canRedo?: () => boolean;
-  redo?: () => boolean;
-};
-
 const NullEditorHandleHarness = forwardRef<CwlEditorHandle>((_, ref) => {
   const modeRef = useRef<EditorMode>('markdown');
   useEditorHandle(ref, null, modeRef);
@@ -24,7 +17,7 @@ describe('CwlEditor imperative history control', () => {
     render(<CwlEditor ref={editorRef} defaultValue="Original" />);
     await waitFor(() => expect(editorRef.current?.getEditor()).toBeTruthy());
 
-    const handle = editorRef.current as HistoryHandle;
+    const handle = editorRef.current!;
     expect(typeof handle.canUndo).toBe('function');
     expect(typeof handle.undo).toBe('function');
     expect(typeof handle.canRedo).toBe('function');
@@ -34,16 +27,16 @@ describe('CwlEditor imperative history control', () => {
       handle.getEditor()!.chain().focus('end').insertContent(' updated').run();
     });
     expect(handle.getMarkdown()).toBe('Original updated');
-    expect(handle.canUndo!()).toBe(true);
+    expect(handle.canUndo()).toBe(true);
 
     await act(async () => {
-      expect(handle.undo!()).toBe(true);
+      expect(handle.undo()).toBe(true);
     });
     expect(handle.getMarkdown()).toBe('Original');
-    expect(handle.canRedo!()).toBe(true);
+    expect(handle.canRedo()).toBe(true);
 
     await act(async () => {
-      expect(handle.redo!()).toBe(true);
+      expect(handle.redo()).toBe(true);
     });
     expect(handle.getMarkdown()).toBe('Original updated');
   });
@@ -52,14 +45,14 @@ describe('CwlEditor imperative history control', () => {
     const editorRef = createRef<CwlEditorHandle>();
     render(<NullEditorHandleHarness ref={editorRef} />);
 
-    const handle = editorRef.current as HistoryHandle;
+    const handle = editorRef.current!;
     expect(typeof handle.canUndo).toBe('function');
     expect(typeof handle.undo).toBe('function');
     expect(typeof handle.canRedo).toBe('function');
     expect(typeof handle.redo).toBe('function');
-    expect(handle.canUndo!()).toBe(false);
-    expect(handle.undo!()).toBe(false);
-    expect(handle.canRedo!()).toBe(false);
-    expect(handle.redo!()).toBe(false);
+    expect(handle.canUndo()).toBe(false);
+    expect(handle.undo()).toBe(false);
+    expect(handle.canRedo()).toBe(false);
+    expect(handle.redo()).toBe(false);
   });
 });
