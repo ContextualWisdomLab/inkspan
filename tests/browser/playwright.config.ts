@@ -17,7 +17,7 @@ export default defineConfig({
   use: { baseURL: HARNESS_ORIGIN },
   webServer: {
     command:
-      'pnpm --dir ../.. exec vite --config tests/browser/vite.config.ts --host 127.0.0.1 --port 4173 --strictPort',
+      'pnpm --dir ../.. build && pnpm --dir ../.. exec vite --config tests/browser/vite.config.ts --host 127.0.0.1 --port 4173 --strictPort',
     url: HARNESS_URL,
     reuseExistingServer: false,
     timeout: 120_000,
