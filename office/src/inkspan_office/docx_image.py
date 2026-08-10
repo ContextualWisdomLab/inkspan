@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from io import BytesIO
 from typing import Any
 
-from docx.shared import Px
+from docx.shared import Emu
 
 _DATA_URL_PREFIX = "data:image/png;base64,"
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -19,6 +19,7 @@ _MAX_IMAGE_PIXELS = 40_000_000
 _MAX_ALT_TEXT_LENGTH = 1_000
 _MAX_WIDTH_PX = 2_400
 _MAX_BASE64_CHARACTERS = ((_MAX_IMAGE_BYTES + 2) // 3) * 4
+_EMUS_PER_CSS_PIXEL = 9_525
 
 
 class DocxImageContractError(ValueError):
@@ -47,7 +48,10 @@ def add_docx_inline_png(document: Any, block: Mapping[str, Any], path: str) -> N
         )
 
     try:
-        inline_shape = document.add_picture(BytesIO(image_bytes), width=Px(width_px))
+        inline_shape = document.add_picture(
+            BytesIO(image_bytes),
+            width=Emu(width_px * _EMUS_PER_CSS_PIXEL),
+        )
     except Exception as exc:
         raise DocxImageContractError(
             f"{path}.source must contain a supported PNG image"
