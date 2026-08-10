@@ -18,6 +18,7 @@ from inkspan_office import (
 )
 
 _ALIGNMENT_VALUES = ("left", "center", "right", "justify")
+_OMITTED = object()
 
 
 def _docx_branch(block_type: str) -> dict[str, object]:
@@ -31,23 +32,23 @@ def _docx_branch(block_type: str) -> dict[str, object]:
     )
 
 
-def _plain_payload(alignment: object | None = None) -> dict[str, object]:
+def _plain_payload(alignment: object = _OMITTED) -> dict[str, object]:
     """Build one plain DOCX paragraph request with optional alignment."""
 
     block: dict[str, object] = {"type": "paragraph", "text": "Evidence"}
-    if alignment is not None:
+    if alignment is not _OMITTED:
         block["alignment"] = alignment
     return {"format": "docx", "blocks": [block]}
 
 
-def _rich_payload(alignment: object | None = None) -> dict[str, object]:
+def _rich_payload(alignment: object = _OMITTED) -> dict[str, object]:
     """Build one rich DOCX paragraph request with optional alignment."""
 
     block: dict[str, object] = {
         "type": "rich_paragraph",
         "runs": [{"text": "Rich ", "bold": True}, {"text": "evidence"}],
     }
-    if alignment is not None:
+    if alignment is not _OMITTED:
         block["alignment"] = alignment
     return {"format": "docx", "blocks": [block]}
 
