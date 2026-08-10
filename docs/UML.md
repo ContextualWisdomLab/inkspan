@@ -63,9 +63,11 @@ Security-relevant browser fragment semantics require the same hostile corpus und
 
 ```mermaid
 flowchart TB
-  Head[One exact protected-source candidate head]
+  Head[One exact protected release-candidate head]
   Corpus[Committed synthetic adversarial clipboard corpus]
   Lock[Immutable package lock and Playwright/browser revisions]
+  Packed[Exact packed npm artifact + SHA-256]
+  Run[Fresh run identity]
   Chromium[Chromium project]
   Firefox[Firefox project]
   WebKit[WebKit project]
@@ -78,12 +80,20 @@ flowchart TB
 
   Head --> Corpus
   Head --> Lock
+  Head --> Packed
+  Head --> Run
   Corpus --> Chromium
   Corpus --> Firefox
   Corpus --> WebKit
   Lock --> Chromium
   Lock --> Firefox
   Lock --> WebKit
+  Packed --> Chromium
+  Packed --> Firefox
+  Packed --> WebKit
+  Run --> Chromium
+  Run --> Firefox
+  Run --> WebKit
   Chromium --> Semantic
   Firefox --> Semantic
   WebKit --> Semantic
@@ -93,7 +103,7 @@ flowchart TB
   Difference -->|unsafe, unexplained, missing browser, skipped or failed| Repair --> Blocked
 ```
 
-A queued, pending, skipped, cancelled, absent or failed required browser is not passing evidence. Differences are never normalized merely to make engines agree; any admitted difference is a reviewed compatibility artifact. ADR 0016 governs this decision, SafeClipboard is already protected-main authority, and Issue #66 is implemented on the active cross-engine assurance PR until protected integration.
+A queued, pending, skipped, cancelled, absent or failed required browser is not passing evidence. Differences are never normalized merely to make engines agree; any admitted difference is a reviewed compatibility artifact. ADR 0016 governs the protected-main release decision. Every later release candidate must generate fresh source/lock/run/browser evidence and prove the exact packed npm artifact rather than reuse predecessor or feature-branch evidence.
 
 ## Author-to-model proposal sequence
 
@@ -173,7 +183,7 @@ sequenceDiagram
   end
 ```
 
-The identity result does not contain the document body and does not prove migration, authorization, persistence or durable success. ADR 0015 governs this protected-main routing aid; Issue #74 is historical implementation tracking. The host continues to own schema registry, migration execution, persistence, audit and rollback.
+The identity result does not contain the document body and does not prove migration, authorization, persistence or durable success. ADR 0015 governs this protected-main routing aid. The host continues to own schema registry, migration execution, persistence, audit and rollback.
 
 ## Office render and file publication sequence
 
