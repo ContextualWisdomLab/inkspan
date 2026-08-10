@@ -14,7 +14,7 @@ describe('browser print documentation authority', () => {
     const contract = normalize(repositoryFile('docs/print-output.md'));
 
     expect(index).toContain('[`print-output.md`](print-output.md)');
-    expect(contract).toContain('Status: Active PR / Proposed');
+    expect(contract).toContain('Status: Implemented on protected main');
     expect(contract).toContain('@media print');
     expect(contract).toContain('print-to-PDF');
     expect(contract).toContain('collaboration');
@@ -29,7 +29,7 @@ describe('browser print documentation authority', () => {
       'docs/doctoring/browser-print-paged-media.md',
     );
 
-    expect(doctoring).toContain('Status: Active PR / Proposed');
+    expect(doctoring).toContain('Status: Implemented on protected main');
     expect(doctoring).toContain('World Wide Web Consortium. (2024, May 21).');
     expect(doctoring).toContain('*Media Queries Level 3* (W3C Recommendation).');
     expect(doctoring).toContain('World Wide Web Consortium. (2018, December 4).');
