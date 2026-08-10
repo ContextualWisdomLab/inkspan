@@ -23,6 +23,8 @@ from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 from pptx import Presentation
 
+from .docx_image import DocxImageContractError, add_docx_inline_png
+
 
 class OfficeDocumentError(ValueError):
     """Raised when an Office rendering request violates the public contract."""
@@ -138,6 +140,12 @@ def _render_docx(request: Mapping[str, Any]) -> bytes:
         elif block_type == "table":
             _reject_unknown(block, {"type", "headers", "rows"}, path)
             _add_docx_table(document, block, path)
+        elif block_type == "image":
+            _reject_unknown(block, {"type", "source", "alt_text", "width_px"}, path)
+            try:
+                add_docx_inline_png(document, block, path)
+            except DocxImageContractError as exc:
+                raise OfficeDocumentError(str(exc)) from None
         elif block_type == "page_break":
             _reject_unknown(block, {"type"}, path)
             document.add_page_break()
