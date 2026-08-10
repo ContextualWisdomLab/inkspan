@@ -46,12 +46,39 @@ describe('React-free text-position selector package contract', () => {
     expect(existsSync(resolve(process.cwd(), 'src/text-position-selector/index.ts'))).toBe(true);
   });
 
-  it('keeps the public distribution guide explicit about the React-free boundary', () => {
+  it('keeps the public distribution guide explicit about active implementation and the React-free boundary', () => {
     const guide = repositoryFile('docs/package-distribution.md');
     expect(guide).toContain(
       '`@contextualwisdomlab/cwl-editor/text-position-selector`',
     );
-    expect(guide).toMatch(/React-free[^\n]*text-position/iu);
+    expect(guide).toMatch(
+      /text-position-selector`\s*\|\s*`implemented_on_active_pr`[^\n]*React-free/iu,
+    );
     expect(guide).toMatch(/ESM[^\n]*CommonJS[^\n]*strict TypeScript/iu);
+  });
+
+  it('binds packed verification to no external runtime imports or ambient network and credential authority', () => {
+    const verifier = repositoryFile(
+      'scripts/verify-text-position-selector-subpath-package.mjs',
+    );
+    const guide = repositoryFile('docs/package-distribution.md');
+
+    expect(verifier).toContain('externalRuntimeImportPattern');
+    expect(verifier).toContain('ambientAuthorityPattern');
+    for (const requiredBoundary of [
+      'fetch',
+      'XMLHttpRequest',
+      'WebSocket',
+      'EventSource',
+      'process\\.env',
+      'import\\.meta\\.env',
+      'Deno\\.env',
+      'Bun\\.env',
+      'require',
+    ]) {
+      expect(verifier).toContain(requiredBoundary);
+    }
+    expect(guide).toMatch(/any external runtime module import/iu);
+    expect(guide).toMatch(/ambient network[^.]*credential/iu);
   });
 });
