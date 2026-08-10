@@ -94,6 +94,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       () => normalizeEditorPlaceholder(placeholder),
       [placeholder],
     );
+    const placeholderRef = useLatestRef(normalizedPlaceholder ?? '');
     const editorAttributes = useMemo(
       () =>
         buildEditorAccessibilityAttributes({
@@ -127,7 +128,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       immediatelyRender: false,
       editable,
       extensions: buildExtensions({
-        placeholder: normalizedPlaceholder ?? '',
+        placeholder: () => placeholderRef.current,
         image,
         clipboard,
         onImageError: reportImageError,
