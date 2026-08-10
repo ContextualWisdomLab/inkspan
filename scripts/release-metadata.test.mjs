@@ -30,6 +30,12 @@ test('binds package metadata to the current dated changelog release candidate', 
     ),
     true,
   );
+  assert.equal(
+    changelog.includes(
+      'Added bounded relationship-backed external HTTP(S) hyperlinks to DOCX rich-text runs',
+    ),
+    true,
+  );
 });
 
 test('preserves historical 0.5.29 release evidence and doctoring identity', () => {
