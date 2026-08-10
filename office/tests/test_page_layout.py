@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from io import BytesIO
 from pathlib import Path
+from xml.etree import ElementTree
+from zipfile import ZipFile
 
 import pytest
 from docx import Document
@@ -14,6 +16,13 @@ from inkspan_office import (
     write_office_document,
 )
 from inkspan_office.page_layout import apply_docx_page_layout
+
+_WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+_REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
+_DOC_REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+_HYPERLINK_REL = (
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
+)
 
 
 def _layout_payload() -> dict[str, object]:
@@ -110,6 +119,44 @@ def test_render_docx_applies_letter_portrait_page_layout() -> None:
     assert section.right_margin.mm == pytest.approx(5, abs=0.02)
     assert section.bottom_margin.mm == pytest.approx(10, abs=0.02)
     assert section.left_margin.mm == pytest.approx(15, abs=0.02)
+
+
+def test_render_docx_page_layout_preserves_external_hyperlink_relationship() -> None:
+    payload = _layout_payload()
+    payload["blocks"] = [
+        {
+            "type": "rich_paragraph",
+            "runs": [
+                {
+                    "text": "Inkspan report",
+                    "bold": True,
+                    "href": "https://example.com/report",
+                }
+            ],
+        }
+    ]
+
+    rendered = render_office_document(payload)
+    with ZipFile(BytesIO(rendered.data)) as package:
+        document_root = ElementTree.fromstring(package.read("word/document.xml"))
+        relationships_root = ElementTree.fromstring(
+            package.read("word/_rels/document.xml.rels")
+        )
+
+    hyperlink = document_root.find(f".//{{{_WORD_NS}}}hyperlink")
+    assert hyperlink is not None
+    relationship_id = hyperlink.attrib[f"{{{_DOC_REL_NS}}}id"]
+    assert "".join(hyperlink.itertext()) == "Inkspan report"
+    assert hyperlink.find(f".//{{{_WORD_NS}}}b") is not None
+
+    relationship = next(
+        relation
+        for relation in relationships_root.findall(f"{{{_REL_NS}}}Relationship")
+        if relation.attrib.get("Id") == relationship_id
+    )
+    assert relationship.attrib["Type"] == _HYPERLINK_REL
+    assert relationship.attrib["Target"] == "https://example.com/report"
+    assert relationship.attrib["TargetMode"] == "External"
 
 
 def test_render_docx_page_layout_is_deterministic() -> None:
