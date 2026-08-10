@@ -12,9 +12,9 @@ Protected `main` is the implementation authority. Open PRs may provide Proposed 
 
 The root product may compose TipTap/ProseMirror, React-facing integration, deterministic conversion, revision evidence, autosave, collaboration adapters, email/base64 utilities, and Office rendering. Framework-independent subpaths must not accidentally require React, DOM globals, TipTap UI, ProseMirror view, Yjs, network, credentials, database clients, naruon, contextual-orchestrator, or model SDKs when their public contract excludes those dependencies.
 
-Protected framework-independent surfaces include the package's bounded envelope-identity, revision/evidence, text-position-selector, autosave, converter, and other explicitly exported subpaths that are verified from packed artifacts. In particular, the protected React-free text-position-selector subpath reuses the deterministic projection contract without gaining editor-capture, persistence, authorization, or network authority.
+Protected framework-independent surfaces include the package's bounded envelope-identity, revision/evidence, text-position-selector, autosave, converter, Markdown, and other explicitly exported subpaths that are verified from packed artifacts. In particular, the protected React-free text-position-selector subpath reuses the deterministic projection contract without gaining editor-capture, persistence, authorization, or network authority.
 
-ADR 0020 records the Proposed framework-neutral Markdown/HTML/email/plain-text package boundary implemented on active PR #114. Until that branch reaches protected `main`, the root package remains the shipped authority for those serializers and the proposed `./markdown` subpath must not be described as released.
+The framework-neutral deterministic Markdown package subpath is implemented on protected `main` under Accepted ADR 0020. `@contextualwisdomlab/cwl-editor/markdown` exposes Markdown/HTML/email/plain-text conversion through ESM, CommonJS, and declarations while reusing the root serializer and framework-neutral safe-link/inline-image policy. Its browserless Node path must not evaluate the interactive React/TipTap/Yjs graph, ambient document authority, credentials, network transport, database clients, naruon, contextual-orchestrator, or model SDKs.
 
 Standalone use must not require naruon or contextual-orchestrator. A CWL host can compose Inkspan additively through stable interfaces.
 
@@ -32,7 +32,7 @@ SHA-256 revision evidence identifies exact canonical current-schema content. Loc
 
 TipTap/ProseMirror is the deterministic editing authority for supported Markdown/HTML behavior. Import/export adapters must state supported and lossy constructs explicitly. Generated or rendered output does not silently replace canonical source state. Editor integrations validate extension/plugin configuration and public callback boundaries fail closed without executing accessors merely to inspect untrusted configuration.
 
-The deterministic serializer implementation and its safe-link/inline-image policy must remain one behavioral authority across root and any headless package surface. A framework-neutral package boundary may change dependency topology, not conversion semantics or trust ownership.
+The deterministic serializer implementation and its safe-link/inline-image policy remain one behavioral authority across root and the protected headless Markdown package surface. The framework-neutral package boundary changes dependency topology, not conversion semantics or trust ownership.
 
 ## Rich clipboard boundary
 
@@ -131,6 +131,6 @@ Queued, cancelled, skipped-required, absent, stale-head, predecessor-head, statu
 
 ## Implemented versus proposed
 
-Protected `main` is the sole shipped implementation baseline. SafeClipboard, cross-engine browser assurance, the security disclosure lifecycle, autosave lifecycle observation, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, W3C text-position selector evidence, the React-free text-position-selector subpath, document-transition evidence, envelope identity routing, and the OIDC-backed unified stable registry release train are `implemented_on_protected_main`.
+Protected `main` is the sole shipped implementation baseline. SafeClipboard, cross-engine browser assurance, the security disclosure lifecycle, autosave lifecycle observation, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, W3C text-position selector evidence, the React-free text-position-selector subpath, the framework-neutral deterministic Markdown package subpath, document-transition evidence, envelope identity routing, and the OIDC-backed unified stable registry release train are `implemented_on_protected_main`.
 
-The framework-neutral deterministic Markdown package subpath in PR #114 and CSS paged-media print boundary in PR #116 are `implemented_on_active_pr` only. They must remain labeled unshipped until their exact heads satisfy repository policy and reach protected `main`.
+The CSS paged-media print boundary in PR #116 is `implemented_on_active_pr` only. It must remain labeled unshipped until its exact head satisfies repository policy and reaches protected `main`.
