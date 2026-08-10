@@ -30,17 +30,17 @@ describe('canonical architecture decision coverage', () => {
     expect(index).toContain('Security disclosure lifecycle and coordinated vulnerability handling');
   });
 
-  it('keeps decision status synchronized with protected and active implementation maturity', () => {
+  it('keeps decision status synchronized with protected implementation maturity', () => {
     const migration = repositoryFile(migrationAdr);
     const browser = repositoryFile(browserAssuranceAdr);
     const security = repositoryFile(securityDisclosureAdr);
     const index = repositoryFile('docs/adr/README.md');
 
-    expect(migration).toContain('Status: Accepted');
-    expect(security).toContain('Status: Accepted');
-    expect(browser).toContain('Status: Proposed');
+    for (const adr of [migration, browser, security]) {
+      expect(adr).toContain('Status: Accepted');
+    }
     expect(index).toMatch(/0015[^\n]*\| Accepted \|/u);
-    expect(index).toMatch(/0016[^\n]*\| Proposed \|/u);
+    expect(index).toMatch(/0016[^\n]*\| Accepted \|/u);
     expect(index).toMatch(/0017[^\n]*\| Accepted \|/u);
 
     for (const adr of [migration, browser, security]) {
@@ -74,11 +74,11 @@ describe('canonical architecture decision coverage', () => {
       /Envelope schema identity \/ migration routing[^\n]*implemented_on_protected_main/u,
     );
     expect(fitness).toMatch(
-      /Cross-engine browser-semantic release assurance[^\n]*implemented_on_active_pr/u,
+      /Cross-engine browser-semantic release assurance[^\n]*implemented_on_protected_main/u,
     );
   });
 
-  it('makes protected and active decision paths reviewable as diagrams and standards traceability', () => {
+  it('makes protected decision paths reviewable as diagrams and standards traceability', () => {
     const uml = repositoryFile('docs/UML.md');
     const traceability = repositoryFile('docs/TRACEABILITY.md');
 
@@ -89,6 +89,9 @@ describe('canonical architecture decision coverage', () => {
     expect(traceability).toContain('RFC 7493');
     expect(traceability).toMatch(
       /Envelope version routing[^\n]*protected-main evidence/iu,
+    );
+    expect(traceability).toMatch(
+      /Cross-engine release assurance[^\n]*protected-main/iu,
     );
     expect(traceability).not.toContain('PR #84 is active implementation evidence');
   });
@@ -104,8 +107,8 @@ describe('canonical architecture decision coverage', () => {
       expect(dataModel).toContain(marker);
     }
     expect(dataModel).toContain('`document_schema_identity`: `implemented_on_protected_main`');
-    expect(dataModel).toContain('`browser_assurance_evidence`: `implemented_on_active_pr`');
-    expect(dataModel).toContain('active release-assurance evidence objects');
+    expect(dataModel).toContain('`browser_assurance_evidence`: `implemented_on_protected_main`');
+    expect(dataModel).toContain('release-assurance evidence objects');
     expect(dataModel).toContain('does **not** own an application database');
     expect(dataModel).toContain('physical database ERD');
   });
