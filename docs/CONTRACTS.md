@@ -16,6 +16,8 @@ The root package may expose React/TipTap integration plus framework-independent 
 
 Package exports, declaration files, runtime support, and packed ESM/CommonJS/strict-TypeScript consumers are release evidence. A source file being present is not sufficient proof that a public contract is packaged correctly.
 
+Protected `main` includes the React-free `@contextualwisdomlab/cwl-editor/text-position-selector` subpath for deterministic W3C selector projection. The root editor surface remains the authority for capturing one immutable editor state and binding that projection to an exact document revision.
+
 ## Document envelope and revision contract
 
 The **document envelope** is a versioned boundary carrying schema identity and supported document content. Current-schema parsing validates strict JSON/UTF-8 and active schema requirements before canonicalization or hashing. Unknown schema migration remains host-owned.
@@ -67,7 +69,7 @@ The selector remains meaningful only under its exact document revision and exact
 
 The host owns annotation identifiers/bodies, source-resource IRI policy, authentication, authorization, tenancy, durable persistence, audit, publication, retention, collaboration-aware anchoring, and cross-revision re-anchoring. A selector plus local revision is not an authorization grant, actor identity, timestamp, signature, server durability receipt, or proof that an annotation was accepted.
 
-ADR 0018 is the durable authority decision. `docs/selection-lifecycle.md` and `docs/doctoring/w3c-text-position-selector-evidence.md` record the operator-facing semantics and APA-7 standards basis. Packed ESM/CommonJS/strict-TypeScript consumers verify the root public API; no database, network, provider credential, model, naruon, or contextual-orchestrator dependency is introduced by this evidence operation.
+ADR 0018 is the durable authority decision. `docs/selection-lifecycle.md` and `docs/doctoring/w3c-text-position-selector-evidence.md` record the operator-facing semantics and APA-7 standards basis. Packed ESM/CommonJS/strict-TypeScript consumers verify both the root public API and the protected React-free `@contextualwisdomlab/cwl-editor/text-position-selector` subpath; no database, network, provider credential, model, naruon, or contextual-orchestrator dependency is introduced by the projection subpath or evidence operation.
 
 ## Autosave contract
 
