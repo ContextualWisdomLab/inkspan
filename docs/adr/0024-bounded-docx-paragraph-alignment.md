@@ -68,7 +68,7 @@ Protected product tests require:
 
 The feature remains subject to the repository's Python 3.11–3.14 matrix, 100% shipped production statement/branch coverage, shipped-symbol docstrings, package verification, CI, Security Scan, and SAST gates.
 
-## Rollback and supersession
+## Rollback or supersession
 
 A future ADR may supersede this decision if Inkspan adopts a versioned richer paragraph-format model. Supersession must preserve backward compatibility or provide an explicit migration path. Arbitrary OOXML or raw style injection must not be introduced by silently expanding this contract.
 
