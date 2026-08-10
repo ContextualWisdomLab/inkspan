@@ -24,6 +24,7 @@ This index records durable architectural decisions. Protected-main implementatio
 | [0016](0016-cross-engine-browser-assurance.md) | Accepted | Cross-engine browser-semantic release assurance |
 | [0017](0017-security-disclosure-lifecycle.md) | Accepted | Security disclosure lifecycle and coordinated vulnerability handling |
 | [0018](0018-revision-scoped-w3c-text-position-selector.md) | Accepted | Revision-scoped W3C text-position selector authority |
+| [0019](0019-unified-release-version-train.md) | Proposed | Unified stable npm and Office registry release version train |
 
 ## Decision discipline
 
