@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+from types import MappingProxyType
 from xml.etree import ElementTree
 from zipfile import ZipFile
 
@@ -99,6 +100,8 @@ def test_docx_rich_run_renders_external_hyperlink_relationship(href: str) -> Non
     [
         None,
         7,
+        {},
+        MappingProxyType({"url": "https://example.com"}),
         "",
         "https://example.com/" + "a" * 4096,
         "javascript:alert(1)",
@@ -115,12 +118,14 @@ def test_docx_rich_run_renders_external_hyperlink_relationship(href: str) -> Non
         "https://example.com/has space",
         "https://example.com/control\npath",
         "https://user:secret@example.com/private",
+        "https://ｅxample.com/path",
+        "https://example.com/資料",
     ],
 )
 def test_docx_rich_run_rejects_forbidden_hyperlink_targets_without_reflection(
     href: object,
 ) -> None:
-    """Unsafe, ambiguous, local, credential-bearing, or oversized targets fail closed."""
+    """Unsafe, ambiguous, local, credential-bearing, or non-ASCII targets fail closed."""
 
     with pytest.raises(OfficeDocumentError) as captured:
         render_office_document(_rich_link_payload(href))
