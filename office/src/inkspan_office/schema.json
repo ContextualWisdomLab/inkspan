@@ -87,7 +87,11 @@
           "properties": {
             "type": {"const": "heading"},
             "text": {"$ref": "#/$defs/nonEmptyString"},
-            "level": {"type": "integer", "minimum": 1, "maximum": 9}
+            "level": {"type": "integer", "minimum": 1, "maximum": 9},
+            "alignment": {
+              "type": "string",
+              "enum": ["left", "center", "right", "justify"]
+            }
           }
         },
         {

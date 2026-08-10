@@ -115,17 +115,18 @@ def _render_docx(request: Mapping[str, Any]) -> bytes:
         block = _mapping(raw_block, path)
         block_type = _string(_require(block, "type", path), f"{path}.type")
         if block_type == "heading":
-            _reject_unknown(block, {"type", "text", "level"}, path)
+            _reject_unknown(block, {"type", "text", "level", "alignment"}, path)
             level = _integer(
                 _require(block, "level", path),
                 f"{path}.level",
                 minimum=1,
                 maximum=9,
             )
-            document.add_heading(
+            heading = document.add_heading(
                 _string(_require(block, "text", path), f"{path}.text"),
                 level=level,
             )
+            _apply_docx_paragraph_alignment(heading, block, path)
         elif block_type == "paragraph":
             _reject_unknown(block, {"type", "text", "alignment"}, path)
             paragraph = document.add_paragraph(
