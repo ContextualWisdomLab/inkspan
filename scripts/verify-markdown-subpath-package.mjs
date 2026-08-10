@@ -108,13 +108,18 @@ function verifyRuntimeConsumers() {
   writeFileSync(
     esmPath,
     `import assert from 'node:assert/strict';
-import {
+Object.defineProperty(globalThis, 'document', {
+  configurable: true,
+  get() { throw new Error('ambient document access is forbidden'); },
+});
+const markdown = await import('${packageJson.name}/markdown');
+const {
   htmlToMarkdown,
   markdownToEmailHtml,
   markdownToHtml,
   markdownToPlainText,
   normalizeMarkdown,
-} from '${packageJson.name}/markdown';
+} = markdown;
 const safeHtml = markdownToHtml('[safe](https://example.com)');
 assert.equal(safeHtml.includes('href="https://example.com"'), true);
 assert.doesNotMatch(markdownToHtml('[unsafe](javascript:alert(1))'), /href=/u);
@@ -127,6 +132,7 @@ const email = markdownToEmailHtml('Hello', {
   textDirection: 'ltr',
 });
 assert.equal(email.includes('<html lang="ko-KR" dir="ltr">'), true);
+delete globalThis.document;
 `,
     'utf8',
   );
@@ -135,11 +141,16 @@ assert.equal(email.includes('<html lang="ko-KR" dir="ltr">'), true);
   writeFileSync(
     cjsPath,
     `const assert = require('node:assert/strict');
+Object.defineProperty(globalThis, 'document', {
+  configurable: true,
+  get() { throw new Error('ambient document access is forbidden'); },
+});
 const markdown = require('${packageJson.name}/markdown');
 assert.equal(typeof markdown.markdownToHtml, 'function');
 assert.equal(markdown.htmlToMarkdown('<p>Gamma</p>'), 'Gamma');
 assert.equal(typeof markdown.markdownToEmailHtml, 'function');
 assert.equal(markdown.markdownToPlainText('# Title'), 'Title');
+delete globalThis.document;
 `,
     'utf8',
   );
