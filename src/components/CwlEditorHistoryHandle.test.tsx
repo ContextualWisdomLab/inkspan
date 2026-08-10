@@ -47,7 +47,7 @@ describe('CwlEditor imperative history control', () => {
     expect(handle.canRedo()).toBe(false);
   });
 
-  it('keeps imperative history inert when the editor becomes read-only', async () => {
+  it('keeps imperative history inert while read-only without consuming it', async () => {
     const editorRef = createRef<CwlEditorHandle>();
     const { rerender } = render(
       <CwlEditor ref={editorRef} defaultValue="Original" editable />,
@@ -69,6 +69,16 @@ describe('CwlEditor imperative history control', () => {
     expect(handle.canRedo()).toBe(false);
     expect(handle.redo()).toBe(false);
     expect(handle.getMarkdown()).toBe('Original updated');
+
+    rerender(<CwlEditor ref={editorRef} defaultValue="Original" editable />);
+    await waitFor(() => expect(handle.getEditor()?.isEditable).toBe(true));
+
+    expect(handle.canUndo()).toBe(true);
+    await act(async () => {
+      expect(handle.undo()).toBe(true);
+    });
+    expect(handle.getMarkdown()).toBe('Original');
+    expect(handle.canRedo()).toBe(true);
   });
 
   it('fails closed when the shared handle has no active editor instance', () => {
