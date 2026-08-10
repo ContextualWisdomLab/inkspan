@@ -2,36 +2,48 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const RELEASE_VERSION = '0.5.29';
-const RELEASE_DATE = '2026-08-05';
+const HISTORICAL_RELEASE_VERSION = '0.5.29';
 
 /** Read one repository UTF-8 text file for release-contract assertions. */
 function readRepositoryText(path) {
   return readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 }
 
-test('binds package metadata to the 0.5.29 changelog release', () => {
+test('binds package metadata to the current dated changelog release candidate', () => {
   const packageManifest = JSON.parse(readRepositoryText('package.json'));
   const changelog = readRepositoryText('CHANGELOG.md');
-  const releaseHeading = `## [${RELEASE_VERSION}] — ${RELEASE_DATE}`;
+  const escapedVersion = packageManifest.version.replaceAll('.', '\\.');
+  const releaseHeading = new RegExp(
+    `^## \\[${escapedVersion}\\] — \\d{4}-\\d{2}-\\d{2}$`,
+    'm',
+  );
+  const headingMatch = changelog.match(releaseHeading);
 
-  assert.equal(packageManifest.version, RELEASE_VERSION);
-  assert.equal(changelog.includes(releaseHeading), true);
-  assert.equal(changelog.indexOf('## [Unreleased]') < changelog.indexOf(releaseHeading), true);
+  assert.notEqual(headingMatch, null);
   assert.equal(
-    changelog.includes(`- Package version **${RELEASE_VERSION}**`),
+    changelog.indexOf('## [Unreleased]') < (headingMatch?.index ?? -1),
+    true,
+  );
+  assert.equal(
+    changelog.includes(
+      `Unified the npm editor and \`inkspan-office\` package manifests at **${packageManifest.version}**`,
+    ),
     true,
   );
 });
 
-test('keeps release evidence and doctoring on the same release candidate', () => {
-  const releaseEvidence = readRepositoryText(`docs/releases/${RELEASE_VERSION}.md`);
+test('preserves historical 0.5.29 release evidence and doctoring identity', () => {
+  const releaseEvidence = readRepositoryText(
+    `docs/releases/${HISTORICAL_RELEASE_VERSION}.md`,
+  );
   const doctoring = readRepositoryText(
     'docs/doctoring/durable-autosave-session.md',
   );
 
   assert.equal(
-    releaseEvidence.includes(`**Release candidate:** ${RELEASE_VERSION}`),
+    releaseEvidence.includes(
+      `**Release candidate:** ${HISTORICAL_RELEASE_VERSION}`,
+    ),
     true,
   );
   assert.equal(
@@ -39,7 +51,9 @@ test('keeps release evidence and doctoring on the same release candidate', () =>
     true,
   );
   assert.equal(
-    doctoring.includes(`**Target release:** Inkspan ${RELEASE_VERSION}`),
+    doctoring.includes(
+      `**Target release:** Inkspan ${HISTORICAL_RELEASE_VERSION}`,
+    ),
     true,
   );
   assert.equal(
