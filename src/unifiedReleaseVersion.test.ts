@@ -22,7 +22,7 @@ describe('unified stable Inkspan release version', () => {
   });
 
   it('binds the current product version to a dated changelog release', () => {
-    const escapedVersion = rootManifest.version.replaceAll('.', '\\.');
+    const escapedVersion = rootManifest.version.split('.').join('\\.');
     const releaseHeading = new RegExp(
       `^## \\[${escapedVersion}\\] — 20[0-9]{2}-[0-9]{2}-[0-9]{2}$`,
       'mu',
