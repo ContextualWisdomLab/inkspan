@@ -16,6 +16,7 @@ integrations.
 | `@contextualwisdomlab/cwl-editor/converter` | Framework-independent base64 and data-URI utilities |
 | `@contextualwisdomlab/cwl-editor/envelope-identity` | Framework-independent identity-only envelope routing for bounded schema identity inspection; migration remains host-owned |
 | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent revision evidence and document-transition evidence for local content equality/lineage claims |
+| `@contextualwisdomlab/cwl-editor/text-position-selector` | `implemented_on_active_pr` — React-free text-position projection core implementing W3C `TextPositionSelector`; interactive capture, revision binding, authorization, persistence, and re-anchoring remain outside this subpath |
 | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
 | `@contextualwisdomlab/cwl-editor/fonts.css` | Full offline KR/EN/JP/SC/TC/VI font bundle |
 | `@contextualwisdomlab/cwl-editor/fonts-latin.css` | Smaller Latin/Vietnamese font bundle |
@@ -55,11 +56,18 @@ embedded in the npm tarball.
   and collaboration entrypoints. It is declared in Inkspan's package
   dependencies so the consumer's package manager installs and resolves it; it
   is not merely a type-only dependency.
-- The framework-independent autosave, converter, envelope-identity, and
-  revision-evidence entrypoints do not require React UI, a mounted editor, naruon,
-  contextual-orchestrator, a database, provider credentials, or host transport.
-  Their individual package-consumer gates additionally prevent framework
-  dependencies from leaking into subpaths whose public contracts exclude them.
+- The framework-independent autosave, converter, envelope-identity,
+  revision-evidence, and text-position-selector entrypoints do not require React
+  UI, a mounted editor, naruon, contextual-orchestrator, a database, provider
+  credentials, or host transport. Their individual package-consumer gates
+  additionally prevent framework dependencies from leaking into subpaths whose
+  public contracts exclude them.
+- The text-position-selector subpath deliberately exposes only the deterministic
+  projection constants, error type, selector constructor, and public value
+  types. It does not expose the React imperative handle that captures editor
+  state or bind a selector to a document revision. Hosts remain responsible for
+  annotation identifiers/bodies, source-resource identity, authorization,
+  tenancy, persistence, audit, and cross-revision re-anchoring.
 - Envelope identity output is routing metadata only. It does not accept an
   unsupported document generation as current semantics and does not move schema
   registry, migration, persistence, rollback, or authorization authority into
@@ -85,14 +93,26 @@ production library build. The verification chain:
 3. confirms required licenses, declarations, styles, and font assets ship;
 4. rejects internal source, tests, demos, Office files, coverage output, and
    workflow files from the npm tarball;
-5. imports the root, collaboration, converter, autosave, envelope-identity, and
-   revision-evidence surfaces through their dedicated packed-consumer checks,
-   including framework-free isolation where that is part of the public contract;
+5. imports the root, collaboration, converter, autosave, envelope-identity,
+   revision-evidence, and text-position-selector surfaces through their dedicated
+   packed-consumer checks, including framework-free isolation where that is part
+   of the public contract;
 6. exercises supported ESM/CommonJS entrypoints and compiles strict TypeScript
    consumers against the published declaration surfaces;
 7. resolves public CSS and font subpaths; and
 8. fails when a declared public export is absent, mispackaged, or coupled to a
    runtime graph that its public contract excludes.
+
+The text-position-selector package check builds a real npm tarball, consumes the
+public subpath through ESM and CommonJS, and compiles a strict TypeScript
+consumer. Its emitted JavaScript rejects **any external runtime module import**,
+so framework, network, database, credential-provider, and model-SDK clients
+cannot enter the selector bundle through module dependencies. A separate check
+rejects **ambient network and credential authority** such as `fetch`,
+`XMLHttpRequest`, `WebSocket`, `EventSource`, `process.env`, `import.meta.env`,
+`Deno.env`, and `Bun.env`. Type-only ProseMirror model/state inputs remain part
+of the selector's structural contract and introduce no interactive runtime
+authority.
 
 A version is release-ready only when this package gate, repository-wide 100%
 TypeScript coverage, production builds, the Python Office matrix, applicable
