@@ -31,7 +31,15 @@ A queued, pending, cancelled, skipped-required, stale-head, predecessor-head, st
 
 When an external scheduler or autonomous maintainer drives Inkspan work, execution is **work-conserving**. After each mutation, proof, merge, closure, review/check observation, or defer decision, choose the next highest-value safe Inkspan item while practical execution budget remains. A blocked PR blocks only that lane; do not let queued CI, reviewer latency, provider cooldown, a read-only dependency, or missing approval freeze unrelated source, documentation, operability, or product work.
 
-Do not use a status report, prompt update, documentation assessment, green check, PR creation, review request, or one completed product slice as a stopping condition while another safe action exists. Before ending an autonomous run, re-scan open PRs/issues, protected `main`, changed branches, review/check/security evidence, canonical-document fitness, release readiness, and buyer-visible gaps; continue when an executable item remains.
+Do not use a status report, prompt update, documentation assessment, green check, PR creation, review request, or one completed product slice as a stopping condition while another safe action exists. Before ending an autonomous run, perform two fresh whole-repository sweeps across open PRs/issues, protected `main`, changed branches, review/check/security evidence, canonical-document fitness, release readiness, and buyer-visible gaps. If either sweep finds an executable item, execute it and reset the two-sweep count.
+
+### Premature-stop recovery
+
+When the user says that execution stopped early, that other work remained, or that the prompt must be updated because work was left behind, treat the statement as a **scheduler-control incident**. Do not answer it with another inventory or status recap. A prompt update, documentation-only change, PR creation, review request, queued check, or local artifact receives zero completion credit.
+
+Repair the control instruction only when necessary, then rebuild the live Inkspan queue and continue repository execution in the same invocation. When safe work exists, complete at least **two materially distinct executable repository actions** before considering termination. If exactly one safe action exists, perform it and use a fresh queue rebuild to prove that every other lane is currently non-actionable under the writer lease, dependency order, repository policy, and safety constraints.
+
+If repeated generic scheduled-task errors suggest prompt-size or control-plane fragility, move durable product detail into the canonical GitHub graph and simplify the external prompt instead of appending incident history. Scheduler failure is local operational debt, not Inkspan product completion.
 
 The external scheduler remains the execution authority for cadence and continuation. This file constrains repository-specific writer/evidence/product/safety behavior and does not make scheduling or autonomous orchestration part of Inkspan runtime architecture.
 
