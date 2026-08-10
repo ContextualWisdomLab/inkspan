@@ -14,6 +14,7 @@ This record maps durable Inkspan product decisions to authoritative standards, p
 | JSON envelope grammar | Versioned envelopes use strict JSON handling, duplicate-name defenses, bounded parsing, and explicit schema identity | RFC 8259; RFC 7493 where interoperable JSON constraints apply | envelope parser/resource-limit tests and package consumers | Current-schema parsing does not imply migration authority for unknown schemas |
 | Envelope version routing | A bounded identity-only inspector identifies `schemaId`/`schemaVersion` for dispatch while the current parser stays strict and the host owns migration execution | RFC 8259; RFC 7493; RFC 8785 for canonical current-schema bytes | ADR 0015, protected-main `documentEnvelopeIdentity` implementation/tests, envelope guide/doctoring and framework-independent packed consumers | Protected-main evidence proves only bounded routing metadata; identifying a schema generation does not validate that generation's document semantics, authorize migration, or prove durable persistence |
 | Canonical document bytes | Deterministic revision evidence is derived from canonicalized validated document content | RFC 8785, JSON Canonicalization Scheme | revision-evidence, transition-evidence, restore tests | A content digest proves equality only, not actor/time/authorization/durable write |
+| W3C text-position selector | Revision-scoped annotation interoperability uses a distinct versioned logical-text projection, inclusive `start`, exclusive `end`, Unicode-code-point offsets, grapheme-boundary validation, and same-state revision binding instead of relabeling ProseMirror coordinates | W3C Web Annotation Data Model; ProseMirror reference manual; ECMA-402 13th edition | ADR 0018, protected-main text-position selector implementation/tests, packed consumer verifier, selection lifecycle and doctoring | Protected-main evidence proves positions only for the named projection and exact revision; it does not prove actor, authorization, durable annotation acceptance, source IRI policy, or cross-revision re-anchoring |
 | Provenance semantics | Local transition/release evidence keeps content lineage separate from actor/authorization/durable claims | W3C PROV family | transition evidence, release evidence, canonical data model | Inkspan does not claim complete PROV conformance or host audit provenance |
 | Accessibility | Native controls, keyboard semantics, shortcut metadata, and host-facing status state support accessible embedding | W3C WCAG 2.2; WAI-ARIA where used | toolbar/accessibility tests, SSR tests, autosave lifecycle data | Component evidence alone is not a full host WCAG conformance claim |
 | Browser clipboard behavior | Security-relevant rich HTML handling requires actual paste-pipeline integration and bounded semantic reconstruction before editor state | WHATWG HTML parsing; W3C Clipboard API | protected-main rich-clipboard unit/integration corpus and SafeClipboard ADR | Protected jsdom/TipTap integration success is not universal browser-engine conformance |
@@ -30,13 +31,19 @@ Bray, T. (Ed.). (2015). *The I-JSON Message Format* (RFC 7493). RFC Editor. http
 
 Bray, T. (Ed.). (2017). *The JavaScript Object Notation (JSON) Data Interchange Format* (RFC 8259; STD 90). RFC Editor. https://doi.org/10.17487/RFC8259
 
+Ecma International. (2026). *ECMA-402: ECMAScript 2026 internationalization API specification* (13th ed.). https://402.ecma-international.org/
+
 Fielding, R., Nottingham, M., & Reschke, J. (Eds.). (2022). *HTTP Semantics* (RFC 9110; STD 97). RFC Editor. https://doi.org/10.17487/RFC9110
+
+ProseMirror. (n.d.). *ProseMirror reference manual*. Retrieved August 10, 2026, from https://prosemirror.net/docs/ref/
 
 Rundgren, A., Jordan, B., & Erdtman, S. (2020). *JSON Canonicalization Scheme (JCS)* (RFC 8785). RFC Editor. https://doi.org/10.17487/RFC8785
 
 Souppaya, M., Scarfone, K., & Dodson, D. (2022). *Secure Software Development Framework (SSDF) Version 1.1: Recommendations for Mitigating the Risk of Software Vulnerabilities* (NIST SP 800-218). National Institute of Standards and Technology. https://doi.org/10.6028/NIST.SP.800-218
 
 Web Hypertext Application Technology Working Group. (2026). *HTML Standard: Parsing HTML documents* (Living Standard). Retrieved August 10, 2026, from https://html.spec.whatwg.org/multipage/parsing.html
+
+World Wide Web Consortium. (2017, February 23). *Web Annotation Data Model*. https://www.w3.org/TR/annotation-model/
 
 World Wide Web Consortium. (2026, June 24). *Clipboard API and events* (W3C Working Draft). https://www.w3.org/TR/2026/WD-clipboard-apis-20260624/
 
@@ -74,10 +81,10 @@ Lower levels may explain intent or history but cannot override a contradictory h
 - **Planned** means an accepted future direction without a protected implementation.
 - **Superseded** means retained for history but replaced by a later explicit decision.
 
-Envelope identity routing, SafeClipboard, and cross-engine browser assurance are implemented on protected `main`. The browser gate being protected does not let a future release reuse historical browser evidence: the exact release candidate must generate fresh evidence bound to its own source, lock, run identity, browser revisions, and packed artifact.
+Envelope identity routing, SafeClipboard, W3C text-position selector evidence, and cross-engine browser assurance are implemented on protected `main`. The W3C selector remains revision-scoped and projection-version-scoped; protected integration does not transfer annotation persistence, source identity, authorization, or re-anchoring authority from the host. The browser gate being protected does not let a future release reuse historical browser evidence: the exact release candidate must generate fresh evidence bound to its own source, lock, run identity, browser revisions, and packed artifact.
 
 Documentation must not promote Proposed or Planned capabilities to Implemented merely because a PR, issue, or design document is detailed.
 
 ## Review cadence
 
-Revalidate this matrix when a public schema, security boundary, supported runtime/browser line, Office format contract, collaboration/provider contract, accessibility interaction, release workflow, or authoritative external standard materially changes. Prefer explicit supersession over silent historical rewrite.
+Revalidate this matrix when a public schema, selector projection, security boundary, supported runtime/browser line, Office format contract, collaboration/provider contract, accessibility interaction, release workflow, or authoritative external standard materially changes. Prefer explicit supersession over silent historical rewrite.
