@@ -15,7 +15,7 @@ export interface EditorAccessibilityOptions {
   textDirection?: EditorTextDirection;
   /** Explicit string accessible name for the editable surface. */
   ariaLabel?: string;
-  /** Space-separated IDs of visible elements that label the surface. */
+  /** Space-separated IDs of elements that label the surface. */
   ariaLabelledBy?: string;
   /** Space-separated IDs of elements that describe the surface. */
   ariaDescribedBy?: string;
@@ -29,7 +29,7 @@ export interface EditorAccessibilityOptions {
   editable: boolean;
 }
 
-/** Normalize a host-supplied language, accessible-name, or ID-reference string. */
+/** Normalize an optional host-supplied accessibility string. */
 function normalizedAccessibilityValue(
   value: string | undefined,
 ): string | undefined {
@@ -38,18 +38,30 @@ function normalizedAccessibilityValue(
 }
 
 /**
+ * Normalize the shared visual and semantic empty-editor guidance.
+ *
+ * Returning `undefined` for blank input lets callers omit both the visual
+ * Placeholder extension text and `aria-placeholder` from the same source.
+ */
+export function normalizeEditorPlaceholder(
+  value: string | undefined,
+): string | undefined {
+  return normalizedAccessibilityValue(value);
+}
+
+/**
  * Build the complete semantic attribute contract shared by standalone and
  * collaborative editor surfaces.
  *
- * A visible label referenced with `aria-labelledby` takes precedence over the
- * fallback string label. Optional placeholder, language, and ID-reference
- * values are omitted when blank. Placeholder guidance remains supplemental and
- * never replaces the accessible name.
+ * A non-blank `aria-labelledby` reference takes precedence over the fallback
+ * string label. Optional placeholder, language, and ID-reference values are
+ * omitted when blank. Placeholder guidance remains supplemental and never
+ * replaces the accessible name.
  */
 export function buildEditorAccessibilityAttributes(
   options: EditorAccessibilityOptions,
 ): Record<string, string> {
-  const placeholder = normalizedAccessibilityValue(options.placeholder);
+  const placeholder = normalizeEditorPlaceholder(options.placeholder);
   const languageTag = normalizedAccessibilityValue(options.languageTag);
   const labelledBy = normalizedAccessibilityValue(options.ariaLabelledBy);
   const describedBy = normalizedAccessibilityValue(options.ariaDescribedBy);
