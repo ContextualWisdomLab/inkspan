@@ -96,7 +96,11 @@
           "additionalProperties": false,
           "properties": {
             "type": {"const": "paragraph"},
-            "text": {"type": "string"}
+            "text": {"type": "string"},
+            "alignment": {
+              "type": "string",
+              "enum": ["left", "center", "right", "justify"]
+            }
           }
         },
         {
@@ -110,6 +114,10 @@
               "minItems": 1,
               "maxItems": 4096,
               "items": {"$ref": "#/$defs/richTextRun"}
+            },
+            "alignment": {
+              "type": "string",
+              "enum": ["left", "center", "right", "justify"]
             }
           }
         },
