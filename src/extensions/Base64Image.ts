@@ -214,10 +214,10 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
                 ? insertionPosition
                 : editor.state.selection.from;
             const transaction = editor.state.tr.insert(pos, node);
-            editor.view.dispatch(transaction);
             if (typeof insertionPosition === 'number') {
-              insertionPosition = pos + node.nodeSize;
+              insertionPosition = transaction.mapping.map(pos, 1);
             }
+            editor.view.dispatch(transaction);
           } catch (error: unknown) {
             options.onError?.(normalizeImageError(error));
           }
