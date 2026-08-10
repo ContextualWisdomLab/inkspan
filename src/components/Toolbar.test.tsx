@@ -225,6 +225,7 @@ describe('Toolbar', () => {
   describe('inline image upload', () => {
     it('embeds a chosen image using the provided image config', async () => {
       const editor = makeEditor();
+      vi.spyOn(window, 'prompt').mockReturnValue('Configured image');
       render(
         <Toolbar
           editor={editor}
@@ -233,9 +234,10 @@ describe('Toolbar', () => {
       );
       const file = new File([PNG_BYTES], 'p.png', { type: 'image/png' });
       fireEvent.change(fileInput(), { target: { files: [file] } });
-      await waitFor(() =>
-        expect(editor.getHTML()).toContain('data:image/png;base64'),
-      );
+      await waitFor(() => {
+        expect(editor.getHTML()).toContain('data:image/png;base64');
+        expect(editor.getHTML()).toContain('alt="Configured image"');
+      });
     });
 
     it('embeds a chosen image using default config when no image prop is set', async () => {
@@ -243,12 +245,14 @@ describe('Toolbar', () => {
       // With no image prop, maxDimension defaults to 1600, which routes through
       // the downscale path; stub a decodable Image so it resolves in jsdom.
       vi.stubGlobal('Image', FitImage);
+      vi.spyOn(window, 'prompt').mockReturnValue('Default image');
       render(<Toolbar editor={editor} />);
       const file = new File([PNG_BYTES], 'p.png', { type: 'image/png' });
       fireEvent.change(fileInput(), { target: { files: [file] } });
-      await waitFor(() =>
-        expect(editor.getHTML()).toContain('data:image/png;base64'),
-      );
+      await waitFor(() => {
+        expect(editor.getHTML()).toContain('data:image/png;base64');
+        expect(editor.getHTML()).toContain('alt="Default image"');
+      });
     });
 
     it('ignores a change event with no file', () => {
