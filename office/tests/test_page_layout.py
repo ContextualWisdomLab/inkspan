@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 from io import BytesIO
+from pathlib import Path
 
 import pytest
 from docx import Document
 from docx.enum.section import WD_ORIENT, WD_SECTION
 
-from inkspan_office import OfficeDocumentError, load_schema, render_office_document
+from inkspan_office import (
+    OfficeDocumentError,
+    load_schema,
+    render_office_document,
+    write_office_document,
+)
 from inkspan_office.page_layout import apply_docx_page_layout
 
 
@@ -121,6 +127,24 @@ def test_page_layout_rejects_multiple_docx_sections() -> None:
 
     with pytest.raises(OfficeDocumentError, match="exactly one DOCX section"):
         apply_docx_page_layout(source.getvalue(), _portrait_letter_layout())
+
+
+def test_invalid_page_layout_never_publishes_partial_output(tmp_path: Path) -> None:
+    output = tmp_path / "invalid-layout.docx"
+    payload = {
+        "format": "docx",
+        "page_layout": {
+            "paper_size": "a4",
+            "orientation": "portrait",
+            "margins_mm": {"top": -1, "right": 10, "bottom": 10, "left": 10},
+        },
+        "blocks": [{"type": "paragraph", "text": "must not publish"}],
+    }
+
+    with pytest.raises(OfficeDocumentError):
+        write_office_document(payload, output)
+
+    assert not output.exists()
 
 
 @pytest.mark.parametrize(
