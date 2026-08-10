@@ -202,16 +202,26 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
       const file = event.target.files?.[0];
       event.target.value = '';
       if (!file) return;
+
+      let src: string;
       try {
-        const src = await imageFileToInlineDataUri(file, {
+        src = await imageFileToInlineDataUri(file, {
           maxSizeBytes: image?.maxSizeBytes ?? 10 * 1024 * 1024,
           maxDimension: image?.maxDimension ?? 1600,
           quality: image?.quality ?? 0.85,
         });
-        editor.chain().focus().setImage({ src, alt: '' }).run();
       } catch (err) {
         onImageError?.(err);
+        return;
       }
+
+      const alternativeText = window.prompt(
+        'Image alternative text. Leave empty only if this image is decorative.',
+        '',
+      );
+      if (alternativeText === null) return;
+
+      editor.chain().focus().setImage({ src, alt: alternativeText }).run();
     },
     [editor, image, onImageError],
   );
