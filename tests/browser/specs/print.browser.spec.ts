@@ -30,8 +30,8 @@ test.beforeEach(async ({ page }) => {
         <div class="cwl-collaboration-status">Connected</div>
         <div class="cwl-editor__surface">
           <article class="cwl-editor__content">
-            <h1>Printable heading</h1>
             <p class="is-editor-empty" data-placeholder="Do not print me"></p>
+            <h1>Printable heading</h1>
             <p><a href="https://example.invalid/">Printable link</a></p>
             <pre>const printable = true;</pre>
             <blockquote>Keep this block together where supported.</blockquote>
