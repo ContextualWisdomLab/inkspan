@@ -6,7 +6,7 @@ Protected `main` is implementation authority. Active PRs and Proposed ADRs are a
 
 ## Standalone product boundary
 
-Inkspan owns editor and deterministic conversion/evidence surfaces.
+Inkspan owns editor and deterministic conversion surfaces. Local evidence, package topology, and presentation contracts remain separate bounded responsibilities.
 
 The protected standalone product provides:
 
@@ -29,7 +29,7 @@ Hosts own transport, authentication, authorization, tenant isolation, durable pe
 
 Inkspan therefore never opens a production collaboration connection, chooses a tenant, stores a provider secret, creates a durable database transaction, decides a retention schedule, authorizes an AI operation, or claims that a browser print destination constitutes a durable authorized export. A standalone adopter can provide those capabilities directly; a CWL host can provide them through shared platform services.
 
-Document transition and selection/text-position evidence prove only deterministic local content/coordinate facts. Host-owned systems must record occurrence provenance—including actor identity, authenticated server time, operation attribution, authorization, signatures, durable acceptance, annotation identity/publication, and cross-revision re-anchoring—separately from Inkspan's local evidence.
+Document transition and selection/text-position evidence prove only deterministic local content/coordinate facts. This is host-owned occurrence provenance: host-owned systems must record actor identity, authenticated server time, operation attribution, authorization, signatures, durable acceptance, annotation identity/publication, and cross-revision re-anchoring separately from Inkspan's local evidence.
 
 ## Public package topology
 
