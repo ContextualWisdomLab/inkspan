@@ -196,9 +196,15 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
         imageFileToInlineDataUri(file, options)
           .then((src) => {
             if (editor.isDestroyed) return;
-            // New images are explicitly decorative until an author supplies
-            // meaningful replacement text through the toolbar.
-            const node = editor.schema.nodes.image.create({ src, alt: '' });
+            const alternativeText = window.prompt(
+              'Image alternative text. Leave empty only if this image is decorative.',
+              '',
+            );
+            if (alternativeText === null) return;
+            const node = editor.schema.nodes.image.create({
+              src,
+              alt: alternativeText,
+            });
             const pos =
               typeof at === 'number' ? at : editor.state.selection.from;
             const transaction = editor.state.tr.insert(pos, node);
