@@ -25,6 +25,28 @@ const browserSpec = repositoryFile('tests/browser/specs/clipboard.browser.spec.t
 const consensusSpec = repositoryFile('tests/browser/specs/clipboard.consensus.spec.ts');
 
 describe('release cross-engine browser evidence contract', () => {
+  it('requires the release tag commit to equal the current protected main tip', () => {
+    const buildJob = workflowJob(
+      workflow,
+      'build-release-artifacts',
+      'browser-release-evidence',
+    );
+
+    expect(buildJob).toContain(
+      'git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main',
+    );
+    expect(buildJob).toContain(
+      'main_sha="$(git rev-parse refs/remotes/origin/main)"',
+    );
+    expect(buildJob).toContain('if [[ "$GITHUB_SHA" != "$main_sha" ]]; then');
+    expect(buildJob).toContain(
+      'Release tags must point to the current protected main tip.',
+    );
+    expect(buildJob).not.toContain(
+      'git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main',
+    );
+  });
+
   it('tests the packed npm artifact built from the exact tagged source', () => {
     const buildJobIndex = workflow.indexOf('  build-release-artifacts:');
     const browserJobIndex = workflow.indexOf('  browser-release-evidence:');
