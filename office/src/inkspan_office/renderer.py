@@ -184,6 +184,8 @@ def _add_docx_rich_paragraph(
             f"{run_path}.text",
             allow_empty=True,
         )
+        if text == "":
+            raise OfficeDocumentError(f"{run_path}.text must not be empty")
         run = paragraph.add_run(text)
         if "bold" in run_spec:
             run.bold = _boolean(run_spec["bold"], f"{run_path}.bold")
