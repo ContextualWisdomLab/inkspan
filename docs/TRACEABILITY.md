@@ -15,6 +15,7 @@ This record maps durable Inkspan product decisions to authoritative standards, p
 | Envelope version routing | A bounded identity-only inspector identifies `schemaId`/`schemaVersion` for dispatch while the current parser stays strict and the host owns migration execution | RFC 8259; RFC 7493; RFC 8785 for canonical current-schema bytes | ADR 0015, protected-main `documentEnvelopeIdentity` implementation/tests, envelope guide/doctoring and framework-independent packed consumers | Protected-main evidence proves only bounded routing metadata; identifying a schema generation does not validate that generation's document semantics, authorize migration, or prove durable persistence |
 | Canonical document bytes | Deterministic revision evidence is derived from canonicalized validated document content | RFC 8785, JSON Canonicalization Scheme | revision-evidence, transition-evidence, restore tests | A content digest proves equality only, not actor/time/authorization/durable write |
 | W3C text-position selector | Revision-scoped annotation interoperability uses a distinct versioned logical-text projection satisfying `0 <= start <= end <= projectedCodePointLength`, with inclusive `start`, exclusive `end`, Unicode-code-point offsets, grapheme-boundary validation, and same-state revision binding instead of relabeling ProseMirror coordinates | W3C Web Annotation Data Model; ProseMirror reference manual; ECMA-402 13th edition | ADR 0018, protected-main text-position selector implementation/tests, packed consumer verifier, selection lifecycle and doctoring | Protected-main evidence proves positions only for the named projection and exact revision; it does not prove actor, authorization, durable annotation acceptance, source IRI policy, or cross-revision re-anchoring |
+| Headless deterministic Markdown conversion | The active package line reuses one serializer implementation and one framework-neutral safe-link/inline-raster policy while exposing an explicit ESM/CommonJS/TypeScript subpath whose emitted runtime is self-contained and authority-bounded | CommonMark 0.31.2; Node.js package `exports` documentation | active PR #114 source/policy refactor, packed Node consumers, package-distribution contract, `docs/doctoring/headless-markdown-package.md` | `implemented_on_active_pr`; deterministic conversion does not grant MIME delivery, recipient, auth, tenant, persistence, network, credential, or model authority and is not shipped until protected integration |
 | Provenance semantics | Local transition/release evidence keeps content lineage separate from actor/authorization/durable claims | W3C PROV family | transition evidence, release evidence, canonical data model | Inkspan does not claim complete PROV conformance or host audit provenance |
 | Accessibility | Native controls, keyboard semantics, shortcut metadata, and host-facing status state support accessible embedding | W3C WCAG 2.2; WAI-ARIA where used | toolbar/accessibility tests, SSR tests, autosave lifecycle data | Component evidence alone is not a full host WCAG conformance claim |
 | Browser clipboard behavior | Security-relevant rich HTML handling requires actual paste-pipeline integration and bounded semantic reconstruction before editor state | WHATWG HTML parsing; W3C Clipboard API | protected-main rich-clipboard unit/integration corpus and SafeClipboard ADR | Protected jsdom/TipTap integration success is not universal browser-engine conformance |
@@ -34,6 +35,10 @@ Bray, T. (Ed.). (2017). *The JavaScript Object Notation (JSON) Data Interchange 
 Ecma International. (2026). *ECMA-402: ECMAScript 2026 internationalization API specification* (13th ed.). https://402.ecma-international.org/
 
 Fielding, R., Nottingham, M., & Reschke, J. (Eds.). (2022). *HTTP Semantics* (RFC 9110; STD 97). RFC Editor. https://doi.org/10.17487/RFC9110
+
+MacFarlane, J. (2024, January 28). *CommonMark specification* (Version 0.31.2). CommonMark. https://spec.commonmark.org/0.31.2/
+
+Node.js contributors. (2026). *Modules: Packages*. Node.js documentation. https://nodejs.org/api/packages.html
 
 ProseMirror. (n.d.). *ProseMirror reference manual*. Retrieved August 10, 2026, from https://prosemirror.net/docs/ref/
 
@@ -83,8 +88,10 @@ Lower levels may explain intent or history but cannot override a contradictory h
 
 Envelope identity routing, SafeClipboard, W3C text-position selector evidence, and cross-engine browser assurance are implemented on protected `main`. The W3C selector remains revision-scoped and projection-version-scoped and must satisfy `0 <= start <= end <= projectedCodePointLength`; protected integration does not transfer annotation persistence, source identity, authorization, or re-anchoring authority from the host. The browser gate being protected does not let a future release reuse historical browser evidence: the exact release candidate must generate fresh evidence bound to its own source, committed synthetic corpus, package-lock SHA-256, run identity, browser revisions, and packed npm artifact SHA-256.
 
+Headless deterministic Markdown serialization is `implemented_on_active_pr` on PR #114 until protected integration; its package/runtime evidence cannot be promoted to shipped behavior before that merge.
+
 Documentation must not promote Proposed or Planned capabilities to Implemented merely because a PR, issue, or design document is detailed.
 
 ## Review cadence
 
-Revalidate this matrix when a public schema, selector projection, security boundary, supported runtime/browser line, Office format contract, collaboration/provider contract, accessibility interaction, release workflow, or authoritative external standard materially changes. Prefer explicit supersession over silent historical rewrite.
+Revalidate this matrix when a public schema, selector projection, serialization/package boundary, security boundary, supported runtime/browser line, Office format contract, collaboration/provider contract, accessibility interaction, release workflow, or authoritative external standard materially changes. Prefer explicit supersession over silent historical rewrite.

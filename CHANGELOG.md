@@ -13,8 +13,10 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Added a fail-closed draft release asset inventory gate that requires exactly one npm tarball, one Office wheel, and `SHA256SUMS`, rejects stale or unexpected draft assets before immutable publication, and verifies every GitHub-reported `sha256:` asset digest against the transferred local file
 - Kept SSR document disclosure opt-in through `formFieldName`; hidden-field values remain client-controlled submission data and do not replace host authentication, authorization, tenant isolation, CSRF defenses, server validation, durable concurrency, or persistence controls
 - Kept collaborative Yjs document content out of server markup until the host-owned client collaboration lifecycle is bound
+- Added packed headless Markdown authority verification that rejects external runtime imports, dynamic module loaders, ambient network/environment credential access, React/TipTap/Yjs runtime coupling, CWL host coupling, and model credential references from the dedicated conversion artifact
 
 ### Added
+- Added `@contextualwisdomlab/cwl-editor/markdown` as a headless ESM/CommonJS/TypeScript conversion subpath exposing the existing deterministic Markdown/HTML/email/plain-text serializers while sharing framework-neutral safe-link and strict inline-raster policy with the editor instead of importing the React/TipTap extension graph
 - Added bounded `inspectDocumentEnvelopeIdentity()` and `inspectDocumentEnvelopeIdentityBytes()` routing metadata plus the framework-independent `envelope-identity` package subpath so hosts can select explicit schema migrations without exposing document bodies, weakening the strict current-schema parser, or moving migration/persistence authority into Inkspan
 - Added one optional construction-time `onSnapshotChange` callback to the framework-free autosave queue and durable autosave session so hosts can observe saving, pending, blocked, recovery, idle, and shutdown state without polling or introducing a subscriber collection
 - Added privacy-minimized revision-scoped selection evidence through `getSelectionRevisionEvidence()`, binding frozen ProseMirror coordinates to the SHA-256 strong revision of the exact same immutable editor state before asynchronous hashing begins
@@ -35,6 +37,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Added a dependency-locked Chromium/Firefox/WebKit **cross-engine rich-clipboard release gate** using Playwright 1.62.0, one versioned synthetic adversarial corpus, the actual TipTap/ProseMirror paste path, exact-source-head/lock/browser evidence, hostile-DOM and resource-ceiling cases, bounded performance alarm evidence, and fail-closed three-engine consensus without generic normalization
 - Added test-first Node `renderToString` evidence for the missing SSR native value, controlled-over-default selection, escaping, external form ownership, no ProseMirror server construction, and opt-out non-disclosure
 - Added browser-DOM handoff tests proving the field retains and updates the selected value before TipTap exists while reset-only unnamed fields remain empty
+- Added real packed ESM/CommonJS/strict-TypeScript consumers for the headless Markdown subpath, including browserless Node HTML-to-Markdown execution, strict safe/unsafe-link behavior, plain-text projection, normalization, full-document email language/direction preservation, and artifact authority-boundary checks
 
 ### Documentation
 - Added browser-assurance doctoring, operability, test-strategy, clipboard-security, and documentation-fitness coverage for the **dependency-locked Chromium/Firefox/WebKit** release boundary, including Playwright 1.62.0 provenance, exact-head/corpus identity, standards-backed difference policy, evidence minimization, fail-closed behavior, and rollback
@@ -54,6 +57,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Added deterministic documentation contract tests and APA 7th doctoring grounded in RFC 9110, WCAG 2.2, NIST SP 800-204, NIST SP 800-204D, OWASP ASVS 5.0.0, React, current Next.js App Router guidance, and GitHub Actions primary documentation
 - Added APA 7th doctoring for the SSR native form field, including the WHATWG hidden-input/form-entry contract, React server/hydration continuity, client-controlled-data boundary, host-owned CSRF and acceptance controls, collaboration exclusion, and rollback
 - Added lifecycle-observation doctoring covering bounded callback retention, local-versus-shareable evidence, durable-validator coherence, WCAG 2.2 status-message responsibilities, rollback, and APA 7 references to RFC 9110, WCAG 2.2, and optimistic concurrency research
+- Added headless Markdown package doctoring and standards traceability grounded in CommonMark 0.31.2 and Node.js package exports, with explicit active-PR maturity, shared-policy authority, packed artifact verification, and rollback boundaries
 
 ## [0.5.29] — 2026-08-05
 

@@ -17,6 +17,7 @@ integrations.
 | `@contextualwisdomlab/cwl-editor/envelope-identity` | Framework-independent identity-only envelope routing for bounded schema identity inspection; migration remains host-owned |
 | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent revision evidence and document-transition evidence for local content equality/lineage claims |
 | `@contextualwisdomlab/cwl-editor/text-position-selector` | `implemented_on_protected_main` — React-free text-position projection core implementing W3C `TextPositionSelector`; interactive capture, revision binding, authorization, persistence, and re-anchoring remain outside this subpath |
+| `@contextualwisdomlab/cwl-editor/markdown` | `implemented_on_active_pr` — headless deterministic Markdown/HTML/email/plain-text conversion with the same safe-link and strict inline-raster policies as the editor, without importing the React/TipTap editor graph |
 | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
 | `@contextualwisdomlab/cwl-editor/fonts.css` | Full offline KR/EN/JP/SC/TC/VI font bundle |
 | `@contextualwisdomlab/cwl-editor/fonts-latin.css` | Smaller Latin/Vietnamese font bundle |
@@ -57,11 +58,23 @@ embedded in the npm tarball.
   dependencies so the consumer's package manager installs and resolves it; it
   is not merely a type-only dependency.
 - The framework-independent autosave, converter, envelope-identity,
-  revision-evidence, and text-position-selector entrypoints do not require React
-  UI, a mounted editor, naruon, contextual-orchestrator, a database, provider
-  credentials, or host transport. Their individual package-consumer gates
-  additionally prevent framework dependencies from leaking into subpaths whose
-  public contracts exclude them.
+  revision-evidence, text-position-selector, and Markdown entrypoints do not
+  require React UI, a mounted editor, naruon, contextual-orchestrator, a
+  database, provider credentials, or host transport. Their individual
+  package-consumer gates additionally prevent framework dependencies from
+  leaking into subpaths whose public contracts exclude them.
+- The Markdown subpath exposes `markdownToHtml`, `htmlToMarkdown`,
+  `normalizeMarkdown`, `markdownToEmailHtml`, `markdownToPlainText`, and
+  `htmlToPlainText` plus their option types. It bundles deterministic conversion
+  dependencies into its own artifact so importing the subpath does not evaluate
+  the root editor graph. Safe-link and strict inline-raster validation live in
+  framework-neutral policy modules shared by the editor and serializer rather
+  than duplicated in two trust boundaries.
+- The Markdown subpath performs no network request and owns no transport,
+  credentials, tenant identity, durable persistence, model call, or message-send
+  authority. `markdownToEmailHtml` returns deterministic HTML content only; a
+  host remains responsible for MIME assembly, recipients, authentication,
+  authorization, delivery, retention, and audit.
 - The text-position-selector subpath deliberately exposes only the deterministic
   projection constants, error type, selector constructor, and public value
   types. It does not expose the React imperative handle that captures editor
@@ -79,7 +92,9 @@ embedded in the npm tarball.
   import it, and bundlers can retain the separate dependency boundary.
 - Importing any JavaScript entrypoint in Node.js must not require a browser DOM.
   Browser-only work begins when a host mounts the editor or calls APIs that
-  explicitly consume browser objects such as `File` or `Blob`.
+  explicitly consume browser objects such as `File` or `Blob`. The Markdown
+  conversion surface remains Node-importable; HTML-to-Markdown uses its bounded
+  non-fetching parser fallback when no browser `document` exists.
 - CSS and font entrypoints resolve as files and are not executable JavaScript.
 
 ## Release verification
@@ -94,9 +109,9 @@ production library build. The verification chain:
 4. rejects internal source, tests, demos, Office files, coverage output, and
    workflow files from the npm tarball;
 5. imports the root, collaboration, converter, autosave, envelope-identity,
-   revision-evidence, and text-position-selector surfaces through their dedicated
-   packed-consumer checks, including framework-free isolation where that is part
-   of the public contract;
+   revision-evidence, text-position-selector, and Markdown surfaces through their
+   dedicated packed-consumer checks, including framework-free isolation where
+   that is part of the public contract;
 6. exercises supported ESM/CommonJS entrypoints and compiles strict TypeScript
    consumers against the published declaration surfaces;
 7. resolves public CSS and font subpaths; and
@@ -113,6 +128,14 @@ rejects **ambient network and credential authority** such as `fetch`,
 `Deno.env`, and `Bun.env`. Type-only ProseMirror model/state inputs remain part
 of the selector's structural contract and introduce no interactive runtime
 authority.
+
+The Markdown package check likewise builds and extracts a real npm tarball,
+executes its ESM and CommonJS entrypoints outside the source tree, compiles a
+strict TypeScript consumer, and verifies representative safe-link, plain-text,
+normalization, and full-document language/direction behavior. Its emitted
+JavaScript must contain no external runtime imports, dynamic module loaders,
+ambient network/credential access, React/TipTap/Yjs runtime, CWL host coupling,
+or model credential names.
 
 A version is release-ready only when this package gate, repository-wide 100%
 TypeScript coverage, production builds, the Python Office matrix, applicable
