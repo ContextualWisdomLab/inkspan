@@ -16,7 +16,9 @@ describe('editor placeholder accessibility documentation', () => {
     expect(doctoring).toContain('aria-placeholder');
     expect(doctoring).toContain('supplemental guidance');
     expect(doctoring).toContain('aria-labelledby');
-    expect(doctoring).toContain('never replaces the accessible name');
+    expect(doctoring).toContain(
+      'It never promotes the placeholder to `aria-label`',
+    );
     expect(doctoring).toContain('WAI-ARIA 1.2');
     expect(doctoring).toContain('World Wide Web Consortium. (2023, June 6).');
   });
