@@ -100,23 +100,28 @@ export function useEditorHandle(
             )
           : new Uint8Array();
       },
-      getDocumentEnvelopeRevision: (limits, digestProvider) =>
-        editor
+      getDocumentEnvelopeRevision: (limits, digestProvider) => {
+        const current = activeEditor(editor);
+        return current
           ? createValidatedDocumentEnvelopeRevision(
-              createCurrentDocumentEnvelope(editor, limits),
+              createCurrentDocumentEnvelope(current, limits),
               digestProvider,
             )
-          : Promise.resolve(null),
-      getDocumentEnvelopeRevisionEvidence: (limits, digestProvider) =>
-        editor
+          : Promise.resolve(null);
+      },
+      getDocumentEnvelopeRevisionEvidence: (limits, digestProvider) => {
+        const current = activeEditor(editor);
+        return current
           ? createValidatedDocumentEnvelopeRevisionEvidence(
-              createCurrentDocumentEnvelope(editor, limits),
+              createCurrentDocumentEnvelope(current, limits),
               digestProvider,
             )
-          : Promise.resolve(null),
+          : Promise.resolve(null);
+      },
       getSelectionRevisionEvidence: async (limits, digestProvider) => {
-        if (!editor) return null;
-        const state = editor.state;
+        const current = activeEditor(editor);
+        if (!current) return null;
+        const state = current.state;
         const selection = Object.freeze({
           anchor: state.selection.anchor,
           head: state.selection.head,
@@ -132,8 +137,9 @@ export function useEditorHandle(
         return Object.freeze({ revision, selection });
       },
       getTextPositionSelectorEvidence: async (limits, digestProvider) => {
-        if (!editor) return null;
-        const state = editor.state;
+        const current = activeEditor(editor);
+        if (!current) return null;
+        const state = current.state;
         const { selector, textProjection } = createTextPositionSelector(
           state.doc,
           state.selection,
@@ -165,60 +171,73 @@ export function useEditorHandle(
           ? validateDocumentEnvelopeBytesForEditor(current, source, limits)
           : false;
       },
-      restoreDocumentEnvelope: (source, limits) =>
-        editor ? restoreDocumentEnvelope(editor, source, limits) : null,
-      restoreDocumentEnvelopeBytes: (source, limits) =>
-        editor ? restoreDocumentEnvelopeBytes(editor, source, limits) : null,
+      restoreDocumentEnvelope: (source, limits) => {
+        const current = activeEditor(editor);
+        return current ? restoreDocumentEnvelope(current, source, limits) : null;
+      },
+      restoreDocumentEnvelopeBytes: (source, limits) => {
+        const current = activeEditor(editor);
+        return current
+          ? restoreDocumentEnvelopeBytes(current, source, limits)
+          : null;
+      },
       restoreDocumentEnvelopeIfMatch: (
         expectedStrongEntityTag,
         source,
         limits,
         digestProvider,
-      ) =>
-        editor
+      ) => {
+        const current = activeEditor(editor);
+        return current
           ? restoreDocumentEnvelopeIfMatch(
-              editor,
+              current,
               expectedStrongEntityTag,
               source,
               limits,
               digestProvider,
             )
-          : Promise.resolve(null),
+          : Promise.resolve(null);
+      },
       restoreDocumentEnvelopeBytesIfMatch: (
         expectedStrongEntityTag,
         source,
         limits,
         digestProvider,
-      ) =>
-        editor
+      ) => {
+        const current = activeEditor(editor);
+        return current
           ? restoreDocumentEnvelopeBytesIfMatch(
-              editor,
+              current,
               expectedStrongEntityTag,
               source,
               limits,
               digestProvider,
             )
-          : Promise.resolve(null),
+          : Promise.resolve(null);
+      },
       validateDocumentJson: (documentJson) => {
         const current = activeEditor(editor);
         return current ? validateDocumentJson(current, documentJson) : false;
       },
       setDocumentJson: (documentJson) => {
-        if (!editor) return;
-        const documentNode = parseDocumentJsonForEditor(editor, documentJson);
-        editor.commands.setContent(documentNode, false);
+        const current = activeEditor(editor);
+        if (!current) return;
+        const documentNode = parseDocumentJsonForEditor(current, documentJson);
+        current.commands.setContent(documentNode, false);
       },
       insertValue: (next: string) => {
-        if (!editor) return;
-        editor
+        const current = activeEditor(editor);
+        if (!current) return;
+        current
           .chain()
           .focus()
           .insertContent(editorValueToHtml(next, modeRef.current))
           .run();
       },
       insertDocumentJson: (documentJson) => {
-        if (!editor) return;
-        editor.chain().focus().insertContent(documentJson).run();
+        const current = activeEditor(editor);
+        if (!current) return;
+        current.chain().focus().insertContent(documentJson).run();
       },
       clear: () => {
         activeEditor(editor)?.commands.clearContent(true);
