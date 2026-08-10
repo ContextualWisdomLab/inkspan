@@ -125,6 +125,20 @@ export interface CwlEditorHandle {
   focus(): void;
   /** Blur the editable surface. */
   blur(): void;
+  /** Whether the active editor's registered history can currently undo. */
+  canUndo(): boolean;
+  /**
+   * Run the active editor's registered undo command and return whether it ran.
+   * Returns `false` before editor creation and does not imply durable persistence.
+   */
+  undo(): boolean;
+  /** Whether the active editor's registered history can currently redo. */
+  canRedo(): boolean;
+  /**
+   * Run the active editor's registered redo command and return whether it ran.
+   * Returns `false` before editor creation and does not imply durable persistence.
+   */
+  redo(): boolean;
   /** Serialized document in the active `mode` (`markdown` or `html`). */
   getValue(): string;
   /** Always HTML (ProseMirror document dump). */
