@@ -28,8 +28,17 @@ const packageDirectory = join(
   'node_modules',
   ...packageJson.name.split('/'),
 );
-const forbiddenRuntimePattern =
-  /(?:['"](?:react(?:-dom)?(?:\/[^'"]*)?|@tiptap\/[^'"]+|prosemirror-[^'"]+|yjs(?:\/[^'"]*)?|naruon(?:\/[^'"]*)?|contextual-orchestrator(?:\/[^'"]*)?)['"])/u;
+
+// The selector bundle is intentionally self-contained. Type-only ProseMirror
+// declarations are allowed, but emitted JavaScript must not acquire runtime
+// authority through any external static/dynamic import, re-export, or require.
+const externalRuntimeImportPattern =
+  /(?:\bimport\s*(?:\(\s*['"][^'"]+['"]\s*\)|(?:[^'"\n;]*?\sfrom\s*)?['"][^'"]+['"])|\bexport\s+[^'"\n;]*?\sfrom\s*['"][^'"]+['"]|\brequire\s*\(\s*['"][^'"]+['"]\s*\))/u;
+
+// A self-contained bundle must also remain free of ambient network and common
+// environment-backed credential authority even when no module import is needed.
+const ambientAuthorityPattern =
+  /(?:\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b|\bEventSource\b|\bprocess\.env\b|\bimport\.meta\.env\b|\bDeno\.env\b|\bBun\.env\b)/u;
 
 /** Execute one deterministic package-consumer command. */
 function run(command, argumentsList, cwd = repositoryRoot) {
@@ -73,8 +82,8 @@ function preparePackage() {
   symlinkSync(repositoryTiptap, consumerTiptap, 'dir');
 }
 
-/** Prove the emitted JavaScript bundle has no interactive framework dependency. */
-function verifyReactFreeBundles() {
+/** Prove emitted JavaScript carries no external or ambient runtime authority. */
+function verifyAuthorityFreeBundles() {
   for (const filename of [
     'cwl-text-position-selector.js',
     'cwl-text-position-selector.cjs',
@@ -83,8 +92,13 @@ function verifyReactFreeBundles() {
     const bundleSource = readFileSync(bundlePath, 'utf8');
     assert.doesNotMatch(
       bundleSource,
-      forbiddenRuntimePattern,
-      `${filename} must not reference interactive framework dependencies`,
+      externalRuntimeImportPattern,
+      `${filename} must not import external runtime authority`,
+    );
+    assert.doesNotMatch(
+      bundleSource,
+      ambientAuthorityPattern,
+      `${filename} must not reference ambient network or credential authority`,
     );
   }
 }
@@ -194,11 +208,11 @@ void [
 
 try {
   preparePackage();
-  verifyReactFreeBundles();
+  verifyAuthorityFreeBundles();
   verifyRuntimeConsumers();
   verifyDeclarationConsumer();
   console.log(
-    `Verified packed ${packageJson.name}/text-position-selector through React-free ESM, CommonJS, and strict TypeScript consumers.`,
+    `Verified packed ${packageJson.name}/text-position-selector through authority-bounded ESM, CommonJS, and strict TypeScript consumers.`,
   );
 } finally {
   rmSync(verificationRoot, { recursive: true, force: true });
