@@ -30,6 +30,7 @@ This index records durable architectural decisions. Protected-main implementatio
 | [0022](0022-informative-docx-png-figures.md) | Accepted | Informative inline PNG figures in deterministic DOCX output |
 | [0023](0023-bounded-docx-rich-text-runs.md) | Accepted | Bounded rich-text runs in deterministic DOCX output |
 | [0024](0024-bounded-docx-paragraph-alignment.md) | Accepted | Bounded paragraph alignment in deterministic DOCX output |
+| [0025](0025-bounded-docx-heading-alignment.md) | Accepted | Bounded heading alignment in deterministic DOCX output |
 
 ## Decision discipline
 
