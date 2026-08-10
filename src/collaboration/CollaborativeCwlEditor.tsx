@@ -141,6 +141,7 @@ export const CollaborativeCwlEditor = forwardRef<
   const onReadyRef = useLatestRef(onReady);
   const onDestroyRef = useLatestRef(onDestroy);
   const onFormResetRef = useLatestRef(onFormReset);
+  const placeholderRef = useLatestRef(normalizedPlaceholder ?? '');
   const reportImageError = useCallback((error: Error) => {
     onImageErrorRef.current?.(error);
   }, [onImageErrorRef]);
@@ -184,7 +185,7 @@ export const CollaborativeCwlEditor = forwardRef<
       immediatelyRender: false,
       editable,
       extensions: buildExtensions({
-        placeholder: normalizedPlaceholder ?? '',
+        placeholder: () => placeholderRef.current,
         image,
         clipboard,
         onImageError: reportImageError,
