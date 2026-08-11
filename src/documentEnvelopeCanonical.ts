@@ -121,6 +121,11 @@ function readCanonicalOutputMaxBytesOption(
       throw new TypeError('invalid encoding options container');
     }
 
+    const prototype = Object.getPrototypeOf(options);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new TypeError('invalid encoding options prototype');
+    }
+
     const keys = Reflect.ownKeys(options);
     if (keys.some((key) => key !== 'maxUtf8Bytes')) {
       throw new TypeError('unsupported encoding option');
