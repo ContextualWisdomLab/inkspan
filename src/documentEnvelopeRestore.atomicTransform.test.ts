@@ -1,6 +1,6 @@
 import { Editor, Extension } from '@tiptap/core';
 import { Plugin } from '@tiptap/pm/state';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createDocumentEnvelope } from './documentEnvelope.js';
 import {
   DocumentEnvelopeRestoreError,
@@ -167,6 +167,55 @@ describe('atomic document-envelope restore under transaction transforms', () => 
       expect(editor.state.doc.eq(originalDocument)).toBe(true);
       expect(editor.state.selection.eq(originalSelection)).toBe(true);
     } finally {
+      editor.off('transaction', transactionObserver);
+      editor.destroy();
+    }
+  });
+
+  it('keeps rollback-hook failures payload-redacted', () => {
+    const editor = new Editor({
+      element: document.createElement('div'),
+      extensions: buildExtensions(),
+      content: '<p>Original document</p>',
+    });
+    const privateObserverFailure = 'private observer detail';
+    const privateRollbackFailure = 'private rollback detail';
+    let rejectRestore = false;
+    const transactionObserver = () => {
+      if (rejectRestore && editor.state.doc.textContent === 'Requested restore') {
+        throw new Error(privateObserverFailure);
+      }
+    };
+    editor.on('transaction', transactionObserver);
+    editor.commands.setTextSelection(5);
+
+    const originalUpdateState = editor.view.updateState.bind(editor.view);
+    let updateStateCalls = 0;
+    const updateStateSpy = vi
+      .spyOn(editor.view, 'updateState')
+      .mockImplementation((state) => {
+        updateStateCalls += 1;
+        if (updateStateCalls === 2) {
+          throw new Error(privateRollbackFailure);
+        }
+        originalUpdateState(state);
+      });
+
+    try {
+      rejectRestore = true;
+      let failure: unknown;
+      try {
+        restoreDocumentEnvelope(editor, requestedRestoreEnvelope());
+      } catch (error) {
+        failure = error;
+      }
+
+      expect(updateStateCalls).toBe(2);
+      expect(failure).toBeInstanceOf(DocumentEnvelopeRestoreError);
+      expect(String(failure)).not.toContain(privateObserverFailure);
+      expect(String(failure)).not.toContain(privateRollbackFailure);
+    } finally {
+      updateStateSpy.mockRestore();
       editor.off('transaction', transactionObserver);
       editor.destroy();
     }
