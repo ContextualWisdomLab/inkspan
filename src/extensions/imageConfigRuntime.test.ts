@@ -64,6 +64,27 @@ describe('runtime image configuration', () => {
     );
   });
 
+  it('rejects unknown runtime configuration keys instead of silently weakening policy', () => {
+    const image = {
+      maxSizeBytes: 1024,
+      maxSzieBytes: 16,
+    } as never;
+
+    expect(() => buildExtensions({ image })).toThrowError(
+      new RangeError('Image configuration is invalid.'),
+    );
+  });
+
+  it('rejects own symbol configuration keys without reflecting their identity', () => {
+    const privatePolicyKey = Symbol('private-policy-key');
+    const image: Record<PropertyKey, unknown> = { maxSizeBytes: 1024 };
+    image[privatePolicyKey] = 16;
+
+    expect(() => buildExtensions({ image: image as never })).toThrowError(
+      new RangeError('Image configuration is invalid.'),
+    );
+  });
+
   it('redacts reflection failures at the image configuration boundary', () => {
     const image = new Proxy(
       {},
