@@ -23,8 +23,9 @@ describe('canonical document-envelope output-bound contract', () => {
     const documentation = repositoryFile('docs/document-envelope.md');
 
     expect(documentation).toContain('`implemented_on_active_pr` in #178');
+    expect(documentation).toContain('is **not** protected-main API');
     expect(documentation).toContain(
-      'is **not** protected-main API as\nas of protected `main@50ac98cfa0ad9e8dd75f93ca437a5679fed4d804`',
+      'protected `main@50ac98cfa0ad9e8dd75f93ca437a5679fed4d804`',
     );
     expect(documentation).toContain('DocumentEnvelopeEncodingOptions.maxUtf8Bytes');
     expect(documentation).toContain('local allocation defense only');
