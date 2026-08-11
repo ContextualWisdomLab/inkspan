@@ -1,0 +1,47 @@
+import type { Editor } from '@tiptap/react';
+import { describe, expect, it } from 'vitest';
+import { createEditorDocumentSnapshot } from './editorDocumentSnapshot.js';
+
+describe('document snapshot reflection boundary', () => {
+  it('redacts hostile prototype reflection failures', () => {
+    const metadata = new Proxy(
+      { classification: 'internal' },
+      {
+        getPrototypeOf() {
+          throw new Error('private prototype trap detail');
+        },
+      },
+    );
+    const editor = {
+      getHTML: () => '<p>Hello</p>',
+      getJSON: () => ({ type: 'doc', metadata }),
+      isEmpty: false,
+    } as unknown as Editor;
+
+    expect(() => createEditorDocumentSnapshot(editor, 'markdown')).toThrowError(
+      new RangeError(
+        'Editor document JSON must contain plain objects and arrays only.',
+      ),
+    );
+  });
+
+  it('redacts hostile own-key reflection failures', () => {
+    const metadata = new Proxy(
+      { classification: 'internal' },
+      {
+        ownKeys() {
+          throw new Error('private ownKeys trap detail');
+        },
+      },
+    );
+    const editor = {
+      getHTML: () => '<p>Hello</p>',
+      getJSON: () => ({ type: 'doc', metadata }),
+      isEmpty: false,
+    } as unknown as Editor;
+
+    expect(() => createEditorDocumentSnapshot(editor, 'markdown')).toThrowError(
+      new RangeError('Editor document JSON must contain data properties only.'),
+    );
+  });
+});
