@@ -19,8 +19,11 @@ export interface DocumentEnvelopeDigestProvider {
   digest(algorithm: 'SHA-256', source: BufferSource): Promise<ArrayBuffer>;
 }
 
-interface ResolvedDocumentEnvelopeDigestProvider {
+/** Package-internal snapshot of one provider capability and its receiver. */
+export interface ResolvedDocumentEnvelopeDigestProvider {
+  /** Original provider receiver required by Web Crypto-compatible methods. */
   readonly provider: DocumentEnvelopeDigestProvider;
+  /** Exact digest callable captured once at the operation boundary. */
   readonly digest: DocumentEnvelopeDigestProvider['digest'];
 }
 
@@ -89,7 +92,22 @@ export async function createValidatedDocumentEnvelopeRevision(
   envelope: CwlEditorDocumentEnvelope,
   digestProvider?: DocumentEnvelopeDigestProvider | null,
 ): Promise<CwlEditorDocumentRevision> {
-  const resolvedProvider = resolveDigestProvider(digestProvider);
+  return createValidatedDocumentEnvelopeRevisionWithResolvedProvider(
+    envelope,
+    resolveDocumentEnvelopeDigestProvider(digestProvider),
+  );
+}
+
+/**
+ * Hash one validated envelope with an already captured provider capability.
+ *
+ * Multi-revision operations use this package-internal helper so one hostile or
+ * mutable provider property cannot change meaning between related revisions.
+ */
+export async function createValidatedDocumentEnvelopeRevisionWithResolvedProvider(
+  envelope: CwlEditorDocumentEnvelope,
+  resolvedProvider: ResolvedDocumentEnvelopeDigestProvider,
+): Promise<CwlEditorDocumentRevision> {
   const canonicalBytes = encodeValidatedDocumentEnvelope(envelope);
   let digestResult: ArrayBuffer;
   try {
@@ -122,7 +140,14 @@ export async function createValidatedDocumentEnvelopeRevision(
   });
 }
 
-function resolveDigestProvider(
+/**
+ * Capture one usable SHA-256 capability before expensive operation work begins.
+ *
+ * The returned object keeps the exact callable together with its original
+ * receiver. Provider-property reflection failures are converted into the same
+ * payload-redacted revision error as invocation failures.
+ */
+export function resolveDocumentEnvelopeDigestProvider(
   digestProvider: DocumentEnvelopeDigestProvider | null | undefined,
 ): ResolvedDocumentEnvelopeDigestProvider {
   if (digestProvider === null) {
@@ -156,7 +181,7 @@ function resolveDigestProvider(
     if (typeof digest !== 'function') {
       throw new TypeError('invalid digest provider');
     }
-    return { provider, digest };
+    return Object.freeze({ provider, digest });
   } catch {
     throw new DocumentEnvelopeRevisionError(DIGEST_CREATION_FAILURE_MESSAGE);
   }
