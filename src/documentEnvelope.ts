@@ -523,3 +523,14 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   const prototype = Object.getPrototypeOf(value);
   return prototype === Object.prototype || prototype === null;
 }
+
+function withRedactedInspectionErrors<T>(operation: () => T): T {
+  try {
+    return operation();
+  } catch (error) {
+    if (error instanceof DocumentEnvelopeError) {
+      throw error;
+    }
+    throw new DocumentEnvelopeError(REDACTED_INSPECTION_ERROR);
+  }
+}
