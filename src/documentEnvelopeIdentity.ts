@@ -292,6 +292,13 @@ function validateJsonArray(
     'length',
   ) as PropertyDescriptor;
   const length = lengthDescriptor.value as number;
+  const remainingValueCapacity =
+    state.limits.maxJsonValues - state.valueCount;
+  if (length > remainingValueCapacity) {
+    throw new DocumentEnvelopeError(
+      'Document envelope exceeds the supported JSON value count',
+    );
+  }
   const keys = Reflect.ownKeys(value);
   if (keys.length !== length + 1) {
     throw new DocumentEnvelopeError(
