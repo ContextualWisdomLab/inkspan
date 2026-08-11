@@ -42,6 +42,26 @@ function invalidImageConfiguration(): never {
   throw new RangeError('Image configuration is invalid.');
 }
 
+/** Reject unknown own keys without evaluating any configuration property. */
+function validateImageConfigurationKeys(image: object): void {
+  let keys: PropertyKey[];
+  try {
+    keys = Reflect.ownKeys(image);
+  } catch {
+    invalidImageConfiguration();
+  }
+
+  for (const key of keys) {
+    if (
+      key !== 'maxSizeBytes' &&
+      key !== 'maxDimension' &&
+      key !== 'quality'
+    ) {
+      invalidImageConfiguration();
+    }
+  }
+}
+
 /** Read one own enumerable data property without invoking accessors. */
 function readImageConfigurationProperty(
   image: object,
@@ -72,6 +92,7 @@ function resolveRuntimeImageConfiguration(value: unknown): ImageConfig {
     invalidImageConfiguration();
   }
 
+  validateImageConfigurationKeys(value);
   const maxSizeBytes = readImageConfigurationProperty(value, 'maxSizeBytes');
   const maxDimension = readImageConfigurationProperty(value, 'maxDimension');
   const quality = readImageConfigurationProperty(value, 'quality');
