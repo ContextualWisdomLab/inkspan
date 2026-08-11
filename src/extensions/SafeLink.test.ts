@@ -46,6 +46,17 @@ describe('validateSafeLinkHref', () => {
     expect(isSafeLinkHref(href)).toBe(true);
   });
 
+  it('rejects link targets above a caller-selected UTF-8 byte ceiling', () => {
+    const boundedValidate = validateSafeLinkHref as unknown as (
+      href: unknown,
+      options?: { maxHrefBytes?: number },
+    ) => string;
+
+    expect(() =>
+      boundedValidate('https://example.com/path', { maxHrefBytes: 8 }),
+    ).toThrow(SafeLinkHrefError);
+  });
+
   it.each([
     null,
     42,
