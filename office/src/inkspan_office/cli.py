@@ -9,6 +9,8 @@ from pathlib import Path
 
 from .safe_renderer import OfficeDocumentError, load_schema, write_office_document
 
+_MAX_CLI_REQUEST_BYTES = 64 * 1024 * 1024
+
 
 def _parser() -> argparse.ArgumentParser:
     """Build the argument parser shared by the console script and tests."""
@@ -28,6 +30,19 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _read_request_text(source: Path) -> str:
+    """Read one bounded strict UTF-8 CLI request without unbounded allocation."""
+
+    with source.open("rb") as stream:
+        raw = stream.read(_MAX_CLI_REQUEST_BYTES + 1)
+    if len(raw) > _MAX_CLI_REQUEST_BYTES:
+        raise OfficeDocumentError("input exceeds the supported CLI request size")
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise OfficeDocumentError("input must contain valid UTF-8") from exc
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return a process-style status code."""
 
@@ -42,7 +57,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         source = Path(args.input)
         try:
-            payload = json.loads(source.read_text(encoding="utf-8"))
+            payload = json.loads(_read_request_text(source))
         except json.JSONDecodeError as exc:
             raise OfficeDocumentError(f"input must contain valid JSON: {exc.msg}") from exc
         write_office_document(payload, Path(args.output), overwrite=args.force)
