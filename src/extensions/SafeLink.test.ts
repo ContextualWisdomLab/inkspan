@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Editor } from '@tiptap/react';
 import { buildExtensions } from './kit.js';
 import {
@@ -23,6 +23,7 @@ function makeEditor(content = '<p>alpha</p><p>omega</p>'): Editor {
 }
 
 afterEach(() => {
+  vi.restoreAllMocks();
   for (const editor of openEditors.splice(0)) {
     if (!editor.isDestroyed) editor.destroy();
   }
@@ -46,15 +47,60 @@ describe('validateSafeLinkHref', () => {
     expect(isSafeLinkHref(href)).toBe(true);
   });
 
-  it('rejects link targets above a caller-selected UTF-8 byte ceiling', () => {
-    const boundedValidate = validateSafeLinkHref as unknown as (
-      href: unknown,
-      options?: { maxHrefBytes?: number },
-    ) => string;
+  it('rejects obvious oversize before UTF-8 allocation and URL parsing', () => {
+    const encodeSpy = vi.spyOn(TextEncoder.prototype, 'encode');
+    const href = 'https://example.com/path';
 
+    let error: unknown;
+    try {
+      validateSafeLinkHref(href, { maxHrefBytes: 8 });
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(SafeLinkHrefError);
+    expect(error).toMatchObject({
+      code: 'input_too_large',
+      hrefPreview: '<oversized>',
+    });
+    expect(String(error)).not.toContain('example.com');
+    expect(encodeSpy).not.toHaveBeenCalled();
+    expect(isSafeLinkHref(href, { maxHrefBytes: 8 })).toBe(false);
+  });
+
+  it('enforces exact UTF-8 byte counts when code-unit length alone can fit', () => {
     expect(() =>
-      boundedValidate('https://example.com/path', { maxHrefBytes: 8 }),
+      validateSafeLinkHref('/é', { maxHrefBytes: 2 }),
     ).toThrow(SafeLinkHrefError);
+    expect(validateSafeLinkHref('/é', { maxHrefBytes: 3 })).toBe('/é');
+  });
+
+  it('accepts an omitted configured limit through an explicit options object', () => {
+    expect(validateSafeLinkHref('/safe', {})).toBe('/safe');
+  });
+
+  it.each([
+    null,
+    8,
+    [],
+    { maxHrefBytes: '8' },
+    { maxHrefBytes: 1.5 },
+    { maxHrefBytes: 0 },
+    { maxHrefBytes: 1_048_577 },
+  ])('fails closed for invalid resource configuration %#', (options) => {
+    let error: unknown;
+    try {
+      validateSafeLinkHref('/private/path?token=secret', options as never);
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(SafeLinkHrefError);
+    expect(error).toMatchObject({
+      code: 'invalid_configuration',
+      hrefPreview: '<configuration>',
+    });
+    expect(String(error)).not.toContain('private/path');
   });
 
   it.each([
@@ -79,6 +125,7 @@ describe('validateSafeLinkHref', () => {
     'https://',
     'https://user:secret@example.com/path',
     'http://user@example.com/path',
+    'https://:secret@example.com/path',
   ])('rejects unsafe link target %s', (href) => {
     expect(() => validateSafeLinkHref(href)).toThrow(SafeLinkHrefError);
     expect(isSafeLinkHref(href)).toBe(false);
@@ -91,8 +138,17 @@ describe('validateSafeLinkHref', () => {
     const fragment = new SafeLinkHrefError('#private-section');
     const scheme = new SafeLinkHrefError('JAVASCRIPT:secret()');
     const relative = new SafeLinkHrefError('private/path?token=secret');
+    const oversized = new SafeLinkHrefError(
+      'https://secret.example/token',
+      'input_too_large',
+    );
+    const invalidConfiguration = new SafeLinkHrefError(
+      'https://secret.example/token',
+      'invalid_configuration',
+    );
 
     expect(nonString.name).toBe('SafeLinkHrefError');
+    expect(nonString.code).toBe('invalid_href');
     expect(nonString.hrefPreview).toBe('<number>');
     expect(empty.hrefPreview).toBe('<empty>');
     expect(protocolRelative.hrefPreview).toBe('//<redacted>');
@@ -100,6 +156,10 @@ describe('validateSafeLinkHref', () => {
     expect(scheme.hrefPreview).toBe('javascript:<redacted>');
     expect(relative.hrefPreview).toBe('<relative>');
     expect(relative.message).not.toContain('private/path');
+    expect(oversized.hrefPreview).toBe('<oversized>');
+    expect(oversized.message).not.toContain('secret.example');
+    expect(invalidConfiguration.hrefPreview).toBe('<configuration>');
+    expect(invalidConfiguration.message).not.toContain('secret.example');
   });
 });
 
