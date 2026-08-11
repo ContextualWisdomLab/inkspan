@@ -7,7 +7,7 @@ function createEditorStub(serializedHtml: string): {
   editor: Editor;
   setContent: ReturnType<typeof vi.fn>;
 } {
-  const setContent = vi.fn();
+  const setContent = vi.fn(() => true);
   const editor = {
     commands: { setContent },
     getHTML: () => serializedHtml,
