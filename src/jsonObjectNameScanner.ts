@@ -241,7 +241,7 @@ function readJsonValueStart(
     };
   }
   if (firstCharacter === '"') {
-    const stringToken = readJsonString(source, startIndex, false);
+    const stringToken = readJsonString(source, startIndex);
     return stringToken === null
       ? null
       : { endIndex: stringToken.endIndex };
@@ -318,7 +318,6 @@ function readJsonObjectName(
 function readJsonString(
   source: string,
   startIndex: number,
-  decode: boolean,
 ): JsonStringToken | null {
   if (source[startIndex] !== '"') return null;
 
@@ -326,18 +325,7 @@ function readJsonString(
   while (index < source.length) {
     const character = source[index];
     if (character === '"') {
-      const endIndex = index + 1;
-      if (!decode) return { endIndex };
-      try {
-        return {
-          endIndex,
-          decodedValue: JSON.parse(
-            source.slice(startIndex, endIndex),
-          ) as string,
-        };
-      } catch {
-        return null;
-      }
+      return { endIndex: index + 1 };
     }
     index += character === '\\' ? 2 : 1;
   }
