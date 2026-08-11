@@ -39,7 +39,14 @@ function freezeDocumentJson(
 
     activeObjects.add(frame.value);
     pendingFrames.push({ value: frame.value, exiting: true });
-    for (const nestedValue of Object.values(frame.value)) {
+    for (const key of Object.keys(frame.value)) {
+      const descriptor = Object.getOwnPropertyDescriptor(frame.value, key)!;
+      if (!('value' in descriptor)) {
+        throw new RangeError(
+          'Editor document JSON must contain data properties only.',
+        );
+      }
+      const nestedValue = descriptor.value as unknown;
       if (nestedValue !== null && typeof nestedValue === 'object') {
         pendingFrames.push({ value: nestedValue, exiting: false });
       }
@@ -56,7 +63,8 @@ function freezeDocumentJson(
  * `Editor.getJSON()` and iteratively frozen together with the outer snapshot so
  * host persistence, indexing, and AI workflows cannot mutate shared state.
  * Cyclic custom-extension metadata is rejected before an active object is
- * traversed again, while shared acyclic references remain supported.
+ * traversed again, accessor-backed enumerable properties are rejected without
+ * evaluating their getters, and shared acyclic references remain supported.
  */
 export function createEditorDocumentSnapshot(
   editor: Editor | null,
