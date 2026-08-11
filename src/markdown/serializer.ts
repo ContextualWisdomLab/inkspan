@@ -146,7 +146,7 @@ function formatMarkdownTitle(value: string | null): string {
  * inert browser template fragment before Turndown sees it.
  */
 function sanitizeInertHtmlFragment(fragment: DocumentFragment): DocumentFragment {
-  for (const element of Array.from(fragment.querySelectorAll('*'))) {
+  for (const element of fragment.querySelectorAll('*')) {
     const elementName = element.localName;
     if (REMOVED_HTML_ELEMENTS.has(elementName)) {
       element.remove();
