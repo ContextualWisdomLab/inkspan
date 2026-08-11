@@ -52,13 +52,15 @@ describe('cross-engine clipboard consensus resource boundary', () => {
   });
 
   it('fails closed with the same stable error for non-JSON scalar evidence', () => {
-    const documentJson = {
-      type: 'doc',
-      content: [{ type: 'paragraph', attrs: { privateValue: 1n } }],
-    };
+    for (const privateValue of [1n, undefined, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const documentJson = {
+        type: 'doc',
+        content: [{ type: 'paragraph', attrs: { privateValue } }],
+      };
 
-    expect(() => assertCrossEngineClipboardConsensus(allEngines(documentJson))).toThrow(
-      RESOURCE_BOUNDARY_ERROR,
-    );
+      expect(() => assertCrossEngineClipboardConsensus(allEngines(documentJson))).toThrow(
+        RESOURCE_BOUNDARY_ERROR,
+      );
+    }
   });
 });
