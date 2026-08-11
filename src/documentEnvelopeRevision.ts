@@ -10,11 +10,18 @@ const ARRAY_BUFFER_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
   ArrayBuffer.prototype,
   'byteLength',
 )!.get!;
+const DIGEST_CREATION_FAILURE_MESSAGE =
+  'Document envelope SHA-256 digest could not be created';
 
 /** SHA-256 provider compatible with the Web Cryptography `SubtleCrypto` API. */
 export interface DocumentEnvelopeDigestProvider {
   /** Produce a SHA-256 digest for one complete canonical byte sequence. */
   digest(algorithm: 'SHA-256', source: BufferSource): Promise<ArrayBuffer>;
+}
+
+interface ResolvedDocumentEnvelopeDigestProvider {
+  readonly provider: DocumentEnvelopeDigestProvider;
+  readonly digest: DocumentEnvelopeDigestProvider['digest'];
 }
 
 /** Portable strong validator derived from one canonical document envelope. */
@@ -82,15 +89,17 @@ export async function createValidatedDocumentEnvelopeRevision(
   envelope: CwlEditorDocumentEnvelope,
   digestProvider?: DocumentEnvelopeDigestProvider | null,
 ): Promise<CwlEditorDocumentRevision> {
-  const provider = resolveDigestProvider(digestProvider);
+  const resolvedProvider = resolveDigestProvider(digestProvider);
   const canonicalBytes = encodeValidatedDocumentEnvelope(envelope);
   let digestResult: ArrayBuffer;
   try {
-    digestResult = await provider.digest('SHA-256', canonicalBytes);
-  } catch {
-    throw new DocumentEnvelopeRevisionError(
-      'Document envelope SHA-256 digest could not be created',
+    digestResult = await resolvedProvider.digest.call(
+      resolvedProvider.provider,
+      'SHA-256',
+      canonicalBytes,
     );
+  } catch {
+    throw new DocumentEnvelopeRevisionError(DIGEST_CREATION_FAILURE_MESSAGE);
   }
 
   let digestBytes: Uint8Array;
@@ -115,28 +124,42 @@ export async function createValidatedDocumentEnvelopeRevision(
 
 function resolveDigestProvider(
   digestProvider: DocumentEnvelopeDigestProvider | null | undefined,
-): DocumentEnvelopeDigestProvider {
+): ResolvedDocumentEnvelopeDigestProvider {
   if (digestProvider === null) {
     throw new DocumentEnvelopeRevisionError(
       'A SHA-256 digest provider is unavailable',
     );
   }
-  if (digestProvider !== undefined) return digestProvider;
 
-  let platformProvider: SubtleCrypto | undefined;
+  let provider: DocumentEnvelopeDigestProvider;
+  if (digestProvider !== undefined) {
+    provider = digestProvider;
+  } else {
+    let platformProvider: SubtleCrypto | undefined;
+    try {
+      platformProvider = globalThis.crypto?.subtle;
+    } catch {
+      throw new DocumentEnvelopeRevisionError(
+        'A SHA-256 digest provider is unavailable',
+      );
+    }
+    if (platformProvider === undefined) {
+      throw new DocumentEnvelopeRevisionError(
+        'A SHA-256 digest provider is unavailable',
+      );
+    }
+    provider = platformProvider;
+  }
+
   try {
-    platformProvider = globalThis.crypto?.subtle;
+    const digest = provider.digest;
+    if (typeof digest !== 'function') {
+      throw new TypeError('invalid digest provider');
+    }
+    return { provider, digest };
   } catch {
-    throw new DocumentEnvelopeRevisionError(
-      'A SHA-256 digest provider is unavailable',
-    );
+    throw new DocumentEnvelopeRevisionError(DIGEST_CREATION_FAILURE_MESSAGE);
   }
-  if (platformProvider === undefined) {
-    throw new DocumentEnvelopeRevisionError(
-      'A SHA-256 digest provider is unavailable',
-    );
-  }
-  return platformProvider;
 }
 
 function bytesToLowercaseHex(bytes: Uint8Array): string {
