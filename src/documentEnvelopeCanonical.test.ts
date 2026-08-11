@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DOCUMENT_ENVELOPE_SCHEMA_ID,
   DOCUMENT_ENVELOPE_SCHEMA_VERSION,
@@ -10,6 +10,10 @@ import {
   serializeDocumentEnvelope,
 } from './documentEnvelopeCanonical.js';
 import * as publicApi from './index.js';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('canonical document envelope serialization', () => {
   it('sorts object properties recursively while preserving array order', () => {
@@ -103,6 +107,31 @@ describe('canonical document envelope serialization', () => {
 
     expect(new TextDecoder().decode(bytes)).toBe(text);
     expect([...bytes.slice(0, 3)]).not.toEqual([0xef, 0xbb, 0xbf]);
+  });
+
+  it('rejects a configured canonical output ceiling before UTF-8 allocation', () => {
+    const envelope = createDocumentEnvelope({
+      type: 'doc',
+      attrs: { label: 'bounded-output' },
+    });
+    const encode = vi.spyOn(TextEncoder.prototype, 'encode');
+    const encodeWithLimits = encodeDocumentEnvelope as unknown as (
+      source: unknown,
+      limits: { maxUtf8Bytes: number },
+    ) => Uint8Array;
+    let failure: unknown;
+
+    try {
+      encodeWithLimits(envelope, { maxUtf8Bytes: 16 });
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(encode).not.toHaveBeenCalled();
+    expect(failure).toBeInstanceOf(DocumentEnvelopeError);
+    expect(failure).toMatchObject({
+      message: 'Canonical document envelope exceeds the configured UTF-8 byte limit',
+    });
   });
 
   it.each([
