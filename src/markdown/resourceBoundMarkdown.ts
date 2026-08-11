@@ -3,8 +3,8 @@ import {
   markdownToEmailHtml as serializeMarkdownToEmailHtml,
   markdownToHtml as serializeMarkdownToHtml,
   normalizeMarkdown as serializeNormalizedMarkdown,
-  type MarkdownToEmailHtmlOptions,
 } from './serializer.js';
+import type { MarkdownToEmailHtmlOptions as SerializerMarkdownToEmailHtmlOptions } from './serializer.js';
 import {
   DEFAULT_MARKDOWN_TO_HTML_MAX_BYTES,
   assertMarkdownToHtmlInputSize,
@@ -17,9 +17,31 @@ export interface MarkdownToHtmlOptions {
   maxMarkdownBytes?: number;
 }
 
+/** Options for public Markdown normalization. */
+export interface NormalizeMarkdownOptions {
+  /** Maximum UTF-8 bytes accepted before Marked lexing. Defaults to 16 MiB. */
+  maxMarkdownBytes?: number;
+}
+
+/** Options for public Markdown-to-email-HTML conversion. */
+export interface MarkdownToEmailHtmlOptions
+  extends SerializerMarkdownToEmailHtmlOptions {
+  /** Maximum UTF-8 bytes accepted before Marked lexing. Defaults to 16 MiB. */
+  maxMarkdownBytes?: number;
+}
+
 /** Apply the owned default Markdown ceiling before an internal conversion. */
 function assertDefaultMarkdownInputSize(markdown: string): void {
   assertMarkdownToHtmlInputSize(markdown, DEFAULT_MARKDOWN_TO_HTML_MAX_BYTES);
+}
+
+/** Apply one caller-selectable Markdown ceiling before Marked materialization. */
+function assertConfiguredMarkdownInputSize(
+  markdown: string,
+  maxMarkdownBytes: number | undefined,
+): void {
+  const resolvedMaxBytes = resolveMarkdownToHtmlMaxBytes(maxMarkdownBytes);
+  assertMarkdownToHtmlInputSize(markdown, resolvedMaxBytes);
 }
 
 /** Convert bounded Markdown to parser HTML for TipTap ingress. */
@@ -33,14 +55,16 @@ export function markdownToHtml(
   markdown: string,
   options: MarkdownToHtmlOptions = {},
 ): string {
-  const maxMarkdownBytes = resolveMarkdownToHtmlMaxBytes(options.maxMarkdownBytes);
-  assertMarkdownToHtmlInputSize(markdown, maxMarkdownBytes);
+  assertConfiguredMarkdownInputSize(markdown, options.maxMarkdownBytes);
   return serializeMarkdownToHtml(markdown);
 }
 
 /** Normalize bounded Markdown through the existing deterministic serializer. */
-export function normalizeMarkdown(markdown: string): string {
-  assertDefaultMarkdownInputSize(markdown);
+export function normalizeMarkdown(
+  markdown: string,
+  options: NormalizeMarkdownOptions = {},
+): string {
+  assertConfiguredMarkdownInputSize(markdown, options.maxMarkdownBytes);
   return serializeNormalizedMarkdown(markdown);
 }
 
@@ -49,8 +73,7 @@ export function markdownToEmailHtml(
   markdown: string,
   options: MarkdownToEmailHtmlOptions = {},
 ): string {
-  assertDefaultMarkdownInputSize(markdown);
-  return serializeMarkdownToEmailHtml(markdown, options);
+  const { maxMarkdownBytes, ...serializerOptions } = options;
+  assertConfiguredMarkdownInputSize(markdown, maxMarkdownBytes);
+  return serializeMarkdownToEmailHtml(markdown, serializerOptions);
 }
-
-export type { MarkdownToEmailHtmlOptions } from './serializer.js';
