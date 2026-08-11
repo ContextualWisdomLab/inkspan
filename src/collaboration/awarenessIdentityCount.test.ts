@@ -10,6 +10,7 @@ describe('collaboration awareness identity counting', () => {
       [13, { user: { id: '12345' } }],
       [14, { user: { id: `editor-${'a'.repeat(74)}` } }],
       [15, { user: { id: 'editor-bob' } }],
+      [16, { user: { id: `${'a'.repeat(79)}😀` } }],
     ]);
     const awareness: CollaborationAwareness = {
       clientID: 11,
@@ -21,6 +22,6 @@ describe('collaboration awareness identity counting', () => {
       off: () => undefined,
     };
 
-    expect(countRemoteCollaborators(awareness)).toBe(1);
+    expect(countRemoteCollaborators(awareness)).toBe(2);
   });
 });
