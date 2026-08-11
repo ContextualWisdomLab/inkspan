@@ -19,7 +19,11 @@ def _parser() -> argparse.ArgumentParser:
         prog="inkspan-office",
         description="Render strict AI-authored JSON to DOCX, XLSX, or PPTX.",
     )
-    parser.add_argument("input", nargs="?", help="JSON request path")
+    parser.add_argument(
+        "input",
+        nargs="?",
+        help="JSON request path (maximum 64 MiB UTF-8 request)",
+    )
     parser.add_argument("output", nargs="?", help="output .docx/.xlsx/.pptx path")
     parser.add_argument("--force", action="store_true", help="overwrite an existing output")
     parser.add_argument(
