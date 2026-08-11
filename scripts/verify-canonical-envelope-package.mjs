@@ -13,6 +13,7 @@ async function verifyModuleSurface(moduleSurface) {
   assert.equal(typeof moduleSurface.parseDocumentEnvelopeBytes, 'function');
   assert.equal(typeof moduleSurface.serializeDocumentEnvelope, 'function');
   assert.equal(typeof moduleSurface.encodeDocumentEnvelope, 'function');
+  assert.equal(typeof moduleSurface.DocumentEnvelopeError, 'function');
   assert.equal(typeof moduleSurface.createDocumentEnvelopeRevision, 'function');
   assert.equal(
     typeof moduleSurface.createDocumentEnvelopeRevisionBytes,
@@ -44,6 +45,19 @@ async function verifyModuleSurface(moduleSurface) {
   assert.deepEqual(
     [...canonicalBytes],
     [...new TextEncoder().encode(canonicalJson)],
+  );
+  assert.throws(
+    () => moduleSurface.encodeDocumentEnvelope(envelope, { maxUtf8Bytes: 16 }),
+    (error) =>
+      error instanceof moduleSurface.DocumentEnvelopeError &&
+      error.message ===
+        'Canonical document envelope exceeds the configured UTF-8 byte limit',
+  );
+  assert.deepEqual(
+    moduleSurface.encodeDocumentEnvelope(envelope, {
+      maxUtf8Bytes: canonicalBytes.byteLength,
+    }),
+    canonicalBytes,
   );
   assert.deepEqual(
     moduleSurface.parseDocumentEnvelope(canonicalJson, {
