@@ -32,6 +32,7 @@ const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const TRUSTED_FONT_ASSET_HOST = 'fonts.gstatic.com';
+const MAX_FONT_CSS_BYTES = 1024 * 1024;
 const MAX_FONT_SUBSET_BYTES = 16 * 1024 * 1024;
 const WOFF2_SIGNATURE = Buffer.from([0x77, 0x4f, 0x46, 0x32]);
 
@@ -51,6 +52,37 @@ const SRC_URL_RE = /url\((https:\/\/[^)]+\.woff2)\)/;
 const RANGE_RE = /unicode-range:\s*([^;]+);/;
 const WEIGHT_RE = /font-weight:\s*(\d+)/;
 
+/** Read CSS discovery data through a bounded stream before decoding it. */
+async function readBoundedCssBody(response) {
+  const declaredLength = response.headers.get('content-length');
+  if (
+    declaredLength !== null &&
+    /^\d+$/.test(declaredLength) &&
+    Number(declaredLength) > MAX_FONT_CSS_BYTES
+  ) {
+    throw new Error('Google Fonts returned an oversized CSS response');
+  }
+
+  if (response.body === null) {
+    throw new Error('Google Fonts returned an empty CSS response');
+  }
+
+  const reader = response.body.getReader();
+  const chunks = [];
+  let totalBytes = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    totalBytes += value.byteLength;
+    if (totalBytes > MAX_FONT_CSS_BYTES) {
+      await reader.cancel();
+      throw new Error('Google Fonts returned an oversized CSS response');
+    }
+    chunks.push(Buffer.from(value));
+  }
+  return Buffer.concat(chunks, totalBytes);
+}
+
 async function fetchCss(family, weights) {
   const w = weights.join(';');
   const url = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(
@@ -58,7 +90,22 @@ async function fetchCss(family, weights) {
   )}:wght@${w}&display=swap`;
   const res = await fetch(url, { headers: { 'User-Agent': UA } });
   if (!res.ok) throw new Error(`css2 fetch failed for ${family}: ${res.status}`);
-  return res.text();
+
+  const mediaType = res.headers
+    .get('content-type')
+    ?.split(';', 1)[0]
+    .trim()
+    .toLowerCase();
+  if (mediaType !== 'text/css') {
+    throw new Error('Google Fonts returned an invalid CSS response type');
+  }
+
+  const bytes = await readBoundedCssBody(res);
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error('Google Fonts returned invalid UTF-8 CSS');
+  }
 }
 
 /** Validate one CSS-provided asset URL before any asset request occurs. */
@@ -167,7 +214,11 @@ async function processFamily(def, outputFilesDir) {
         .join('\n'),
     );
   }
-  return { css: out.join('\n\n'), totalBytes, count: blocks.length };
+
+  if (out.length === 0) {
+    throw new Error('Google Fonts returned CSS without usable WOFF2 assets');
+  }
+  return { css: out.join('\n\n'), totalBytes, count: out.length };
 }
 
 const HEADER = (title) =>
