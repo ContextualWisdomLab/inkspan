@@ -31,4 +31,15 @@ describe('email document language resource boundary', () => {
       }),
     ).toThrow(RangeError);
   });
+
+  it('preserves omitted full-document language metadata without Intl work', () => {
+    const canonicalize = vi.spyOn(Intl, 'getCanonicalLocales');
+
+    const html = markdownToEmailHtml('no language metadata', {
+      fullDocument: true,
+    });
+
+    expect(html).toContain('<html>');
+    expect(canonicalize).not.toHaveBeenCalled();
+  });
 });
