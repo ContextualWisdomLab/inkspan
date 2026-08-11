@@ -134,6 +134,58 @@ describe('validateSafeLinkHref', () => {
     expect(getter).not.toHaveBeenCalled();
   });
 
+  it('rejects unknown string and symbol configuration keys before reading values', () => {
+    const getter = vi.fn(() => 8);
+    const unknownStringKey = Object.defineProperty({}, 'unexpected', {
+      enumerable: true,
+      get: getter,
+    });
+    const unknownSymbolKey = { [Symbol('maxHrefBytes')]: 8 };
+
+    for (const options of [unknownStringKey, unknownSymbolKey]) {
+      let error: unknown;
+      try {
+        validateSafeLinkHref('/private/path?token=secret', options as never);
+      } catch (caught) {
+        error = caught;
+      }
+
+      expect(error).toBeInstanceOf(SafeLinkHrefError);
+      expect(error).toMatchObject({
+        code: 'invalid_configuration',
+        hrefPreview: '<configuration>',
+      });
+      expect(String(error)).not.toContain('private/path');
+    }
+    expect(getter).not.toHaveBeenCalled();
+  });
+
+  it('converts reflection failures into payload-redacted configuration errors', () => {
+    const options = new Proxy(
+      {},
+      {
+        ownKeys() {
+          throw new Error('proxy-owned secret');
+        },
+      },
+    );
+
+    let error: unknown;
+    try {
+      validateSafeLinkHref('/private/path?token=secret', options as never);
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(SafeLinkHrefError);
+    expect(error).toMatchObject({
+      code: 'invalid_configuration',
+      hrefPreview: '<configuration>',
+    });
+    expect(String(error)).not.toContain('proxy-owned secret');
+    expect(String(error)).not.toContain('private/path');
+  });
+
   it.each([
     null,
     42,
