@@ -18,6 +18,22 @@ describe('buildExtensions runtime configuration boundary', () => {
     },
   );
 
+  it('redacts revoked top-level proxy shape failures', () => {
+    const { proxy: options, revoke } = Proxy.revocable({}, {});
+    revoke();
+
+    expectInvalidBuildExtensionsOptions(options);
+  });
+
+  it('redacts revoked image proxy shape failures', () => {
+    const { proxy: image, revoke } = Proxy.revocable({}, {});
+    revoke();
+
+    expect(() => buildExtensions({ image })).toThrowError(
+      new RangeError('Image configuration is invalid.'),
+    );
+  });
+
   it('rejects accessor-backed options without evaluating the accessor', () => {
     let reads = 0;
     const options = {} as BuildExtensionsOptions;
