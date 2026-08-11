@@ -37,10 +37,33 @@ Rejected values raise `SafeLinkHrefError` only when a host calls
 `hrefPreview`; it never retains the complete URL, query string, fragment,
 credentials, or payload in host telemetry.
 
+### Active-PR resource boundary
+
+Status: `implemented_on_active_pr` in PR #182; **not yet protected-main API**.
+Protected `main` continues to own the shipped hyperlink contract until this PR
+is eventually integrated through the normal release gates.
+
+PR #182 extends the same validator with a bounded local parsing contract:
+
+- `SafeLinkValidationOptions.maxHrefBytes` lowers the per-call UTF-8 admission
+  budget when a host needs a stricter local bound;
+- the default target ceiling is 64 KiB and the public hard maximum is 1 MiB;
+- an obvious oversize target is rejected from its UTF-16 code-unit lower bound
+  before allocating a complete UTF-8 copy or invoking the WHATWG URL parser;
+- strings whose code-unit length can fit are measured exactly in UTF-8 bytes;
+- invalid runtime resource configuration fails closed; and
+- `SafeLinkHrefError.code` distinguishes `invalid_href`, `input_too_large`, and
+  `invalid_configuration` without retaining the caller-controlled target.
+
+This limit is local allocation/validation defense only. It is not a transport
+request-size policy, browser navigation budget, authorization decision, tenant
+quota, persistence constraint, network policy, or durable audit boundary.
+
 ```ts
 import {
   isSafeLinkHref,
   validateSafeLinkHref,
+  type SafeLinkValidationOptions,
 } from '@contextualwisdomlab/cwl-editor';
 
 if (isSafeLinkHref(candidate)) {
@@ -48,6 +71,9 @@ if (isSafeLinkHref(candidate)) {
 }
 
 const validated = validateSafeLinkHref('/documents/current');
+
+const strictLocalBudget: SafeLinkValidationOptions = { maxHrefBytes: 8_192 };
+const bounded = validateSafeLinkHref('/documents/current', strictLocalBudget);
 ```
 
 ## Enforcement points
@@ -104,7 +130,8 @@ serializer.
   strict downstream renderer.
 - Keep document authorization, collaboration transport, persistence, and audit
   controls in the CWL/naruon host boundary.
-- Avoid logging raw rejected content. Use the typed error's redacted preview.
+- Avoid logging raw rejected content. Use the typed error's redacted preview and
+  stable code.
 
 ## Standards and primary references
 
@@ -128,6 +155,8 @@ serializer.
 The TypeScript 100% statement/branch/function/line coverage gate verifies:
 
 - every accepted and rejected target class;
+- active-PR resource configuration, UTF-8 byte accounting and pre-allocation
+  rejection without representing that work as protected-main behavior;
 - redacted error categories;
 - initial HTML parsing;
 - command insertion;
