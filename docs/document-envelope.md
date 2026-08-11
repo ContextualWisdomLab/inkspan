@@ -122,6 +122,29 @@ const restored = parseDocumentEnvelopeBytes(
 );
 ```
 
+**Active PR status:** the caller-selectable canonical output ceiling described
+below is `implemented_on_active_pr` in #178 and is **not** protected-main API as
+of protected `main@50ac98cfa0ad9e8dd75f93ca437a5679fed4d804`. Protected main
+continues to expose the one-argument encoder until gated integration. The active
+PR adds `DocumentEnvelopeEncodingOptions.maxUtf8Bytes` so a host can reject
+canonical output above its local allocation/admission budget:
+
+```ts
+const persistedBytes = encodeDocumentEnvelope(envelope, {
+  maxUtf8Bytes: 2 * 1024 * 1024,
+});
+```
+
+On the active PR, a canonical string whose UTF-16 code-unit length already
+proves it cannot fit is rejected before `TextEncoder.encode()` allocates the
+byte array. When code-unit length can fit, Inkspan performs one UTF-8 encoding
+and exact-checks the resulting byte length before returning it. Rejection uses a
+payload-redacted `DocumentEnvelopeError`; accepted input retains the same RFC
+8785 canonical bytes. The default output ceiling is the existing 64 MiB
+envelope byte limit. This is local allocation defense only: transport request
+limits, durable object-store quotas, authorization, tenant isolation,
+persistence, audit, retention, and rollback remain host-owned.
+
 The byte parser accepts a `Uint8Array` (including Node.js `Buffer` subclasses),
 checks `maxUtf8Bytes` before copying or decoding, detaches the accepted bytes,
 and uses the Encoding Standard's fatal UTF-8 decoder. Malformed sequences fail
@@ -143,7 +166,7 @@ fail-closed defaults before and during envelope inspection:
 
 | Limit | Default | Scope |
 |---|---:|---|
-| `maxUtf8Bytes` | 67,108,864 | Raw `Uint8Array` before copy and strict UTF-8 decoding |
+| `maxUtf8Bytes` | 67,108,864 | Raw `Uint8Array` before copy and strict UTF-8 decoding; active PR #178 also uses an independently supplied encoder option as the canonical output ceiling |
 | `maxJsonTextCodeUnits` | 67,108,864 | Raw JavaScript string before duplicate-name scanning or `JSON.parse()` |
 | `maxJsonValues` | 1,000,000 | Scalar plus object/array values inside `documentJson` |
 | `maxStringCodeUnits` | 33,554,432 | Every decoded document string and object name |
