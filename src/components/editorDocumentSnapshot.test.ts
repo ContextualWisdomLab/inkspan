@@ -186,6 +186,43 @@ describe('createEditorDocumentSnapshot', () => {
     expect(getter).not.toHaveBeenCalled();
   });
 
+  it('rejects exotic object containers that cannot be represented as document JSON', () => {
+    const documentJson = {
+      type: 'doc',
+      metadata: new Date(0),
+    };
+    const editor = {
+      getHTML: () => '<p>Hello</p>',
+      getJSON: () => documentJson,
+      isEmpty: false,
+    } as unknown as Editor;
+
+    expect(() => createEditorDocumentSnapshot(editor, 'markdown')).toThrowError(
+      new RangeError(
+        'Editor document JSON must contain plain objects and arrays only.',
+      ),
+    );
+  });
+
+  it('preserves null-prototype JSON objects', () => {
+    const metadata = Object.create(null) as Record<string, unknown>;
+    metadata.classification = 'internal';
+    const documentJson = {
+      type: 'doc',
+      metadata,
+    };
+    const editor = {
+      getHTML: () => '<p>Hello</p>',
+      getJSON: () => documentJson,
+      isEmpty: false,
+    } as unknown as Editor;
+
+    const snapshot = createEditorDocumentSnapshot(editor, 'html');
+
+    expect(snapshot.documentJson).toBe(documentJson);
+    expect(Object.isFrozen(metadata)).toBe(true);
+  });
+
   it('preserves shared acyclic metadata while deeply freezing it once', () => {
     const sharedMetadata = { classification: 'internal' };
     const documentJson = {
