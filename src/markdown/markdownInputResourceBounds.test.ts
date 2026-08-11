@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Marked } from 'marked';
+import { Lexer } from 'marked';
 import { markdownToHtml } from './serializer.js';
 
 afterEach(() => {
@@ -7,9 +7,9 @@ afterEach(() => {
 });
 
 describe('Markdown parser resource bounds', () => {
-  it('rejects configured oversized Markdown before encoding or Marked parser materialization', () => {
+  it('rejects configured oversized Markdown before encoding or Marked lexer materialization', () => {
     const encode = vi.spyOn(TextEncoder.prototype, 'encode');
-    const parse = vi.spyOn(Marked.prototype, 'parse');
+    const lex = vi.spyOn(Lexer, 'lex');
     let failure: unknown;
 
     try {
@@ -24,7 +24,7 @@ describe('Markdown parser resource bounds', () => {
     }
 
     expect(encode).not.toHaveBeenCalled();
-    expect(parse).not.toHaveBeenCalled();
+    expect(lex).not.toHaveBeenCalled();
     expect(failure).toMatchObject({
       name: 'MarkdownToHtmlResourceError',
       code: 'input_too_large',
