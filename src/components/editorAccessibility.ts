@@ -6,6 +6,37 @@ const INVALID_ACCESSIBILITY_METADATA_MESSAGE =
 const INVALID_LANGUAGE_TAG_MESSAGE =
   'Accessibility language tag must be valid BCP 47 metadata.';
 
+const RFC_5646_GRANDFATHERED_TAGS = new Set([
+  'art-lojban',
+  'cel-gaulish',
+  'en-gb-oed',
+  'i-ami',
+  'i-bnn',
+  'i-default',
+  'i-enochian',
+  'i-hak',
+  'i-klingon',
+  'i-lux',
+  'i-mingo',
+  'i-navajo',
+  'i-pwn',
+  'i-tao',
+  'i-tay',
+  'i-tsu',
+  'no-bok',
+  'no-nyn',
+  'sgn-be-fr',
+  'sgn-be-nl',
+  'sgn-ch-de',
+  'zh-guoyu',
+  'zh-hakka',
+  'zh-min',
+  'zh-min-nan',
+  'zh-xiang',
+]);
+const RFC_5646_PRIVATE_USE_TAG = /^[xX](?:-[A-Za-z0-9]{1,8})+$/;
+const RFC_5646_LANGTAG = /^(?:[A-Za-z]{2,3}(?:-[A-Za-z]{3}){0,3}|[A-Za-z]{4}|[A-Za-z]{5,8})(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|[0-9]{3}))?(?:-(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*(?:-[0-9A-WY-Za-wy-z](?:-[A-Za-z0-9]{2,8})+)*(?:-[xX](?:-[A-Za-z0-9]{1,8})+)?$/;
+
 /** Values accepted by the WAI-ARIA `aria-invalid` state on a textbox. */
 export type EditorAriaInvalid = boolean | 'grammar' | 'spelling';
 
@@ -51,15 +82,22 @@ function normalizedAccessibilityValue(
   return normalized ? normalized : undefined;
 }
 
+/** Check the complete RFC 5646 well-formed tag grammar without registry lookup. */
+function isWellFormedLanguageTag(value: string): boolean {
+  return (
+    RFC_5646_GRANDFATHERED_TAGS.has(value.toLowerCase()) ||
+    RFC_5646_PRIVATE_USE_TAG.test(value) ||
+    RFC_5646_LANGTAG.test(value)
+  );
+}
+
 /** Validate one non-blank editor language tag without changing caller spelling. */
 function normalizedEditorLanguageTag(
   value: string | undefined,
 ): string | undefined {
   const normalized = normalizedAccessibilityValue(value);
   if (normalized === undefined) return undefined;
-  try {
-    Intl.getCanonicalLocales(normalized);
-  } catch {
+  if (!isWellFormedLanguageTag(normalized)) {
     throw new RangeError(INVALID_LANGUAGE_TAG_MESSAGE);
   }
   return normalized;
@@ -83,9 +121,11 @@ export function normalizeEditorPlaceholder(
  *
  * A non-blank `aria-labelledby` reference takes precedence over the fallback
  * string label. Optional placeholder, language, and ID-reference values are
- * omitted when blank. Non-blank language metadata must be a syntactically valid
- * BCP 47 tag, while its trimmed caller spelling is preserved. Placeholder
- * guidance remains supplemental and never replaces the accessible name.
+ * omitted when blank. Non-blank language metadata must be well-formed under the
+ * complete RFC 5646 syntax, including private-use and grandfathered tags; IANA
+ * registry-content validity remains a host policy concern. The trimmed caller
+ * spelling is preserved. Placeholder guidance remains supplemental and never
+ * replaces the accessible name.
  */
 export function buildEditorAccessibilityAttributes(
   options: EditorAccessibilityOptions,
