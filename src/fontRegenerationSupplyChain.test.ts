@@ -78,20 +78,22 @@ globalThis.fetch = async (input) => {
       });
     }
     if (mode === 'oversized-css') {
-      const body = new ReadableStream({
-        pull(controller) {
-          writeFileSync(cssReadMarker, 'read', 'utf8');
-          controller.enqueue(new TextEncoder().encode(css));
-          controller.close();
-        },
-      });
-      return new Response(body, {
+      return {
+        ok: true,
         status: 200,
-        headers: {
+        headers: new Headers({
           'content-type': 'text/css; charset=utf-8',
           'content-length': String(1024 * 1024 + 1),
+        }),
+        get body() {
+          writeFileSync(cssReadMarker, 'read', 'utf8');
+          throw new Error('oversized CSS body must not be read');
         },
-      });
+        async text() {
+          writeFileSync(cssReadMarker, 'read', 'utf8');
+          return css;
+        },
+      };
     }
     return new Response(css, {
       status: 200,
