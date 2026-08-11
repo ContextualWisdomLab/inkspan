@@ -3,6 +3,9 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_HTML_TO_MARKDOWN_MAX_BYTES,
+  MAXIMUM_HTML_TO_MARKDOWN_MAX_BYTES,
+  HtmlToMarkdownResourceError,
   htmlToMarkdown,
   htmlToPlainText,
   markdownToEmailHtml,
@@ -25,6 +28,9 @@ describe('headless deterministic Markdown package contract', () => {
   it('executes the intended deterministic conversion surface through the source barrel', () => {
     expect(markdownToHtml('**Alpha**')).toContain('<strong>Alpha</strong>');
     expect(htmlToMarkdown('<p>Alpha</p>')).toBe('Alpha');
+    expect(DEFAULT_HTML_TO_MARKDOWN_MAX_BYTES).toBe(16_777_216);
+    expect(MAXIMUM_HTML_TO_MARKDOWN_MAX_BYTES).toBe(67_108_864);
+    expect(HtmlToMarkdownResourceError).toBeInstanceOf(Function);
     expect(() =>
       htmlToMarkdown('<p>Alpha</p>', { maxHtmlBytes: 4 }),
     ).toThrowError(
