@@ -4,8 +4,11 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_HTML_TO_MARKDOWN_MAX_BYTES,
+  DEFAULT_MARKDOWN_TO_HTML_MAX_BYTES,
   MAXIMUM_HTML_TO_MARKDOWN_MAX_BYTES,
+  MAXIMUM_MARKDOWN_TO_HTML_MAX_BYTES,
   HtmlToMarkdownResourceError,
+  MarkdownToHtmlResourceError,
   htmlToMarkdown,
   htmlToPlainText,
   markdownToEmailHtml,
@@ -31,11 +34,20 @@ describe('headless deterministic Markdown package contract', () => {
     expect(DEFAULT_HTML_TO_MARKDOWN_MAX_BYTES).toBe(16_777_216);
     expect(MAXIMUM_HTML_TO_MARKDOWN_MAX_BYTES).toBe(67_108_864);
     expect(HtmlToMarkdownResourceError).toBeInstanceOf(Function);
+    expect(DEFAULT_MARKDOWN_TO_HTML_MAX_BYTES).toBe(16_777_216);
+    expect(MAXIMUM_MARKDOWN_TO_HTML_MAX_BYTES).toBe(67_108_864);
+    expect(MarkdownToHtmlResourceError).toBeInstanceOf(Function);
     expect(() =>
       htmlToMarkdown('<p>Alpha</p>', { maxHtmlBytes: 4 }),
     ).toThrowError(
       expect.objectContaining({
         name: 'HtmlToMarkdownResourceError',
+        code: 'input_too_large',
+      }),
+    );
+    expect(() => markdownToHtml('Alpha', { maxMarkdownBytes: 4 })).toThrowError(
+      expect.objectContaining({
+        name: 'MarkdownToHtmlResourceError',
         code: 'input_too_large',
       }),
     );
@@ -122,6 +134,8 @@ describe('headless deterministic Markdown package contract', () => {
     expect(verifier).toContain('ambient document access is forbidden');
     expect(verifier).toContain('maxHtmlBytes');
     expect(verifier).toContain('HtmlToMarkdownResourceError');
+    expect(verifier).toContain('maxMarkdownBytes');
+    expect(verifier).toContain('MarkdownToHtmlResourceError');
     expect(verifier).toContain('React');
     expect(verifier).toContain('@tiptap');
     expect(verifier).toContain('yjs');
