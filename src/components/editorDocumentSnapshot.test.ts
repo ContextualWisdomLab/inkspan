@@ -205,6 +205,43 @@ describe('createEditorDocumentSnapshot', () => {
     );
   });
 
+  it('rejects non-JSON primitive metadata values', () => {
+    const unsupportedValues: unknown[] = [
+      undefined,
+      () => undefined,
+      Symbol('private-extension-metadata'),
+      1n,
+    ];
+
+    for (const metadata of unsupportedValues) {
+      const documentJson = { type: 'doc', metadata };
+      const editor = {
+        getHTML: () => '<p>Hello</p>',
+        getJSON: () => documentJson,
+        isEmpty: false,
+      } as unknown as Editor;
+
+      expect(() => createEditorDocumentSnapshot(editor, 'markdown')).toThrowError(
+        new RangeError('Editor document JSON must contain JSON-compatible values only.'),
+      );
+    }
+  });
+
+  it('rejects non-finite numeric metadata values', () => {
+    for (const metadata of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      const documentJson = { type: 'doc', metadata };
+      const editor = {
+        getHTML: () => '<p>Hello</p>',
+        getJSON: () => documentJson,
+        isEmpty: false,
+      } as unknown as Editor;
+
+      expect(() => createEditorDocumentSnapshot(editor, 'markdown')).toThrowError(
+        new RangeError('Editor document JSON must contain JSON-compatible values only.'),
+      );
+    }
+  });
+
   it('preserves null-prototype JSON objects', () => {
     const metadata = Object.create(null) as Record<string, unknown>;
     metadata.classification = 'internal';
