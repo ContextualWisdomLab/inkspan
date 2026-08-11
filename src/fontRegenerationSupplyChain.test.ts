@@ -16,6 +16,7 @@ const temporaryRoots: string[] = [];
 
 type FontRegenerationTestMode =
   | 'hostile-origin'
+  | 'invalid-css'
   | 'invalid-font'
   | 'midstream-failure';
 
@@ -59,6 +60,12 @@ let trustedAssetRequests = 0;
 globalThis.fetch = async (input) => {
   const url = String(input);
   if (url.startsWith('https://fonts.googleapis.com/css2?')) {
+    if (mode === 'invalid-css') {
+      return new Response('<html>PRIVATE_PROXY_RESPONSE</html>', {
+        status: 200,
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      });
+    }
     return new Response(css, {
       status: 200,
       headers: { 'content-type': 'text/css; charset=utf-8' },
@@ -143,5 +150,17 @@ describe('font regeneration supply-chain boundary', () => {
     expect(result.status).not.toBe(0);
     expect(existsSync(existingFontMarker)).toBe(true);
     expect(readFileSync(existingFontMarker, 'utf8')).toBe('known-good');
+  });
+
+  it('rejects an invalid CSS response before replacing the known-good bundle', () => {
+    const { existingFontMarker, result } = runRegenerator('invalid-css');
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).not.toBe(0);
+    expect(existsSync(existingFontMarker)).toBe(true);
+    expect(readFileSync(existingFontMarker, 'utf8')).toBe('known-good');
+    expect(`${result.stdout}\n${result.stderr}`).not.toContain(
+      'PRIVATE_PROXY_RESPONSE',
+    );
   });
 });
