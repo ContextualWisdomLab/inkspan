@@ -25,6 +25,14 @@ describe('headless deterministic Markdown package contract', () => {
   it('executes the intended deterministic conversion surface through the source barrel', () => {
     expect(markdownToHtml('**Alpha**')).toContain('<strong>Alpha</strong>');
     expect(htmlToMarkdown('<p>Alpha</p>')).toBe('Alpha');
+    expect(() =>
+      htmlToMarkdown('<p>Alpha</p>', { maxHtmlBytes: 4 }),
+    ).toThrowError(
+      expect.objectContaining({
+        name: 'HtmlToMarkdownResourceError',
+        code: 'input_too_large',
+      }),
+    );
     expect(normalizeMarkdown('**Alpha**')).toContain('**Alpha**');
     expect(markdownToPlainText('[Alpha](https://example.com)')).toBe('Alpha');
     expect(htmlToPlainText('<p>Alpha</p>')).toBe('Alpha');
@@ -106,6 +114,8 @@ describe('headless deterministic Markdown package contract', () => {
     expect(verifier).toContain('moduleAuthority.length');
     expect(verifier).toContain('ambientAuthorityPattern');
     expect(verifier).toContain('ambient document access is forbidden');
+    expect(verifier).toContain('maxHtmlBytes');
+    expect(verifier).toContain('HtmlToMarkdownResourceError');
     expect(verifier).toContain('React');
     expect(verifier).toContain('@tiptap');
     expect(verifier).toContain('yjs');
