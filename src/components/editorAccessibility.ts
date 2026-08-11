@@ -3,6 +3,8 @@ import type { EditorTextDirection } from '../types.js';
 const ACCESSIBILITY_METADATA_MAX_CODE_UNITS = 65_536;
 const INVALID_ACCESSIBILITY_METADATA_MESSAGE =
   'Accessibility metadata must be a string within the supported length.';
+const INVALID_LANGUAGE_TAG_MESSAGE =
+  'Accessibility language tag must be valid BCP 47 metadata.';
 
 /** Values accepted by the WAI-ARIA `aria-invalid` state on a textbox. */
 export type EditorAriaInvalid = boolean | 'grammar' | 'spelling';
@@ -49,6 +51,20 @@ function normalizedAccessibilityValue(
   return normalized ? normalized : undefined;
 }
 
+/** Validate one non-blank editor language tag without changing caller spelling. */
+function normalizedEditorLanguageTag(
+  value: string | undefined,
+): string | undefined {
+  const normalized = normalizedAccessibilityValue(value);
+  if (normalized === undefined) return undefined;
+  try {
+    Intl.getCanonicalLocales(normalized);
+  } catch {
+    throw new RangeError(INVALID_LANGUAGE_TAG_MESSAGE);
+  }
+  return normalized;
+}
+
 /**
  * Normalize the shared visual and semantic empty-editor guidance.
  *
@@ -67,14 +83,15 @@ export function normalizeEditorPlaceholder(
  *
  * A non-blank `aria-labelledby` reference takes precedence over the fallback
  * string label. Optional placeholder, language, and ID-reference values are
- * omitted when blank. Placeholder guidance remains supplemental and never
- * replaces the accessible name.
+ * omitted when blank. Non-blank language metadata must be a syntactically valid
+ * BCP 47 tag, while its trimmed caller spelling is preserved. Placeholder
+ * guidance remains supplemental and never replaces the accessible name.
  */
 export function buildEditorAccessibilityAttributes(
   options: EditorAccessibilityOptions,
 ): Record<string, string> {
   const placeholder = normalizeEditorPlaceholder(options.placeholder);
-  const languageTag = normalizedAccessibilityValue(options.languageTag);
+  const languageTag = normalizedEditorLanguageTag(options.languageTag);
   const labelledBy = normalizedAccessibilityValue(options.ariaLabelledBy);
   const describedBy = normalizedAccessibilityValue(options.ariaDescribedBy);
   const errorMessage = normalizedAccessibilityValue(options.ariaErrorMessage);
