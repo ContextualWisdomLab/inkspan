@@ -15,6 +15,7 @@ This directory is the discoverable index for Inkspan's product, technical, secur
 | [`PRD.md`](PRD.md) | Product users, jobs, buyer outcomes, non-goals, acceptance and claim boundaries |
 | [`TRD.md`](TRD.md) | Technical invariants, runtime boundaries, failure semantics and release evidence |
 | [`CONTRACTS.md`](CONTRACTS.md) | Public package/API/event/schema/plugin/collaboration and host-integration contracts |
+| [`document-autosave.md`](document-autosave.md) | Provider-neutral local autosave ordering, durable-validator handoff, recovery, lifecycle observation, and host-owned persistence boundary |
 | [`package-distribution.md`](package-distribution.md) | Buyer-facing public npm package entrypoints, packaged contents, runtime dependency boundaries, and consumer verification |
 | [`email-output.md`](email-output.md) | Deterministic email fragment/full-document authority, language/direction metadata, accessibility and host-owned transport boundary |
 | [`print-output.md`](print-output.md) | Browser print/paged-media presentation, accessibility/fidelity limits, host-owned governed-export boundary, and rollback |
