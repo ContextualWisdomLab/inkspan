@@ -7,19 +7,43 @@ import type {
 } from '../types.js';
 import { editorHtmlToValue } from './editorSerialization.js';
 
+interface FreezeDocumentJsonFrame {
+  value: object;
+  exiting: boolean;
+}
+
 /** Deep-freeze a detached TipTap JSON tree without recursive stack growth. */
 function freezeDocumentJson(
   documentJson: JSONContent,
 ): Readonly<JSONContent> {
-  const pendingObjects: object[] = [documentJson];
-  for (let objectIndex = 0; objectIndex < pendingObjects.length; objectIndex += 1) {
-    const currentObject = pendingObjects[objectIndex]!;
-    for (const nestedValue of Object.values(currentObject)) {
+  const activeObjects = new WeakSet<object>();
+  const frozenObjects = new WeakSet<object>();
+  const pendingFrames: FreezeDocumentJsonFrame[] = [
+    { value: documentJson, exiting: false },
+  ];
+
+  while (pendingFrames.length > 0) {
+    const frame = pendingFrames.pop()!;
+    if (frame.exiting) {
+      activeObjects.delete(frame.value);
+      frozenObjects.add(frame.value);
+      Object.freeze(frame.value);
+      continue;
+    }
+    if (frozenObjects.has(frame.value)) {
+      continue;
+    }
+    if (activeObjects.has(frame.value)) {
+      throw new RangeError('Editor document JSON must be acyclic.');
+    }
+
+    activeObjects.add(frame.value);
+    pendingFrames.push({ value: frame.value, exiting: true });
+    for (const nestedValue of Object.values(frame.value)) {
       if (nestedValue !== null && typeof nestedValue === 'object') {
-        pendingObjects.push(nestedValue);
+        pendingFrames.push({ value: nestedValue, exiting: false });
       }
     }
-    Object.freeze(currentObject);
   }
   return documentJson;
 }
@@ -31,6 +55,8 @@ function freezeDocumentJson(
  * destination-free plain-text projection. TipTap JSON is detached by
  * `Editor.getJSON()` and iteratively frozen together with the outer snapshot so
  * host persistence, indexing, and AI workflows cannot mutate shared state.
+ * Cyclic custom-extension metadata is rejected before an active object is
+ * traversed again, while shared acyclic references remain supported.
  */
 export function createEditorDocumentSnapshot(
   editor: Editor | null,
