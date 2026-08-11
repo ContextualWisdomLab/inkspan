@@ -62,9 +62,5 @@ function restoreLocalEditorState(
   editor: Editor,
   originalState: Editor['state'],
 ): void {
-  try {
-    editor.view.updateState(originalState);
-  } catch {
-    // A broken plugin view must not replace the primary bounded refusal signal.
-  }
+  editor.view.updateState(originalState);
 }
