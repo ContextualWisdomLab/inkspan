@@ -14,7 +14,13 @@
  *
  * Fonts are Noto Sans (OFL 1.1). See src/fonts/OFL.txt and src/fonts/NOTICE.
  */
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  renameSync,
+  writeFileSync,
+  rmSync,
+} from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -127,7 +133,7 @@ async function download(source) {
   return bytes;
 }
 
-async function processFamily(def) {
+async function processFamily(def, outputFilesDir) {
   const css = await fetchCss(def.css, def.weights);
   const blocks = [...css.matchAll(FONT_FACE_RE)].map((m) => m[1]);
   const out = [];
@@ -144,7 +150,7 @@ async function processFamily(def) {
     const localName = `${def.slug}-${weight}-${idx}.woff2`;
     const bytes = await download(urlMatch[1]);
     totalBytes += bytes.byteLength;
-    writeFileSync(resolve(FILES_DIR, localName), bytes);
+    writeFileSync(resolve(outputFilesDir, localName), bytes);
     const range = rangeMatch ? rangeMatch[1].trim() : '';
     out.push(
       [
@@ -174,40 +180,61 @@ const HEADER = (title) =>
   ` */\n`;
 
 async function main() {
-  rmSync(FILES_DIR, { recursive: true, force: true });
-  mkdirSync(FILES_DIR, { recursive: true });
+  // Remote CSS/assets are generated completely in a sibling staging directory.
+  // A fetch or validation failure therefore cannot delete the last known-good
+  // bundled font set. Only after every remote input is accepted do we replace
+  // the generated outputs in the working tree.
+  const stagingRoot = mkdtempSync(resolve(FONTS_DIR, '.font-refresh-'));
+  const stagingFilesDir = resolve(stagingRoot, 'files');
+  mkdirSync(stagingFilesDir, { recursive: true });
 
-  const perFamily = {};
-  let grandTotal = 0;
-  for (const def of FAMILIES) {
-    process.stdout.write(`Fetching ${def.css} (weights ${def.weights.join(', ')})… `);
-    const r = await processFamily(def);
-    perFamily[def.slug] = r;
-    grandTotal += r.totalBytes;
-    console.log(`${r.count} subsets, ${(r.totalBytes / 1024 / 1024).toFixed(2)} MB`);
+  try {
+    const perFamily = {};
+    let grandTotal = 0;
+    for (const def of FAMILIES) {
+      process.stdout.write(`Fetching ${def.css} (weights ${def.weights.join(', ')})… `);
+      const r = await processFamily(def, stagingFilesDir);
+      perFamily[def.slug] = r;
+      grandTotal += r.totalBytes;
+      console.log(`${r.count} subsets, ${(r.totalBytes / 1024 / 1024).toFixed(2)} MB`);
+    }
+
+    // Full stack: all five scripts (Korean, Latin/Vietnamese, Japanese, SC, TC).
+    const fullOrder = ['noto-sans', 'noto-sans-kr', 'noto-sans-jp', 'noto-sans-sc', 'noto-sans-tc'];
+    const fullCss =
+      HEADER('cwl-editor fonts — full multilingual stack (KR / EN+VI / JP / SC / TC)') +
+      '\n' +
+      fullOrder.map((s) => perFamily[s].css).join('\n\n') +
+      '\n';
+
+    // Latin-only opt-out (English + Vietnamese + Latin-ext), tiny.
+    const latinCss =
+      HEADER('cwl-editor fonts — Latin/Vietnamese only (opt-out of CJK)') +
+      '\n' +
+      perFamily['noto-sans'].css +
+      '\n';
+
+    const stagedFullCss = resolve(stagingRoot, 'fonts.css');
+    const stagedLatinCss = resolve(stagingRoot, 'fonts-latin.css');
+    writeFileSync(stagedFullCss, fullCss);
+    writeFileSync(stagedLatinCss, latinCss);
+
+    // This is the commit boundary. No network-derived mutation of the existing
+    // bundle occurs before all CSS and WOFF2 inputs have passed validation.
+    rmSync(FILES_DIR, { recursive: true, force: true });
+    renameSync(stagingFilesDir, FILES_DIR);
+    rmSync(resolve(FONTS_DIR, 'fonts.css'), { force: true });
+    renameSync(stagedFullCss, resolve(FONTS_DIR, 'fonts.css'));
+    rmSync(resolve(FONTS_DIR, 'fonts-latin.css'), { force: true });
+    renameSync(stagedLatinCss, resolve(FONTS_DIR, 'fonts-latin.css'));
+
+    console.log(
+      `\nTotal bundled: ${(grandTotal / 1024 / 1024).toFixed(2)} MB across ` +
+        `${Object.values(perFamily).reduce((n, r) => n + r.count, 0)} woff2 files.`,
+    );
+  } finally {
+    rmSync(stagingRoot, { recursive: true, force: true });
   }
-
-  // Full stack: all five scripts (Korean, Latin/Vietnamese, Japanese, SC, TC).
-  const fullOrder = ['noto-sans', 'noto-sans-kr', 'noto-sans-jp', 'noto-sans-sc', 'noto-sans-tc'];
-  const fullCss =
-    HEADER('cwl-editor fonts — full multilingual stack (KR / EN+VI / JP / SC / TC)') +
-    '\n' +
-    fullOrder.map((s) => perFamily[s].css).join('\n\n') +
-    '\n';
-  writeFileSync(resolve(FONTS_DIR, 'fonts.css'), fullCss);
-
-  // Latin-only opt-out (English + Vietnamese + Latin-ext), tiny.
-  const latinCss =
-    HEADER('cwl-editor fonts — Latin/Vietnamese only (opt-out of CJK)') +
-    '\n' +
-    perFamily['noto-sans'].css +
-    '\n';
-  writeFileSync(resolve(FONTS_DIR, 'fonts-latin.css'), latinCss);
-
-  console.log(
-    `\nTotal bundled: ${(grandTotal / 1024 / 1024).toFixed(2)} MB across ` +
-      `${Object.values(perFamily).reduce((n, r) => n + r.count, 0)} woff2 files.`,
-  );
 }
 
 main().catch((err) => {
