@@ -37,21 +37,71 @@ export interface BuildExtensionsOptions {
   additionalExtensions?: Extensions;
 }
 
+/** Fail closed without reflecting caller-controlled image configuration. */
+function invalidImageConfiguration(): never {
+  throw new RangeError('Image configuration is invalid.');
+}
+
+/** Read one own enumerable data property without invoking accessors. */
+function readImageConfigurationProperty(
+  image: object,
+  key: keyof ImageConfig,
+): unknown {
+  let descriptor: PropertyDescriptor | undefined;
+  try {
+    descriptor = Object.getOwnPropertyDescriptor(image, key);
+  } catch {
+    invalidImageConfiguration();
+  }
+
+  if (descriptor === undefined) {
+    return undefined;
+  }
+  if (!descriptor.enumerable || !('value' in descriptor)) {
+    invalidImageConfiguration();
+  }
+  return descriptor.value;
+}
+
+/** Reject malformed runtime image configuration containers before property reads. */
+function resolveRuntimeImageConfiguration(value: unknown): ImageConfig {
+  if (value === undefined) {
+    return {};
+  }
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    invalidImageConfiguration();
+  }
+
+  const maxSizeBytes = readImageConfigurationProperty(value, 'maxSizeBytes');
+  const maxDimension = readImageConfigurationProperty(value, 'maxDimension');
+  const quality = readImageConfigurationProperty(value, 'quality');
+
+  validateImageNonNegativeSafeInteger('maxSizeBytes', maxSizeBytes);
+  validateImageNonNegativeSafeInteger('maxDimension', maxDimension);
+  validateImageQuality(quality);
+
+  return {
+    maxSizeBytes: maxSizeBytes as number | undefined,
+    maxDimension: maxDimension as number | undefined,
+    quality: quality as number | undefined,
+  };
+}
+
 /** Reject invalid runtime size/dimension configuration before extension setup. */
 function validateImageNonNegativeSafeInteger(
   key: 'maxSizeBytes' | 'maxDimension',
-  value: number | undefined,
+  value: unknown,
 ): void {
-  if (value !== undefined && (!Number.isSafeInteger(value) || value < 0)) {
+  if (value !== undefined && (!Number.isSafeInteger(value) || (value as number) < 0)) {
     throw new RangeError(`Image ${key} configuration is invalid.`);
   }
 }
 
 /** Reject non-finite or out-of-range runtime image quality configuration. */
-function validateImageQuality(value: number | undefined): void {
+function validateImageQuality(value: unknown): void {
   if (
     value !== undefined &&
-    (!Number.isFinite(value) || value < 0 || value > 1)
+    (!Number.isFinite(value) || (value as number) < 0 || (value as number) > 1)
   ) {
     throw new RangeError('Image quality configuration is invalid.');
   }
@@ -61,10 +111,7 @@ function validateImageQuality(value: number | undefined): void {
 export function buildExtensions(
   options: BuildExtensionsOptions = {},
 ): Extensions {
-  const image = options.image ?? {};
-  validateImageNonNegativeSafeInteger('maxSizeBytes', image.maxSizeBytes);
-  validateImageNonNegativeSafeInteger('maxDimension', image.maxDimension);
-  validateImageQuality(image.quality);
+  const image = resolveRuntimeImageConfiguration(options.image);
   const historyConfiguration = options.disableHistory
     ? { history: false as const }
     : {};
