@@ -150,14 +150,17 @@ export function countRemoteCollaborators(
   for (const [clientId, state] of awareness.getStates()) {
     if (clientId === awareness.clientID) continue;
     const user = state.user;
+    if (typeof user !== 'object' || user === null) continue;
+    const id = (user as Record<string, unknown>).id;
+    if (typeof id !== 'string') continue;
+    const normalizedId = id.trim();
     if (
-      typeof user === 'object' &&
-      user !== null &&
-      typeof (user as Record<string, unknown>).id === 'string' &&
-      (user as Record<string, unknown>).id !== ''
+      normalizedId === '' ||
+      NUMERIC_IDENTIFIER_PATTERN.test(normalizedId)
     ) {
-      count += 1;
+      continue;
     }
+    count += 1;
   }
   return count;
 }
