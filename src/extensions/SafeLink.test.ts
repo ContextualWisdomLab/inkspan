@@ -111,6 +111,29 @@ describe('validateSafeLinkHref', () => {
     expect(String(error)).not.toContain('private/path');
   });
 
+  it('rejects accessor-backed resource configuration without evaluating the accessor', () => {
+    const getter = vi.fn(() => 8);
+    const options = Object.defineProperty({}, 'maxHrefBytes', {
+      enumerable: true,
+      get: getter,
+    });
+
+    let error: unknown;
+    try {
+      validateSafeLinkHref('/private/path?token=secret', options as never);
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(SafeLinkHrefError);
+    expect(error).toMatchObject({
+      code: 'invalid_configuration',
+      hrefPreview: '<configuration>',
+    });
+    expect(String(error)).not.toContain('private/path');
+    expect(getter).not.toHaveBeenCalled();
+  });
+
   it.each([
     null,
     42,
