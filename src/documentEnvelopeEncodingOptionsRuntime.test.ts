@@ -36,6 +36,15 @@ describe('document envelope encoding option runtime boundary', () => {
     expectInvalidOptions([]);
   });
 
+  it('rejects exotic object prototypes instead of treating them as empty options', () => {
+    expectInvalidOptions(new Date(0));
+
+    class HostOptions {
+      maxUtf8Bytes = 1024;
+    }
+    expectInvalidOptions(new HostOptions());
+  });
+
   it('rejects unknown string and symbol keys instead of silently defaulting', () => {
     expectInvalidOptions({ maxUTF8Bytes: 1024 });
     expectInvalidOptions({ [Symbol('private option')]: 1024 });
