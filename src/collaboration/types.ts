@@ -3,9 +3,15 @@ import type { CwlEditorProps } from '../types.js';
 
 /** Public, non-sensitive identity propagated through collaboration awareness. */
 export interface CollaborationUser {
-  /** Descriptive nonnumeric public identifier, stable for the collaboration session. */
+  /**
+   * Descriptive nonnumeric public identifier, stable for the collaboration
+   * session and limited to 80 Unicode code points.
+   */
   userId: string;
-  /** Human-readable name shown beside the remote caret. */
+  /**
+   * Human-readable name shown beside the remote caret. Inkspan trims it and
+   * publishes/renders at most 80 Unicode code points.
+   */
   displayName: string;
   /** Six-digit hexadecimal caret color, for example `#2563eb`. */
   cursorColor: string;
