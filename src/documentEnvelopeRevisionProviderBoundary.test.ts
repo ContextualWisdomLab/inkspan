@@ -2,8 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDocumentEnvelope } from './documentEnvelope.js';
 import {
   createDocumentEnvelopeRevision,
+  createDocumentEnvelopeRevisionBytes,
   type DocumentEnvelopeDigestProvider,
 } from './documentEnvelopeRevision.js';
+import {
+  createDocumentEnvelopeRevisionEvidence,
+  createDocumentEnvelopeRevisionEvidenceBytes,
+} from './documentRevisionEvidence.js';
 
 const ENVELOPE = createDocumentEnvelope({
   type: 'doc',
@@ -14,6 +19,8 @@ const ENVELOPE = createDocumentEnvelope({
     },
   ],
 });
+
+const DIGEST_FAILURE = 'Document envelope SHA-256 digest could not be created';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -26,7 +33,7 @@ describe('document revision digest-provider capability boundary', () => {
 
     await expect(
       createDocumentEnvelopeRevision(ENVELOPE, undefined, provider),
-    ).rejects.toThrow('Document envelope SHA-256 digest could not be created');
+    ).rejects.toThrow(DIGEST_FAILURE);
 
     expect(encode).not.toHaveBeenCalled();
   });
@@ -44,10 +51,48 @@ describe('document revision digest-provider capability boundary', () => {
 
     await expect(
       createDocumentEnvelopeRevision(ENVELOPE, undefined, provider),
-    ).rejects.toThrow('Document envelope SHA-256 digest could not be created');
+    ).rejects.toThrow(DIGEST_FAILURE);
 
     expect(digestReads).toBe(1);
     expect(encode).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unusable provider before object and byte source processing', async () => {
+    let sourceReads = 0;
+    const source = new Proxy(ENVELOPE, {
+      ownKeys(target) {
+        sourceReads += 1;
+        return Reflect.ownKeys(target);
+      },
+      getOwnPropertyDescriptor(target, property) {
+        sourceReads += 1;
+        return Reflect.getOwnPropertyDescriptor(target, property);
+      },
+      get(target, property, receiver) {
+        sourceReads += 1;
+        return Reflect.get(target, property, receiver);
+      },
+    });
+    const provider = { digest: 7 } as unknown as DocumentEnvelopeDigestProvider;
+
+    await expect(
+      createDocumentEnvelopeRevision(source, undefined, provider),
+    ).rejects.toThrow(DIGEST_FAILURE);
+    await expect(
+      createDocumentEnvelopeRevisionEvidence(source, undefined, provider),
+    ).rejects.toThrow(DIGEST_FAILURE);
+    expect(sourceReads).toBe(0);
+
+    await expect(
+      createDocumentEnvelopeRevisionBytes('invalid byte source', undefined, provider),
+    ).rejects.toThrow(DIGEST_FAILURE);
+    await expect(
+      createDocumentEnvelopeRevisionEvidenceBytes(
+        'invalid byte source',
+        undefined,
+        provider,
+      ),
+    ).rejects.toThrow(DIGEST_FAILURE);
   });
 
   it('resolves an accessor-backed callable once and preserves its receiver', async () => {
