@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   markdownToEmailHtml,
   type MarkdownToEmailHtmlOptions,
-} from './serializer.js';
+} from './resourceBoundMarkdown.js';
 
 afterEach(() => {
   vi.restoreAllMocks();
