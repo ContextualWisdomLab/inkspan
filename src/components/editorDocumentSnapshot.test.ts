@@ -276,6 +276,43 @@ describe('createEditorDocumentSnapshot', () => {
     );
   });
 
+  it('rejects a missing array index even when an extra key hides the key-count mismatch', () => {
+    const metadata = new Array<unknown>(2) as unknown[] & Record<string, unknown>;
+    metadata[1] = 'present';
+    metadata.privateExtensionMetadata = 'must-not-survive';
+    const documentJson = { type: 'doc', metadata };
+    const editor = {
+      getHTML: () => '<p>Hello</p>',
+      getJSON: () => documentJson,
+      isEmpty: false,
+    } as unknown as Editor;
+
+    expect(() => createEditorDocumentSnapshot(editor, 'markdown')).toThrowError(
+      new RangeError('Editor document JSON arrays must contain dense elements only.'),
+    );
+  });
+
+  it('redacts hostile array length-descriptor failures', () => {
+    const metadata = new Proxy(['present'], {
+      getOwnPropertyDescriptor(target, key) {
+        if (key === 'length') {
+          throw new Error('private array length trap');
+        }
+        return Reflect.getOwnPropertyDescriptor(target, key);
+      },
+    });
+    const documentJson = { type: 'doc', metadata };
+    const editor = {
+      getHTML: () => '<p>Hello</p>',
+      getJSON: () => documentJson,
+      isEmpty: false,
+    } as unknown as Editor;
+
+    expect(() => createEditorDocumentSnapshot(editor, 'markdown')).toThrowError(
+      new RangeError('Editor document JSON arrays must contain dense elements only.'),
+    );
+  });
+
   it('preserves null-prototype JSON objects', () => {
     const metadata = Object.create(null) as Record<string, unknown>;
     metadata.classification = 'internal';
