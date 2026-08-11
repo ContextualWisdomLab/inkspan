@@ -1,4 +1,5 @@
 import {
+  DEFAULT_DOCUMENT_ENVELOPE_LIMITS,
   DocumentEnvelopeError,
   parseDocumentEnvelope,
   type CwlEditorDocumentEnvelope,
@@ -16,10 +17,20 @@ type CanonicalJsonValue =
   | readonly CanonicalJsonValue[]
   | CanonicalJsonObject;
 
+/** Resource options for canonical document-envelope byte encoding. */
+export interface DocumentEnvelopeEncodingOptions {
+  /** Maximum canonical UTF-8 bytes returned by the encoder. Defaults to 64 MiB. */
+  readonly maxUtf8Bytes?: number;
+}
+
 const INVALID_UNICODE_MESSAGE =
   'Document envelope must contain valid Unicode scalar strings';
 const NEGATIVE_ZERO_MESSAGE =
   'Document envelope must not contain negative zero';
+const INVALID_OUTPUT_LIMIT_MESSAGE =
+  'Canonical document envelope UTF-8 byte limit must be a positive safe integer';
+const OUTPUT_LIMIT_EXCEEDED_MESSAGE =
+  'Canonical document envelope exceeds the configured UTF-8 byte limit';
 
 /**
  * Serialize a valid Inkspan envelope to deterministic RFC 8785 JSON.
@@ -33,11 +44,15 @@ export function serializeDocumentEnvelope(source: unknown): string {
   return serializeValidatedDocumentEnvelope(parseDocumentEnvelope(source));
 }
 
-/** Encode a canonical Inkspan envelope as UTF-8 bytes without a BOM. */
+/** Encode a canonical Inkspan envelope as bounded UTF-8 bytes without a BOM. */
 export function encodeDocumentEnvelope(
   source: unknown,
+  options: DocumentEnvelopeEncodingOptions = {},
 ): Uint8Array<ArrayBuffer> {
-  return encodeValidatedDocumentEnvelope(parseDocumentEnvelope(source));
+  return encodeValidatedDocumentEnvelope(
+    parseDocumentEnvelope(source),
+    options,
+  );
 }
 
 /**
@@ -57,10 +72,38 @@ export function serializeValidatedDocumentEnvelope(
 /** Encode an already-validated envelope without repeating graph validation. */
 export function encodeValidatedDocumentEnvelope(
   envelope: CwlEditorDocumentEnvelope,
+  options: DocumentEnvelopeEncodingOptions = {},
 ): Uint8Array<ArrayBuffer> {
-  return new TextEncoder().encode(
-    serializeValidatedDocumentEnvelope(envelope),
-  );
+  const maxUtf8Bytes = resolveCanonicalOutputMaxBytes(options.maxUtf8Bytes);
+  const serialized = serializeValidatedDocumentEnvelope(envelope);
+
+  // Every valid UTF-8 encoding uses at least one byte per UTF-16 code unit.
+  // Reject the common/obvious oversize case before allocating encoded bytes.
+  if (serialized.length > maxUtf8Bytes) {
+    throw new DocumentEnvelopeError(OUTPUT_LIMIT_EXCEEDED_MESSAGE);
+  }
+
+  const encoded = new TextEncoder().encode(serialized);
+  if (encoded.byteLength > maxUtf8Bytes) {
+    throw new DocumentEnvelopeError(OUTPUT_LIMIT_EXCEEDED_MESSAGE);
+  }
+  return encoded;
+}
+
+function resolveCanonicalOutputMaxBytes(
+  configuredMaxUtf8Bytes: number | undefined,
+): number {
+  if (configuredMaxUtf8Bytes === undefined) {
+    return DEFAULT_DOCUMENT_ENVELOPE_LIMITS.maxUtf8Bytes;
+  }
+  if (
+    typeof configuredMaxUtf8Bytes !== 'number' ||
+    !Number.isSafeInteger(configuredMaxUtf8Bytes) ||
+    configuredMaxUtf8Bytes <= 0
+  ) {
+    throw new DocumentEnvelopeError(INVALID_OUTPUT_LIMIT_MESSAGE);
+  }
+  return configuredMaxUtf8Bytes;
 }
 
 function serializeCanonicalValue(value: CanonicalJsonValue): string {
