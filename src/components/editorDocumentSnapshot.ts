@@ -17,6 +17,14 @@ const INVALID_DOCUMENT_JSON_CONTAINER_MESSAGE =
 const INVALID_DOCUMENT_JSON_PROPERTY_MESSAGE =
   'Editor document JSON must contain data properties only.';
 
+function isJsonArray(value: object): boolean {
+  try {
+    return Array.isArray(value);
+  } catch {
+    throw new RangeError(INVALID_DOCUMENT_JSON_CONTAINER_MESSAGE);
+  }
+}
+
 function assertPlainJsonContainer(value: object): void {
   try {
     const prototype = Object.getPrototypeOf(value);
@@ -90,7 +98,7 @@ function freezeDocumentJson(
       throw new RangeError('Editor document JSON must be acyclic.');
     }
 
-    const isArray = Array.isArray(frame.value);
+    const isArray = isJsonArray(frame.value);
     if (!isArray) {
       assertPlainJsonContainer(frame.value);
     }
