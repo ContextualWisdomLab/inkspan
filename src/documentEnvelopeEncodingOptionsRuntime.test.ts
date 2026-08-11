@@ -84,13 +84,28 @@ describe('document envelope encoding option runtime boundary', () => {
     expectInvalidOptions(hostileOptions);
   });
 
-  it('preserves omitted, empty, and exact data-property options', () => {
+  it('preserves omitted, empty, exact data-property, and null-prototype options', () => {
     expect(encodeDocumentEnvelope(ENVELOPE).byteLength).toBeGreaterThan(0);
     expect(encodeDocumentEnvelope(ENVELOPE, {}).byteLength).toBeGreaterThan(0);
     expect(
       encodeDocumentEnvelope(ENVELOPE, {
         maxUtf8Bytes: 1024,
       }).byteLength,
+    ).toBeGreaterThan(0);
+
+    const nullPrototypeOptions = Object.create(null) as Record<
+      string,
+      unknown
+    >;
+    Object.defineProperty(nullPrototypeOptions, 'maxUtf8Bytes', {
+      enumerable: true,
+      value: 1024,
+    });
+    expect(
+      encodeDocumentEnvelope(
+        ENVELOPE,
+        nullPrototypeOptions as DocumentEnvelopeEncodingOptions,
+      ).byteLength,
     ).toBeGreaterThan(0);
   });
 });
