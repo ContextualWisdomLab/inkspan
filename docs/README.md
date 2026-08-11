@@ -31,6 +31,10 @@ Root `SECURITY.md` is now implemented on protected `main` and remains the normat
 
 Dated reassessments capture a reviewed source generation and its active or operational deltas without placing mutable workflow-run identities into timeless architecture. They do not override protected `main`, accepted ADRs, or current exact-head evidence.
 
+## Active implementation records
+
+Active-PR doctoring must remain explicitly non-shipped and must not replace the protected-main authority above. The current autosave reliability proposal is recorded in [`doctoring/durable-etag-resource-boundary.md`](doctoring/durable-etag-resource-boundary.md); its 64 Ki local validator ceiling is **Active PR / Proposed** until integrated into protected `main` with required exact-head evidence.
+
 ## Status discipline
 
 Use these terms consistently:
