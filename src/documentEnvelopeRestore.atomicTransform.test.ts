@@ -119,13 +119,16 @@ describe('atomic document-envelope restore under transaction transforms', () => 
     });
 
     try {
+      editor.commands.setTextSelection(5);
       const originalDocument = editor.state.doc;
+      const originalSelection = editor.state.selection;
 
       expect(() =>
         restoreDocumentEnvelope(editor, requestedRestoreEnvelope()),
       ).toThrow(DocumentEnvelopeRestoreError);
       expect(matchingApplications).toBe(2);
       expect(editor.state.doc.eq(originalDocument)).toBe(true);
+      expect(editor.state.selection.eq(originalSelection)).toBe(true);
     } finally {
       editor.destroy();
     }
