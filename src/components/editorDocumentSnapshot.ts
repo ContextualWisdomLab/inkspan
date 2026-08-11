@@ -16,6 +16,9 @@ const INVALID_DOCUMENT_JSON_CONTAINER_MESSAGE =
   'Editor document JSON must contain plain objects and arrays only.';
 const INVALID_DOCUMENT_JSON_PROPERTY_MESSAGE =
   'Editor document JSON must contain data properties only.';
+const INVALID_DOCUMENT_JSON_VALUE_MESSAGE =
+  'Editor document JSON must contain JSON-compatible values only.';
+const JSON_SCALAR_TYPES = new Set(['string', 'boolean']);
 
 function isJsonArray(value: object): boolean {
   try {
@@ -63,6 +66,13 @@ function ownJsonDataProperty(
     throw new RangeError(INVALID_DOCUMENT_JSON_PROPERTY_MESSAGE);
   }
   return descriptor;
+}
+
+function assertJsonCompatiblePrimitive(value: unknown): void {
+  const valueType = typeof value;
+  if (value === null || JSON_SCALAR_TYPES.has(valueType)) return;
+  if (valueType === 'number' && Number.isFinite(value)) return;
+  throw new RangeError(INVALID_DOCUMENT_JSON_VALUE_MESSAGE);
 }
 
 function freezeJsonContainer(value: object): void {
@@ -113,6 +123,8 @@ function freezeDocumentJson(
       const nestedValue = descriptor.value as unknown;
       if (nestedValue !== null && typeof nestedValue === 'object') {
         pendingFrames.push({ value: nestedValue, exiting: false });
+      } else {
+        assertJsonCompatiblePrimitive(nestedValue);
       }
     }
   }
@@ -128,11 +140,12 @@ function freezeDocumentJson(
  * host persistence, indexing, and AI workflows cannot mutate shared state.
  * Cyclic custom-extension metadata is rejected before an active object is
  * traversed again. Only arrays and plain/null-prototype objects containing
- * enumerable string data properties are accepted, including plain objects from
- * another JavaScript realm; exotic containers, accessors, symbol keys, hidden
- * custom metadata, and hostile reflection traps cannot escape the same
- * deterministic payload-redacted JSON snapshot boundary. Shared acyclic
- * references remain supported.
+ * enumerable string data properties and lossless JSON-compatible primitive
+ * values are accepted, including plain objects from another JavaScript realm;
+ * exotic containers, accessors, symbol keys, hidden custom metadata,
+ * unsupported primitive values, non-finite numbers, and hostile reflection
+ * traps cannot escape the same deterministic payload-redacted JSON snapshot
+ * boundary. Shared acyclic references remain supported.
  */
 export function createEditorDocumentSnapshot(
   editor: Editor | null,
