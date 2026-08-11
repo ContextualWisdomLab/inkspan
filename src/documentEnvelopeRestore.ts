@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/react';
+import type { EditorState } from '@tiptap/pm/state';
 import {
   parseDocumentEnvelope,
   parseDocumentEnvelopeBytes,
@@ -109,10 +110,11 @@ export function restoreDocumentEnvelopeBytes(
  * or host policy reasons, while append-transaction hooks may transform an
  * otherwise accepted replacement. Preview those document-policy semantics on
  * detached state first so a known rejection/transformation cannot partially
- * mutate the live editor. If a stateful/non-deterministic hook diverges only at
- * live dispatch, restore the captured local editor state before failing. The
- * rollback is intentionally local; Inkspan does not claim authority over any
- * external side effect a host plugin may have emitted during dispatch.
+ * mutate the live editor. If live dispatch either diverges or throws after the
+ * view has already accepted the replacement, restore the captured local editor
+ * state before reporting one payload-redacted restore failure. The rollback is
+ * intentionally local; Inkspan does not claim authority over external effects
+ * a host plugin or observer may have emitted during dispatch.
  */
 export function applyPreparedDocumentEnvelope(
   editor: Editor,
@@ -131,12 +133,26 @@ export function applyPreparedDocumentEnvelope(
     throw new DocumentEnvelopeRestoreError();
   }
 
-  editor.commands.setContent(prepared.documentNode, false);
+  try {
+    editor.commands.setContent(prepared.documentNode, false);
+  } catch {
+    restoreCapturedEditorState(editor, originalState);
+    throw new DocumentEnvelopeRestoreError();
+  }
   if (!editor.state.doc.eq(prepared.documentNode)) {
-    editor.view.updateState(originalState);
+    restoreCapturedEditorState(editor, originalState);
     throw new DocumentEnvelopeRestoreError();
   }
   return prepared.envelope;
+}
+
+/** Best-effort local rollback that never reflects host callback/plugin failures. */
+function restoreCapturedEditorState(editor: Editor, state: EditorState): void {
+  try {
+    editor.view.updateState(state);
+  } catch {
+    // A hostile or failing plugin view must not replace the redacted restore error.
+  }
 }
 
 type DocumentEnvelopePreparation = (
