@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Lexer } from 'marked';
 import {
   markdownToEditorHtml,
+  markdownToEmailHtml,
   markdownToHtml,
+  normalizeMarkdown,
 } from './resourceBoundMarkdown.js';
 import {
   DEFAULT_MARKDOWN_TO_HTML_MAX_BYTES,
@@ -98,5 +100,45 @@ describe('Markdown parser resource bounds', () => {
     );
     expect(encode).not.toHaveBeenCalled();
     expect(lex).not.toHaveBeenCalled();
+  });
+
+  it('honors a caller ceiling for Markdown normalization before Marked materialization', () => {
+    const lex = vi.spyOn(Lexer, 'lex');
+    const normalizeWithOptions = normalizeMarkdown as unknown as (
+      markdown: string,
+      options: { maxMarkdownBytes: number },
+    ) => string;
+    let failure: unknown;
+
+    try {
+      normalizeWithOptions('12345', { maxMarkdownBytes: 4 });
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(lex).not.toHaveBeenCalled();
+    expect(failure).toMatchObject({
+      name: 'MarkdownToHtmlResourceError',
+      code: 'input_too_large',
+      message: 'Markdown-to-HTML input exceeds the configured byte limit.',
+    });
+  });
+
+  it('honors a caller ceiling for email conversion before Marked materialization', () => {
+    const lex = vi.spyOn(Lexer, 'lex');
+    let failure: unknown;
+
+    try {
+      markdownToEmailHtml('12345', { maxMarkdownBytes: 4 } as never);
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(lex).not.toHaveBeenCalled();
+    expect(failure).toMatchObject({
+      name: 'MarkdownToHtmlResourceError',
+      code: 'input_too_large',
+      message: 'Markdown-to-HTML input exceeds the configured byte limit.',
+    });
   });
 });
