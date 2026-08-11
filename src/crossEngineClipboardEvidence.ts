@@ -189,6 +189,15 @@ const REQUIRED_ENGINES: readonly CrossEngineClipboardEngine[] = Object.freeze([
   'firefox',
   'webkit',
 ]);
+const MAX_DOCUMENT_EVIDENCE_DEPTH = 128;
+const MAX_DOCUMENT_EVIDENCE_VALUES = 10_000;
+const INVALID_DOCUMENT_EVIDENCE_MESSAGE =
+  'Cross-engine clipboard document evidence must be bounded acyclic JSON.';
+
+interface CanonicalizationState {
+  readonly active: Set<object>;
+  values: number;
+}
 
 /**
  * Require exact rich-clipboard parity across one observation from every engine.
@@ -244,20 +253,57 @@ export function assertCrossEngineClipboardConsensus(
   }
 }
 
-/** Serialize JSON values with recursively sorted object member names. */
+/** Serialize bounded acyclic JSON values with recursively sorted object names. */
 function canonicalJson(value: unknown): string {
-  return JSON.stringify(canonicalizeJson(value));
+  const state: CanonicalizationState = {
+    active: new Set<object>(),
+    values: 0,
+  };
+  try {
+    const canonical = canonicalizeJson(value, state, 0);
+    const serialized = JSON.stringify(canonical);
+    if (serialized === undefined) throw new TypeError('not JSON');
+    return serialized;
+  } catch {
+    throw new Error(INVALID_DOCUMENT_EVIDENCE_MESSAGE);
+  }
 }
 
-/** Preserve array order and values while normalizing unordered JSON object members. */
-function canonicalizeJson(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonicalizeJson);
+/** Preserve array order while bounding and normalizing JSON object members. */
+function canonicalizeJson(
+  value: unknown,
+  state: CanonicalizationState,
+  depth: number,
+): unknown {
+  state.values += 1;
+  if (
+    state.values > MAX_DOCUMENT_EVIDENCE_VALUES ||
+    depth > MAX_DOCUMENT_EVIDENCE_DEPTH
+  ) {
+    throw new Error(INVALID_DOCUMENT_EVIDENCE_MESSAGE);
+  }
+
+  if (Array.isArray(value)) {
+    if (state.active.has(value)) throw new Error(INVALID_DOCUMENT_EVIDENCE_MESSAGE);
+    state.active.add(value);
+    try {
+      return value.map((item) => canonicalizeJson(item, state, depth + 1));
+    } finally {
+      state.active.delete(value);
+    }
+  }
   if (value === null || typeof value !== 'object') return value;
 
-  const record = value as Record<string, unknown>;
-  return Object.fromEntries(
-    Object.keys(record)
-      .sort()
-      .map((key) => [key, canonicalizeJson(record[key])]),
-  );
+  if (state.active.has(value)) throw new Error(INVALID_DOCUMENT_EVIDENCE_MESSAGE);
+  state.active.add(value);
+  try {
+    const record = value as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.keys(record)
+        .sort()
+        .map((key) => [key, canonicalizeJson(record[key], state, depth + 1)]),
+    );
+  } finally {
+    state.active.delete(value);
+  }
 }
