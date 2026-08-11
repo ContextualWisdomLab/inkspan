@@ -96,18 +96,20 @@ describe('editor accessibility metadata resource boundary', () => {
     ).toBe('EN-us');
   });
 
-  it.each(['x-private', 'i-klingon', 'zh-cmn-Hans-CN'])(
-    'preserves well-formed RFC 5646 language tag %s',
-    (languageTag) => {
-      expect(
-        buildEditorAccessibilityAttributes({
-          defaultLabel: 'Editor',
-          editable: true,
-          languageTag: `  ${languageTag}  `,
-        }).lang,
-      ).toBe(languageTag);
-    },
-  );
+  it.each([
+    'x-private',
+    'i-klingon',
+    'zh-cmn-Hans-CN',
+    'en-US-x-private',
+  ])('preserves well-formed RFC 5646 language tag %s', (languageTag) => {
+    expect(
+      buildEditorAccessibilityAttributes({
+        defaultLabel: 'Editor',
+        editable: true,
+        languageTag: `  ${languageTag}  `,
+      }).lang,
+    ).toBe(languageTag);
+  });
 
   it.each(['de-DE-1901-1901', 'en-a-bbb-a-ccc'])(
     'rejects RFC 5646 tag with repeated variant or extension singleton: %s',
