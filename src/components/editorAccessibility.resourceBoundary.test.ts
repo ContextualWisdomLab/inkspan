@@ -7,6 +7,8 @@ import {
 const ACCESSIBILITY_METADATA_MAX_CODE_UNITS = 65_536;
 const INVALID_ACCESSIBILITY_METADATA_MESSAGE =
   'Accessibility metadata must be a string within the supported length.';
+const INVALID_LANGUAGE_TAG_MESSAGE =
+  'Accessibility language tag must be valid BCP 47 metadata.';
 
 function attributesWithAriaLabel(value: unknown): Record<string, string> {
   return buildEditorAccessibilityAttributes({
@@ -64,5 +66,33 @@ describe('editor accessibility metadata resource boundary', () => {
       'aria-readonly': 'false',
       'aria-label': 'Editor',
     });
+  });
+
+  it('rejects malformed editor language tags without reflecting the payload', () => {
+    const privateMarker = 'private-invalid-language-marker';
+    let failure: unknown;
+
+    try {
+      buildEditorAccessibilityAttributes({
+        defaultLabel: 'Editor',
+        editable: true,
+        languageTag: `${privateMarker} not-a-tag`,
+      });
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(failure).toEqual(new RangeError(INVALID_LANGUAGE_TAG_MESSAGE));
+    expect(String(failure)).not.toContain(privateMarker);
+  });
+
+  it('validates but does not canonicalize accepted language tag spelling', () => {
+    expect(
+      buildEditorAccessibilityAttributes({
+        defaultLabel: 'Editor',
+        editable: true,
+        languageTag: '  EN-us  ',
+      }).lang,
+    ).toBe('EN-us');
   });
 });
