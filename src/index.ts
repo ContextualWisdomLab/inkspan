@@ -158,6 +158,7 @@ export {
 export type {
   MarkdownToEmailHtmlOptions,
   MarkdownToHtmlOptions,
+  NormalizeMarkdownOptions,
 } from './markdown/resourceBoundMarkdown.js';
 export {
   DEFAULT_HTML_TO_MARKDOWN_MAX_BYTES,
