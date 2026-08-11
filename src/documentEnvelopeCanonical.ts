@@ -27,6 +27,8 @@ const INVALID_UNICODE_MESSAGE =
   'Document envelope must contain valid Unicode scalar strings';
 const NEGATIVE_ZERO_MESSAGE =
   'Document envelope must not contain negative zero';
+const INVALID_ENCODING_OPTIONS_MESSAGE =
+  'Canonical document envelope encoding options are invalid';
 const INVALID_OUTPUT_LIMIT_MESSAGE =
   'Canonical document envelope UTF-8 byte limit must be a positive safe integer';
 const OUTPUT_LIMIT_EXCEEDED_MESSAGE =
@@ -74,7 +76,7 @@ export function encodeValidatedDocumentEnvelope(
   envelope: CwlEditorDocumentEnvelope,
   options: DocumentEnvelopeEncodingOptions = {},
 ): Uint8Array<ArrayBuffer> {
-  const maxUtf8Bytes = resolveCanonicalOutputMaxBytes(options.maxUtf8Bytes);
+  const maxUtf8Bytes = resolveCanonicalOutputMaxBytes(options);
   const serialized = serializeValidatedDocumentEnvelope(envelope);
 
   // Every valid UTF-8 encoding uses at least one byte per UTF-16 code unit.
@@ -91,8 +93,9 @@ export function encodeValidatedDocumentEnvelope(
 }
 
 function resolveCanonicalOutputMaxBytes(
-  configuredMaxUtf8Bytes: number | undefined,
+  options: DocumentEnvelopeEncodingOptions,
 ): number {
+  const configuredMaxUtf8Bytes = readCanonicalOutputMaxBytesOption(options);
   if (configuredMaxUtf8Bytes === undefined) {
     return DEFAULT_DOCUMENT_ENVELOPE_LIMITS.maxUtf8Bytes;
   }
@@ -104,6 +107,37 @@ function resolveCanonicalOutputMaxBytes(
     throw new DocumentEnvelopeError(INVALID_OUTPUT_LIMIT_MESSAGE);
   }
   return configuredMaxUtf8Bytes;
+}
+
+function readCanonicalOutputMaxBytesOption(
+  options: DocumentEnvelopeEncodingOptions,
+): unknown {
+  try {
+    if (
+      typeof options !== 'object' ||
+      options === null ||
+      Array.isArray(options)
+    ) {
+      throw new TypeError('invalid encoding options container');
+    }
+
+    const keys = Reflect.ownKeys(options);
+    if (keys.some((key) => key !== 'maxUtf8Bytes')) {
+      throw new TypeError('unsupported encoding option');
+    }
+    if (keys.length === 0) return undefined;
+
+    const descriptor = Object.getOwnPropertyDescriptor(
+      options,
+      'maxUtf8Bytes',
+    ) as PropertyDescriptor;
+    if (!descriptor.enumerable || !('value' in descriptor)) {
+      throw new TypeError('invalid encoding option property');
+    }
+    return descriptor.value as unknown;
+  } catch {
+    throw new DocumentEnvelopeError(INVALID_ENCODING_OPTIONS_MESSAGE);
+  }
 }
 
 function serializeCanonicalValue(value: CanonicalJsonValue): string {
