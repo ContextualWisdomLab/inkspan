@@ -26,6 +26,59 @@ describe('runtime image configuration', () => {
     },
   );
 
+  it.each([null, [], 'invalid', 0, false])(
+    'rejects malformed image configuration containers without coercion',
+    (image) => {
+      expect(() => buildExtensions({ image: image as never })).toThrowError(
+        new RangeError('Image configuration is invalid.'),
+      );
+    },
+  );
+
+  it('rejects accessor-backed image configuration without evaluating the accessor', () => {
+    let reads = 0;
+    const image = {};
+    Object.defineProperty(image, 'maxSizeBytes', {
+      enumerable: true,
+      get() {
+        reads += 1;
+        return 1024;
+      },
+    });
+
+    expect(() => buildExtensions({ image })).toThrowError(
+      new RangeError('Image configuration is invalid.'),
+    );
+    expect(reads).toBe(0);
+  });
+
+  it('rejects non-enumerable image configuration data properties', () => {
+    const image = {};
+    Object.defineProperty(image, 'quality', {
+      enumerable: false,
+      value: 0.8,
+    });
+
+    expect(() => buildExtensions({ image })).toThrowError(
+      new RangeError('Image configuration is invalid.'),
+    );
+  });
+
+  it('redacts reflection failures at the image configuration boundary', () => {
+    const image = new Proxy(
+      {},
+      {
+        getOwnPropertyDescriptor() {
+          throw new Error('private reflection detail');
+        },
+      },
+    );
+
+    expect(() => buildExtensions({ image })).toThrowError(
+      new RangeError('Image configuration is invalid.'),
+    );
+  });
+
   it('preserves valid disabled and boundary configuration', () => {
     const image = buildExtensions({
       image: { maxSizeBytes: 0, maxDimension: 0, quality: 1 },
