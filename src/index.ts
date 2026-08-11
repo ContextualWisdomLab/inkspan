@@ -138,11 +138,17 @@ export {
 } from './extensions/SafeClipboardExtension.js';
 export type { SafeClipboardOptions } from './extensions/SafeClipboardExtension.js';
 export {
+  DEFAULT_SAFE_LINK_MAX_HREF_BYTES,
+  MAXIMUM_SAFE_LINK_MAX_HREF_BYTES,
   SafeLink,
   SafeLinkHrefError,
   isSafeLinkHref,
   safeLinkPluginKey,
   validateSafeLinkHref,
+} from './extensions/SafeLink.js';
+export type {
+  SafeLinkHrefErrorCode,
+  SafeLinkValidationOptions,
 } from './extensions/SafeLink.js';
 export { buildExtensions } from './extensions/kit.js';
 export type { BuildExtensionsOptions } from './extensions/kit.js';
