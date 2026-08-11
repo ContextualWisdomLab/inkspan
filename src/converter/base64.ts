@@ -59,6 +59,8 @@ export interface ParsedDataUri {
 }
 
 const DATA_URI_RE = /^data:([^;,]*)?((?:;[^;,]+)*)?,([\s\S]*)$/;
+const CANONICAL_BASE64_RE =
+  /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
 const hasBuffer = typeof globalThis.Buffer !== 'undefined';
 
@@ -190,6 +192,16 @@ function assertSize(bytes: number, maxBytes?: number): void {
   }
 }
 
+function canonicalBase64DecodedByteLength(payload: string): number | undefined {
+  if (!CANONICAL_BASE64_RE.test(payload)) return undefined;
+  const padding = payload.endsWith('==')
+    ? 2
+    : payload.endsWith('=')
+      ? 1
+      : 0;
+  return (payload.length / 4) * 3 - padding;
+}
+
 /**
  * Encode raw bytes (ArrayBuffer / typed array / Uint8Array) into a base64
  * data URI. MIME is taken from `options.mimeType`, otherwise sniffed, otherwise
@@ -300,6 +312,12 @@ export function dataUriToBytes(
   const { mimeType, isBase64, payload } = parseDataUri(dataUri);
   let bytes: Uint8Array;
   if (isBase64) {
+    if (typeof options.maxBytes === 'number') {
+      const decodedLength = canonicalBase64DecodedByteLength(payload);
+      if (decodedLength !== undefined) {
+        assertSize(decodedLength, options.maxBytes);
+      }
+    }
     bytes = base64ToBytes(payload);
   } else {
     // Non-base64 data URIs carry percent-encoded text. `decodeURIComponent`
