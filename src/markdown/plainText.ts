@@ -1,4 +1,8 @@
 import { Marked } from 'marked';
+import {
+  assertMarkdownToHtmlInputSize,
+  resolveMarkdownToHtmlMaxBytes,
+} from './markdownToHtmlResourcePolicy.js';
 import { htmlToMarkdown } from './serializer.js';
 
 const plainTextMarked = new Marked({
@@ -67,6 +71,10 @@ export interface PlainTextOptions {
    * Decorative images with an empty alternative remain silent.
    */
   includeImageAlt?: boolean;
+  /** Maximum UTF-8 Markdown bytes accepted before plain-text lexing. */
+  maxMarkdownBytes?: number;
+  /** Maximum UTF-8 HTML bytes accepted before HTML normalization. */
+  maxHtmlBytes?: number;
 }
 
 /**
@@ -82,6 +90,10 @@ export function markdownToPlainText(
   markdown: string,
   options: PlainTextOptions = {},
 ): string {
+  const maxMarkdownBytes = resolveMarkdownToHtmlMaxBytes(
+    options.maxMarkdownBytes,
+  );
+  assertMarkdownToHtmlInputSize(markdown, maxMarkdownBytes);
   const tokens = plainTextMarked.lexer(markdown) as unknown as PlainTextToken[];
   const state: PlainTextRenderState = {
     includeImageAlt: options.includeImageAlt !== false,
@@ -101,10 +113,14 @@ export function htmlToPlainText(
   html: string,
   options: PlainTextOptions = {},
 ): string {
-  return markdownToPlainText(
-    htmlToMarkdown(html, { includeImageAlt: options.includeImageAlt }),
-    options,
-  );
+  const markdown = htmlToMarkdown(html, {
+    includeImageAlt: options.includeImageAlt,
+    maxHtmlBytes: options.maxHtmlBytes,
+  });
+  return markdownToPlainText(markdown, {
+    includeImageAlt: options.includeImageAlt,
+    maxMarkdownBytes: options.maxMarkdownBytes,
+  });
 }
 
 /** Render an ordered token sequence while preserving block boundaries. */
