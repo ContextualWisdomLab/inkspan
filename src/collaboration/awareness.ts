@@ -27,12 +27,25 @@ const MAX_PUBLIC_IDENTIFIER_LENGTH = 80;
 
 /** Trim and bound a public cursor label without splitting Unicode code points. */
 function truncateCursorLabel(value: string): string {
-  return Array.from(value.trim()).slice(0, MAX_CURSOR_LABEL_LENGTH).join('');
+  const trimmed = value.trim();
+  let bounded = '';
+  let count = 0;
+  for (const codePoint of trimmed) {
+    if (count >= MAX_CURSOR_LABEL_LENGTH) break;
+    bounded += codePoint;
+    count += 1;
+  }
+  return bounded;
 }
 
-/** Count Unicode code points for bounded public awareness metadata. */
-function publicIdentifierLength(value: string): number {
-  return Array.from(value).length;
+/** Return whether public awareness metadata exceeds its Unicode code-point bound. */
+function exceedsPublicIdentifierLength(value: string): boolean {
+  let count = 0;
+  for (const _codePoint of value) {
+    count += 1;
+    if (count > MAX_PUBLIC_IDENTIFIER_LENGTH) return true;
+  }
+  return false;
 }
 
 /** Validate and serialize the only public fields permitted in awareness. */
@@ -49,7 +62,7 @@ export function serializeCollaborationUser(
   if (NUMERIC_IDENTIFIER_PATTERN.test(id)) {
     throw new Error('collaboration userId must be descriptive and nonnumeric');
   }
-  if (publicIdentifierLength(id) > MAX_PUBLIC_IDENTIFIER_LENGTH) {
+  if (exceedsPublicIdentifierLength(id)) {
     throw new Error(
       'collaboration userId must be at most 80 Unicode code points',
     );
@@ -168,7 +181,7 @@ export function countRemoteCollaborators(
     if (
       normalizedId === '' ||
       NUMERIC_IDENTIFIER_PATTERN.test(normalizedId) ||
-      publicIdentifierLength(normalizedId) > MAX_PUBLIC_IDENTIFIER_LENGTH
+      exceedsPublicIdentifierLength(normalizedId)
     ) {
       continue;
     }
