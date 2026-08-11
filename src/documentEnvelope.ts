@@ -180,6 +180,7 @@ function parseDocumentEnvelopeWithLimits(
         Number.MAX_SAFE_INTEGER,
         resolvedLimits.maxNestingDepth + 1,
       ),
+      maxStringCodeUnits: resolvedLimits.maxStringCodeUnits,
     });
     if (inspection === 'duplicate-object-name') {
       throw new DocumentEnvelopeError(
@@ -194,6 +195,11 @@ function parseDocumentEnvelopeWithLimits(
     if (inspection === 'nesting-depth-limit') {
       throw new DocumentEnvelopeError(
         'Document envelope exceeds the supported document nesting depth',
+      );
+    }
+    if (inspection === 'string-length-limit') {
+      throw new DocumentEnvelopeError(
+        'Document envelope strings exceed the supported length',
       );
     }
     try {
@@ -516,15 +522,4 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   }
   const prototype = Object.getPrototypeOf(value);
   return prototype === Object.prototype || prototype === null;
-}
-
-function withRedactedInspectionErrors<T>(operation: () => T): T {
-  try {
-    return operation();
-  } catch (error) {
-    if (error instanceof DocumentEnvelopeError) {
-      throw error;
-    }
-    throw new DocumentEnvelopeError(REDACTED_INSPECTION_ERROR);
-  }
 }
