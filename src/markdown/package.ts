@@ -5,22 +5,29 @@
  * runtime, collaboration providers, transport, persistence, credentials, and
  * model authority. It exposes only deterministic conversion/projection APIs.
  */
+export { htmlToMarkdown } from './serializer.js';
+export type { HtmlToMarkdownOptions } from './serializer.js';
 export {
-  htmlToMarkdown,
   markdownToEmailHtml,
   markdownToHtml,
   normalizeMarkdown,
-} from './serializer.js';
+} from './resourceBoundMarkdown.js';
 export type {
-  HtmlToMarkdownOptions,
   MarkdownToEmailHtmlOptions,
-} from './serializer.js';
+  MarkdownToHtmlOptions,
+} from './resourceBoundMarkdown.js';
 export {
   DEFAULT_HTML_TO_MARKDOWN_MAX_BYTES,
   MAXIMUM_HTML_TO_MARKDOWN_MAX_BYTES,
   HtmlToMarkdownResourceError,
 } from './htmlToMarkdownResourcePolicy.js';
 export type { HtmlToMarkdownResourceErrorCode } from './htmlToMarkdownResourcePolicy.js';
+export {
+  DEFAULT_MARKDOWN_TO_HTML_MAX_BYTES,
+  MAXIMUM_MARKDOWN_TO_HTML_MAX_BYTES,
+  MarkdownToHtmlResourceError,
+} from './markdownToHtmlResourcePolicy.js';
+export type { MarkdownToHtmlResourceErrorCode } from './markdownToHtmlResourcePolicy.js';
 export {
   htmlToPlainText,
   markdownToPlainText,
