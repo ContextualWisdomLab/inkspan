@@ -189,6 +189,9 @@ const REQUIRED_ENGINES: readonly CrossEngineClipboardEngine[] = Object.freeze([
   'firefox',
   'webkit',
 ]);
+const MAX_DOCUMENT_EVIDENCE_NESTING_DEPTH = 128;
+const DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR =
+  'Cross-engine clipboard document evidence exceeds the supported structure boundary.';
 
 /**
  * Require exact rich-clipboard parity across one observation from every engine.
@@ -246,18 +249,36 @@ export function assertCrossEngineClipboardConsensus(
 
 /** Serialize JSON values with recursively sorted object member names. */
 function canonicalJson(value: unknown): string {
-  return JSON.stringify(canonicalizeJson(value));
+  return JSON.stringify(canonicalizeJson(value, 0, new WeakSet<object>()));
 }
 
 /** Preserve array order and values while normalizing unordered JSON object members. */
-function canonicalizeJson(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonicalizeJson);
+function canonicalizeJson(
+  value: unknown,
+  depth: number,
+  active: WeakSet<object>,
+): unknown {
+  if (depth > MAX_DOCUMENT_EVIDENCE_NESTING_DEPTH) {
+    throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
+  }
   if (value === null || typeof value !== 'object') return value;
+  if (active.has(value)) {
+    throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
+  }
 
-  const record = value as Record<string, unknown>;
-  return Object.fromEntries(
-    Object.keys(record)
-      .sort()
-      .map((key) => [key, canonicalizeJson(record[key])]),
-  );
+  active.add(value);
+  try {
+    if (Array.isArray(value)) {
+      return value.map((item) => canonicalizeJson(item, depth + 1, active));
+    }
+
+    const record = value as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.keys(record)
+        .sort()
+        .map((key) => [key, canonicalizeJson(record[key], depth + 1, active)]),
+    );
+  } finally {
+    active.delete(value);
+  }
 }
