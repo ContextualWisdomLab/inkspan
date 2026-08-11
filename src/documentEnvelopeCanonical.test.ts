@@ -115,14 +115,10 @@ describe('canonical document envelope serialization', () => {
       attrs: { label: 'bounded-output' },
     });
     const encode = vi.spyOn(TextEncoder.prototype, 'encode');
-    const encodeWithLimits = encodeDocumentEnvelope as unknown as (
-      source: unknown,
-      limits: { maxUtf8Bytes: number },
-    ) => Uint8Array;
     let failure: unknown;
 
     try {
-      encodeWithLimits(envelope, { maxUtf8Bytes: 16 });
+      encodeDocumentEnvelope(envelope, { maxUtf8Bytes: 16 });
     } catch (error) {
       failure = error;
     }
@@ -132,6 +128,59 @@ describe('canonical document envelope serialization', () => {
     expect(failure).toMatchObject({
       message: 'Canonical document envelope exceeds the configured UTF-8 byte limit',
     });
+  });
+
+  it('exact-checks UTF-8 bytes when code-unit length alone fits', () => {
+    const envelope = createDocumentEnvelope({
+      type: 'doc',
+      attrs: { label: 'é' },
+    });
+    const serialized = serializeDocumentEnvelope(envelope);
+    const encode = vi.spyOn(TextEncoder.prototype, 'encode');
+
+    expect(() =>
+      encodeDocumentEnvelope(envelope, { maxUtf8Bytes: serialized.length }),
+    ).toThrowError(
+      'Canonical document envelope exceeds the configured UTF-8 byte limit',
+    );
+    expect(encode).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts canonical bytes exactly at the configured output ceiling', () => {
+    const envelope = createDocumentEnvelope({
+      type: 'doc',
+      attrs: { label: 'é' },
+    });
+    const serialized = serializeDocumentEnvelope(envelope);
+    const exactBytes = new TextEncoder().encode(serialized);
+
+    expect(
+      encodeDocumentEnvelope(envelope, { maxUtf8Bytes: exactBytes.byteLength }),
+    ).toEqual(exactBytes);
+  });
+
+  it.each([
+    ['wrong type', '16'],
+    ['fractional', 1.5],
+    ['zero', 0],
+  ])('fails closed for %s canonical output limits', (_label, maxUtf8Bytes) => {
+    const envelope = createDocumentEnvelope({
+      type: 'doc',
+      attrs: { label: 'private-document' },
+    });
+    let failure: unknown;
+
+    try {
+      encodeDocumentEnvelope(envelope, { maxUtf8Bytes } as never);
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(failure).toBeInstanceOf(DocumentEnvelopeError);
+    expect(failure).toMatchObject({
+      message: 'Canonical document envelope UTF-8 byte limit must be a positive safe integer',
+    });
+    expect(String(failure)).not.toContain('private-document');
   });
 
   it.each([
