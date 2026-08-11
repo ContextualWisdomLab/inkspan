@@ -109,27 +109,31 @@ export function restoreDocumentEnvelopeBytes(
  * or host policy reasons, while append-transaction hooks may transform an
  * otherwise accepted replacement. Preview those document-policy semantics on
  * detached state first so a known rejection/transformation cannot partially
- * mutate the live editor. The post-dispatch equality check remains defense in
- * depth for stateful or non-deterministic policy hooks.
+ * mutate the live editor. If a stateful/non-deterministic hook diverges only at
+ * live dispatch, restore the captured local editor state before failing. The
+ * rollback is intentionally local; Inkspan does not claim authority over any
+ * external side effect a host plugin may have emitted during dispatch.
  */
 export function applyPreparedDocumentEnvelope(
   editor: Editor,
   prepared: PreparedDocumentEnvelope,
 ): CwlEditorDocumentEnvelope {
-  const previewTransaction = editor.state.tr
+  const originalState = editor.state;
+  const previewTransaction = originalState.tr
     .replaceWith(
       0,
-      editor.state.doc.content.size,
+      originalState.doc.content.size,
       prepared.documentNode.content,
     )
     .setMeta('preventUpdate', true);
-  const previewState = editor.state.applyTransaction(previewTransaction).state;
+  const previewState = originalState.applyTransaction(previewTransaction).state;
   if (!previewState.doc.eq(prepared.documentNode)) {
     throw new DocumentEnvelopeRestoreError();
   }
 
   editor.commands.setContent(prepared.documentNode, false);
   if (!editor.state.doc.eq(prepared.documentNode)) {
+    editor.view.updateState(originalState);
     throw new DocumentEnvelopeRestoreError();
   }
   return prepared.envelope;
