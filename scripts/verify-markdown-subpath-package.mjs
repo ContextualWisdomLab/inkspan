@@ -158,12 +158,20 @@ assert.equal(
 );
 assert.equal(markdownToPlainText('**Alpha** [Beta](https://example.com)'), 'Alpha Beta');
 assert.equal(normalizeMarkdown('**Alpha**').includes('**Alpha**'), true);
+assert.throws(
+  () => normalizeMarkdown('oversized', { maxMarkdownBytes: 4 }),
+  (error) => error instanceof MarkdownToHtmlResourceError && error.code === 'input_too_large',
+);
 const email = markdownToEmailHtml('Hello', {
   fullDocument: true,
   languageTag: 'ko-kr',
   textDirection: 'ltr',
 });
 assert.equal(email.includes('<html lang="ko-KR" dir="ltr">'), true);
+assert.throws(
+  () => markdownToEmailHtml('oversized', { maxMarkdownBytes: 4 }),
+  (error) => error instanceof MarkdownToHtmlResourceError && error.code === 'input_too_large',
+);
 delete globalThis.document;
 `,
     'utf8',
@@ -190,7 +198,15 @@ assert.throws(
   () => markdown.markdownToHtml('oversized', { maxMarkdownBytes: 4 }),
   (error) => error instanceof markdown.MarkdownToHtmlResourceError && error.code === 'input_too_large',
 );
+assert.throws(
+  () => markdown.normalizeMarkdown('oversized', { maxMarkdownBytes: 4 }),
+  (error) => error instanceof markdown.MarkdownToHtmlResourceError && error.code === 'input_too_large',
+);
 assert.equal(typeof markdown.markdownToEmailHtml, 'function');
+assert.throws(
+  () => markdown.markdownToEmailHtml('oversized', { maxMarkdownBytes: 4 }),
+  (error) => error instanceof markdown.MarkdownToHtmlResourceError && error.code === 'input_too_large',
+);
 assert.equal(markdown.markdownToPlainText('# Title'), 'Title');
 delete globalThis.document;
 `,
@@ -225,6 +241,7 @@ function verifyDeclarationConsumer() {
   type MarkdownToEmailHtmlOptions,
   type MarkdownToHtmlOptions,
   type MarkdownToHtmlResourceErrorCode,
+  type NormalizeMarkdownOptions,
   type PlainTextOptions,
 } from '${packageJson.name}/markdown';
 const htmlOptions: HtmlToMarkdownOptions = {
@@ -232,6 +249,7 @@ const htmlOptions: HtmlToMarkdownOptions = {
   maxHtmlBytes: 1024,
 };
 const markdownOptions: MarkdownToHtmlOptions = { maxMarkdownBytes: 1024 };
+const normalizeOptions: NormalizeMarkdownOptions = { maxMarkdownBytes: 1024 };
 const htmlErrorCode: HtmlToMarkdownResourceErrorCode = 'input_too_large';
 const htmlResourceError = new HtmlToMarkdownResourceError(htmlErrorCode);
 const markdownErrorCode: MarkdownToHtmlResourceErrorCode = 'input_too_large';
@@ -240,6 +258,7 @@ const emailOptions: MarkdownToEmailHtmlOptions = {
   fullDocument: true,
   languageTag: 'en-US',
   textDirection: 'ltr',
+  maxMarkdownBytes: 1024,
 };
 const plainOptions: PlainTextOptions = { includeImageAlt: true };
 void [
@@ -251,7 +270,7 @@ void [
   markdownResourceError.code,
   markdownToHtml('x', markdownOptions),
   htmlToMarkdown('<p>x</p>', htmlOptions),
-  normalizeMarkdown('x'),
+  normalizeMarkdown('x', normalizeOptions),
   markdownToEmailHtml('x', emailOptions),
   markdownToPlainText('x', plainOptions),
   htmlToPlainText('<p>x</p>', plainOptions),
