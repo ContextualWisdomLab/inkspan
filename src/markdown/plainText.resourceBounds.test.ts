@@ -12,6 +12,8 @@ describe('plain-text Markdown resource bounds', () => {
     let failure: unknown;
 
     try {
+      // Deliberately bypass the pre-repair option type so hosted RED reaches
+      // the runtime lexer boundary instead of failing during TypeScript setup.
       markdownToPlainText('12345', { maxMarkdownBytes: 4 } as never);
     } catch (error) {
       failure = error;
