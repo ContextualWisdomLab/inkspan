@@ -83,8 +83,11 @@ describe('validateSafeLinkHref', () => {
     expect(validateSafeLinkHref('/é', { maxHrefBytes: 3 })).toBe('/é');
   });
 
-  it('accepts an omitted configured limit through an explicit options object', () => {
+  it('accepts omitted configured limits through explicit options objects', () => {
     expect(validateSafeLinkHref('/safe', {})).toBe('/safe');
+    expect(validateSafeLinkHref('/safe', { maxHrefBytes: undefined })).toBe(
+      '/safe',
+    );
   });
 
   it.each([
