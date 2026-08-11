@@ -68,6 +68,14 @@ describe('validateSafeLinkHref', () => {
     expect(isSafeLinkHref(href, { maxHrefBytes: 8 })).toBe(false);
   });
 
+  it('enforces the default bound before allocating an oversized UTF-8 copy', () => {
+    const encodeSpy = vi.spyOn(TextEncoder.prototype, 'encode');
+    const href = `https://example.com/${'a'.repeat(65_536)}`;
+
+    expect(() => validateSafeLinkHref(href)).toThrow(SafeLinkHrefError);
+    expect(encodeSpy).not.toHaveBeenCalled();
+  });
+
   it('enforces exact UTF-8 byte counts when code-unit length alone can fit', () => {
     expect(() =>
       validateSafeLinkHref('/é', { maxHrefBytes: 2 }),
