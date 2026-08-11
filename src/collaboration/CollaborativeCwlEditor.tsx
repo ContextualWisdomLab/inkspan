@@ -33,6 +33,10 @@ import {
 } from './awareness.js';
 import type { CollaborativeCwlEditorProps } from './types.js';
 
+const COLLABORATION_FIELD_MAX_CODE_UNITS = 1_024;
+const INVALID_COLLABORATION_FIELD_MESSAGE =
+  'Collaboration field must be a string within the supported length.';
+
 /**
  * Provider-neutral collaborative Inkspan surface backed exclusively by a
  * host-owned Yjs document. Inkspan owns neither network nor persistence
@@ -98,7 +102,14 @@ export const CollaborativeCwlEditor = forwardRef<
   } = props;
 
   assertCollaborationConfiguration(provider, user);
-  if (field.trim() === '') {
+  if (
+    typeof field !== 'string' ||
+    field.length > COLLABORATION_FIELD_MAX_CODE_UNITS
+  ) {
+    throw new RangeError(INVALID_COLLABORATION_FIELD_MESSAGE);
+  }
+  const normalizedField = field.trim();
+  if (normalizedField === '') {
     throw new Error('collaboration field must not be empty');
   }
   if (
@@ -108,7 +119,6 @@ export const CollaborativeCwlEditor = forwardRef<
     throw new Error('collaboration document must be a Y.Doc instance');
   }
 
-  const normalizedField = field.trim();
   const normalizedPlaceholder = useMemo(
     () => normalizeEditorPlaceholder(placeholder),
     [placeholder],
