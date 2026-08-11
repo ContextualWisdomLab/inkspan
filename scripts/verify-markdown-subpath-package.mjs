@@ -120,6 +120,18 @@ const safeHtml = markdownToHtml('[safe](https://example.com)');
 assert.equal(safeHtml.includes('href="https://example.com"'), true);
 assert.doesNotMatch(markdownToHtml('[unsafe](javascript:alert(1))'), /href=/u);
 assert.equal(htmlToMarkdown('<p>Alpha <strong>Beta</strong></p>'), 'Alpha **Beta**');
+let boundedFailure;
+try {
+  htmlToMarkdown('<p>oversized</p>', { maxHtmlBytes: 4 });
+} catch (error) {
+  boundedFailure = error;
+}
+assert.equal(boundedFailure?.name, 'HtmlToMarkdownResourceError');
+assert.equal(boundedFailure?.code, 'input_too_large');
+assert.equal(
+  boundedFailure?.message,
+  'HTML-to-Markdown input exceeds the configured byte limit.',
+);
 assert.equal(markdownToPlainText('**Alpha** [Beta](https://example.com)'), 'Alpha Beta');
 assert.equal(normalizeMarkdown('**Alpha**').includes('**Alpha**'), true);
 const email = markdownToEmailHtml('Hello', {
@@ -172,7 +184,10 @@ function verifyDeclarationConsumer() {
   type MarkdownToEmailHtmlOptions,
   type PlainTextOptions,
 } from '${packageJson.name}/markdown';
-const htmlOptions: HtmlToMarkdownOptions = { includeImageAlt: false };
+const htmlOptions: HtmlToMarkdownOptions = {
+  includeImageAlt: false,
+  maxHtmlBytes: 1024,
+};
 const emailOptions: MarkdownToEmailHtmlOptions = {
   fullDocument: true,
   languageTag: 'en-US',
