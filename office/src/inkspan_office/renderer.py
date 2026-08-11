@@ -379,7 +379,7 @@ def _validate_sheet_name(name: str, path: str, seen_names: set[str]) -> None:
     """Reject worksheet names that Excel cannot address unambiguously."""
 
     if len(name) > 31 or _INVALID_SHEET_NAME.search(name):
-        raise OfficeDocumentError(f"{path}.name is invalid for Excel: {name!r}")
+        raise OfficeDocumentError(f"{path}.name is invalid for Excel")
     if name.casefold() in seen_names:
         raise OfficeDocumentError("worksheet names must be unique (case-insensitive)")
 
