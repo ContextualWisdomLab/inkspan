@@ -95,4 +95,17 @@ describe('editor accessibility metadata resource boundary', () => {
       }).lang,
     ).toBe('EN-us');
   });
+
+  it.each(['x-private', 'i-klingon', 'zh-cmn-Hans-CN'])(
+    'preserves well-formed RFC 5646 language tag %s',
+    (languageTag) => {
+      expect(
+        buildEditorAccessibilityAttributes({
+          defaultLabel: 'Editor',
+          editable: true,
+          languageTag: `  ${languageTag}  `,
+        }).lang,
+      ).toBe(languageTag);
+    },
+  );
 });
