@@ -66,6 +66,22 @@ def test_redacts_invalid_excel_worksheet_name_from_public_error() -> None:
     assert "customer-project-secret" not in message
 
 
+def test_redacts_excel_compatibility_worksheet_name_from_public_error() -> None:
+    confidential_name = "'customer-project-secret"
+    payload = {
+        "format": "xlsx",
+        "sheets": [{"name": confidential_name, "rows": [["x"]]}],
+    }
+
+    with pytest.raises(OfficeDocumentError) as caught:
+        render_office_document(payload)
+
+    message = str(caught.value)
+    assert "name is invalid for Excel" in message
+    assert confidential_name not in message
+    assert "customer-project-secret" not in message
+
+
 def test_rejects_excel_cell_text_that_would_be_silently_truncated() -> None:
     payload = {
         "format": "xlsx",
