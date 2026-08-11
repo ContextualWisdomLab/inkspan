@@ -52,6 +52,15 @@ function invalidBuildExtensionsConfiguration(): never {
   throw new RangeError('Build extensions configuration is invalid.');
 }
 
+/** Classify top-level option arrays without leaking hostile proxy failures. */
+function isBuildExtensionsOptionsArray(value: object): boolean {
+  try {
+    return Array.isArray(value);
+  } catch {
+    invalidBuildExtensionsConfiguration();
+  }
+}
+
 /**
  * Copy only exact own data properties from the public runtime options object.
  *
@@ -63,7 +72,11 @@ function invalidBuildExtensionsConfiguration(): never {
 function resolveRuntimeBuildExtensionsOptions(
   value: unknown,
 ): BuildExtensionsOptions {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    isBuildExtensionsOptionsArray(value)
+  ) {
     invalidBuildExtensionsConfiguration();
   }
 
@@ -114,6 +127,15 @@ function invalidImageConfiguration(): never {
   throw new RangeError('Image configuration is invalid.');
 }
 
+/** Classify image configuration arrays without leaking hostile proxy failures. */
+function isImageConfigurationArray(value: object): boolean {
+  try {
+    return Array.isArray(value);
+  } catch {
+    invalidImageConfiguration();
+  }
+}
+
 /** Reject unknown own keys without evaluating any configuration property. */
 function validateImageConfigurationKeys(image: object): void {
   let keys: PropertyKey[];
@@ -160,7 +182,11 @@ function resolveRuntimeImageConfiguration(value: unknown): ImageConfig {
   if (value === undefined) {
     return {};
   }
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    isImageConfigurationArray(value)
+  ) {
     invalidImageConfiguration();
   }
 
