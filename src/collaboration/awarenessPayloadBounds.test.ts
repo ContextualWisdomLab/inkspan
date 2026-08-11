@@ -34,6 +34,18 @@ describe('collaboration awareness payload bounds', () => {
     expect(remoteCursor.textContent).toBe(expected);
   });
 
+  it('accepts an 80-code-point public identifier even when UTF-16 is longer', () => {
+    const userId = `${'a'.repeat(79)}😀`;
+
+    expect(
+      serializeCollaborationUser({
+        userId,
+        displayName: 'Alice',
+        cursorColor: '#123456',
+      }).id,
+    ).toBe(userId);
+  });
+
   it('rejects oversized public identifiers before awareness publication', () => {
     expect(() =>
       serializeCollaborationUser({
