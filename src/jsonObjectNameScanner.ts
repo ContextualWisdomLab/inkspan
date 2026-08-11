@@ -319,8 +319,6 @@ function readJsonString(
   source: string,
   startIndex: number,
 ): JsonStringToken | null {
-  if (source[startIndex] !== '"') return null;
-
   let index = startIndex + 1;
   while (index < source.length) {
     const character = source[index];
