@@ -37,9 +37,18 @@ function freezeDocumentJson(
       throw new RangeError('Editor document JSON must be acyclic.');
     }
 
+    const isArray = Array.isArray(frame.value);
+    if (!isArray) {
+      const prototype = Object.getPrototypeOf(frame.value);
+      if (prototype !== Object.prototype && prototype !== null) {
+        throw new RangeError(
+          'Editor document JSON must contain plain objects and arrays only.',
+        );
+      }
+    }
+
     activeObjects.add(frame.value);
     pendingFrames.push({ value: frame.value, exiting: true });
-    const isArray = Array.isArray(frame.value);
     for (const key of Reflect.ownKeys(frame.value)) {
       if (isArray && key === 'length') {
         continue;
@@ -71,7 +80,8 @@ function freezeDocumentJson(
  * `Editor.getJSON()` and iteratively frozen together with the outer snapshot so
  * host persistence, indexing, and AI workflows cannot mutate shared state.
  * Cyclic custom-extension metadata is rejected before an active object is
- * traversed again. Only enumerable string data properties are accepted, so
+ * traversed again. Only arrays and plain/null-prototype objects containing
+ * enumerable string data properties are accepted, so exotic containers,
  * accessors, symbol keys, and hidden custom metadata cannot escape the same
  * deterministic JSON snapshot boundary. Shared acyclic references remain
  * supported.
