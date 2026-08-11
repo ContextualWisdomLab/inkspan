@@ -44,4 +44,44 @@ describe('document snapshot reflection boundary', () => {
       new RangeError('Editor document JSON must contain data properties only.'),
     );
   });
+
+  it('redacts hostile property-descriptor reflection failures', () => {
+    const metadata = new Proxy(
+      { classification: 'internal' },
+      {
+        getOwnPropertyDescriptor() {
+          throw new Error('private descriptor trap detail');
+        },
+      },
+    );
+    const editor = {
+      getHTML: () => '<p>Hello</p>',
+      getJSON: () => ({ type: 'doc', metadata }),
+      isEmpty: false,
+    } as unknown as Editor;
+
+    expect(() => createEditorDocumentSnapshot(editor, 'markdown')).toThrowError(
+      new RangeError('Editor document JSON must contain data properties only.'),
+    );
+  });
+
+  it('redacts hostile freeze reflection failures', () => {
+    const metadata = new Proxy(
+      { classification: 'internal' },
+      {
+        preventExtensions() {
+          throw new Error('private preventExtensions trap detail');
+        },
+      },
+    );
+    const editor = {
+      getHTML: () => '<p>Hello</p>',
+      getJSON: () => ({ type: 'doc', metadata }),
+      isEmpty: false,
+    } as unknown as Editor;
+
+    expect(() => createEditorDocumentSnapshot(editor, 'markdown')).toThrowError(
+      new RangeError('Editor document JSON must contain data properties only.'),
+    );
+  });
 });
