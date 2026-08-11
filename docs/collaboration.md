@@ -143,15 +143,18 @@ Only the following public cursor payload is propagated under the awareness
 }
 ```
 
-`userId` must be nonempty, descriptive, and not numeric-only. `displayName` must
-be nonempty. `cursorColor` must be a six-digit hexadecimal color. Do not put
-access tokens, email addresses, roles, tenant IDs, document permissions, or any
-other secret in awareness: awareness state is ephemeral, broadcast to peers,
-and intentionally not used as an authorization source.
+`userId` must be nonempty, descriptive, not numeric-only, and no longer than 80
+Unicode code points. `displayName` must be nonempty and is published and rendered
+as at most 80 Unicode code points. `cursorColor` must be a six-digit hexadecimal
+color. Do not put access tokens, email addresses, roles, tenant IDs, document
+permissions, or any other secret in awareness: awareness state is ephemeral,
+broadcast to peers, and intentionally not used as an authorization source.
 
 Remote names are inserted with `textContent`, length-bounded, and never treated
-as markup. Invalid remote colors fall back to a safe color. Cursor labels choose
-black or white text from relative luminance for readable contrast.
+as markup. Invalid remote colors fall back to a safe color. Remote collaborator
+counts ignore blank, numeric-only, and over-80-code-point public identifiers.
+Cursor labels choose black or white text from relative luminance for readable
+contrast.
 
 ## Accessibility
 
