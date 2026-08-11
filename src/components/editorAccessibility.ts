@@ -1,5 +1,9 @@
 import type { EditorTextDirection } from '../types.js';
 
+const ACCESSIBILITY_METADATA_MAX_CODE_UNITS = 65_536;
+const INVALID_ACCESSIBILITY_METADATA_MESSAGE =
+  'Accessibility metadata must be a string within the supported length.';
+
 /** Values accepted by the WAI-ARIA `aria-invalid` state on a textbox. */
 export type EditorAriaInvalid = boolean | 'grammar' | 'spelling';
 
@@ -29,11 +33,19 @@ export interface EditorAccessibilityOptions {
   editable: boolean;
 }
 
-/** Normalize an optional host-supplied accessibility string. */
+/** Normalize optional host metadata after enforcing Inkspan's local size boundary. */
 function normalizedAccessibilityValue(
   value: string | undefined,
 ): string | undefined {
-  const normalized = value?.trim();
+  if (value === undefined) return undefined;
+  if (
+    typeof value !== 'string' ||
+    value.length > ACCESSIBILITY_METADATA_MAX_CODE_UNITS
+  ) {
+    throw new RangeError(INVALID_ACCESSIBILITY_METADATA_MESSAGE);
+  }
+
+  const normalized = value.trim();
   return normalized ? normalized : undefined;
 }
 
