@@ -38,4 +38,8 @@ describe('JSON object-name preflight bounds', () => {
       'malformed',
     );
   });
+
+  it('keeps unterminated object names classified as malformed', () => {
+    expect(inspectJsonText('{"unterminated', STRING_LIMITS)).toBe('malformed');
+  });
 });
