@@ -140,7 +140,9 @@ function verifyConsumerTypes() {
     consumerTypePath,
     `import {
   createDocumentEnvelopeRevision,
+  DEFAULT_SAFE_LINK_MAX_HREF_BYTES,
   DocumentEnvelopeRestoreError,
+  MAXIMUM_SAFE_LINK_MAX_HREF_BYTES,
   markdownToHtml,
   restoreDocumentEnvelopeBytesIfMatch,
   restoreDocumentEnvelopeIfMatch,
@@ -156,6 +158,8 @@ function verifyConsumerTypes() {
   type CwlEditorSelectionEvent,
   type CwlEditorSelectionSnapshot,
   type DocumentEnvelopeDigestProvider,
+  type SafeLinkHrefErrorCode,
+  type SafeLinkValidationOptions,
 } from '${packageName}';
 import {
   createDocumentAutosaveQueue,
@@ -174,7 +178,14 @@ import type {
 } from '${packageName}/revision-evidence';
 
 const renderMarkdown: (markdown: string) => string = markdownToHtml;
-const safeHref: string = validateSafeLinkHref('/documents/current');
+const safeLinkOptions: SafeLinkValidationOptions = { maxHrefBytes: 64 };
+const safeHref: string = validateSafeLinkHref(
+  '/documents/current',
+  safeLinkOptions,
+);
+const safeLinkErrorCode: SafeLinkHrefErrorCode = 'input_too_large';
+const safeLinkDefaultLimit: number = DEFAULT_SAFE_LINK_MAX_HREF_BYTES;
+const safeLinkHardLimit: number = MAXIMUM_SAFE_LINK_MAX_HREF_BYTES;
 const collaborationGuard = assertCollaborationConfiguration;
 const conditionalObjectRestore = restoreDocumentEnvelopeIfMatch;
 const conditionalByteRestore = restoreDocumentEnvelopeBytesIfMatch;
@@ -262,6 +273,9 @@ const autosaveOutcome: Promise<DocumentAutosaveRequestOutcome> =
 void [
   renderMarkdown,
   safeHref,
+  safeLinkErrorCode,
+  safeLinkDefaultLimit,
+  safeLinkHardLimit,
   collaborationGuard,
   conditionalObjectRestore,
   conditionalByteRestore,
@@ -331,6 +345,15 @@ import * as converter from '${packageName}/converter';
 
 assert.equal(typeof editor.markdownToHtml, 'function');
 assert.equal(editor.validateSafeLinkHref('/documents/current'), '/documents/current');
+assert.equal(editor.DEFAULT_SAFE_LINK_MAX_HREF_BYTES, 65_536);
+assert.equal(editor.MAXIMUM_SAFE_LINK_MAX_HREF_BYTES, 1_048_576);
+assert.throws(
+  () => editor.validateSafeLinkHref('https://example.com/path', { maxHrefBytes: 8 }),
+  (error) =>
+    error instanceof editor.SafeLinkHrefError &&
+    error.code === 'input_too_large' &&
+    error.hrefPreview === '<oversized>',
+);
 assert.equal(typeof editor.restoreDocumentEnvelopeIfMatch, 'function');
 assert.equal(typeof editor.restoreDocumentEnvelopeBytesIfMatch, 'function');
 assert.equal(typeof editor.DocumentEnvelopeRestoreError, 'function');
@@ -357,6 +380,15 @@ const converter = require('${packageName}/converter');
 
 assert.equal(typeof editor.markdownToHtml, 'function');
 assert.equal(editor.validateSafeLinkHref('/documents/current'), '/documents/current');
+assert.equal(editor.DEFAULT_SAFE_LINK_MAX_HREF_BYTES, 65_536);
+assert.equal(editor.MAXIMUM_SAFE_LINK_MAX_HREF_BYTES, 1_048_576);
+assert.throws(
+  () => editor.validateSafeLinkHref('https://example.com/path', { maxHrefBytes: 8 }),
+  (error) =>
+    error instanceof editor.SafeLinkHrefError &&
+    error.code === 'input_too_large' &&
+    error.hrefPreview === '<oversized>',
+);
 assert.equal(typeof editor.restoreDocumentEnvelopeIfMatch, 'function');
 assert.equal(typeof editor.restoreDocumentEnvelopeBytesIfMatch, 'function');
 assert.equal(typeof editor.DocumentEnvelopeRestoreError, 'function');
