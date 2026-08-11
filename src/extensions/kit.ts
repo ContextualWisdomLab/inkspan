@@ -18,6 +18,16 @@ import { SafeClipboard } from './SafeClipboardExtension.js';
 import { SafeLink, isSafeLinkHref } from './SafeLink.js';
 import type { ImageConfig } from '../types.js';
 
+const BUILD_EXTENSIONS_OPTION_KEYS = [
+  'placeholder',
+  'image',
+  'clipboard',
+  'onImageError',
+  'onClipboardError',
+  'disableHistory',
+  'additionalExtensions',
+] as const;
+
 /** Options for constructing the shared Inkspan extension collection. */
 export interface BuildExtensionsOptions {
   /** Static or lazily resolved visual empty-editor guidance. */
@@ -35,6 +45,71 @@ export interface BuildExtensionsOptions {
   disableHistory?: boolean;
   /** Additional host or product extensions appended after the shared kit. */
   additionalExtensions?: Extensions;
+}
+
+/** Fail closed without reflecting caller-controlled top-level configuration. */
+function invalidBuildExtensionsConfiguration(): never {
+  throw new RangeError('Build extensions configuration is invalid.');
+}
+
+/**
+ * Copy only exact own data properties from the public runtime options object.
+ *
+ * TypeScript callers normally satisfy this shape at compile time, but JavaScript,
+ * deserialized, or otherwise untyped hosts can still pass arbitrary values. The
+ * detached copy prevents accessors, inherited values, symbols, and misspelled
+ * options from changing extension configuration implicitly.
+ */
+function resolveRuntimeBuildExtensionsOptions(
+  value: unknown,
+): BuildExtensionsOptions {
+  if (value === undefined) {
+    return {};
+  }
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    invalidBuildExtensionsConfiguration();
+  }
+
+  let keys: PropertyKey[];
+  try {
+    keys = Reflect.ownKeys(value);
+  } catch {
+    invalidBuildExtensionsConfiguration();
+  }
+
+  const resolved: BuildExtensionsOptions = {};
+  for (const key of keys) {
+    if (
+      typeof key !== 'string' ||
+      !BUILD_EXTENSIONS_OPTION_KEYS.includes(
+        key as (typeof BUILD_EXTENSIONS_OPTION_KEYS)[number],
+      )
+    ) {
+      invalidBuildExtensionsConfiguration();
+    }
+
+    let descriptor: PropertyDescriptor | undefined;
+    try {
+      descriptor = Object.getOwnPropertyDescriptor(value, key);
+    } catch {
+      invalidBuildExtensionsConfiguration();
+    }
+    if (
+      descriptor === undefined ||
+      !descriptor.enumerable ||
+      !Object.prototype.hasOwnProperty.call(descriptor, 'value')
+    ) {
+      invalidBuildExtensionsConfiguration();
+    }
+
+    Object.defineProperty(resolved, key, {
+      value: descriptor.value,
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    });
+  }
+  return resolved;
 }
 
 /** Fail closed without reflecting caller-controlled image configuration. */
@@ -132,8 +207,9 @@ function validateImageQuality(value: unknown): void {
 export function buildExtensions(
   options: BuildExtensionsOptions = {},
 ): Extensions {
-  const image = resolveRuntimeImageConfiguration(options.image);
-  const historyConfiguration = options.disableHistory
+  const resolvedOptions = resolveRuntimeBuildExtensionsOptions(options);
+  const image = resolveRuntimeImageConfiguration(resolvedOptions.image);
+  const historyConfiguration = resolvedOptions.disableHistory
     ? { history: false as const }
     : {};
 
@@ -153,11 +229,11 @@ export function buildExtensions(
       HTMLAttributes: { rel: 'noopener noreferrer nofollow' },
     }),
     SafeClipboard.configure({
-      config: options.clipboard,
-      onError: options.onClipboardError,
+      config: resolvedOptions.clipboard,
+      onError: resolvedOptions.onClipboardError,
     }),
     Placeholder.configure({
-      placeholder: options.placeholder ?? 'Start writing…',
+      placeholder: resolvedOptions.placeholder ?? 'Start writing…',
     }),
     Table.configure({ resizable: true }),
     TableRow,
@@ -167,8 +243,8 @@ export function buildExtensions(
       maxSizeBytes: image.maxSizeBytes ?? 10 * 1024 * 1024,
       maxDimension: image.maxDimension ?? 1600,
       quality: image.quality ?? 0.85,
-      onError: options.onImageError,
+      onError: resolvedOptions.onImageError,
     }),
-    ...(options.additionalExtensions ?? []),
+    ...(resolvedOptions.additionalExtensions ?? []),
   ];
 }
