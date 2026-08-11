@@ -63,9 +63,6 @@ function invalidBuildExtensionsConfiguration(): never {
 function resolveRuntimeBuildExtensionsOptions(
   value: unknown,
 ): BuildExtensionsOptions {
-  if (value === undefined) {
-    return {};
-  }
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     invalidBuildExtensionsConfiguration();
   }
