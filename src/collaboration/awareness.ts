@@ -23,10 +23,16 @@ const CURSOR_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const NUMERIC_IDENTIFIER_PATTERN = /^\d+$/;
 const FALLBACK_CURSOR_COLOR = '#475569';
 const MAX_CURSOR_LABEL_LENGTH = 80;
+const MAX_PUBLIC_IDENTIFIER_LENGTH = 80;
 
 /** Trim and bound a public cursor label without splitting Unicode code points. */
 function truncateCursorLabel(value: string): string {
   return Array.from(value.trim()).slice(0, MAX_CURSOR_LABEL_LENGTH).join('');
+}
+
+/** Count Unicode code points for bounded public awareness metadata. */
+function publicIdentifierLength(value: string): number {
+  return Array.from(value).length;
 }
 
 /** Validate and serialize the only public fields permitted in awareness. */
@@ -42,6 +48,11 @@ export function serializeCollaborationUser(
   }
   if (NUMERIC_IDENTIFIER_PATTERN.test(id)) {
     throw new Error('collaboration userId must be descriptive and nonnumeric');
+  }
+  if (publicIdentifierLength(id) > MAX_PUBLIC_IDENTIFIER_LENGTH) {
+    throw new Error(
+      'collaboration userId must be at most 80 Unicode code points',
+    );
   }
   if (name === '') {
     throw new Error('collaboration displayName must not be empty');
@@ -156,7 +167,8 @@ export function countRemoteCollaborators(
     const normalizedId = id.trim();
     if (
       normalizedId === '' ||
-      NUMERIC_IDENTIFIER_PATTERN.test(normalizedId)
+      NUMERIC_IDENTIFIER_PATTERN.test(normalizedId) ||
+      publicIdentifierLength(normalizedId) > MAX_PUBLIC_IDENTIFIER_LENGTH
     ) {
       continue;
     }
