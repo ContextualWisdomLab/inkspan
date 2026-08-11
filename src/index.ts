@@ -158,6 +158,12 @@ export type {
   HtmlToMarkdownOptions,
   MarkdownToEmailHtmlOptions,
 } from './markdown/serializer.js';
+export {
+  DEFAULT_HTML_TO_MARKDOWN_MAX_BYTES,
+  MAXIMUM_HTML_TO_MARKDOWN_MAX_BYTES,
+  HtmlToMarkdownResourceError,
+} from './markdown/htmlToMarkdownResourcePolicy.js';
+export type { HtmlToMarkdownResourceErrorCode } from './markdown/htmlToMarkdownResourcePolicy.js';
 
 // Deterministic Markdown/HTML -> plain-text projection for AI/indexing paths.
 export {
