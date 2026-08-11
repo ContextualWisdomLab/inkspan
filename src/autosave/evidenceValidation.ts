@@ -138,6 +138,9 @@ export function isDeeplyFrozenDocumentJson(rootValue: unknown): boolean {
       const childDepth = currentEntry.depth + 1;
       if (Array.isArray(currentValue)) {
         const length = currentValue.length;
+        const remainingValueCapacity =
+          MAX_AUTOSAVE_EVIDENCE_JSON_VALUES - inspectedValueCount;
+        if (length > remainingValueCapacity) return false;
         const ownKeys = Reflect.ownKeys(currentValue);
         if (ownKeys.length !== length + 1) return false;
         for (let index = 0; index < length; index += 1) {
