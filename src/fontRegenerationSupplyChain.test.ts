@@ -15,16 +15,19 @@ import { afterEach, describe, expect, it } from 'vitest';
 const temporaryRoots: string[] = [];
 
 type FontRegenerationTestMode =
+  | 'empty-css'
   | 'hostile-origin'
   | 'invalid-css'
   | 'invalid-font'
-  | 'midstream-failure';
+  | 'midstream-failure'
+  | 'oversized-css';
 
 function createIsolatedFontRegenerator(): {
   root: string;
   scriptPath: string;
   preloadPath: string;
   contactMarker: string;
+  cssReadMarker: string;
   existingFontMarker: string;
 } {
   const root = mkdtempSync(join(tmpdir(), 'inkspan-font-refresh-'));
@@ -32,6 +35,7 @@ function createIsolatedFontRegenerator(): {
   const scriptPath = join(root, 'scripts', 'fetch-fonts.mjs');
   const preloadPath = join(root, 'mock-fetch.mjs');
   const contactMarker = join(root, 'hostile-origin-contacted');
+  const cssReadMarker = join(root, 'oversized-css-body-read');
   const existingFontMarker = join(
     root,
     'src',
@@ -52,6 +56,7 @@ function createIsolatedFontRegenerator(): {
     `import { writeFileSync } from 'node:fs';
 const mode = process.env.INKSPAN_FONT_TEST_MODE;
 const contactMarker = process.env.INKSPAN_FONT_CONTACT_MARKER;
+const cssReadMarker = process.env.INKSPAN_FONT_CSS_READ_MARKER;
 const hostileAsset = 'https://attacker.example.invalid/subset.woff2';
 const trustedAsset = 'https://fonts.gstatic.com/s/notosans/test-subset.woff2';
 const cssAsset = mode === 'hostile-origin' ? hostileAsset : trustedAsset;
@@ -64,6 +69,28 @@ globalThis.fetch = async (input) => {
       return new Response('<html>PRIVATE_PROXY_RESPONSE</html>', {
         status: 200,
         headers: { 'content-type': 'text/html; charset=utf-8' },
+      });
+    }
+    if (mode === 'empty-css') {
+      return new Response('/* no usable font faces */', {
+        status: 200,
+        headers: { 'content-type': 'text/css; charset=utf-8' },
+      });
+    }
+    if (mode === 'oversized-css') {
+      const body = new ReadableStream({
+        pull(controller) {
+          writeFileSync(cssReadMarker, 'read', 'utf8');
+          controller.enqueue(new TextEncoder().encode(css));
+          controller.close();
+        },
+      });
+      return new Response(body, {
+        status: 200,
+        headers: {
+          'content-type': 'text/css; charset=utf-8',
+          'content-length': String(1024 * 1024 + 1),
+        },
       });
     }
     return new Response(css, {
@@ -96,7 +123,14 @@ globalThis.fetch = async (input) => {
 `,
     'utf8',
   );
-  return { root, scriptPath, preloadPath, contactMarker, existingFontMarker };
+  return {
+    root,
+    scriptPath,
+    preloadPath,
+    contactMarker,
+    cssReadMarker,
+    existingFontMarker,
+  };
 }
 
 function runRegenerator(mode: FontRegenerationTestMode) {
@@ -111,6 +145,7 @@ function runRegenerator(mode: FontRegenerationTestMode) {
         ...process.env,
         INKSPAN_FONT_TEST_MODE: mode,
         INKSPAN_FONT_CONTACT_MARKER: fixture.contactMarker,
+        INKSPAN_FONT_CSS_READ_MARKER: fixture.cssReadMarker,
       },
       timeout: 15_000,
     },
@@ -162,5 +197,25 @@ describe('font regeneration supply-chain boundary', () => {
     expect(`${result.stdout}\n${result.stderr}`).not.toContain(
       'PRIVATE_PROXY_RESPONSE',
     );
+  });
+
+  it('rejects CSS with no usable font faces before replacing the bundle', () => {
+    const { existingFontMarker, result } = runRegenerator('empty-css');
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).not.toBe(0);
+    expect(existsSync(existingFontMarker)).toBe(true);
+    expect(readFileSync(existingFontMarker, 'utf8')).toBe('known-good');
+  });
+
+  it('rejects a declared oversized CSS response before reading its body', () => {
+    const { cssReadMarker, existingFontMarker, result } =
+      runRegenerator('oversized-css');
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).not.toBe(0);
+    expect(existsSync(cssReadMarker)).toBe(false);
+    expect(existsSync(existingFontMarker)).toBe(true);
+    expect(readFileSync(existingFontMarker, 'utf8')).toBe('known-good');
   });
 });
