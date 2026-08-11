@@ -148,22 +148,29 @@ export { buildExtensions } from './extensions/kit.js';
 export type { BuildExtensionsOptions } from './extensions/kit.js';
 
 // Markdown <-> HTML serialization (base64 image round-trip safe).
+export { htmlToMarkdown } from './markdown/serializer.js';
+export type { HtmlToMarkdownOptions } from './markdown/serializer.js';
 export {
-  markdownToHtml,
-  htmlToMarkdown,
-  normalizeMarkdown,
   markdownToEmailHtml,
-} from './markdown/serializer.js';
+  markdownToHtml,
+  normalizeMarkdown,
+} from './markdown/resourceBoundMarkdown.js';
 export type {
-  HtmlToMarkdownOptions,
   MarkdownToEmailHtmlOptions,
-} from './markdown/serializer.js';
+  MarkdownToHtmlOptions,
+} from './markdown/resourceBoundMarkdown.js';
 export {
   DEFAULT_HTML_TO_MARKDOWN_MAX_BYTES,
   MAXIMUM_HTML_TO_MARKDOWN_MAX_BYTES,
   HtmlToMarkdownResourceError,
 } from './markdown/htmlToMarkdownResourcePolicy.js';
 export type { HtmlToMarkdownResourceErrorCode } from './markdown/htmlToMarkdownResourcePolicy.js';
+export {
+  DEFAULT_MARKDOWN_TO_HTML_MAX_BYTES,
+  MAXIMUM_MARKDOWN_TO_HTML_MAX_BYTES,
+  MarkdownToHtmlResourceError,
+} from './markdown/markdownToHtmlResourcePolicy.js';
+export type { MarkdownToHtmlResourceErrorCode } from './markdown/markdownToHtmlResourcePolicy.js';
 
 // Deterministic Markdown/HTML -> plain-text projection for AI/indexing paths.
 export {
