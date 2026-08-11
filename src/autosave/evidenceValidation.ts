@@ -237,6 +237,7 @@ export function createDetachedAutosaveRevisionEvidence(
       revisionRecord === null ||
       revisionRecord.algorithm !== 'SHA-256' ||
       typeof revisionRecord.digestHex !== 'string' ||
+      revisionRecord.digestHex.length !== 64 ||
       !LOWERCASE_SHA256_DIGEST.test(revisionRecord.digestHex) ||
       typeof revisionRecord.strongEntityTag !== 'string' ||
       revisionRecord.strongEntityTag !==
