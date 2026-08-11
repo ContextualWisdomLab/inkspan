@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createEditorDocumentSnapshot } from './editorDocumentSnapshot.js';
 
 describe('createEditorDocumentSnapshot', () => {
@@ -83,5 +83,60 @@ describe('createEditorDocumentSnapshot', () => {
       documentJson,
       isEmpty: false,
     });
+  });
+
+  it('rejects cyclic document JSON before revisiting an active object', () => {
+    const documentJson: Record<string, unknown> = { type: 'doc' };
+    const metadata: Record<string, unknown> = { owner: 'host-extension' };
+    documentJson.metadata = metadata;
+    metadata.document = documentJson;
+
+    const originalObjectValues = Object.values.bind(Object);
+    let rootVisits = 0;
+    const objectValuesSpy = vi
+      .spyOn(Object, 'values')
+      .mockImplementation((value: object) => {
+        if (value === documentJson) {
+          rootVisits += 1;
+          if (rootVisits > 1) {
+            throw new Error('cycle traversal revisited root');
+          }
+        }
+        return originalObjectValues(value);
+      });
+    const editor = {
+      getHTML: () => '<p>Hello</p>',
+      getJSON: () => documentJson,
+      isEmpty: false,
+    } as unknown as Editor;
+
+    try {
+      expect(() => createEditorDocumentSnapshot(editor, 'markdown')).toThrowError(
+        new RangeError('Editor document JSON must be acyclic.'),
+      );
+    } finally {
+      objectValuesSpy.mockRestore();
+    }
+  });
+
+  it('preserves shared acyclic metadata while deeply freezing it once', () => {
+    const sharedMetadata = { classification: 'internal' };
+    const documentJson = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', attrs: { metadata: sharedMetadata } },
+        { type: 'paragraph', attrs: { metadata: sharedMetadata } },
+      ],
+    };
+    const editor = {
+      getHTML: () => '<p>One</p><p>Two</p>',
+      getJSON: () => documentJson,
+      isEmpty: false,
+    } as unknown as Editor;
+
+    const snapshot = createEditorDocumentSnapshot(editor, 'html');
+
+    expect(snapshot.documentJson).toBe(documentJson);
+    expect(Object.isFrozen(sharedMetadata)).toBe(true);
   });
 });
