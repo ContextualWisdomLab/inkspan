@@ -73,6 +73,7 @@ export {
   encodeDocumentEnvelope,
   serializeDocumentEnvelope,
 } from './documentEnvelopeCanonical.js';
+export type { DocumentEnvelopeEncodingOptions } from './documentEnvelopeCanonical.js';
 export {
   restoreDocumentEnvelopeBytesIfMatch,
   restoreDocumentEnvelopeIfMatch,
