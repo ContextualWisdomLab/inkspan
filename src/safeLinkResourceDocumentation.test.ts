@@ -10,6 +10,9 @@ import {
 const repositoryFile = (path: string): string =>
   readFileSync(resolve(process.cwd(), path), 'utf8');
 
+const normalizeDocumentationWhitespace = (value: string): string =>
+  value.replace(/\s+/gu, ' ');
+
 describe('safe-link resource documentation contract', () => {
   it('labels the resource boundary as active-PR rather than protected-main behavior', () => {
     const guidance = repositoryFile('docs/link-security.md');
@@ -23,17 +26,19 @@ describe('safe-link resource documentation contract', () => {
 
   it('keeps documented resource limits and ownership aligned with the public code contract', () => {
     const guidance = repositoryFile('docs/link-security.md');
+    const normalizedGuidance = normalizeDocumentationWhitespace(guidance);
 
     expect(DEFAULT_SAFE_LINK_MAX_HREF_BYTES).toBe(65_536);
     expect(MAXIMUM_SAFE_LINK_MAX_HREF_BYTES).toBe(1_048_576);
-    expect(guidance).toContain('default target ceiling is 64 KiB');
-    expect(guidance).toContain('public hard maximum is 1 MiB');
-    expect(guidance).toContain('before allocating a complete UTF-8 copy');
-    expect(guidance).toContain('before');
-    expect(guidance).toContain('WHATWG URL parser');
-    expect(guidance).toContain('not a transport request-size policy');
-    expect(guidance).toContain('not a transport');
-    expect(guidance).toContain('authorization decision');
+    expect(normalizedGuidance).toContain('default target ceiling is 64 KiB');
+    expect(normalizedGuidance).toContain('public hard maximum is 1 MiB');
+    expect(normalizedGuidance).toContain(
+      'before allocating a complete UTF-8 copy or invoking the WHATWG URL parser',
+    );
+    expect(normalizedGuidance).toContain(
+      'not a transport request-size policy',
+    );
+    expect(normalizedGuidance).toContain('authorization decision');
   });
 
   it('documents stable payload-redacted error categories and the typed lowering option', () => {
