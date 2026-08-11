@@ -108,4 +108,17 @@ describe('editor accessibility metadata resource boundary', () => {
       ).toBe(languageTag);
     },
   );
+
+  it.each(['de-DE-1901-1901', 'en-a-bbb-a-ccc'])(
+    'rejects RFC 5646 tag with repeated variant or extension singleton: %s',
+    (languageTag) => {
+      expect(() =>
+        buildEditorAccessibilityAttributes({
+          defaultLabel: 'Editor',
+          editable: true,
+          languageTag,
+        }),
+      ).toThrowError(new RangeError(INVALID_LANGUAGE_TAG_MESSAGE));
+    },
+  );
 });
