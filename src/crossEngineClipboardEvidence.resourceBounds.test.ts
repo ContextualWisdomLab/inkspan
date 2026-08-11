@@ -50,4 +50,15 @@ describe('cross-engine clipboard consensus resource boundary', () => {
       RESOURCE_BOUNDARY_ERROR,
     );
   });
+
+  it('fails closed with the same stable error for non-JSON scalar evidence', () => {
+    const documentJson = {
+      type: 'doc',
+      content: [{ type: 'paragraph', attrs: { privateValue: 1n } }],
+    };
+
+    expect(() => assertCrossEngineClipboardConsensus(allEngines(documentJson))).toThrow(
+      RESOURCE_BOUNDARY_ERROR,
+    );
+  });
 });
