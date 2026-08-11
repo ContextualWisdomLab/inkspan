@@ -226,7 +226,7 @@ def _validate_sheet_name_compatibility(value: Any, path: str) -> None:
         or value.endswith("'")
         or value.casefold() == "history"
     ):
-        raise OfficeDocumentError(f"{path}.name is invalid for Excel: {value!r}")
+        raise OfficeDocumentError(f"{path}.name is invalid for Excel")
 
 
 def _validate_freeze_panes(value: str, path: str) -> None:
