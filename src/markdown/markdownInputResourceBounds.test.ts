@@ -124,6 +124,24 @@ describe('Markdown parser resource bounds', () => {
     });
   });
 
+  it('uses exact caller UTF-8 ceilings for Markdown normalization', () => {
+    const lex = vi.spyOn(Lexer, 'lex');
+    const normalizeWithOptions = normalizeMarkdown as unknown as (
+      markdown: string,
+      options: { maxMarkdownBytes: number },
+    ) => string;
+
+    expect(() =>
+      normalizeWithOptions('é', { maxMarkdownBytes: 1 }),
+    ).toThrowError(
+      expect.objectContaining({
+        name: 'MarkdownToHtmlResourceError',
+        code: 'input_too_large',
+      }),
+    );
+    expect(lex).not.toHaveBeenCalled();
+  });
+
   it('honors a caller ceiling for email conversion before Marked materialization', () => {
     const lex = vi.spyOn(Lexer, 'lex');
     let failure: unknown;
@@ -140,5 +158,19 @@ describe('Markdown parser resource bounds', () => {
       code: 'input_too_large',
       message: 'Markdown-to-HTML input exceeds the configured byte limit.',
     });
+  });
+
+  it('uses exact caller UTF-8 ceilings for email conversion', () => {
+    const lex = vi.spyOn(Lexer, 'lex');
+
+    expect(() =>
+      markdownToEmailHtml('é', { maxMarkdownBytes: 1 } as never),
+    ).toThrowError(
+      expect.objectContaining({
+        name: 'MarkdownToHtmlResourceError',
+        code: 'input_too_large',
+      }),
+    );
+    expect(lex).not.toHaveBeenCalled();
   });
 });
