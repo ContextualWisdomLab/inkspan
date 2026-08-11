@@ -8,6 +8,9 @@ import {
   editorValueToHtml,
 } from './editorSerialization.js';
 
+const FORM_RESET_REJECTED_MESSAGE =
+  'Editor form reset was rejected by the active editor policy.';
+
 /** Inputs required to apply one allowed native form reset to an editor. */
 export interface ApplyEditorFormResetOptions {
   editor: Editor;
@@ -26,7 +29,8 @@ export interface ApplyEditorFormResetOptions {
  * a reset value; collaborative callers use notification-only behavior so shared
  * Yjs mutation remains an explicit, authorized host operation. Reset content is
  * installed without re-entering TipTap's update callback and emits one explicit
- * canonical value through `onChange` instead.
+ * canonical value through `onChange` only after TipTap accepts the mutation.
+ * A policy-rejected mutation fails closed before any success callback fires.
  */
 export function applyEditorFormReset({
   editor,
@@ -37,7 +41,13 @@ export function applyEditorFormReset({
   onFormReset,
 }: ApplyEditorFormResetOptions): void {
   if (resetValue !== undefined) {
-    editor.commands.setContent(editorValueToHtml(resetValue, mode), false);
+    const accepted = editor.commands.setContent(
+      editorValueToHtml(resetValue, mode),
+      false,
+    );
+    if (!accepted) {
+      throw new Error(FORM_RESET_REJECTED_MESSAGE);
+    }
     onChange?.(editorHtmlToValue(editor.getHTML(), mode));
   }
   onFormReset?.({ editor, event });
