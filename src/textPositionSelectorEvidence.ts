@@ -80,9 +80,13 @@ function projectDocumentPrefix(documentNode: ProseMirrorNode, to: number): strin
   return documentNode.textBetween(0, to, BLOCK_SEPARATOR, LEAF_TEXT);
 }
 
-/** Count Unicode code points without exposing JavaScript UTF-16 code-unit offsets. */
+/** Count Unicode code points without materializing a second prefix-sized array. */
 function codePointLength(value: string): number {
-  return Array.from(value).length;
+  let length = 0;
+  for (const codePoint of value) {
+    if (codePoint.length > 0) length += 1;
+  }
+  return length;
 }
 
 /** Require a position to coincide with a Unicode grapheme-cluster boundary. */
@@ -94,15 +98,15 @@ function assertGraphemeBoundary(text: string, codeUnitOffset: number): void {
     throw new TextPositionSelectorEvidenceError('segmenter_unavailable');
   }
 
-  const boundaries = new Set<number>([0, text.length]);
+  if (codeUnitOffset === 0 || codeUnitOffset === text.length) return;
+
   for (const segment of new Segmenter(undefined, { granularity: 'grapheme' }).segment(
     text,
   )) {
-    boundaries.add(segment.index);
+    if (segment.index === codeUnitOffset) return;
+    if (segment.index > codeUnitOffset) break;
   }
-  if (!boundaries.has(codeUnitOffset)) {
-    throw new TextPositionSelectorEvidenceError('grapheme_boundary');
-  }
+  throw new TextPositionSelectorEvidenceError('grapheme_boundary');
 }
 
 /**
