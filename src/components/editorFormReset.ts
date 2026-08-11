@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/react';
+import type { EditorState } from '@tiptap/pm/state';
 import type {
   CwlEditorFormResetEvent,
   EditorMode,
@@ -21,6 +22,20 @@ export interface ApplyEditorFormResetOptions {
   onFormReset?: (resetEvent: CwlEditorFormResetEvent) => void;
 }
 
+/** Best-effort local rollback that never reflects host plugin/view failures. */
+function restoreCapturedEditorState(editor: Editor, state: EditorState): void {
+  try {
+    editor.view.updateState(state);
+  } catch {
+    // A failing host plugin view must not replace the bounded reset error.
+  }
+}
+
+/** Create one payload-redacted reset policy failure. */
+function createFormResetRejectedError(): Error {
+  return new Error(FORM_RESET_REJECTED_MESSAGE);
+}
+
 /**
  * Apply an optional serialized reset document, then notify the host.
  *
@@ -30,7 +45,13 @@ export interface ApplyEditorFormResetOptions {
  * Yjs mutation remains an explicit, authorized host operation. Reset content is
  * installed without re-entering TipTap's update callback and emits one explicit
  * canonical value through `onChange` only after TipTap accepts the mutation.
- * A policy-rejected mutation fails closed before any success callback fires.
+ *
+ * Inkspan captures the local editor state before dispatch. A command refusal,
+ * dispatch/observer exception, or post-dispatch serialization that differs from
+ * the requested reset baseline triggers best-effort local rollback and one
+ * payload-redacted failure before any success callback fires. This rollback is
+ * local ProseMirror authority only and cannot retract external effects emitted
+ * independently by host plugins.
  */
 export function applyEditorFormReset({
   editor,
@@ -41,14 +62,26 @@ export function applyEditorFormReset({
   onFormReset,
 }: ApplyEditorFormResetOptions): void {
   if (resetValue !== undefined) {
-    const accepted = editor.commands.setContent(
-      editorValueToHtml(resetValue, mode),
-      false,
-    );
-    if (!accepted) {
-      throw new Error(FORM_RESET_REJECTED_MESSAGE);
+    const targetHtml = editorValueToHtml(resetValue, mode);
+    const expectedValue = editorHtmlToValue(targetHtml, mode);
+    const originalState = editor.state;
+    let accepted: boolean;
+    try {
+      accepted = editor.commands.setContent(targetHtml, false);
+    } catch {
+      restoreCapturedEditorState(editor, originalState);
+      throw createFormResetRejectedError();
     }
-    onChange?.(editorHtmlToValue(editor.getHTML(), mode));
+    if (!accepted) {
+      restoreCapturedEditorState(editor, originalState);
+      throw createFormResetRejectedError();
+    }
+    const effectiveValue = editorHtmlToValue(editor.getHTML(), mode);
+    if (effectiveValue !== expectedValue) {
+      restoreCapturedEditorState(editor, originalState);
+      throw createFormResetRejectedError();
+    }
+    onChange?.(effectiveValue);
   }
   onFormReset?.({ editor, event });
 }
