@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/react';
+import { runInNewContext } from 'node:vm';
 import { describe, expect, it, vi } from 'vitest';
 import { createEditorDocumentSnapshot } from './editorDocumentSnapshot.js';
 
@@ -207,6 +208,27 @@ describe('createEditorDocumentSnapshot', () => {
   it('preserves null-prototype JSON objects', () => {
     const metadata = Object.create(null) as Record<string, unknown>;
     metadata.classification = 'internal';
+    const documentJson = {
+      type: 'doc',
+      metadata,
+    };
+    const editor = {
+      getHTML: () => '<p>Hello</p>',
+      getJSON: () => documentJson,
+      isEmpty: false,
+    } as unknown as Editor;
+
+    const snapshot = createEditorDocumentSnapshot(editor, 'html');
+
+    expect(snapshot.documentJson).toBe(documentJson);
+    expect(Object.isFrozen(metadata)).toBe(true);
+  });
+
+  it('preserves plain JSON objects from another JavaScript realm', () => {
+    const metadata = runInNewContext(
+      '({ classification: "internal" })',
+    ) as Record<string, unknown>;
+    expect(Object.getPrototypeOf(metadata)).not.toBe(Object.prototype);
     const documentJson = {
       type: 'doc',
       metadata,
