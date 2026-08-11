@@ -2,6 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { buildEditorAccessibilityAttributes } from './editorAccessibility.js';
 
 describe('editor accessibility runtime contracts', () => {
+  it.each(['ltr', 'rtl', 'auto'] as const)(
+    'preserves the valid %s text direction',
+    (textDirection) => {
+      expect(
+        buildEditorAccessibilityAttributes({
+          defaultLabel: 'Editor',
+          editable: true,
+          textDirection,
+        }).dir,
+      ).toBe(textDirection);
+    },
+  );
+
   it('rejects a runtime text direction outside the public enumerated states', () => {
     expect(() =>
       buildEditorAccessibilityAttributes({
