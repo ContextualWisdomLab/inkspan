@@ -64,6 +64,50 @@ describe('native form reset under editor transaction policy', () => {
     }
   });
 
+  it('redacts an exception thrown by transaction policy during preview', () => {
+    const confidentialMarker = 'preview-customer-reset-secret';
+    const throwingPolicy = Extension.create({
+      name: 'throwNativeFormResetPreview',
+      addProseMirrorPlugins() {
+        return [
+          new Plugin({
+            filterTransaction(transaction) {
+              if (
+                transaction.docChanged &&
+                transaction.doc.textContent === 'Reset baseline'
+              ) {
+                throw new Error(`policy leaked ${confidentialMarker}`);
+              }
+              return true;
+            },
+          }),
+        ];
+      },
+    });
+    const editor = createEditor([throwingPolicy]);
+    const originalDocument = editor.state.doc;
+    const onChange = vi.fn();
+    const onFormReset = vi.fn();
+
+    try {
+      let failure: unknown;
+      try {
+        applyRequestedReset(editor, onChange, onFormReset);
+      } catch (error) {
+        failure = error;
+      }
+
+      expect(failure).toBeInstanceOf(Error);
+      expect((failure as Error).message).toBe(RESET_FAILURE_MESSAGE);
+      expect((failure as Error).message).not.toContain(confidentialMarker);
+      expect(editor.state.doc.eq(originalDocument)).toBe(true);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(onFormReset).toHaveBeenCalledOnce();
+    } finally {
+      editor.destroy();
+    }
+  });
+
   it('rejects a deterministic appendTransaction transform before live mutation', () => {
     const transformResetPolicy = Extension.create({
       name: 'transformNativeFormReset',
@@ -166,6 +210,77 @@ describe('native form reset under editor transaction policy', () => {
       expect(onChange).not.toHaveBeenCalled();
       expect(onFormReset).toHaveBeenCalledOnce();
     } finally {
+      editor.destroy();
+    }
+  });
+
+  it('keeps the public failure redacted when local rollback itself throws', () => {
+    let matchingApplications = 0;
+    let liveTransformProduced = false;
+    const statefulTransformPolicy = Extension.create({
+      name: 'statefulTransformWithRollbackFailure',
+      addProseMirrorPlugins() {
+        return [
+          new Plugin({
+            appendTransaction(transactions, _oldState, newState) {
+              if (
+                !transactions.some((transaction) => transaction.docChanged) ||
+                newState.doc.textContent !== 'Reset baseline'
+              ) {
+                return null;
+              }
+              matchingApplications += 1;
+              if (matchingApplications === 1) return null;
+              liveTransformProduced = true;
+              const replacement = newState.schema.node('doc', null, [
+                newState.schema.node(
+                  'paragraph',
+                  null,
+                  newState.schema.text('Live policy transform'),
+                ),
+              ]);
+              return newState.tr.replaceWith(
+                0,
+                newState.doc.content.size,
+                replacement.content,
+              );
+            },
+          }),
+        ];
+      },
+    });
+    const editor = createEditor([statefulTransformPolicy]);
+    const originalState = editor.state;
+    const originalUpdateState = editor.view.updateState.bind(editor.view);
+    const confidentialMarker = 'rollback-customer-reset-secret';
+    const updateStateSpy = vi
+      .spyOn(editor.view, 'updateState')
+      .mockImplementation((nextState) => {
+        if (liveTransformProduced && nextState === originalState) {
+          throw new Error(`rollback leaked ${confidentialMarker}`);
+        }
+        originalUpdateState(nextState);
+      });
+    const onChange = vi.fn();
+    const onFormReset = vi.fn();
+
+    try {
+      let failure: unknown;
+      try {
+        applyRequestedReset(editor, onChange, onFormReset);
+      } catch (error) {
+        failure = error;
+      }
+
+      expect(matchingApplications).toBe(2);
+      expect(failure).toBeInstanceOf(Error);
+      expect((failure as Error).message).toBe(RESET_FAILURE_MESSAGE);
+      expect((failure as Error).message).not.toContain(confidentialMarker);
+      expect(editor.state.doc.textContent).toBe('Live policy transform');
+      expect(onChange).not.toHaveBeenCalled();
+      expect(onFormReset).toHaveBeenCalledOnce();
+    } finally {
+      updateStateSpy.mockRestore();
       editor.destroy();
     }
   });
