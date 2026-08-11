@@ -4,12 +4,19 @@ import { buildExtensions, type BuildExtensionsOptions } from './kit.js';
 const INVALID_BUILD_EXTENSIONS_CONFIGURATION =
   'Build extensions configuration is invalid.';
 
+function expectInvalidBuildExtensionsOptions(options: unknown): void {
+  expect(() =>
+    buildExtensions(options as BuildExtensionsOptions),
+  ).toThrowError(new RangeError(INVALID_BUILD_EXTENSIONS_CONFIGURATION));
+}
+
 describe('buildExtensions runtime configuration boundary', () => {
-  it('rejects malformed top-level option containers through one stable error', () => {
-    expect(() =>
-      buildExtensions(null as unknown as BuildExtensionsOptions),
-    ).toThrowError(new RangeError(INVALID_BUILD_EXTENSIONS_CONFIGURATION));
-  });
+  it.each([null, [], 'invalid', 0, false])(
+    'rejects malformed top-level option container %p through one stable error',
+    (options) => {
+      expectInvalidBuildExtensionsOptions(options);
+    },
+  );
 
   it('rejects accessor-backed options without evaluating the accessor', () => {
     let reads = 0;
@@ -22,25 +29,71 @@ describe('buildExtensions runtime configuration boundary', () => {
       },
     });
 
-    expect(() => buildExtensions(options)).toThrowError(
-      new RangeError(INVALID_BUILD_EXTENSIONS_CONFIGURATION),
-    );
+    expectInvalidBuildExtensionsOptions(options);
     expect(reads).toBe(0);
   });
 
+  it('rejects non-enumerable top-level option properties', () => {
+    const options = {} as BuildExtensionsOptions;
+    Object.defineProperty(options, 'disableHistory', {
+      enumerable: false,
+      value: true,
+    });
+
+    expectInvalidBuildExtensionsOptions(options);
+  });
+
   it('rejects unknown and symbol option keys instead of silently ignoring them', () => {
-    const unknownKey = {
-      maxSzieBytes: 1_024,
-    } as unknown as BuildExtensionsOptions;
-    expect(() => buildExtensions(unknownKey)).toThrowError(
-      new RangeError(INVALID_BUILD_EXTENSIONS_CONFIGURATION),
-    );
+    expectInvalidBuildExtensionsOptions({ maxSzieBytes: 1_024 });
 
     const symbolKey = Symbol('private-build-options');
     const options: Record<PropertyKey, unknown> = {};
     options[symbolKey] = true;
-    expect(() => buildExtensions(options as BuildExtensionsOptions)).toThrowError(
-      new RangeError(INVALID_BUILD_EXTENSIONS_CONFIGURATION),
+    expectInvalidBuildExtensionsOptions(options);
+  });
+
+  it('redacts hostile own-key reflection failures', () => {
+    const options = new Proxy(
+      {},
+      {
+        ownKeys() {
+          throw new Error('private build-options own-key detail');
+        },
+      },
     );
+
+    expectInvalidBuildExtensionsOptions(options);
+  });
+
+  it('redacts hostile property-descriptor reflection failures', () => {
+    const options = new Proxy(
+      {},
+      {
+        ownKeys() {
+          return ['image'];
+        },
+        getOwnPropertyDescriptor() {
+          throw new Error('private build-options descriptor detail');
+        },
+      },
+    );
+
+    expectInvalidBuildExtensionsOptions(options);
+  });
+
+  it('rejects a reported option key without an own descriptor', () => {
+    const options = new Proxy(
+      {},
+      {
+        ownKeys() {
+          return ['image'];
+        },
+        getOwnPropertyDescriptor() {
+          return undefined;
+        },
+      },
+    );
+
+    expectInvalidBuildExtensionsOptions(options);
   });
 });
