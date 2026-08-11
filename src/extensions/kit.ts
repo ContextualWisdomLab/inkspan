@@ -37,11 +37,34 @@ export interface BuildExtensionsOptions {
   additionalExtensions?: Extensions;
 }
 
+/** Reject invalid runtime size/dimension configuration before extension setup. */
+function validateImageNonNegativeSafeInteger(
+  key: 'maxSizeBytes' | 'maxDimension',
+  value: number | undefined,
+): void {
+  if (value !== undefined && (!Number.isSafeInteger(value) || value < 0)) {
+    throw new RangeError(`Image ${key} configuration is invalid.`);
+  }
+}
+
+/** Reject non-finite or out-of-range runtime image quality configuration. */
+function validateImageQuality(value: number | undefined): void {
+  if (
+    value !== undefined &&
+    (!Number.isFinite(value) || value < 0 || value > 1)
+  ) {
+    throw new RangeError('Image quality configuration is invalid.');
+  }
+}
+
 /** Build the full extension list for an Inkspan editor surface. */
 export function buildExtensions(
   options: BuildExtensionsOptions = {},
 ): Extensions {
   const image = options.image ?? {};
+  validateImageNonNegativeSafeInteger('maxSizeBytes', image.maxSizeBytes);
+  validateImageNonNegativeSafeInteger('maxDimension', image.maxDimension);
+  validateImageQuality(image.quality);
   const historyConfiguration = options.disableHistory
     ? { history: false as const }
     : {};
