@@ -228,7 +228,11 @@ describe('createEditorDocumentSnapshot', () => {
   });
 
   it('rejects non-finite numeric metadata values', () => {
-    for (const metadata of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+    for (const metadata of [
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      Number.NEGATIVE_INFINITY,
+    ]) {
       const documentJson = { type: 'doc', metadata };
       const editor = {
         getHTML: () => '<p>Hello</p>',
@@ -240,6 +244,36 @@ describe('createEditorDocumentSnapshot', () => {
         new RangeError('Editor document JSON must contain JSON-compatible values only.'),
       );
     }
+  });
+
+  it('rejects sparse arrays that JSON serialization would materialize with null holes', () => {
+    const metadata = new Array<unknown>(2);
+    metadata[1] = 'present';
+    const documentJson = { type: 'doc', metadata };
+    const editor = {
+      getHTML: () => '<p>Hello</p>',
+      getJSON: () => documentJson,
+      isEmpty: false,
+    } as unknown as Editor;
+
+    expect(() => createEditorDocumentSnapshot(editor, 'markdown')).toThrowError(
+      new RangeError('Editor document JSON arrays must contain dense elements only.'),
+    );
+  });
+
+  it('rejects extra enumerable array properties that JSON serialization would omit', () => {
+    const metadata = ['present'] as unknown[] & Record<string, unknown>;
+    metadata.privateExtensionMetadata = 'must-not-survive';
+    const documentJson = { type: 'doc', metadata };
+    const editor = {
+      getHTML: () => '<p>Hello</p>',
+      getJSON: () => documentJson,
+      isEmpty: false,
+    } as unknown as Editor;
+
+    expect(() => createEditorDocumentSnapshot(editor, 'markdown')).toThrowError(
+      new RangeError('Editor document JSON arrays must contain dense elements only.'),
+    );
   });
 
   it('preserves null-prototype JSON objects', () => {
