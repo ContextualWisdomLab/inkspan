@@ -33,4 +33,14 @@ describe('collaboration awareness payload bounds', () => {
     expect(serialized.name).toBe(expected);
     expect(remoteCursor.textContent).toBe(expected);
   });
+
+  it('rejects oversized public identifiers before awareness publication', () => {
+    expect(() =>
+      serializeCollaborationUser({
+        userId: `editor-${'a'.repeat(74)}`,
+        displayName: 'Alice',
+        cursorColor: '#123456',
+      }),
+    ).toThrow(/userId.*80/);
+  });
 });
