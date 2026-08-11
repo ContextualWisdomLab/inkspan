@@ -261,7 +261,22 @@ function canonicalizeJson(
   if (depth > MAX_DOCUMENT_EVIDENCE_NESTING_DEPTH) {
     throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
   }
-  if (value === null || typeof value !== 'object') return value;
+  if (
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'boolean'
+  ) {
+    return value;
+  }
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
+    }
+    return value;
+  }
+  if (typeof value !== 'object') {
+    throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
+  }
   if (active.has(value)) {
     throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
   }
