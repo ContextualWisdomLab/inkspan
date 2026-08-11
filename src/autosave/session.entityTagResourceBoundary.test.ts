@@ -7,6 +7,7 @@ import {
 } from './package.js';
 
 const MAX_ACCEPTED_ENTITY_TAG_CODE_UNITS = 64 * 1024;
+const PRIVATE_ETAG_MARKER = 'PRIVATE_ETAG_SENTINEL';
 
 /** Create one exact immutable revision fixture for durable-validator tests. */
 function createEvidence(): DocumentAutosaveRevisionEvidence {
@@ -27,7 +28,7 @@ function createEvidence(): DocumentAutosaveRevisionEvidence {
 
 /** Create one syntactically RFC-compatible tag beyond Inkspan's local ceiling. */
 function createOversizedEntityTag(): string {
-  return `"${'a'.repeat(MAX_ACCEPTED_ENTITY_TAG_CODE_UNITS)}"`;
+  return `"${PRIVATE_ETAG_MARKER}${'a'.repeat(MAX_ACCEPTED_ENTITY_TAG_CODE_UNITS)}"`;
 }
 
 describe('durable autosave entity-tag resource boundary', () => {
@@ -57,16 +58,22 @@ describe('durable autosave entity-tag resource boundary', () => {
     expect(isStrongHttpEntityTag(oneOverCandidate)).toBe(false);
   });
 
-  it('rejects an oversized initial durable validator before retaining session state', () => {
-    expect(() =>
+  it('rejects an oversized initial validator with a payload-redacted error', () => {
+    let capturedError: unknown;
+    try {
       createDocumentAutosaveSession({
         initialStrongEntityTag: createOversizedEntityTag(),
         save: () => ({ status: 'conflict' }),
-      }),
-    ).toThrowError(expect.objectContaining({ code: 'invalid_options' }));
+      });
+    } catch (error) {
+      capturedError = error;
+    }
+
+    expect(capturedError).toMatchObject({ code: 'invalid_options' });
+    expect((capturedError as Error).message).not.toContain(PRIVATE_ETAG_MARKER);
   });
 
-  it('rejects an oversized recovered validator without replacing the durable base', async () => {
+  it('rejects an oversized recovered validator without replacing or exposing it', async () => {
     const session = createDocumentAutosaveSession({
       initialStrongEntityTag: '"server-one"',
       save: () => ({ status: 'conflict' }),
@@ -75,16 +82,21 @@ describe('durable autosave entity-tag resource boundary', () => {
     await expect(session.enqueue(createEvidence())).resolves.toMatchObject({
       status: 'conflict',
     });
-    expect(() => session.resume(createOversizedEntityTag())).toThrowError(
-      expect.objectContaining({ code: 'invalid_recovery_validator' }),
-    );
+    let capturedError: unknown;
+    try {
+      session.resume(createOversizedEntityTag());
+    } catch (error) {
+      capturedError = error;
+    }
+    expect(capturedError).toMatchObject({ code: 'invalid_recovery_validator' });
+    expect((capturedError as Error).message).not.toContain(PRIVATE_ETAG_MARKER);
     expect(session.getSnapshot()).toMatchObject({
       state: 'blocked',
       durableStrongEntityTag: '"server-one"',
     });
   });
 
-  it('fails closed without emitting an oversized replacement validator', async () => {
+  it('fails closed without emitting or exposing an oversized replacement validator', async () => {
     const oversizedEntityTag = createOversizedEntityTag();
     const observedSnapshots: DocumentAutosaveSessionSnapshot[] = [];
     const session = createDocumentAutosaveSession({
@@ -98,9 +110,12 @@ describe('durable autosave entity-tag resource boundary', () => {
       },
     });
 
-    await expect(session.enqueue(createEvidence())).rejects.toMatchObject({
-      code: 'invalid_save_result',
-    });
+    const capturedError = await session.enqueue(createEvidence()).then(
+      () => null,
+      (error: unknown) => error,
+    );
+    expect(capturedError).toMatchObject({ code: 'invalid_save_result' });
+    expect((capturedError as Error).message).not.toContain(PRIVATE_ETAG_MARKER);
     await Promise.resolve();
     expect(session.getSnapshot()).toMatchObject({
       state: 'blocked',
@@ -113,6 +128,6 @@ describe('durable autosave entity-tag resource boundary', () => {
         (snapshot) => snapshot.durableStrongEntityTag === '"server-one"',
       ),
     ).toBe(true);
-    expect(JSON.stringify(observedSnapshots)).not.toContain(oversizedEntityTag);
+    expect(JSON.stringify(observedSnapshots)).not.toContain(PRIVATE_ETAG_MARKER);
   });
 });
