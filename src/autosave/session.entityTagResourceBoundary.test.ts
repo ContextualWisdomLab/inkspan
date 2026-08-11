@@ -39,11 +39,21 @@ describe('durable autosave entity-tag resource boundary', () => {
     regexTest.mockRestore();
   });
 
-  it('preserves a syntactically valid validator at the exact ceiling', () => {
-    const exactCandidate = `"${'a'.repeat(MAX_ACCEPTED_ENTITY_TAG_CODE_UNITS - 2)}"`;
+  it('preserves syntactically valid ASCII and obs-text validators at the exact ceiling', () => {
+    const exactAsciiCandidate = `"${'a'.repeat(MAX_ACCEPTED_ENTITY_TAG_CODE_UNITS - 2)}"`;
+    const exactObsTextCandidate = `"${String.fromCharCode(0xff).repeat(MAX_ACCEPTED_ENTITY_TAG_CODE_UNITS - 2)}"`;
 
-    expect(exactCandidate).toHaveLength(MAX_ACCEPTED_ENTITY_TAG_CODE_UNITS);
-    expect(isStrongHttpEntityTag(exactCandidate)).toBe(true);
+    expect(exactAsciiCandidate).toHaveLength(MAX_ACCEPTED_ENTITY_TAG_CODE_UNITS);
+    expect(exactObsTextCandidate).toHaveLength(MAX_ACCEPTED_ENTITY_TAG_CODE_UNITS);
+    expect(isStrongHttpEntityTag(exactAsciiCandidate)).toBe(true);
+    expect(isStrongHttpEntityTag(exactObsTextCandidate)).toBe(true);
+  });
+
+  it('rejects the first otherwise-valid code unit beyond the complete-tag ceiling', () => {
+    const oneOverCandidate = `"${'a'.repeat(MAX_ACCEPTED_ENTITY_TAG_CODE_UNITS - 1)}"`;
+
+    expect(oneOverCandidate).toHaveLength(MAX_ACCEPTED_ENTITY_TAG_CODE_UNITS + 1);
+    expect(isStrongHttpEntityTag(oneOverCandidate)).toBe(false);
   });
 
   it('rejects an oversized initial durable validator before retaining session state', () => {
