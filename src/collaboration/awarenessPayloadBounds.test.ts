@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   renderCollaborationCursor,
   serializeCollaborationUser,
@@ -54,5 +54,27 @@ describe('collaboration awareness payload bounds', () => {
         cursorColor: '#123456',
       }),
     ).toThrow(/userId.*80/);
+  });
+
+  it('does not materialize code-point arrays while enforcing public bounds', () => {
+    const arrayFrom = vi.spyOn(Array, 'from');
+    let thrown: unknown;
+
+    try {
+      serializeCollaborationUser({
+        userId: `editor-${'a'.repeat(100_000)}`,
+        displayName: 'A'.repeat(100_000),
+        cursorColor: '#123456',
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    const allocationCalls = arrayFrom.mock.calls.length;
+    arrayFrom.mockRestore();
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toMatch(/userId.*80/);
+    expect(allocationCalls).toBe(0);
   });
 });
