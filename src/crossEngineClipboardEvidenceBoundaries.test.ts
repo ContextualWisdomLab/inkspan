@@ -26,4 +26,21 @@ describe('cross-engine clipboard evidence resource boundary', () => {
       assertCrossEngineClipboardConsensus(observations(cyclic)),
     ).toThrowError(new Error(RELEASE_EVIDENCE_ERROR));
   });
+
+  it('fails closed before recursively canonicalizing excessive nesting', () => {
+    let deep: unknown = null;
+    for (let depth = 0; depth < 130; depth += 1) deep = [deep];
+
+    expect(() =>
+      assertCrossEngineClipboardConsensus(observations(deep)),
+    ).toThrowError(new Error(RELEASE_EVIDENCE_ERROR));
+  });
+
+  it('fails closed before canonicalizing an excessive JSON value count', () => {
+    const oversized = Array.from({ length: 10_001 }, () => null);
+
+    expect(() =>
+      assertCrossEngineClipboardConsensus(observations(oversized)),
+    ).toThrowError(new Error(RELEASE_EVIDENCE_ERROR));
+  });
 });
