@@ -37,6 +37,20 @@ function normalizedAccessibilityValue(
   return normalized ? normalized : undefined;
 }
 
+/** Reject runtime direction values outside Inkspan's public finite contract. */
+function validateEditorTextDirection(
+  value: EditorTextDirection | undefined,
+): void {
+  if (
+    value !== undefined &&
+    value !== 'ltr' &&
+    value !== 'rtl' &&
+    value !== 'auto'
+  ) {
+    throw new RangeError('Editor text direction must be ltr, rtl, or auto.');
+  }
+}
+
 /**
  * Normalize the shared visual and semantic empty-editor guidance.
  *
@@ -61,6 +75,7 @@ export function normalizeEditorPlaceholder(
 export function buildEditorAccessibilityAttributes(
   options: EditorAccessibilityOptions,
 ): Record<string, string> {
+  validateEditorTextDirection(options.textDirection);
   const placeholder = normalizeEditorPlaceholder(options.placeholder);
   const languageTag = normalizedAccessibilityValue(options.languageTag);
   const labelledBy = normalizedAccessibilityValue(options.ariaLabelledBy);
