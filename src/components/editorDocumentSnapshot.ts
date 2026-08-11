@@ -18,6 +18,8 @@ const INVALID_DOCUMENT_JSON_PROPERTY_MESSAGE =
   'Editor document JSON must contain data properties only.';
 const INVALID_DOCUMENT_JSON_VALUE_MESSAGE =
   'Editor document JSON must contain JSON-compatible values only.';
+const INVALID_DOCUMENT_JSON_ARRAY_MESSAGE =
+  'Editor document JSON arrays must contain dense elements only.';
 const JSON_SCALAR_TYPES = new Set(['string', 'boolean']);
 
 function isJsonArray(value: object): boolean {
@@ -44,6 +46,28 @@ function ownJsonKeys(value: object): (string | symbol)[] {
     return Reflect.ownKeys(value);
   } catch {
     throw new RangeError(INVALID_DOCUMENT_JSON_PROPERTY_MESSAGE);
+  }
+}
+
+function ownJsonArrayLength(value: object): number {
+  try {
+    return Object.getOwnPropertyDescriptor(value, 'length')!.value as number;
+  } catch {
+    throw new RangeError(INVALID_DOCUMENT_JSON_ARRAY_MESSAGE);
+  }
+}
+
+function assertDenseJsonArrayKeys(
+  keys: (string | symbol)[],
+  length: number,
+): void {
+  if (keys.length !== length + 1) {
+    throw new RangeError(INVALID_DOCUMENT_JSON_ARRAY_MESSAGE);
+  }
+  for (let index = 0; index < length; index += 1) {
+    if (keys[index] !== String(index)) {
+      throw new RangeError(INVALID_DOCUMENT_JSON_ARRAY_MESSAGE);
+    }
   }
 }
 
@@ -112,10 +136,14 @@ function freezeDocumentJson(
     if (!isArray) {
       assertPlainJsonContainer(frame.value);
     }
+    const keys = ownJsonKeys(frame.value);
+    if (isArray) {
+      assertDenseJsonArrayKeys(keys, ownJsonArrayLength(frame.value));
+    }
 
     activeObjects.add(frame.value);
     pendingFrames.push({ value: frame.value, exiting: true });
-    for (const key of ownJsonKeys(frame.value)) {
+    for (const key of keys) {
       if (isArray && key === 'length') {
         continue;
       }
@@ -139,13 +167,14 @@ function freezeDocumentJson(
  * `Editor.getJSON()` and iteratively frozen together with the outer snapshot so
  * host persistence, indexing, and AI workflows cannot mutate shared state.
  * Cyclic custom-extension metadata is rejected before an active object is
- * traversed again. Only arrays and plain/null-prototype objects containing
+ * traversed again. Only dense arrays and plain/null-prototype objects containing
  * enumerable string data properties and lossless JSON-compatible primitive
  * values are accepted, including plain objects from another JavaScript realm;
- * exotic containers, accessors, symbol keys, hidden custom metadata,
- * unsupported primitive values, non-finite numbers, and hostile reflection
- * traps cannot escape the same deterministic payload-redacted JSON snapshot
- * boundary. Shared acyclic references remain supported.
+ * sparse arrays, extra array metadata, exotic containers, accessors, symbol
+ * keys, hidden custom metadata, unsupported primitive values, non-finite
+ * numbers, and hostile reflection traps cannot escape the same deterministic
+ * payload-redacted JSON snapshot boundary. Shared acyclic references remain
+ * supported.
  */
 export function createEditorDocumentSnapshot(
   editor: Editor | null,
