@@ -14,6 +14,7 @@ import {
   buildEditorAccessibilityAttributes,
   normalizeEditorPlaceholder,
 } from './editorAccessibility.js';
+import { synchronizeControlledEditorValue } from './editorControlledValueSync.js';
 import { createEditorDocumentSnapshot } from './editorDocumentSnapshot.js';
 import { applyEditorFormReset } from './editorFormReset.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
@@ -212,8 +213,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       const current = editorHtmlToValue(editor.getHTML(), mode);
       if (current !== value) {
         /* v8 ignore next -- isControlled guarantees value is defined. */
-        const next = editorValueToHtml(value ?? '', mode);
-        editor.commands.setContent(next, false);
+        synchronizeControlledEditorValue(editor, value ?? '', mode);
       }
     }, [editor, isControlled, value, mode]);
 
