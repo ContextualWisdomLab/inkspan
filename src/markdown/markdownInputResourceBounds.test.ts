@@ -7,7 +7,8 @@ afterEach(() => {
 });
 
 describe('Markdown parser resource bounds', () => {
-  it('rejects configured oversized Markdown before Marked parser materialization', () => {
+  it('rejects configured oversized Markdown before encoding or Marked parser materialization', () => {
+    const encode = vi.spyOn(TextEncoder.prototype, 'encode');
     const parse = vi.spyOn(Marked.prototype, 'parse');
     let failure: unknown;
 
@@ -22,6 +23,7 @@ describe('Markdown parser resource bounds', () => {
       failure = error;
     }
 
+    expect(encode).not.toHaveBeenCalled();
     expect(parse).not.toHaveBeenCalled();
     expect(failure).toMatchObject({
       name: 'MarkdownToHtmlResourceError',
