@@ -71,9 +71,16 @@ export interface PlainTextOptions {
    * Decorative images with an empty alternative remain silent.
    */
   includeImageAlt?: boolean;
-  /** Maximum UTF-8 Markdown bytes accepted before plain-text lexing. */
+  /**
+   * Maximum UTF-8 Markdown bytes accepted before plain-text lexing.
+   * Defaults to 16 MiB; values above the 64 MiB hard maximum are rejected.
+   */
   maxMarkdownBytes?: number;
-  /** Maximum UTF-8 HTML bytes accepted before HTML normalization. */
+  /**
+   * Maximum UTF-8 HTML bytes accepted before HTML normalization by
+   * `htmlToPlainText`. Defaults to 16 MiB; values above the 64 MiB hard
+   * maximum are rejected.
+   */
   maxHtmlBytes?: number;
 }
 
@@ -84,7 +91,8 @@ export interface PlainTextOptions {
  * The projection keeps authored reading order, paragraph boundaries, explicit
  * line breaks, code text, list structure, table cells, link labels, and image
  * alternative text. Raw HTML blocks and link-definition records are omitted
- * instead of interpreted.
+ * instead of interpreted. The Markdown byte ceiling is enforced before Marked
+ * materializes lexer tokens.
  */
 export function markdownToPlainText(
   markdown: string,
@@ -107,7 +115,9 @@ export function markdownToPlainText(
  * HTML-to-Markdown normalization boundary.
  *
  * Element names, attributes, hyperlink destinations, and image sources are not
- * emitted. Image alternative text is included unless explicitly disabled.
+ * emitted. Image alternative text is included unless explicitly disabled. The
+ * HTML ceiling applies before normalization and the Markdown ceiling applies
+ * to the normalized Markdown before plain-text lexing.
  */
 export function htmlToPlainText(
   html: string,
