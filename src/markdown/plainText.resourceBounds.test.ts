@@ -16,9 +16,7 @@ describe('plain-text Markdown resource bounds', () => {
     let failure: unknown;
 
     try {
-      // Deliberately bypass the pre-repair option type so hosted RED reaches
-      // the runtime lexer boundary instead of failing during TypeScript setup.
-      markdownToPlainText('12345', { maxMarkdownBytes: 4 } as never);
+      markdownToPlainText('12345', { maxMarkdownBytes: 4 });
     } catch (error) {
       failure = error;
     }
@@ -35,7 +33,7 @@ describe('plain-text Markdown resource bounds', () => {
     const lex = vi.spyOn(Lexer, 'lex');
 
     expect(() =>
-      markdownToPlainText('é', { maxMarkdownBytes: 1 } as never),
+      markdownToPlainText('é', { maxMarkdownBytes: 1 }),
     ).toThrowError(
       expect.objectContaining({
         name: 'MarkdownToHtmlResourceError',
@@ -46,9 +44,7 @@ describe('plain-text Markdown resource bounds', () => {
   });
 
   it('accepts Markdown exactly at the configured UTF-8 ceiling', () => {
-    expect(markdownToPlainText('é', { maxMarkdownBytes: 2 } as never)).toBe(
-      'é',
-    );
+    expect(markdownToPlainText('é', { maxMarkdownBytes: 2 })).toBe('é');
   });
 
   it.each([
@@ -61,6 +57,8 @@ describe('plain-text Markdown resource bounds', () => {
     let failure: unknown;
 
     try {
+      // Invalid runtime configuration is intentionally forced past TypeScript
+      // so the public fail-closed validation remains regression-tested.
       markdownToPlainText(secret, { maxMarkdownBytes } as never);
     } catch (error) {
       failure = error;
@@ -76,7 +74,7 @@ describe('plain-text Markdown resource bounds', () => {
 
   it('forwards the HTML parser ceiling before HTML normalization', () => {
     expect(() =>
-      htmlToPlainText('<p>hello</p>', { maxHtmlBytes: 4 } as never),
+      htmlToPlainText('<p>hello</p>', { maxHtmlBytes: 4 }),
     ).toThrowError(
       expect.objectContaining({
         name: 'HtmlToMarkdownResourceError',
@@ -92,7 +90,7 @@ describe('plain-text Markdown resource bounds', () => {
       htmlToPlainText('<p>hello</p>', {
         maxHtmlBytes: 32,
         maxMarkdownBytes: 4,
-      } as never),
+      }),
     ).toThrowError(
       expect.objectContaining({
         name: 'MarkdownToHtmlResourceError',
