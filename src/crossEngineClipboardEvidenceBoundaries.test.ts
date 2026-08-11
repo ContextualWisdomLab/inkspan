@@ -18,9 +18,18 @@ function observations(documentJson: unknown): CrossEngineClipboardObservation[] 
 }
 
 describe('cross-engine clipboard evidence resource boundary', () => {
-  it('fails closed on cyclic document evidence with one stable diagnostic', () => {
+  it('fails closed on cyclic object evidence with one stable diagnostic', () => {
     const cyclic: Record<string, unknown> = { type: 'doc' };
     cyclic.content = cyclic;
+
+    expect(() =>
+      assertCrossEngineClipboardConsensus(observations(cyclic)),
+    ).toThrowError(new Error(RELEASE_EVIDENCE_ERROR));
+  });
+
+  it('fails closed on cyclic array evidence with the same diagnostic', () => {
+    const cyclic: unknown[] = [];
+    cyclic.push(cyclic);
 
     expect(() =>
       assertCrossEngineClipboardConsensus(observations(cyclic)),
@@ -42,5 +51,20 @@ describe('cross-engine clipboard evidence resource boundary', () => {
     expect(() =>
       assertCrossEngineClipboardConsensus(observations(oversized)),
     ).toThrowError(new Error(RELEASE_EVIDENCE_ERROR));
+  });
+
+  it('fails closed when top-level evidence is not serializable JSON', () => {
+    expect(() =>
+      assertCrossEngineClipboardConsensus(observations(undefined)),
+    ).toThrowError(new Error(RELEASE_EVIDENCE_ERROR));
+  });
+
+  it('accepts repeated non-cyclic object references as equivalent JSON values', () => {
+    const shared = { text: 'same' };
+    const documentJson = { left: shared, right: shared };
+
+    expect(() =>
+      assertCrossEngineClipboardConsensus(observations(documentJson)),
+    ).not.toThrow();
   });
 });
