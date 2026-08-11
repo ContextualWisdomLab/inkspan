@@ -12,8 +12,11 @@ import {
 } from './markdownToHtmlResourcePolicy.js';
 
 const EMAIL_LANGUAGE_TAG_MAX_CODE_UNITS = 256;
+const EMAIL_TITLE_MAX_CODE_UNITS = 65_536;
 const INVALID_EMAIL_LANGUAGE_MESSAGE =
   'Email document language must be a valid BCP 47 language tag within the supported length.';
+const INVALID_EMAIL_TITLE_MESSAGE =
+  'Email document title must be a string within the supported length.';
 
 /** Options for public Markdown-to-HTML conversion. */
 export interface MarkdownToHtmlOptions {
@@ -46,6 +49,14 @@ function assertConfiguredMarkdownInputSize(
 ): void {
   const resolvedMaxBytes = resolveMarkdownToHtmlMaxBytes(maxMarkdownBytes);
   assertMarkdownToHtmlInputSize(markdown, resolvedMaxBytes);
+}
+
+/** Reject invalid or oversized full-document title metadata before HTML escaping. */
+function assertBoundedEmailTitle(value: unknown): void {
+  if (value === undefined) return;
+  if (typeof value !== 'string' || value.length > EMAIL_TITLE_MAX_CODE_UNITS) {
+    throw new RangeError(INVALID_EMAIL_TITLE_MESSAGE);
+  }
 }
 
 /** Reject invalid or oversized full-document language metadata before Intl work. */
@@ -91,6 +102,7 @@ export function markdownToEmailHtml(
   const { maxMarkdownBytes, ...serializerOptions } = options;
   assertConfiguredMarkdownInputSize(markdown, maxMarkdownBytes);
   if (serializerOptions.fullDocument === true) {
+    assertBoundedEmailTitle(serializerOptions.title);
     assertBoundedEmailLanguageTag(serializerOptions.languageTag);
   }
   return serializeMarkdownToEmailHtml(markdown, serializerOptions);
