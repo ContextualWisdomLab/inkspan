@@ -106,13 +106,28 @@ export function restoreDocumentEnvelopeBytes(
  * Apply one already-validated envelope and verify the active editor accepted it.
  *
  * ProseMirror transaction filters may reject schema-valid content for security
- * or host policy reasons. A restore is reported as successful only when the
- * resulting active document is structurally equal to the prepared document.
+ * or host policy reasons, while append-transaction hooks may transform an
+ * otherwise accepted replacement. Preview those document-policy semantics on
+ * detached state first so a known rejection/transformation cannot partially
+ * mutate the live editor. The post-dispatch equality check remains defense in
+ * depth for stateful or non-deterministic policy hooks.
  */
 export function applyPreparedDocumentEnvelope(
   editor: Editor,
   prepared: PreparedDocumentEnvelope,
 ): CwlEditorDocumentEnvelope {
+  const previewTransaction = editor.state.tr
+    .replaceWith(
+      0,
+      editor.state.doc.content.size,
+      prepared.documentNode.content,
+    )
+    .setMeta('preventUpdate', true);
+  const previewState = editor.state.applyTransaction(previewTransaction).state;
+  if (!previewState.doc.eq(prepared.documentNode)) {
+    throw new DocumentEnvelopeRestoreError();
+  }
+
   editor.commands.setContent(prepared.documentNode, false);
   if (!editor.state.doc.eq(prepared.documentNode)) {
     throw new DocumentEnvelopeRestoreError();
