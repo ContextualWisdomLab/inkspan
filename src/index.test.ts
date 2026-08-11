@@ -37,6 +37,8 @@ describe('package entry point', () => {
     expect(typeof api.SafeLinkHrefError).toBe('function');
     expect(typeof api.isSafeLinkHref).toBe('function');
     expect(typeof api.validateSafeLinkHref).toBe('function');
+    expect(api.DEFAULT_SAFE_LINK_MAX_HREF_BYTES).toBe(65_536);
+    expect(api.MAXIMUM_SAFE_LINK_MAX_HREF_BYTES).toBe(1_048_576);
     expect(typeof api.buildExtensions).toBe('function');
   });
 
