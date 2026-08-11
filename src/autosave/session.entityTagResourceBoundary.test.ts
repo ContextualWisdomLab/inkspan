@@ -3,6 +3,7 @@ import {
   createDocumentAutosaveSession,
   isStrongHttpEntityTag,
   type DocumentAutosaveRevisionEvidence,
+  type DocumentAutosaveSessionSnapshot,
 } from './package.js';
 
 const MAX_ACCEPTED_ENTITY_TAG_CODE_UNITS = 64 * 1024;
@@ -83,22 +84,35 @@ describe('durable autosave entity-tag resource boundary', () => {
     });
   });
 
-  it('fails closed when a save callback returns an oversized replacement validator', async () => {
+  it('fails closed without emitting an oversized replacement validator', async () => {
+    const oversizedEntityTag = createOversizedEntityTag();
+    const observedSnapshots: DocumentAutosaveSessionSnapshot[] = [];
     const session = createDocumentAutosaveSession({
       initialStrongEntityTag: '"server-one"',
       save: () => ({
         status: 'saved',
-        nextStrongEntityTag: createOversizedEntityTag(),
+        nextStrongEntityTag: oversizedEntityTag,
       }),
+      onSnapshotChange(snapshot) {
+        observedSnapshots.push(snapshot);
+      },
     });
 
     await expect(session.enqueue(createEvidence())).rejects.toMatchObject({
       code: 'invalid_save_result',
     });
+    await Promise.resolve();
     expect(session.getSnapshot()).toMatchObject({
       state: 'blocked',
       blockedReason: 'failure',
       durableStrongEntityTag: '"server-one"',
     });
+    expect(observedSnapshots.length).toBeGreaterThan(0);
+    expect(
+      observedSnapshots.every(
+        (snapshot) => snapshot.durableStrongEntityTag === '"server-one"',
+      ),
+    ).toBe(true);
+    expect(JSON.stringify(observedSnapshots)).not.toContain(oversizedEntityTag);
   });
 });
