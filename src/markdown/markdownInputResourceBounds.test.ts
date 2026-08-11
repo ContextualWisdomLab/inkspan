@@ -14,6 +14,10 @@ afterEach(() => {
 });
 
 describe('Markdown parser resource bounds', () => {
+  it('uses the owned default ceiling without changing accepted Markdown', () => {
+    expect(markdownToHtml('plain')).toBe('<p>plain</p>\n');
+  });
+
   it('rejects configured oversized Markdown before encoding or Marked lexer materialization', () => {
     const encode = vi.spyOn(TextEncoder.prototype, 'encode');
     const lex = vi.spyOn(Lexer, 'lex');
