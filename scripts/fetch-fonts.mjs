@@ -25,6 +25,9 @@ const FILES_DIR = resolve(FONTS_DIR, 'files');
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+const TRUSTED_FONT_ASSET_HOST = 'fonts.gstatic.com';
+const MAX_FONT_SUBSET_BYTES = 16 * 1024 * 1024;
+const WOFF2_SIGNATURE = Buffer.from([0x77, 0x4f, 0x46, 0x32]);
 
 // Latin/Vietnamese carries the primary UI text and is cheap, so ship 400+700.
 // The CJK families are large; ship weight 400 only and let the browser
@@ -52,10 +55,76 @@ async function fetchCss(family, weights) {
   return res.text();
 }
 
-async function download(url) {
+/** Validate one CSS-provided asset URL before any asset request occurs. */
+function validateFontAssetUrl(source) {
+  let url;
+  try {
+    url = new URL(source);
+  } catch {
+    throw new Error('Google Fonts returned an invalid font asset URL');
+  }
+
+  if (
+    url.protocol !== 'https:' ||
+    url.hostname !== TRUSTED_FONT_ASSET_HOST ||
+    url.port !== '' ||
+    url.username !== '' ||
+    url.password !== '' ||
+    !url.pathname.endsWith('.woff2') ||
+    url.search !== '' ||
+    url.hash !== ''
+  ) {
+    throw new Error('Google Fonts returned an untrusted font asset URL');
+  }
+  return url.href;
+}
+
+/** Read one response body without allowing an unbounded subset allocation. */
+async function readBoundedFontBody(response) {
+  const declaredLength = response.headers.get('content-length');
+  if (
+    declaredLength !== null &&
+    /^\d+$/.test(declaredLength) &&
+    Number(declaredLength) > MAX_FONT_SUBSET_BYTES
+  ) {
+    throw new Error('Google Fonts returned an oversized font asset');
+  }
+
+  if (response.body === null) {
+    throw new Error('Google Fonts returned an empty font asset response');
+  }
+
+  const reader = response.body.getReader();
+  const chunks = [];
+  let totalBytes = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    totalBytes += value.byteLength;
+    if (totalBytes > MAX_FONT_SUBSET_BYTES) {
+      await reader.cancel();
+      throw new Error('Google Fonts returned an oversized font asset');
+    }
+    chunks.push(Buffer.from(value));
+  }
+  return Buffer.concat(chunks, totalBytes);
+}
+
+/** Download and authenticate the minimal file-format boundary for one subset. */
+async function download(source) {
+  const url = validateFontAssetUrl(source);
   const res = await fetch(url, { headers: { 'User-Agent': UA } });
-  if (!res.ok) throw new Error(`woff2 fetch failed ${url}: ${res.status}`);
-  return Buffer.from(await res.arrayBuffer());
+  if (!res.ok) {
+    throw new Error(`Google Fonts font asset fetch failed with status ${res.status}`);
+  }
+  const bytes = await readBoundedFontBody(res);
+  if (
+    bytes.byteLength < WOFF2_SIGNATURE.byteLength ||
+    !bytes.subarray(0, WOFF2_SIGNATURE.byteLength).equals(WOFF2_SIGNATURE)
+  ) {
+    throw new Error('Google Fonts returned a non-WOFF2 font asset');
+  }
+  return bytes;
 }
 
 async function processFamily(def) {
