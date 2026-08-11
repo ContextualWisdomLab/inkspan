@@ -10,6 +10,7 @@
 const SAFE_ABSOLUTE_SCHEMES = new Set(['http', 'https', 'mailto', 'tel']);
 const URI_SCHEME_PATTERN = /^([a-z][a-z0-9+.-]*):/i;
 const FORBIDDEN_LINK_CHARACTER_PATTERN = /[\u0000-\u0020\u007f-\u009f\\]/u;
+const SAFE_LINK_CONFIGURATION_KEYS = ['maxHrefBytes'] as const;
 
 /** Default UTF-8 byte ceiling for one untrusted hyperlink target. */
 export const DEFAULT_SAFE_LINK_MAX_HREF_BYTES = 65_536;
@@ -75,25 +76,61 @@ export class SafeLinkHrefError extends Error {
   }
 }
 
-/** Resolve one optional per-call hyperlink byte ceiling. */
+/** Create one stable fail-closed configuration error. */
+function invalidConfiguration(): SafeLinkHrefError {
+  return new SafeLinkHrefError(undefined, 'invalid_configuration');
+}
+
+/** Resolve one optional per-call hyperlink byte ceiling without invoking accessors. */
 function resolveSafeLinkMaxHrefBytes(
   options: SafeLinkValidationOptions | undefined,
 ): number {
   if (options === undefined) return DEFAULT_SAFE_LINK_MAX_HREF_BYTES;
-  if (typeof options !== 'object' || options === null || Array.isArray(options)) {
-    throw new SafeLinkHrefError(undefined, 'invalid_configuration');
+  try {
+    if (typeof options !== 'object' || options === null || Array.isArray(options)) {
+      throw invalidConfiguration();
+    }
+    const keys = Reflect.ownKeys(options);
+    if (
+      keys.some(
+        (key) =>
+          typeof key !== 'string' ||
+          !SAFE_LINK_CONFIGURATION_KEYS.includes(
+            key as (typeof SAFE_LINK_CONFIGURATION_KEYS)[number],
+          ),
+      )
+    ) {
+      throw invalidConfiguration();
+    }
+
+    const descriptor = Object.getOwnPropertyDescriptor(options, 'maxHrefBytes');
+    if (descriptor === undefined) return DEFAULT_SAFE_LINK_MAX_HREF_BYTES;
+    if (
+      !descriptor.enumerable ||
+      !Object.prototype.hasOwnProperty.call(descriptor, 'value')
+    ) {
+      throw invalidConfiguration();
+    }
+
+    const candidate = descriptor.value;
+    if (
+      typeof candidate !== 'number' ||
+      !Number.isSafeInteger(candidate) ||
+      candidate < 1 ||
+      candidate > MAXIMUM_SAFE_LINK_MAX_HREF_BYTES
+    ) {
+      throw invalidConfiguration();
+    }
+    return candidate;
+  } catch (error) {
+    if (
+      error instanceof SafeLinkHrefError &&
+      error.code === 'invalid_configuration'
+    ) {
+      throw error;
+    }
+    throw invalidConfiguration();
   }
-  const candidate = options.maxHrefBytes;
-  if (candidate === undefined) return DEFAULT_SAFE_LINK_MAX_HREF_BYTES;
-  if (
-    typeof candidate !== 'number' ||
-    !Number.isSafeInteger(candidate) ||
-    candidate < 1 ||
-    candidate > MAXIMUM_SAFE_LINK_MAX_HREF_BYTES
-  ) {
-    throw new SafeLinkHrefError(undefined, 'invalid_configuration');
-  }
-  return candidate;
 }
 
 /** Reject oversized link targets before URI parsing or unbounded UTF-8 allocation. */
