@@ -37,6 +37,8 @@ export interface JsonTextInspectionLimits {
   readonly maxValues: number;
   /** Maximum value depth, with the root value at depth zero. */
   readonly maxDepth: number;
+  /** Maximum decoded object-name length in UTF-16 code units. */
+  readonly maxStringCodeUnits?: number;
 }
 
 /** Result of bounded duplicate-name and structure inspection. */
@@ -45,7 +47,8 @@ export type JsonTextInspectionResult =
   | 'malformed'
   | 'duplicate-object-name'
   | 'value-count-limit'
-  | 'nesting-depth-limit';
+  | 'nesting-depth-limit'
+  | 'string-length-limit';
 
 const JSON_WHITESPACE = new Set([' ', '\t', '\n', '\r']);
 const JSON_VALUE_DELIMITERS = new Set([
@@ -57,6 +60,7 @@ const JSON_VALUE_DELIMITERS = new Set([
 const UNBOUNDED_INSPECTION_LIMITS = Object.freeze({
   maxValues: Number.MAX_SAFE_INTEGER,
   maxDepth: Number.MAX_SAFE_INTEGER,
+  maxStringCodeUnits: Number.MAX_SAFE_INTEGER,
 }) satisfies JsonTextInspectionLimits;
 
 /**
@@ -65,13 +69,18 @@ const UNBOUNDED_INSPECTION_LIMITS = Object.freeze({
  * Syntax-invalid input returns `malformed` and remains the responsibility of
  * the canonical parser. Valid-looking values are counted with an explicit
  * stack so callers can reject pathological value counts and nesting before a
- * native parser materializes an attacker-controlled object graph.
+ * native parser materializes an attacker-controlled object graph. When a
+ * decoded object-name ceiling is supplied, plain oversized names are rejected
+ * before a decoded copy is allocated; escaped names are decoded only when
+ * necessary for strict JSON and duplicate-name semantics.
  */
 export function inspectJsonText(
   source: string,
   limits: JsonTextInspectionLimits,
 ): JsonTextInspectionResult {
   const stack: ContainerFrame[] = [];
+  const maxStringCodeUnits =
+    limits.maxStringCodeUnits ?? Number.MAX_SAFE_INTEGER;
   let index = 0;
   let rootComplete = false;
   let valueCount = 0;
@@ -114,7 +123,12 @@ export function inspectJsonText(
         continue;
       }
       if (frame.state === 'key-or-end' || frame.state === 'key') {
-        const keyToken = readJsonString(source, index, true);
+        const keyToken = readJsonObjectName(
+          source,
+          index,
+          maxStringCodeUnits,
+        );
+        if (keyToken === 'string-length-limit') return keyToken;
         if (keyToken?.decodedValue === undefined) return 'malformed';
         if (frame.names.has(keyToken.decodedValue)) {
           return 'duplicate-object-name';
@@ -249,6 +263,56 @@ function readJsonValueStart(
     endIndex += 1;
   }
   return { endIndex };
+}
+
+function readJsonObjectName(
+  source: string,
+  startIndex: number,
+  maxStringCodeUnits: number,
+): JsonStringToken | 'string-length-limit' | null {
+  if (source[startIndex] !== '"') return null;
+
+  let index = startIndex + 1;
+  let hasEscape = false;
+  let hasRawControlCharacter = false;
+  while (index < source.length) {
+    const character = source[index];
+    if (character === '"') {
+      const endIndex = index + 1;
+      const rawLength = index - startIndex - 1;
+      if (
+        !hasEscape &&
+        !hasRawControlCharacter &&
+        rawLength > maxStringCodeUnits
+      ) {
+        return 'string-length-limit';
+      }
+
+      let decodedValue: string;
+      try {
+        decodedValue = JSON.parse(
+          source.slice(startIndex, endIndex),
+        ) as string;
+      } catch {
+        return null;
+      }
+      if (decodedValue.length > maxStringCodeUnits) {
+        return 'string-length-limit';
+      }
+      return { endIndex, decodedValue };
+    }
+
+    if (character === '\\') {
+      hasEscape = true;
+      index += 2;
+      continue;
+    }
+    if (source.charCodeAt(index) <= 0x1f) {
+      hasRawControlCharacter = true;
+    }
+    index += 1;
+  }
+  return null;
 }
 
 function readJsonString(
