@@ -133,4 +133,42 @@ describe('atomic document-envelope restore under transaction transforms', () => 
       editor.destroy();
     }
   });
+
+  it('rolls back when a transaction observer throws after the live state update', () => {
+    const editor = new Editor({
+      element: document.createElement('div'),
+      extensions: buildExtensions(),
+      content: '<p>Original document</p>',
+    });
+    const privateFailure = 'private transaction observer detail';
+    let rejectRestore = false;
+    const transactionObserver = () => {
+      if (rejectRestore && editor.state.doc.textContent === 'Requested restore') {
+        throw new Error(privateFailure);
+      }
+    };
+    editor.on('transaction', transactionObserver);
+
+    try {
+      editor.commands.setTextSelection(5);
+      const originalDocument = editor.state.doc;
+      const originalSelection = editor.state.selection;
+      rejectRestore = true;
+
+      let failure: unknown;
+      try {
+        restoreDocumentEnvelope(editor, requestedRestoreEnvelope());
+      } catch (error) {
+        failure = error;
+      }
+
+      expect(failure).toBeInstanceOf(DocumentEnvelopeRestoreError);
+      expect(String(failure)).not.toContain(privateFailure);
+      expect(editor.state.doc.eq(originalDocument)).toBe(true);
+      expect(editor.state.selection.eq(originalSelection)).toBe(true);
+    } finally {
+      editor.off('transaction', transactionObserver);
+      editor.destroy();
+    }
+  });
 });
