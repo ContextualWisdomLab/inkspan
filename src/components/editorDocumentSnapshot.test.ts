@@ -119,6 +119,32 @@ describe('createEditorDocumentSnapshot', () => {
     }
   });
 
+  it('rejects accessor-backed document JSON without evaluating the accessor', () => {
+    const getter = vi.fn(() => {
+      throw new Error('private extension getter executed');
+    });
+    const metadata: Record<string, unknown> = {};
+    Object.defineProperty(metadata, 'privateValue', {
+      enumerable: true,
+      configurable: true,
+      get: getter,
+    });
+    const documentJson = {
+      type: 'doc',
+      metadata,
+    };
+    const editor = {
+      getHTML: () => '<p>Hello</p>',
+      getJSON: () => documentJson,
+      isEmpty: false,
+    } as unknown as Editor;
+
+    expect(() => createEditorDocumentSnapshot(editor, 'markdown')).toThrowError(
+      new RangeError('Editor document JSON must contain data properties only.'),
+    );
+    expect(getter).not.toHaveBeenCalled();
+  });
+
   it('preserves shared acyclic metadata while deeply freezing it once', () => {
     const sharedMetadata = { classification: 'internal' };
     const documentJson = {
