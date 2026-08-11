@@ -14,6 +14,10 @@ import TurndownService from 'turndown';
 import { gfm } from 'turndown-plugin-gfm';
 import { validateInlineImageSource } from '../policy/inlineImagePolicy.js';
 import { isSafeLinkHref } from '../policy/safeLinkPolicy.js';
+import {
+  assertHtmlToMarkdownInputSize,
+  resolveHtmlToMarkdownMaxBytes,
+} from './htmlToMarkdownResourcePolicy.js';
 
 const SERIALIZED_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
@@ -246,21 +250,27 @@ const turndownWithoutImageAlt = createTurndown(false);
 export interface HtmlToMarkdownOptions {
   /** Include image alternative text in converted Markdown. Defaults to true. */
   includeImageAlt?: boolean;
+  /** Maximum UTF-8 bytes accepted before parsing. Defaults to 16 MiB. */
+  maxHtmlBytes?: number;
 }
 
 /**
  * Convert an HTML string to Markdown through an inert, fail-closed boundary.
  *
- * In browsers, the raw string is parsed only inside a detached `<template>` and
- * sanitized before the resulting `DocumentFragment` reaches Turndown. In
- * browserless Node runtimes, Turndown 7 uses its non-fetching Domino parser.
- * Both paths emit Markdown links only for Inkspan-safe targets and Markdown
- * images only for strict inline base64 raster sources.
+ * The input byte ceiling is enforced before any browser DOM or browserless
+ * Turndown parser materialization. In browsers, accepted raw input is parsed
+ * only inside a detached `<template>` and sanitized before the resulting
+ * `DocumentFragment` reaches Turndown. In browserless Node runtimes, Turndown 7
+ * uses its non-fetching Domino parser. Both paths emit Markdown links only for
+ * Inkspan-safe targets and Markdown images only for strict inline base64 raster
+ * sources.
  */
 export function htmlToMarkdown(
   html: string,
   options: HtmlToMarkdownOptions = {},
 ): string {
+  const maxHtmlBytes = resolveHtmlToMarkdownMaxBytes(options.maxHtmlBytes);
+  assertHtmlToMarkdownInputSize(html, maxHtmlBytes);
   const fragment = createInertBrowserFragment(html);
   const turndown = options.includeImageAlt === false
     ? turndownWithoutImageAlt
