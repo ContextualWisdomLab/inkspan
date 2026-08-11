@@ -51,6 +51,30 @@ function validateEditorTextDirection(
   }
 }
 
+/** Reject runtime `aria-invalid` values outside Inkspan's finite contract. */
+function validateEditorAriaInvalid(
+  value: EditorAriaInvalid | undefined,
+): void {
+  if (
+    value !== undefined &&
+    value !== false &&
+    value !== true &&
+    value !== 'grammar' &&
+    value !== 'spelling'
+  ) {
+    throw new RangeError(
+      'Editor aria-invalid must be false, true, grammar, or spelling.',
+    );
+  }
+}
+
+/** Reject runtime `aria-required` values outside Inkspan's boolean contract. */
+function validateEditorAriaRequired(value: boolean | undefined): void {
+  if (value !== undefined && value !== false && value !== true) {
+    throw new RangeError('Editor aria-required must be false or true.');
+  }
+}
+
 /**
  * Normalize the shared visual and semantic empty-editor guidance.
  *
@@ -76,6 +100,8 @@ export function buildEditorAccessibilityAttributes(
   options: EditorAccessibilityOptions,
 ): Record<string, string> {
   validateEditorTextDirection(options.textDirection);
+  validateEditorAriaInvalid(options.ariaInvalid);
+  validateEditorAriaRequired(options.ariaRequired);
   const placeholder = normalizeEditorPlaceholder(options.placeholder);
   const languageTag = normalizedAccessibilityValue(options.languageTag);
   const labelledBy = normalizedAccessibilityValue(options.ariaLabelledBy);
