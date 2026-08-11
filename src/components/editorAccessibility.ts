@@ -131,6 +131,44 @@ function normalizedEditorLanguageTag(
   return normalized;
 }
 
+/** Reject runtime direction values outside Inkspan's public finite contract. */
+function validateEditorTextDirection(
+  value: EditorTextDirection | undefined,
+): void {
+  if (
+    value !== undefined &&
+    value !== 'ltr' &&
+    value !== 'rtl' &&
+    value !== 'auto'
+  ) {
+    throw new RangeError('Editor text direction must be ltr, rtl, or auto.');
+  }
+}
+
+/** Reject runtime `aria-invalid` values outside Inkspan's finite contract. */
+function validateEditorAriaInvalid(
+  value: EditorAriaInvalid | undefined,
+): void {
+  if (
+    value !== undefined &&
+    value !== false &&
+    value !== true &&
+    value !== 'grammar' &&
+    value !== 'spelling'
+  ) {
+    throw new RangeError(
+      'Editor aria-invalid must be false, true, grammar, or spelling.',
+    );
+  }
+}
+
+/** Reject runtime `aria-required` values outside Inkspan's boolean contract. */
+function validateEditorAriaRequired(value: boolean | undefined): void {
+  if (value !== undefined && value !== false && value !== true) {
+    throw new RangeError('Editor aria-required must be false or true.');
+  }
+}
+
 /**
  * Normalize the shared visual and semantic empty-editor guidance.
  *
@@ -152,12 +190,18 @@ export function normalizeEditorPlaceholder(
  * omitted when blank. Non-blank language metadata must be well-formed under the
  * complete RFC 5646 syntax and uniqueness rules, including private-use and
  * grandfathered tags; IANA registry-content validity remains a host policy
- * concern. The trimmed caller spelling is preserved. Placeholder guidance
- * remains supplemental and never replaces the accessible name.
+ * concern. Runtime direction and ARIA state values are checked against Inkspan's
+ * finite public contracts before attribute emission. The trimmed caller spelling
+ * of accepted language tags is preserved. Placeholder guidance remains
+ * supplemental and never replaces the accessible name.
  */
 export function buildEditorAccessibilityAttributes(
   options: EditorAccessibilityOptions,
 ): Record<string, string> {
+  validateEditorTextDirection(options.textDirection);
+  validateEditorAriaInvalid(options.ariaInvalid);
+  validateEditorAriaRequired(options.ariaRequired);
+
   const placeholder = normalizeEditorPlaceholder(options.placeholder);
   const languageTag = normalizedEditorLanguageTag(options.languageTag);
   const labelledBy = normalizedAccessibilityValue(options.ariaLabelledBy);
