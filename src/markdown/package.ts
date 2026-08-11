@@ -16,6 +16,12 @@ export type {
   MarkdownToEmailHtmlOptions,
 } from './serializer.js';
 export {
+  DEFAULT_HTML_TO_MARKDOWN_MAX_BYTES,
+  MAXIMUM_HTML_TO_MARKDOWN_MAX_BYTES,
+  HtmlToMarkdownResourceError,
+} from './htmlToMarkdownResourcePolicy.js';
+export type { HtmlToMarkdownResourceErrorCode } from './htmlToMarkdownResourcePolicy.js';
+export {
   htmlToPlainText,
   markdownToPlainText,
 } from './plainText.js';
