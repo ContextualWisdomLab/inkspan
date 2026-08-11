@@ -36,6 +36,8 @@ const RFC_5646_GRANDFATHERED_TAGS = new Set([
 ]);
 const RFC_5646_PRIVATE_USE_TAG = /^[xX](?:-[A-Za-z0-9]{1,8})+$/;
 const RFC_5646_LANGTAG = /^(?:[A-Za-z]{2,3}(?:-[A-Za-z]{3}){0,3}|[A-Za-z]{4}|[A-Za-z]{5,8})(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|[0-9]{3}))?(?:-(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*(?:-[0-9A-WY-Za-wy-z](?:-[A-Za-z0-9]{2,8})+)*(?:-[xX](?:-[A-Za-z0-9]{1,8})+)?$/;
+const RFC_5646_VARIANT = /^(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3})$/;
+const RFC_5646_EXTENSION_SINGLETON = /^[0-9A-WY-Za-wy-z]$/;
 
 /** Values accepted by the WAI-ARIA `aria-invalid` state on a textbox. */
 export type EditorAriaInvalid = boolean | 'grammar' | 'spelling';
@@ -82,12 +84,38 @@ function normalizedAccessibilityValue(
   return normalized ? normalized : undefined;
 }
 
+/** Enforce RFC 5646's case-insensitive uniqueness rules beyond its ABNF shape. */
+function hasUniqueLanguageTagSubtags(value: string): boolean {
+  const variants = new Set<string>();
+  const extensionSingletons = new Set<string>();
+  let readingExtensions = false;
+
+  for (const subtag of value.split('-').slice(1)) {
+    const normalized = subtag.toLowerCase();
+    if (normalized === 'x') break;
+
+    if (RFC_5646_EXTENSION_SINGLETON.test(subtag)) {
+      if (extensionSingletons.has(normalized)) return false;
+      extensionSingletons.add(normalized);
+      readingExtensions = true;
+      continue;
+    }
+
+    if (!readingExtensions && RFC_5646_VARIANT.test(subtag)) {
+      if (variants.has(normalized)) return false;
+      variants.add(normalized);
+    }
+  }
+
+  return true;
+}
+
 /** Check the complete RFC 5646 well-formed tag grammar without registry lookup. */
 function isWellFormedLanguageTag(value: string): boolean {
   return (
     RFC_5646_GRANDFATHERED_TAGS.has(value.toLowerCase()) ||
     RFC_5646_PRIVATE_USE_TAG.test(value) ||
-    RFC_5646_LANGTAG.test(value)
+    (RFC_5646_LANGTAG.test(value) && hasUniqueLanguageTagSubtags(value))
   );
 }
 
@@ -122,10 +150,10 @@ export function normalizeEditorPlaceholder(
  * A non-blank `aria-labelledby` reference takes precedence over the fallback
  * string label. Optional placeholder, language, and ID-reference values are
  * omitted when blank. Non-blank language metadata must be well-formed under the
- * complete RFC 5646 syntax, including private-use and grandfathered tags; IANA
- * registry-content validity remains a host policy concern. The trimmed caller
- * spelling is preserved. Placeholder guidance remains supplemental and never
- * replaces the accessible name.
+ * complete RFC 5646 syntax and uniqueness rules, including private-use and
+ * grandfathered tags; IANA registry-content validity remains a host policy
+ * concern. The trimmed caller spelling is preserved. Placeholder guidance
+ * remains supplemental and never replaces the accessible name.
  */
 export function buildEditorAccessibilityAttributes(
   options: EditorAccessibilityOptions,
