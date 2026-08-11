@@ -4,6 +4,32 @@ import { describe, expect, it, vi } from 'vitest';
 import { buildExtensions } from '../extensions/kit.js';
 import { applyEditorFormReset } from './editorFormReset.js';
 
+const RESET_FAILURE_MESSAGE =
+  'Native form reset value was rejected or transformed by an editor policy';
+
+function createEditor(additionalExtensions: Extension[] = []): Editor {
+  return new Editor({
+    element: document.createElement('div'),
+    extensions: buildExtensions({ additionalExtensions }),
+    content: '<p>Original document</p>',
+  });
+}
+
+function applyRequestedReset(
+  editor: Editor,
+  onChange: ReturnType<typeof vi.fn>,
+  onFormReset: ReturnType<typeof vi.fn>,
+): void {
+  applyEditorFormReset({
+    editor,
+    mode: 'html',
+    resetValue: '<p>Reset baseline</p>',
+    event: new Event('reset'),
+    onChange,
+    onFormReset,
+  });
+}
+
 describe('native form reset under editor transaction policy', () => {
   it('does not report a requested reset value that the active policy rejected', () => {
     const rejectResetPolicy = Extension.create({
@@ -21,31 +47,162 @@ describe('native form reset under editor transaction policy', () => {
         ];
       },
     });
-    const editor = new Editor({
-      element: document.createElement('div'),
-      extensions: buildExtensions({
-        additionalExtensions: [rejectResetPolicy],
-      }),
-      content: '<p>Original document</p>',
-    });
-    const event = new Event('reset');
+    const editor = createEditor([rejectResetPolicy]);
     const onChange = vi.fn();
     const onFormReset = vi.fn();
 
     try {
-      applyEditorFormReset({
-        editor,
-        mode: 'html',
-        resetValue: '<p>Reset baseline</p>',
-        event,
-        onChange,
-        onFormReset,
-      });
+      expect(() =>
+        applyRequestedReset(editor, onChange, onFormReset),
+      ).toThrowError(RESET_FAILURE_MESSAGE);
 
       expect(editor.getHTML()).toBe('<p>Original document</p>');
       expect(onChange).not.toHaveBeenCalled();
       expect(onFormReset).toHaveBeenCalledOnce();
-      expect(onFormReset).toHaveBeenCalledWith({ editor, event });
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it('rejects a deterministic appendTransaction transform before live mutation', () => {
+    const transformResetPolicy = Extension.create({
+      name: 'transformNativeFormReset',
+      addProseMirrorPlugins() {
+        return [
+          new Plugin({
+            appendTransaction(transactions, _oldState, newState) {
+              if (
+                !transactions.some((transaction) => transaction.docChanged) ||
+                newState.doc.textContent !== 'Reset baseline'
+              ) {
+                return null;
+              }
+              const replacement = newState.schema.node('doc', null, [
+                newState.schema.node(
+                  'paragraph',
+                  null,
+                  newState.schema.text('Policy transformed'),
+                ),
+              ]);
+              return newState.tr.replaceWith(
+                0,
+                newState.doc.content.size,
+                replacement.content,
+              );
+            },
+          }),
+        ];
+      },
+    });
+    const editor = createEditor([transformResetPolicy]);
+    editor.commands.setTextSelection(5);
+    const originalDocument = editor.state.doc;
+    const originalSelection = editor.state.selection;
+    const onChange = vi.fn();
+    const onFormReset = vi.fn();
+
+    try {
+      expect(() =>
+        applyRequestedReset(editor, onChange, onFormReset),
+      ).toThrowError(RESET_FAILURE_MESSAGE);
+
+      expect(editor.state.doc.eq(originalDocument)).toBe(true);
+      expect(editor.state.selection.eq(originalSelection)).toBe(true);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(onFormReset).toHaveBeenCalledOnce();
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it('rolls back when a stateful policy transforms only the live reset', () => {
+    let matchingApplications = 0;
+    const statefulTransformPolicy = Extension.create({
+      name: 'statefulTransformNativeFormReset',
+      addProseMirrorPlugins() {
+        return [
+          new Plugin({
+            appendTransaction(transactions, _oldState, newState) {
+              if (
+                !transactions.some((transaction) => transaction.docChanged) ||
+                newState.doc.textContent !== 'Reset baseline'
+              ) {
+                return null;
+              }
+              matchingApplications += 1;
+              if (matchingApplications === 1) return null;
+              const replacement = newState.schema.node('doc', null, [
+                newState.schema.node(
+                  'paragraph',
+                  null,
+                  newState.schema.text('Live policy transform'),
+                ),
+              ]);
+              return newState.tr.replaceWith(
+                0,
+                newState.doc.content.size,
+                replacement.content,
+              );
+            },
+          }),
+        ];
+      },
+    });
+    const editor = createEditor([statefulTransformPolicy]);
+    editor.commands.setTextSelection(5);
+    const originalDocument = editor.state.doc;
+    const originalSelection = editor.state.selection;
+    const onChange = vi.fn();
+    const onFormReset = vi.fn();
+
+    try {
+      expect(() =>
+        applyRequestedReset(editor, onChange, onFormReset),
+      ).toThrowError(RESET_FAILURE_MESSAGE);
+
+      expect(matchingApplications).toBe(2);
+      expect(editor.state.doc.eq(originalDocument)).toBe(true);
+      expect(editor.state.selection.eq(originalSelection)).toBe(true);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(onFormReset).toHaveBeenCalledOnce();
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it('rolls back and redacts a transaction-observer exception after live mutation', () => {
+    const editor = createEditor();
+    editor.commands.setTextSelection(5);
+    const originalDocument = editor.state.doc;
+    const originalSelection = editor.state.selection;
+    const onChange = vi.fn();
+    const onFormReset = vi.fn();
+    const confidentialMarker = 'customer-reset-secret';
+
+    editor.on('transaction', ({ transaction }) => {
+      if (
+        transaction.docChanged &&
+        transaction.doc.textContent === 'Reset baseline'
+      ) {
+        throw new Error(`observer leaked ${confidentialMarker}`);
+      }
+    });
+
+    try {
+      let failure: unknown;
+      try {
+        applyRequestedReset(editor, onChange, onFormReset);
+      } catch (error) {
+        failure = error;
+      }
+
+      expect(failure).toBeInstanceOf(Error);
+      expect((failure as Error).message).toBe(RESET_FAILURE_MESSAGE);
+      expect((failure as Error).message).not.toContain(confidentialMarker);
+      expect(editor.state.doc.eq(originalDocument)).toBe(true);
+      expect(editor.state.selection.eq(originalSelection)).toBe(true);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(onFormReset).toHaveBeenCalledOnce();
     } finally {
       editor.destroy();
     }
