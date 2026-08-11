@@ -1,8 +1,6 @@
 import type { EditorMode } from '../types.js';
-import {
-  htmlToMarkdown,
-  markdownToEditorHtml,
-} from '../markdown/serializer.js';
+import { htmlToMarkdown } from '../markdown/serializer.js';
+import { markdownToEditorHtml } from '../markdown/resourceBoundMarkdown.js';
 
 /** Convert a host value in the selected editor mode into TipTap HTML. */
 export function editorValueToHtml(value: string, mode: EditorMode): string {
