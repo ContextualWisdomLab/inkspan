@@ -85,6 +85,21 @@ describe('runtime image configuration', () => {
     );
   });
 
+  it('redacts own-key reflection failures at the image configuration boundary', () => {
+    const image = new Proxy(
+      {},
+      {
+        ownKeys() {
+          throw new Error('private own-key reflection detail');
+        },
+      },
+    );
+
+    expect(() => buildExtensions({ image })).toThrowError(
+      new RangeError('Image configuration is invalid.'),
+    );
+  });
+
   it('redacts reflection failures at the image configuration boundary', () => {
     const image = new Proxy(
       {},
