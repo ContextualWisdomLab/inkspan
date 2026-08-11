@@ -40,7 +40,7 @@ function freezeDocumentJson(
     const isArray = Array.isArray(frame.value);
     if (!isArray) {
       const prototype = Object.getPrototypeOf(frame.value);
-      if (prototype !== Object.prototype && prototype !== null) {
+      if (prototype !== null && Object.getPrototypeOf(prototype) !== null) {
         throw new RangeError(
           'Editor document JSON must contain plain objects and arrays only.',
         );
@@ -81,10 +81,10 @@ function freezeDocumentJson(
  * host persistence, indexing, and AI workflows cannot mutate shared state.
  * Cyclic custom-extension metadata is rejected before an active object is
  * traversed again. Only arrays and plain/null-prototype objects containing
- * enumerable string data properties are accepted, so exotic containers,
- * accessors, symbol keys, and hidden custom metadata cannot escape the same
- * deterministic JSON snapshot boundary. Shared acyclic references remain
- * supported.
+ * enumerable string data properties are accepted, including plain objects from
+ * another JavaScript realm; exotic containers, accessors, symbol keys, and
+ * hidden custom metadata cannot escape the same deterministic JSON snapshot
+ * boundary. Shared acyclic references remain supported.
  */
 export function createEditorDocumentSnapshot(
   editor: Editor | null,
