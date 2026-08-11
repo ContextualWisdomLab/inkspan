@@ -34,6 +34,18 @@ def test_cli_request_ingress_avoids_unbounded_path_read_text(
     assert output.read_bytes().startswith(b"PK")
 
 
+def test_cli_help_documents_request_byte_ceiling(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit) as exc:
+        main(["--help"])
+
+    assert exc.value.code == 0
+    help_text = capsys.readouterr().out
+    assert "JSON request path" in help_text
+    assert "64 MiB" in help_text
+
+
 def test_cli_rejects_oversized_request_after_only_one_boundary_byte(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
