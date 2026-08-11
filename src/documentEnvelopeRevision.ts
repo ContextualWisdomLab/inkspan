@@ -49,7 +49,8 @@ export class DocumentEnvelopeRevisionError extends Error {
 /**
  * Create a SHA-256 revision validator from an envelope object or JSON text.
  *
- * The source is parsed through Inkspan's strict envelope boundary and then
+ * The digest capability is captured before the caller-controlled source is
+ * parsed. The source then passes Inkspan's strict envelope boundary and is
  * canonicalized before hashing, so equivalent supported envelopes produce the
  * same validator regardless of object-property or insignificant-whitespace
  * order. The optional provider exists for dependency injection; omitting it
@@ -60,25 +61,34 @@ export async function createDocumentEnvelopeRevision(
   limits?: DocumentEnvelopeLimits,
   digestProvider?: DocumentEnvelopeDigestProvider | null,
 ): Promise<CwlEditorDocumentRevision> {
+  const resolvedProvider = resolveDocumentEnvelopeDigestProvider(digestProvider);
   const envelope = parseDocumentEnvelope(source, limits);
-  return createValidatedDocumentEnvelopeRevision(envelope, digestProvider);
+  return createValidatedDocumentEnvelopeRevisionWithResolvedProvider(
+    envelope,
+    resolvedProvider,
+  );
 }
 
 /**
  * Create a SHA-256 revision validator from strict UTF-8 envelope bytes.
  *
- * Noncanonical but otherwise valid input is parsed and reserialized to the RFC
- * 8785 representation before hashing. Byte-order marks, malformed UTF-8,
- * duplicate names, unsupported versions, and resource-limit violations fail
- * before the digest provider runs.
+ * The digest capability is captured before byte-source processing. Noncanonical
+ * but otherwise valid input is parsed and reserialized to the RFC 8785
+ * representation before hashing. Byte-order marks, malformed UTF-8, duplicate
+ * names, unsupported versions, and resource-limit violations fail before the
+ * digest callable runs.
  */
 export async function createDocumentEnvelopeRevisionBytes(
   source: unknown,
   limits?: DocumentEnvelopeLimits,
   digestProvider?: DocumentEnvelopeDigestProvider | null,
 ): Promise<CwlEditorDocumentRevision> {
+  const resolvedProvider = resolveDocumentEnvelopeDigestProvider(digestProvider);
   const envelope = parseDocumentEnvelopeBytes(source, limits);
-  return createValidatedDocumentEnvelopeRevision(envelope, digestProvider);
+  return createValidatedDocumentEnvelopeRevisionWithResolvedProvider(
+    envelope,
+    resolvedProvider,
+  );
 }
 
 /**
