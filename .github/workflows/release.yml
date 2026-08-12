@@ -670,7 +670,7 @@ jobs:
                 process.exit(2);
               }
               process.stdout.write(url.origin);
-              NODE
+          NODE
               )" || {
                 echo "::error::npm dist.tarball must stay on the canonical registry.npmjs.org HTTPS origin."
                 exit 1
