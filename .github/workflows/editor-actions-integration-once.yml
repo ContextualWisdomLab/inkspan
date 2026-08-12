@@ -1,0 +1,152 @@
+name: Editor Actions Integration Once
+
+on:
+  push:
+    branches:
+      - feat/writing-diagnostics-editor-actions
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: editor-actions-integration-once-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integrate-public-editor:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: true
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Integrate diagnostics into the standalone editor
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          types_path = Path('src/types.ts')
+          types = types_path.read_text(encoding='utf-8')
+          import_anchor = """import type {
+            ClipboardConfig,
+            ClipboardSanitizationError,
+          } from './extensions/SafeClipboard.js';
+          """
+          import_replacement = import_anchor + """import type {
+            CwlWritingDiagnostic,
+            WritingDiagnosticError,
+          } from './writingDiagnostics.js';
+          import type { CwlWritingDiagnosticActionEvent } from './components/useWritingDiagnosticsController.js';
+          """
+          props_anchor = """  /** Whether the host form requires editor input before submission. */
+            ariaRequired?: boolean;
+          }
+          """
+          props_replacement = """  /** Whether the host form requires editor input before submission. */
+            ariaRequired?: boolean;
+            /** Host-supplied diagnostics already produced by a trusted external reviewer. */
+            writingDiagnostics?: readonly CwlWritingDiagnostic[];
+            /** Privacy-minimized observer for explicit diagnostic actions. */
+            onWritingDiagnosticAction?: (
+              event: CwlWritingDiagnosticActionEvent,
+            ) => void;
+            /** Redacted observer for structural verification failures. */
+            onWritingDiagnosticsError?: (error: WritingDiagnosticError) => void;
+            /** Accessible name for the built-in writing-guidance region. */
+            writingDiagnosticsLabel?: string;
+            /** Include a compact diagnostic appendix in printed output. */
+            printWritingDiagnostics?: boolean;
+          }
+          """
+          if import_anchor not in types or props_anchor not in types:
+              raise SystemExit('types.ts integration anchors changed')
+          types = types.replace(import_anchor, import_replacement, 1)
+          types = types.replace(props_anchor, props_replacement, 1)
+          types_path.write_text(types, encoding='utf-8')
+
+          editor_path = Path('src/components/CwlEditor.tsx')
+          editor = editor_path.read_text(encoding='utf-8')
+          import_anchor = """import { useEditorHandle } from './useEditorHandle.js';
+          import { useLatestRef } from './useLatestRef.js';
+          """
+          import_replacement = """import { useEditorHandle } from './useEditorHandle.js';
+          import { useLatestRef } from './useLatestRef.js';
+          import { useWritingDiagnosticsController } from './useWritingDiagnosticsController.js';
+          import { WritingDiagnosticsPanel } from './WritingDiagnosticsPanel.js';
+          """
+          props_anchor = """      ariaInvalid,
+                ariaRequired,
+              },
+          """
+          props_replacement = """      ariaInvalid,
+                ariaRequired,
+                writingDiagnostics,
+                onWritingDiagnosticAction,
+                onWritingDiagnosticsError,
+                writingDiagnosticsLabel,
+                printWritingDiagnostics,
+              },
+          """
+          hook_anchor = """    useEditorHandle(ref, editor, modeRef);
+
+              useEffect(() => {
+          """
+          hook_replacement = """    useEditorHandle(ref, editor, modeRef);
+
+              const writingDiagnosticsController = useWritingDiagnosticsController({
+                editor,
+                diagnostics: writingDiagnostics,
+                onAction: onWritingDiagnosticAction,
+                onError: onWritingDiagnosticsError,
+              });
+
+              useEffect(() => {
+          """
+          frame_anchor = """        onFormReset={editor && observesFormReset ? handleFormReset : undefined}
+              />
+          """
+          frame_replacement = """        onFormReset={editor && observesFormReset ? handleFormReset : undefined}
+                writingDiagnosticsPanel={
+                  writingDiagnostics === undefined ? undefined : (
+                    <WritingDiagnosticsPanel
+                      controller={writingDiagnosticsController}
+                      label={writingDiagnosticsLabel ?? 'Writing guidance'}
+                      printEnabled={printWritingDiagnostics}
+                    />
+                  )
+                }
+              />
+          """
+          for anchor in (import_anchor, props_anchor, hook_anchor, frame_anchor):
+              if anchor not in editor:
+                  raise SystemExit('CwlEditor.tsx integration anchor changed')
+          editor = editor.replace(import_anchor, import_replacement, 1)
+          editor = editor.replace(props_anchor, props_replacement, 1)
+          editor = editor.replace(hook_anchor, hook_replacement, 1)
+          editor = editor.replace(frame_anchor, frame_replacement, 1)
+          editor_path.write_text(editor, encoding='utf-8')
+          PY
+      - name: Verify the focused public integration
+        run: |
+          pnpm exec vitest run src/components/CwlEditor.writingDiagnostics.test.tsx --pool=forks --maxWorkers=1
+          pnpm typecheck
+      - name: Publish the validated integration and remove this workflow
+        env:
+          TARGET_BRANCH: feat/writing-diagnostics-editor-actions
+        run: |
+          set -euo pipefail
+          rm .github/workflows/editor-actions-integration-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/types.ts src/components/CwlEditor.tsx .github/workflows/editor-actions-integration-once.yml
+          git diff --cached --check
+          git commit -m 'feat(diagnostics): integrate guidance into standalone editor'
+          git push origin "HEAD:${TARGET_BRANCH}"
