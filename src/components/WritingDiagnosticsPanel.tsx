@@ -1,4 +1,8 @@
-import { useRef, useState } from 'react';
+import {
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import type { WritingDiagnosticsController } from './useWritingDiagnosticsController.js';
 
 /** Props for Inkspan's provider-neutral writing-guidance presentation surface. */
@@ -40,15 +44,39 @@ export function WritingDiagnosticsPanel({
   );
   const activeIndex = selectedIndex < 0 ? 0 : selectedIndex;
 
-  const navigate = (offset: number): void => {
+  const focusIndex = (requestedIndex: number): void => {
     if (diagnostics.length === 0) return;
     const targetIndex =
-      (activeIndex + offset + diagnostics.length) % diagnostics.length;
+      (requestedIndex + diagnostics.length) % diagnostics.length;
     const target = diagnostics[targetIndex]!;
     const diagnosticId = target.diagnostic.diagnosticId;
     setActiveDiagnosticId(diagnosticId);
     controller.focusDiagnostic(diagnosticId);
     itemRefs.current[targetIndex]?.focus();
+  };
+
+  const navigate = (offset: number): void => {
+    focusIndex(activeIndex + offset);
+  };
+
+  const onItemKeyDown = (
+    event: ReactKeyboardEvent<HTMLLIElement>,
+    index: number,
+  ): void => {
+    if (event.target !== event.currentTarget) return;
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      focusIndex(index + 1);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      focusIndex(index - 1);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      focusIndex(0);
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      focusIndex(diagnostics.length - 1);
+    }
   };
 
   return (
@@ -97,6 +125,8 @@ export function WritingDiagnosticsPanel({
             <li
               className={`cwl-writing-diagnostics__item cwl-writing-diagnostics__item--${diagnostic.priority}`}
               key={diagnostic.diagnosticId}
+              onFocus={() => setActiveDiagnosticId(diagnostic.diagnosticId)}
+              onKeyDown={(event) => onItemKeyDown(event, index)}
               ref={(element) => {
                 itemRefs.current[index] = element;
               }}
