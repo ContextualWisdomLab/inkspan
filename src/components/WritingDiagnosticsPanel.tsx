@@ -37,6 +37,7 @@ export function WritingDiagnosticsPanel({
     null,
   );
   const [statusMessage, setStatusMessage] = useState('');
+  const regionRef = useRef<HTMLElement | null>(null);
   const itemRefs = useRef<Array<HTMLLIElement | null>>([]);
   const selectedIndex = diagnostics.findIndex(
     (candidate) =>
@@ -53,6 +54,24 @@ export function WritingDiagnosticsPanel({
     controller.focusDiagnostic(diagnosticId);
     // Only mounted diagnostic cards and enabled navigation invoke this helper.
     itemRefs.current[targetIndex]!.focus();
+  };
+
+  const focusAfterDismissal = (dismissedIndex: number): void => {
+    if (diagnostics.length === 1) {
+      setActiveDiagnosticId(null);
+      regionRef.current?.focus();
+      return;
+    }
+
+    const targetIndex =
+      dismissedIndex < diagnostics.length - 1
+        ? dismissedIndex + 1
+        : dismissedIndex - 1;
+    const target = diagnostics[targetIndex]!;
+    const diagnosticId = target.diagnostic.diagnosticId;
+    setActiveDiagnosticId(diagnosticId);
+    controller.focusDiagnostic(diagnosticId);
+    itemRefs.current[targetIndex]?.focus();
   };
 
   const navigate = (offset: number): void => {
@@ -84,7 +103,9 @@ export function WritingDiagnosticsPanel({
       aria-label={label}
       className="cwl-writing-diagnostics"
       data-print-enabled={printEnabled ? 'true' : undefined}
+      ref={regionRef}
       role="region"
+      tabIndex={-1}
     >
       <div className="cwl-writing-diagnostics__header">
         <p className="cwl-writing-diagnostics__summary">
@@ -189,6 +210,7 @@ export function WritingDiagnosticsPanel({
                         ) !== null
                       ) {
                         setStatusMessage(`Dismissed ${diagnostic.title}.`);
+                        focusAfterDismissal(index);
                       }
                     }}
                     type="button"
