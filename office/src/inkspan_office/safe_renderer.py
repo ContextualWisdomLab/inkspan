@@ -14,7 +14,7 @@ from zipfile import ZipFile, ZipInfo
 from openpyxl.utils import column_index_from_string
 
 from . import renderer as _renderer
-from .page_layout import apply_docx_page_layout
+from .page_layout import apply_docx_page_layout, normalize_docx_page_layout
 
 OfficeDocumentError = _renderer.OfficeDocumentError
 RenderedOfficeDocument = _renderer.RenderedOfficeDocument
@@ -44,7 +44,6 @@ def load_schema() -> dict[str, Any]:
 def render_office_document(payload: Mapping[str, Any]) -> RenderedOfficeDocument:
     """Validate safety invariants and return canonical deterministic OOXML."""
 
-    _validate_request(payload)
     render_payload: Mapping[str, Any] = payload
     page_layout: Any = None
     has_page_layout = (
@@ -53,11 +52,12 @@ def render_office_document(payload: Mapping[str, Any]) -> RenderedOfficeDocument
         and "page_layout" in payload
     )
     if has_page_layout:
-        page_layout = payload["page_layout"]
+        page_layout = normalize_docx_page_layout(payload["page_layout"])
         stripped_payload = dict(payload)
         del stripped_payload["page_layout"]
         render_payload = stripped_payload
 
+    _validate_request(render_payload)
     rendered = _renderer.render_office_document(render_payload)
     data = rendered.data
     if has_page_layout:
