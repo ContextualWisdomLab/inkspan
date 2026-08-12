@@ -10,12 +10,9 @@ import inkspan_office.cli as cli_module
 from inkspan_office.cli import main
 
 
-def test_cli_request_ingress_avoids_unbounded_path_read_text(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    source = tmp_path / "request.json"
-    output = tmp_path / "result.docx"
+def _write_valid_request(source: Path) -> None:
+    """Write one minimal valid DOCX request for CLI boundary tests."""
+
     source.write_bytes(
         json.dumps(
             {
@@ -24,6 +21,15 @@ def test_cli_request_ingress_avoids_unbounded_path_read_text(
             }
         ).encode("utf-8")
     )
+
+
+def test_cli_request_ingress_avoids_unbounded_path_read_text(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "request.json"
+    output = tmp_path / "result.docx"
+    _write_valid_request(source)
 
     def reject_unbounded_read(*_args: object, **_kwargs: object) -> str:
         raise AssertionError("CLI request ingestion used Path.read_text")
@@ -97,3 +103,63 @@ def test_cli_rejects_invalid_utf8_without_echoing_request_bytes(
     error = capsys.readouterr().err
     assert "input must contain valid UTF-8" in error
     assert "private" not in error
+
+
+def test_cli_redacts_missing_input_path(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    private_marker = "confidential_customer_input"
+    source = tmp_path / f"{private_marker}.json"
+    output = tmp_path / "result.docx"
+
+    with pytest.raises(SystemExit) as exc:
+        main([str(source), str(output)])
+
+    assert exc.value.code == 2
+    error = capsys.readouterr().err
+    assert "input could not be read" in error
+    assert private_marker not in error
+
+
+def test_cli_redacts_existing_output_path(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    private_marker = "confidential_customer_output"
+    source = tmp_path / "request.json"
+    output = tmp_path / f"{private_marker}.docx"
+    _write_valid_request(source)
+    output.write_bytes(b"existing")
+
+    with pytest.raises(SystemExit) as exc:
+        main([str(source), str(output)])
+
+    assert exc.value.code == 2
+    error = capsys.readouterr().err
+    assert "output already exists" in error
+    assert private_marker not in error
+
+
+def test_cli_redacts_other_output_filesystem_failures(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    private_marker = "confidential_output_device"
+    source = tmp_path / "request.json"
+    output = tmp_path / f"{private_marker}.docx"
+    _write_valid_request(source)
+
+    def reject_output(*_args: object, **_kwargs: object) -> Path:
+        raise OSError(f"private output path: {output}")
+
+    monkeypatch.setattr(cli_module, "write_office_document", reject_output)
+
+    with pytest.raises(SystemExit) as exc:
+        main([str(source), str(output)])
+
+    assert exc.value.code == 2
+    error = capsys.readouterr().err
+    assert "output could not be written" in error
+    assert private_marker not in error
