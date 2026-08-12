@@ -243,7 +243,7 @@ describe('resolveTextPositionSelector', () => {
         resolveTextPositionSelector(
           documentNode,
           selector,
-          { id: 'other', version: 1 } as CwlEditorTextProjectionIdentity,
+          { id: 'other', version: 1 } as unknown as CwlEditorTextProjectionIdentity,
         ),
       'projection',
     );
@@ -255,7 +255,7 @@ describe('resolveTextPositionSelector', () => {
           {
             id: TEXT_POSITION_PROJECTION_ID,
             version: 2,
-          } as CwlEditorTextProjectionIdentity,
+          } as unknown as CwlEditorTextProjectionIdentity,
         ),
       'projection',
     );
