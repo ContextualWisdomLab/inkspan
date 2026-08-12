@@ -1,10 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const releaseWorkflow = readFileSync(
-  new URL('../.github/workflows/release.yml', import.meta.url),
-  'utf8',
-);
+const releaseWorkflow = readFileSync('.github/workflows/release.yml', 'utf8');
 
 describe('release artifact SBOM provenance contract', () => {
   it('scans each exact package artifact instead of the source workspace', () => {
