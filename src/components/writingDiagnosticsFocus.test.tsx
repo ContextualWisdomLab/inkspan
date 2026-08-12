@@ -117,4 +117,28 @@ describe('WritingDiagnosticsPanel affected-text focus', () => {
     expect(editor.chain).not.toHaveBeenCalled();
     expect(chain.run).not.toHaveBeenCalled();
   });
+
+  it('does not throw when controller acceptance races editor disposal', () => {
+    const { editor, chain } = buildEditorProbe();
+    const controller = {
+      ...buildController(editor, true),
+      editor: null,
+    } as unknown as WritingDiagnosticsController;
+    render(
+      <WritingDiagnosticsPanel
+        controller={controller}
+        label="Writing guidance"
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Focus affected text for Clarify Alpha',
+      }),
+    );
+
+    expect(controller.focusDiagnostic).toHaveBeenCalledWith('focus-diagnostic');
+    expect(editor.chain).not.toHaveBeenCalled();
+    expect(chain.run).not.toHaveBeenCalled();
+  });
 });
