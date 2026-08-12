@@ -163,3 +163,30 @@ def test_cli_redacts_other_output_filesystem_failures(
     error = capsys.readouterr().err
     assert "output could not be written" in error
     assert private_marker not in error
+
+
+def test_cli_reports_committed_output_cleanup_failure_without_reflecting_detail(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    private_marker = "confidential_committed_cleanup"
+    source = tmp_path / "request.json"
+    output = tmp_path / f"{private_marker}.docx"
+    _write_valid_request(source)
+
+    class CommittedOutputError(OSError):
+        output_committed = True
+
+    def fail_committed_cleanup(*_args: object, **_kwargs: object) -> Path:
+        raise CommittedOutputError(f"private output cleanup: {output}")
+
+    monkeypatch.setattr(cli_module, "write_office_document", fail_committed_cleanup)
+
+    with pytest.raises(SystemExit) as exc:
+        main([str(source), str(output)])
+
+    assert exc.value.code == 2
+    error = capsys.readouterr().err
+    assert "output was written but temporary cleanup failed" in error
+    assert private_marker not in error
