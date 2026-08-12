@@ -34,7 +34,8 @@ function runRegeneratorWithCommitFailure(target: 'files' | 'fonts.css' | 'fonts-
 
   writeFileSync(
     preloadPath,
-    `import fs, { syncBuiltinESMExports } from 'node:fs';
+    `import fs from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 const failTarget = process.env.INKSPAN_FONT_FAIL_COMMIT_TARGET;
 const originalRenameSync = fs.renameSync;
 let injected = false;
