@@ -122,15 +122,27 @@ jobs:
           assert any(name.endswith('.dist-info/licenses/LICENSE') for name in names)
           PY
           mv dist/*.whl ../release/
-      - name: Generate release SBOM
-        uses: anchore/sbom-action@fbfd9c6c189226748411491745178e0c2017392d # v0.20.10
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:
-          path: .
-          format: spdx-json
-          output-file: release/inkspan.spdx.json
-          syft-version: v1.50.0
-          upload-artifact: false
-          upload-release-assets: false
+          cosign-release: 'v3.0.6'
+      - name: Install signature-verified Syft
+        run: |
+          set -euo pipefail
+          syft_installer="$RUNNER_TEMP/syft-install.sh"
+          curl --fail --silent --show-error --location \
+            --proto '=https' \
+            --output "$syft_installer" \
+            https://raw.githubusercontent.com/anchore/syft/16223e6dd7893fe578787658ceb876257483d404/install.sh
+          mkdir -p "$RUNNER_TEMP/syft-bin"
+          DOWNLOAD_TAG_INSTALL_SCRIPT=false \
+            sh "$syft_installer" -v -b "$RUNNER_TEMP/syft-bin" v1.50.0
+          "$RUNNER_TEMP/syft-bin/syft" version
+          echo "$RUNNER_TEMP/syft-bin" >> "$GITHUB_PATH"
+      - name: Generate release SBOM
+        run: |
+          set -euo pipefail
+          syft scan dir:. -o spdx-json > release/inkspan.spdx.json
       - name: Validate release SBOM
         run: |
           set -euo pipefail
