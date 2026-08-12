@@ -164,6 +164,25 @@ describe('writing diagnostics controller defensive dependency boundaries', () =>
     expect(result.current.diagnostics).toEqual([]);
   });
 
+  it('discards a resolved selector when a transaction invalidates its generation', async () => {
+    const editor = createEditor();
+    const provider = digestProvider();
+    boundaryState.afterProjection = () => {
+      editor.commands.insertContent('!');
+    };
+    const { result } = renderHook(() =>
+      useWritingDiagnosticsController({
+        editor,
+        diagnostics: [diagnostic()],
+        digestProvider: provider,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('stale'));
+    expect(editor.getText()).toContain('!');
+    expect(result.current.diagnostics).toEqual([]);
+  });
+
   it('ignores a stale editor transaction if a retired listener fires after replacement', async () => {
     const first = createEditor();
     const second = createEditor();
