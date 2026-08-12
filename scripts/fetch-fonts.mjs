@@ -35,6 +35,7 @@ const UA =
 const TRUSTED_FONT_ASSET_HOST = 'fonts.gstatic.com';
 const MAX_FONT_CSS_BYTES = 1024 * 1024;
 const MAX_FONT_SUBSET_BYTES = 16 * 1024 * 1024;
+const MAX_FONT_FACE_BLOCKS_PER_FAMILY = 512;
 const MAX_UNICODE_CODE_POINT = 0x10ffff;
 const WOFF2_SIGNATURE = Buffer.from([0x77, 0x4f, 0x46, 0x32]);
 
@@ -188,6 +189,22 @@ function isValidUnicodeRangeDescriptor(value) {
   );
 }
 
+/**
+ * Parse font-face blocks without materializing an unbounded attacker-controlled
+ * expansion. No font asset request occurs until the complete bounded set is
+ * accepted.
+ */
+function collectBoundedFontFaceBlocks(css) {
+  const blocks = [];
+  for (const match of css.matchAll(FONT_FACE_RE)) {
+    if (blocks.length >= MAX_FONT_FACE_BLOCKS_PER_FAMILY) {
+      throw new Error('Google Fonts returned excessive font-face metadata');
+    }
+    blocks.push(match[1]);
+  }
+  return blocks;
+}
+
 /** Read one response body without allowing an unbounded subset allocation. */
 async function readBoundedFontBody(response) {
   const declaredLength = response.headers.get('content-length');
@@ -241,7 +258,7 @@ async function download(source) {
 
 async function processFamily(def, outputFilesDir) {
   const css = await fetchCss(def.css, def.weights);
-  const blocks = [...css.matchAll(FONT_FACE_RE)].map((m) => m[1]);
+  const blocks = collectBoundedFontFaceBlocks(css);
   const out = [];
   let totalBytes = 0;
   const counters = {};
