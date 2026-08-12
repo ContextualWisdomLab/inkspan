@@ -1,23 +1,23 @@
-name: Writing Diagnostics UI TDD
+name: Writing Diagnostics Controller TDD
 
 on:
   push:
     branches:
-      - feat/writing-diagnostics-ui
+      - feat/writing-diagnostics-controller
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: writing-diagnostics-ui-tdd-${{ github.ref }}
+  group: writing-diagnostics-controller-tdd-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  focused-ui:
+  focused-controller:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -31,13 +31,106 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Run accessible writing guidance contract tests
+      - name: Run revision-bound controller contract tests
         run: >-
           pnpm exec vitest run
-          src/components/WritingDiagnosticsPanel.test.tsx
+          src/components/useWritingDiagnosticsController.test.tsx
+          src/components/useWritingDiagnosticsController.actions.test.tsx
+          src/components/useWritingDiagnosticsController.boundary.test.tsx
+          src/components/useWritingDiagnosticsController.coverage.test.tsx
           --pool=forks
           --maxWorkers=1
-      - name: Typecheck public UI contracts
+      - name: Prove complete owned production coverage
+        shell: bash
+        run: |
+          set +e
+          pnpm exec vitest run \
+            src/components/useWritingDiagnosticsController.test.tsx \
+            src/components/useWritingDiagnosticsController.actions.test.tsx \
+            src/components/useWritingDiagnosticsController.boundary.test.tsx \
+            src/components/useWritingDiagnosticsController.coverage.test.tsx \
+            --pool=forks \
+            --maxWorkers=1 \
+            --coverage \
+            --coverage.include=src/components/useWritingDiagnosticsController.ts \
+            --coverage.reporter=json
+          status=$?
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+
+          const sourcePath = 'src/components/useWritingDiagnosticsController.ts';
+          if (!fs.existsSync('coverage/coverage-final.json')) {
+            console.log(
+              `::error file=${sourcePath},line=1::Controller coverage report was not produced.`,
+            );
+            process.exit(0);
+          }
+          const report = JSON.parse(
+            fs.readFileSync('coverage/coverage-final.json', 'utf8'),
+          );
+          const entry = Object.entries(report).find(([path]) =>
+            path.endsWith(`/${sourcePath}`),
+          );
+          if (!entry) {
+            console.log(
+              `::error file=${sourcePath},line=1::Controller coverage entry is missing.`,
+            );
+            process.exit(0);
+          }
+
+          const [, file] = entry;
+          const statementEntries = Object.entries(file.s);
+          const functionEntries = Object.entries(file.f);
+          const branchEntries = Object.entries(file.b);
+          const statementCovered = statementEntries.filter(([, count]) => count > 0).length;
+          const functionCovered = functionEntries.filter(([, count]) => count > 0).length;
+          const branchCounts = branchEntries.flatMap(([, counts]) => counts);
+          const branchCovered = branchCounts.filter((count) => count > 0).length;
+          console.log(
+            `::notice file=${sourcePath},line=1::Statements ${statementCovered}/${statementEntries.length}; ` +
+              `functions ${functionCovered}/${functionEntries.length}; branches ${branchCovered}/${branchCounts.length}.`,
+          );
+
+          const missingStatements = new Set();
+          for (const [id, count] of statementEntries) {
+            if (count === 0) {
+              missingStatements.add(file.statementMap[id].start.line);
+            }
+          }
+          for (const line of [...missingStatements].sort((left, right) => left - right)) {
+            console.log(
+              `::error file=${sourcePath},line=${line}::Controller statement is not covered.`,
+            );
+          }
+
+          const missingFunctions = new Set();
+          for (const [id, count] of functionEntries) {
+            if (count === 0) {
+              const definition = file.fnMap[id];
+              missingFunctions.add(
+                definition.decl?.start.line ?? definition.loc.start.line,
+              );
+            }
+          }
+          for (const line of [...missingFunctions].sort((left, right) => left - right)) {
+            console.log(
+              `::error file=${sourcePath},line=${line}::Controller function is not covered.`,
+            );
+          }
+
+          for (const [id, counts] of branchEntries) {
+            const branch = file.branchMap[id];
+            counts.forEach((count, index) => {
+              if (count !== 0) return;
+              const location = branch.locations?.[index] ?? branch.loc;
+              console.log(
+                `::error file=${sourcePath},line=${location.start.line}::Controller branch ${index} is not covered.`,
+              );
+            });
+          }
+          NODE
+          exit "$status"
+      - name: Typecheck controller and public action contracts
         run: pnpm typecheck
       - name: Build every package entrypoint
         run: pnpm build
