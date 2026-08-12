@@ -328,9 +328,15 @@ describe('CollaborativeCwlEditor writing-diagnostic boundaries', () => {
       ).toHaveTextContent('1 writing diagnostics');
     });
 
-    await expect(
-      rightRef.current!.applyWritingDiagnostic('shared-diagnostic'),
-    ).resolves.toMatchObject({
+    let appliedAction:
+      | Awaited<ReturnType<CwlEditorHandle['applyWritingDiagnostic']>>
+      | undefined;
+    await act(async () => {
+      appliedAction = await rightRef.current!.applyWritingDiagnostic(
+        'shared-diagnostic',
+      );
+    });
+    expect(appliedAction).toMatchObject({
       action: 'applied',
       reasonCode: 'explicit',
       diagnosticId: 'shared-diagnostic',
