@@ -110,6 +110,16 @@ const total = 120;
     expect(plainText).toBe('Before after.');
   });
 
+  it('accepts null-prototype option bags without weakening validation', () => {
+    const options = Object.assign(Object.create(null), {
+      includeImageAlt: false,
+    });
+
+    expect(
+      markdownToPlainText('Before ![Quarterly chart](x.png) after.', options),
+    ).toBe('Before after.');
+  });
+
   it('rejects invalid runtime image-alt policy instead of coercing it', () => {
     const privateMarker = 'private-image-alt-policy';
     let failure: unknown;
@@ -142,6 +152,38 @@ const total = 120;
       new RangeError(INVALID_PLAIN_TEXT_OPTIONS_MESSAGE),
     );
     expect(getterCalls).toBe(0);
+  });
+
+  it('rejects invalid containers and exotic option prototypes', () => {
+    const exoticOptions = Object.create({ inherited: true });
+
+    for (const options of [42, [], exoticOptions]) {
+      expect(() =>
+        markdownToPlainText('Visible', options as never),
+      ).toThrowError(new RangeError(INVALID_PLAIN_TEXT_OPTIONS_MESSAGE));
+    }
+  });
+
+  it('rejects non-enumerable and descriptor-hostile option properties', () => {
+    const hiddenOptions = Object.defineProperty({}, 'includeImageAlt', {
+      configurable: true,
+      enumerable: false,
+      value: false,
+    });
+    const missingDescriptorOptions = new Proxy(
+      {},
+      {
+        ownKeys: () => ['includeImageAlt'],
+        getOwnPropertyDescriptor: () => undefined,
+      },
+    );
+
+    expect(() =>
+      markdownToPlainText('Visible', hiddenOptions as never),
+    ).toThrowError(new RangeError(INVALID_PLAIN_TEXT_OPTIONS_MESSAGE));
+    expect(() =>
+      markdownToPlainText('Visible', missingDescriptorOptions as never),
+    ).toThrowError(new RangeError(INVALID_PLAIN_TEXT_OPTIONS_MESSAGE));
   });
 
   it('rejects unknown and symbol option keys fail-closed', () => {
