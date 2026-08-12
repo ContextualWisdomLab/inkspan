@@ -119,6 +119,14 @@ export function EditorFormField({
     };
   }, [formId, name, onFormReset]);
 
+  if (name !== undefined && typeof name !== 'string') {
+    throw new RangeError(
+      'native form field name must be a string when provided',
+    );
+  }
+  if (formId !== undefined && typeof formId !== 'string') {
+    throw new RangeError('native form id must be a string when provided');
+  }
   if (disabled !== undefined && typeof disabled !== 'boolean') {
     throw new RangeError(
       'native form field disabled state must be a boolean when provided',
