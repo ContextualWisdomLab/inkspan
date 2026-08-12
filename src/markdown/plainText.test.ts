@@ -9,6 +9,8 @@ const PNG_DATA_URI = bytesToDataUri(
   ]),
 );
 
+const INVALID_PLAIN_TEXT_OPTIONS_MESSAGE = 'plain-text options are invalid.';
+
 describe('markdownToPlainText', () => {
   it('preserves authored reading order without Markdown syntax or destinations', () => {
     const plainText = markdownToPlainText(`
@@ -108,6 +110,52 @@ const total = 120;
     expect(plainText).toBe('Before after.');
   });
 
+  it('rejects invalid runtime image-alt policy instead of coercing it', () => {
+    const privateMarker = 'private-image-alt-policy';
+    let failure: unknown;
+
+    try {
+      markdownToPlainText('![Quarterly chart](x.png)', {
+        includeImageAlt: privateMarker,
+      } as never);
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(failure).toEqual(
+      new RangeError(INVALID_PLAIN_TEXT_OPTIONS_MESSAGE),
+    );
+    expect(String(failure)).not.toContain(privateMarker);
+  });
+
+  it('rejects accessor-backed options without invoking caller code', () => {
+    let getterCalls = 0;
+    const options = Object.defineProperty({}, 'includeImageAlt', {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        throw new Error('private getter failure');
+      },
+    });
+
+    expect(() => markdownToPlainText('Visible', options as never)).toThrowError(
+      new RangeError(INVALID_PLAIN_TEXT_OPTIONS_MESSAGE),
+    );
+    expect(getterCalls).toBe(0);
+  });
+
+  it('rejects unknown and symbol option keys fail-closed', () => {
+    expect(() =>
+      markdownToPlainText('Visible', { maxMarkdownByte: 4 } as never),
+    ).toThrowError(new RangeError(INVALID_PLAIN_TEXT_OPTIONS_MESSAGE));
+    expect(() =>
+      markdownToPlainText(
+        'Visible',
+        { [Symbol('private')]: true } as never,
+      ),
+    ).toThrowError(new RangeError(INVALID_PLAIN_TEXT_OPTIONS_MESSAGE));
+  });
+
   it('omits raw HTML blocks and link-definition records instead of interpreting them', () => {
     const plainText = markdownToPlainText(`
 <script>alert('secret')</script>
@@ -147,5 +195,11 @@ describe('htmlToPlainText', () => {
         includeImageAlt: false,
       }),
     ).toBe('Beforeafter');
+  });
+
+  it('rejects malformed option containers before HTML normalization', () => {
+    expect(() => htmlToPlainText('<p>Visible</p>', null as never)).toThrowError(
+      new RangeError(INVALID_PLAIN_TEXT_OPTIONS_MESSAGE),
+    );
   });
 });
