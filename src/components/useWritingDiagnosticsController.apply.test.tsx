@@ -185,11 +185,12 @@ describe('revision-safe writing diagnostic application failures', () => {
     const editor = createEditor();
     const before = editor.getJSON();
     const onError = vi.fn();
+    const provider = stableProvider();
     const { result } = renderHook(() =>
       useWritingDiagnosticsController({
         editor,
         diagnostics: [diagnostic()],
-        digestProvider: stableProvider(),
+        digestProvider: provider,
         onError,
       }),
     );
