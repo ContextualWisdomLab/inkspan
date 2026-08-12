@@ -24,6 +24,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 `;
 
+interface PackageLicenseManifest {
+  readonly files?: readonly string[];
+  readonly license?: string;
+}
+
 describe('software and bundled-font license evidence', () => {
   it('keeps the root software license as exact canonical MIT text', () => {
     expect(readFileSync('LICENSE', 'utf8')).toBe(CANONICAL_MIT_LICENSE);
@@ -35,6 +40,17 @@ describe('software and bundled-font license evidence', () => {
     );
     expect(readFileSync('src/fonts/OFL.txt', 'utf8')).toContain(
       'SIL OPEN FONT LICENSE Version 1.1',
+    );
+  });
+
+  it('keeps both software and bundled-font license evidence in the npm package', () => {
+    const packageManifest = JSON.parse(
+      readFileSync('package.json', 'utf8'),
+    ) as PackageLicenseManifest;
+
+    expect(packageManifest.license).toBe('MIT');
+    expect(packageManifest.files).toEqual(
+      expect.arrayContaining(['LICENSE', 'src/fonts']),
     );
   });
 });
