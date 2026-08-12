@@ -219,7 +219,6 @@ function sameProcessedInput(
   if (
     previous === null ||
     previous.kind !== next.kind ||
-    previous.rawInput !== next.rawInput ||
     previous.editor !== next.editor ||
     previous.digestProvider !== next.digestProvider
   ) {
