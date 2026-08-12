@@ -9,7 +9,7 @@
  * reads credentials, disables a workflow, restores source, or mutates a ref.
  */
 import { isUtf8 } from 'node:buffer';
-import { readFileSync } from 'node:fs';
+import { closeSync, fstatSync, openSync, readSync } from 'node:fs';
 
 const MAX_INPUT_BYTES = 1024 * 1024;
 const MAX_PATH_CODE_UNITS = 1024;
@@ -82,12 +82,44 @@ function readInputArgument(argv) {
   return argv[1];
 }
 
+/** Read at most one bounded regular-file snapshot from a trusted local path. */
+function readBoundedInput(inputPath) {
+  const descriptor = openSync(inputPath, 'r');
+  try {
+    const metadata = fstatSync(descriptor);
+    if (
+      !metadata.isFile() ||
+      metadata.size === 0 ||
+      metadata.size > MAX_INPUT_BYTES
+    ) {
+      throw new Error('input size is outside the supported bound');
+    }
+
+    const buffer = Buffer.allocUnsafe(MAX_INPUT_BYTES + 1);
+    let bytesRead = 0;
+    while (bytesRead < buffer.byteLength) {
+      const count = readSync(
+        descriptor,
+        buffer,
+        bytesRead,
+        buffer.byteLength - bytesRead,
+        null,
+      );
+      if (count === 0) break;
+      bytesRead += count;
+    }
+    if (bytesRead === 0 || bytesRead > MAX_INPUT_BYTES) {
+      throw new Error('input size is outside the supported bound');
+    }
+    return buffer.subarray(0, bytesRead);
+  } finally {
+    closeSync(descriptor);
+  }
+}
+
 /** Read one bounded JSON fixture without following any repository-controlled URL. */
 function readFixture(inputPath) {
-  const bytes = readFileSync(inputPath);
-  if (bytes.byteLength === 0 || bytes.byteLength > MAX_INPUT_BYTES) {
-    throw new Error('input size is outside the supported bound');
-  }
+  const bytes = readBoundedInput(inputPath);
   if (!isUtf8(bytes)) {
     throw new Error('input is not valid UTF-8');
   }
