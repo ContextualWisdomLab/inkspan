@@ -31,7 +31,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - name: Correct repeated verification repair anchor
+      - name: Correct bounded review-repair anchors
         run: python .github/scripts/fix_review_repair_counter.py
       - name: Apply verified review fixes
         run: python .github/scripts/address_writing_diagnostics_review.py
