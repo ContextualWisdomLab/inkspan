@@ -32,17 +32,35 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Run revision-bound controller contract tests
-        run: pnpm exec vitest run src/components/useWritingDiagnosticsController.test.tsx src/components/useWritingDiagnosticsController.actions.test.tsx
+        run: >-
+          pnpm exec vitest run
+          src/components/useWritingDiagnosticsController.test.tsx
+          src/components/useWritingDiagnosticsController.actions.test.tsx
+          src/components/useWritingDiagnosticsController.boundary.test.tsx
+          src/components/useWritingDiagnosticsController.coverage.test.tsx
       - name: Prove complete owned production coverage
         shell: bash
         run: |
           set +e
-          pnpm exec vitest run --coverage --coverage.reporter=json
+          pnpm exec vitest run \
+            src/components/useWritingDiagnosticsController.test.tsx \
+            src/components/useWritingDiagnosticsController.actions.test.tsx \
+            src/components/useWritingDiagnosticsController.boundary.test.tsx \
+            src/components/useWritingDiagnosticsController.coverage.test.tsx \
+            --coverage \
+            --coverage.include=src/components/useWritingDiagnosticsController.ts \
+            --coverage.reporter=json
           status=$?
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
 
           const sourcePath = 'src/components/useWritingDiagnosticsController.ts';
+          if (!fs.existsSync('coverage/coverage-final.json')) {
+            console.log(
+              `::error file=${sourcePath},line=1::Controller coverage report was not produced.`,
+            );
+            process.exit(0);
+          }
           const report = JSON.parse(
             fs.readFileSync('coverage/coverage-final.json', 'utf8'),
           );
