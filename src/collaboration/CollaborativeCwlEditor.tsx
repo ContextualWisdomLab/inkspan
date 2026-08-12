@@ -101,6 +101,14 @@ export const CollaborativeCwlEditor = forwardRef<
     ariaRequired,
   } = props;
 
+  if (typeof editable !== 'boolean') {
+    throw new RangeError('editor editable state must be a boolean when provided');
+  }
+  if (typeof hideToolbar !== 'boolean') {
+    throw new RangeError(
+      'editor toolbar visibility state must be a boolean when provided',
+    );
+  }
   assertCollaborationConfiguration(provider, user);
   if (
     typeof field !== 'string' ||
