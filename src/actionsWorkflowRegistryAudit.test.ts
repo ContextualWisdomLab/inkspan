@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -95,8 +95,17 @@ describe('Actions workflow registry audit', () => {
       defaultBranchSha: string;
       observedAt: string;
       complete: boolean;
-      paginationReceipts: Array<{ page: number; itemCount: number; totalCount: number }>;
-      workflows: Array<{ id: number; path: string; state: string; classification: string }>;
+      paginationReceipts: Array<{
+        page: number;
+        itemCount: number;
+        totalCount: number;
+      }>;
+      workflows: Array<{
+        id: number;
+        path: string;
+        state: string;
+        classification: string;
+      }>;
     };
     expect(evidence.defaultBranchSha).toBe(
       'a430b1c153702de3b6439def801732d7453b4940',
@@ -181,12 +190,27 @@ describe('Actions workflow registry audit', () => {
     expect(result.status).toBe(0);
     const workflows = (
       JSON.parse(result.stdout) as {
-        workflows: Array<{ id: number; classification: string }>;
+        workflows: Array<{
+          id: number;
+          path: string;
+          state: string;
+          classification: string;
+        }>;
       }
     ).workflows;
     expect(workflows).toEqual([
-      { id: 8, path: '.github/workflows/CI.yml', state: 'active', classification: 'path_mismatch' },
-      { id: 9, path: '.github/workflows%2Frelease.yml', state: 'active', classification: 'unresolved_path' },
+      {
+        id: 8,
+        path: '.github/workflows/CI.yml',
+        state: 'active',
+        classification: 'path_mismatch',
+      },
+      {
+        id: 9,
+        path: '.github/workflows%2Frelease.yml',
+        state: 'active',
+        classification: 'unresolved_path',
+      },
     ]);
   });
 });
