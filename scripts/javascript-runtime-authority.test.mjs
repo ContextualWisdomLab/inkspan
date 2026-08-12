@@ -41,6 +41,32 @@ test('reports executable module authority with actionable specifiers', () => {
   );
 });
 
+test('reports statically recognizable indirect CommonJS loader invocations', () => {
+  const source = [
+    "const comma = (0, require)('comma-package');",
+    "const called = require.call(undefined, 'call-package');",
+    "const moduleRequired = module.require('module-package');",
+    "const elementRequired = module['require']('element-package');",
+    'const computed = module.require(runtimePackageName);',
+    'const object = { require() { return "method-only"; } };',
+    'const benign = object.require("not-the-commonjs-loader");',
+    'void [comma, called, moduleRequired, elementRequired, computed, benign];',
+  ].join('\n');
+
+  assert.deepEqual(
+    findRuntimeModuleAuthority(source, 'indirect-authority.js').map(
+      ({ kind, specifier }) => ({ kind, specifier }),
+    ),
+    [
+      { kind: 'commonjs-require', specifier: 'comma-package' },
+      { kind: 'commonjs-require', specifier: 'call-package' },
+      { kind: 'commonjs-require', specifier: 'module-package' },
+      { kind: 'commonjs-require', specifier: 'element-package' },
+      { kind: 'commonjs-require', specifier: undefined },
+    ],
+  );
+});
+
 test('fails closed when emitted JavaScript is syntactically invalid', () => {
   assert.throws(
     () => findRuntimeModuleAuthority('const = ;', 'broken.js'),
