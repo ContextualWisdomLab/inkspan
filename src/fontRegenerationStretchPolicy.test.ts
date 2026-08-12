@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 const temporaryRoots: string[] = [];
 
-type StretchMutation = 'non-normal' | 'duplicate';
+type StretchMutation = 'non-normal' | 'percentage' | 'duplicate';
 
 function createIsolatedFontRegenerator(mutation: StretchMutation): {
   root: string;
@@ -65,7 +65,9 @@ function cssFor(url) {
     const stretch = family === 'Noto Sans'
       ? mutation === 'duplicate'
         ? 'font-stretch: normal;\\n  font-stretch: condensed;'
-        : 'font-stretch: condensed;'
+        : mutation === 'percentage'
+          ? 'font-stretch: 75%;'
+          : 'font-stretch: condensed;'
       : 'font-stretch: normal;';
     return \`@font-face {\n  font-family: '\${family}';\n  font-style: normal;\n  \${stretch}\n  font-weight: \${weight};\n  src: url(\${trustedAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\`;
   }).join('\\n');
@@ -124,6 +126,10 @@ afterEach(() => {
 describe('font regeneration stretch descriptor policy', () => {
   it('rejects non-normal stretch metadata before relabeling the font at normal width', () => {
     expectRejectedWithoutReplacingKnownGood('non-normal');
+  });
+
+  it('rejects percentage stretch metadata before relabeling the font at normal width', () => {
+    expectRejectedWithoutReplacingKnownGood('percentage');
   });
 
   it('rejects ambiguous duplicate stretch metadata before publication', () => {
