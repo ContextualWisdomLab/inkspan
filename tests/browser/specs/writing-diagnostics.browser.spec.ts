@@ -49,7 +49,7 @@ test.describe('writing diagnostics browser assurance', () => {
     await expect(apply).toBeEnabled();
     const actionBox = await apply.boundingBox();
     expect(actionBox).not.toBeNull();
-    if (testInfo.project.name.includes('mobile')) {
+    if (testInfo.project.use.hasTouch === true) {
       expect(actionBox!.width).toBeGreaterThanOrEqual(44);
       expect(actionBox!.height).toBeGreaterThanOrEqual(44);
     }
