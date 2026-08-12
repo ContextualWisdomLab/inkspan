@@ -109,4 +109,89 @@ describe('CwlEditor host-supplied writing diagnostics', () => {
     expect(document.querySelectorAll('.cwl-writing-diagnostic')).toHaveLength(1);
     expect(onWritingDiagnosticAction).not.toHaveBeenCalled();
   });
+
+  it('routes imperative actions through the latest callback without rebuilding the editor', async () => {
+    const handleRef = createRef<CwlEditorHandle>();
+    const firstAction = vi.fn();
+    const secondAction = vi.fn();
+    const view = render(
+      <CwlEditor
+        defaultValue="Alpha beta"
+        hideToolbar
+        ref={handleRef}
+        onWritingDiagnosticAction={firstAction}
+      />,
+    );
+    await waitFor(() => expect(handleRef.current?.getEditor()).not.toBeNull());
+    const editorIdentity = handleRef.current!.getEditor();
+
+    act(() => {
+      editorIdentity!.commands.setTextSelection({ from: 1, to: 6 });
+    });
+    const diagnostic = await diagnosticForSelection(handleRef.current!);
+
+    view.rerender(
+      <CwlEditor
+        defaultValue="Alpha beta"
+        hideToolbar
+        ref={handleRef}
+        writingDiagnostics={[diagnostic]}
+        onWritingDiagnosticAction={firstAction}
+      />,
+    );
+    await screen.findByText('Clarify the request');
+
+    expect(handleRef.current!.focusWritingDiagnostic('diagnostic-1')).toBe(true);
+    expect(handleRef.current!.getEditor()!.state.selection).toMatchObject({
+      from: 1,
+      to: 6,
+    });
+
+    let ignored = null;
+    act(() => {
+      ignored = handleRef.current!.ignoreWritingDiagnostic('diagnostic-1');
+    });
+    expect(ignored).toMatchObject({
+      action: 'ignored',
+      reasonCode: 'explicit',
+      diagnosticId: 'diagnostic-1',
+    });
+    expect(firstAction).toHaveBeenLastCalledWith(ignored);
+
+    view.rerender(
+      <CwlEditor
+        defaultValue="Alpha beta"
+        hideToolbar
+        ref={handleRef}
+        writingDiagnostics={[diagnostic]}
+        onWritingDiagnosticAction={secondAction}
+      />,
+    );
+    expect(handleRef.current!.getEditor()).toBe(editorIdentity);
+
+    let explanation = null;
+    act(() => {
+      explanation =
+        handleRef.current!.requestWritingDiagnosticExplanation('diagnostic-1');
+    });
+    expect(explanation).toMatchObject({
+      action: 'requested_explanation',
+      diagnosticId: 'diagnostic-1',
+    });
+    expect(secondAction).toHaveBeenLastCalledWith(explanation);
+
+    const beforeDismiss = handleRef.current!.getValue();
+    let dismissed = null;
+    act(() => {
+      dismissed = handleRef.current!.dismissWritingDiagnostic('diagnostic-1');
+    });
+    expect(dismissed).toMatchObject({
+      action: 'dismissed',
+      diagnosticId: 'diagnostic-1',
+    });
+    expect(secondAction).toHaveBeenLastCalledWith(dismissed);
+    expect(handleRef.current!.getValue()).toBe(beforeDismiss);
+    expect(document.querySelector('.cwl-writing-diagnostic')).toBeNull();
+    expect(handleRef.current!.focusWritingDiagnostic('diagnostic-1')).toBe(false);
+  });
 });
