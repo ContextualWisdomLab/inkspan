@@ -107,7 +107,7 @@ def write_office_document(
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary_handle = NamedTemporaryFile(
             mode="wb",
-            prefix=f".{path.name}.",
+            prefix=".inkspan-office-",
             suffix=".tmp",
             dir=path.parent,
             delete=False,

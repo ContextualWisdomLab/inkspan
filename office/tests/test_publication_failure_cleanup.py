@@ -20,7 +20,7 @@ def test_write_failure_removes_partial_temporary_output(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     output = tmp_path / "customer-private-output.docx"
-    temporary = tmp_path / ".customer-private-output.docx.partial.tmp"
+    temporary = tmp_path / ".inkspan-office-partial.tmp"
 
     class FailingTemporaryFile:
         name = str(temporary)
@@ -113,6 +113,7 @@ def test_temporary_publication_name_does_not_reflect_output_basename(
 
     assert observed_prefix is not None
     assert private_marker not in observed_prefix
+    assert observed_prefix == ".inkspan-office-"
 
 
 def test_overwrite_replace_failure_is_redacted_and_preserves_existing_output(
@@ -124,7 +125,7 @@ def test_overwrite_replace_failure_is_redacted_and_preserves_existing_output(
     real_replace = Path.replace
 
     def fail_output_replace(self: Path, target: str | Path) -> Path:
-        if Path(target) == output and self.name.startswith(f".{output.name}."):
+        if Path(target) == output and self.name.startswith(".inkspan-office-"):
             raise OSError("private replacement failure detail")
         return real_replace(self, target)
 
@@ -135,7 +136,7 @@ def test_overwrite_replace_failure_is_redacted_and_preserves_existing_output(
 
     assert "private replacement failure detail" not in str(error.value)
     assert output.read_bytes() == b"existing"
-    assert list(tmp_path.glob(f".{output.name}.*.tmp")) == []
+    assert list(tmp_path.glob(".inkspan-office-*.tmp")) == []
 
 
 def test_cleanup_failure_is_redacted_after_atomic_publication(
@@ -146,7 +147,7 @@ def test_cleanup_failure_is_redacted_after_atomic_publication(
     real_unlink = Path.unlink
 
     def fail_temporary_cleanup(self: Path, missing_ok: bool = False) -> None:
-        if self.name.startswith(f".{output.name}.") and self.suffix == ".tmp":
+        if self.name.startswith(".inkspan-office-") and self.suffix == ".tmp":
             raise OSError("private cleanup failure detail")
         real_unlink(self, missing_ok=missing_ok)
 
@@ -157,7 +158,7 @@ def test_cleanup_failure_is_redacted_after_atomic_publication(
 
     assert "private cleanup failure detail" not in str(error.value)
     assert output.exists()
-    temporary_files = list(tmp_path.glob(f".{output.name}.*.tmp"))
+    temporary_files = list(tmp_path.glob(".inkspan-office-*.tmp"))
     assert len(temporary_files) == 1
     for temporary in temporary_files:
         real_unlink(temporary)
