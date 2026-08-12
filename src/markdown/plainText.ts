@@ -21,6 +21,13 @@ const BLOCK_TOKEN_TYPES = new Set([
   'table',
 ]);
 
+const PLAIN_TEXT_OPTION_KEYS = new Set([
+  'includeImageAlt',
+  'maxMarkdownBytes',
+  'maxHtmlBytes',
+]);
+const INVALID_PLAIN_TEXT_OPTIONS_MESSAGE = 'plain-text options are invalid.';
+
 interface PlainTextToken {
   type: string;
   text?: string;
@@ -64,6 +71,12 @@ interface PlainTextSegment {
   value: string;
 }
 
+interface ResolvedPlainTextOptions {
+  includeImageAlt: boolean;
+  maxMarkdownBytes: number | undefined;
+  maxHtmlBytes: number | undefined;
+}
+
 /** Options for Markdown/HTML plain-text projection. */
 export interface PlainTextOptions {
   /**
@@ -85,6 +98,56 @@ export interface PlainTextOptions {
 }
 
 /**
+ * Read the public option bag without executing caller accessors or silently
+ * accepting misspelled/unknown keys. Resource-limit values are copied without
+ * reinterpretation so their existing policy modules retain error authority.
+ */
+function resolvePlainTextOptions(options: unknown): ResolvedPlainTextOptions {
+  let values: Record<string, unknown>;
+  try {
+    if (
+      typeof options !== 'object' ||
+      options === null ||
+      Array.isArray(options)
+    ) {
+      throw new TypeError('invalid options container');
+    }
+
+    const prototype = Object.getPrototypeOf(options);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new TypeError('invalid options prototype');
+    }
+
+    values = Object.create(null) as Record<string, unknown>;
+    for (const key of Reflect.ownKeys(options)) {
+      if (typeof key !== 'string' || !PLAIN_TEXT_OPTION_KEYS.has(key)) {
+        throw new TypeError('unknown option');
+      }
+      const descriptor = Object.getOwnPropertyDescriptor(options, key);
+      if (!descriptor?.enumerable || !('value' in descriptor)) {
+        throw new TypeError('invalid option property');
+      }
+      values[key] = descriptor.value;
+    }
+
+    if (
+      values.includeImageAlt !== undefined &&
+      typeof values.includeImageAlt !== 'boolean'
+    ) {
+      throw new TypeError('invalid image alternative policy');
+    }
+  } catch {
+    throw new RangeError(INVALID_PLAIN_TEXT_OPTIONS_MESSAGE);
+  }
+
+  return {
+    includeImageAlt: values.includeImageAlt !== false,
+    maxMarkdownBytes: values.maxMarkdownBytes as number | undefined,
+    maxHtmlBytes: values.maxHtmlBytes as number | undefined,
+  };
+}
+
+/**
  * Project Markdown into deterministic plain text without exposing markup,
  * hyperlink destinations, or inline base64 image payloads.
  *
@@ -98,13 +161,14 @@ export function markdownToPlainText(
   markdown: string,
   options: PlainTextOptions = {},
 ): string {
+  const resolvedOptions = resolvePlainTextOptions(options);
   const maxMarkdownBytes = resolveMarkdownToHtmlMaxBytes(
-    options.maxMarkdownBytes,
+    resolvedOptions.maxMarkdownBytes,
   );
   assertMarkdownToHtmlInputSize(markdown, maxMarkdownBytes);
   const tokens = plainTextMarked.lexer(markdown) as unknown as PlainTextToken[];
   const state: PlainTextRenderState = {
-    includeImageAlt: options.includeImageAlt !== false,
+    includeImageAlt: resolvedOptions.includeImageAlt,
     listDepth: 0,
   };
   return normalizePlainText(renderTokenSequence(tokens, state));
@@ -123,13 +187,14 @@ export function htmlToPlainText(
   html: string,
   options: PlainTextOptions = {},
 ): string {
+  const resolvedOptions = resolvePlainTextOptions(options);
   const markdown = htmlToMarkdown(html, {
-    includeImageAlt: options.includeImageAlt,
-    maxHtmlBytes: options.maxHtmlBytes,
+    includeImageAlt: resolvedOptions.includeImageAlt,
+    maxHtmlBytes: resolvedOptions.maxHtmlBytes,
   });
   return markdownToPlainText(markdown, {
-    includeImageAlt: options.includeImageAlt,
-    maxMarkdownBytes: options.maxMarkdownBytes,
+    includeImageAlt: resolvedOptions.includeImageAlt,
+    maxMarkdownBytes: resolvedOptions.maxMarkdownBytes,
   });
 }
 
