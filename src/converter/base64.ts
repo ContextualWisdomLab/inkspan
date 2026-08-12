@@ -63,6 +63,7 @@ const CANONICAL_BASE64_RE =
   /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const CANONICAL_PERCENT_ENCODED_ASCII_RE =
   /^(?:[\x00-\x24\x26-\x7f]|%[0-7][0-9a-f])*$/i;
+const INVALID_OPTIONS_MESSAGE = 'converter options are invalid.';
 
 const hasBuffer = typeof globalThis.Buffer !== 'undefined';
 
@@ -206,6 +207,64 @@ function resolveMaxBytes(maxBytes: unknown): number | undefined {
   return maxBytes;
 }
 
+function readRuntimeOptions(
+  options: unknown,
+  allowedKeys: readonly string[],
+): Record<string, unknown> {
+  try {
+    if (
+      typeof options !== 'object' ||
+      options === null ||
+      Array.isArray(options)
+    ) {
+      throw new TypeError('invalid options container');
+    }
+
+    const prototype = Object.getPrototypeOf(options);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new TypeError('invalid options prototype');
+    }
+
+    const resolved: Record<string, unknown> = Object.create(null) as Record<
+      string,
+      unknown
+    >;
+    for (const key of Reflect.ownKeys(options)) {
+      if (typeof key !== 'string' || !allowedKeys.includes(key)) {
+        throw new TypeError('unknown option');
+      }
+      const descriptor = Object.getOwnPropertyDescriptor(options, key) as PropertyDescriptor;
+      if (!descriptor.enumerable || !('value' in descriptor)) {
+        throw new TypeError('invalid option property');
+      }
+      resolved[key] = descriptor.value as unknown;
+    }
+    return resolved;
+  } catch {
+    throw new RangeError(INVALID_OPTIONS_MESSAGE);
+  }
+}
+
+function resolveEncodeOptions(options: unknown): {
+  mimeType: string | undefined;
+  maxBytes: number | undefined;
+} {
+  const values = readRuntimeOptions(options, ['mimeType', 'maxBytes']);
+  const mimeType = values.mimeType;
+  if (mimeType !== undefined && typeof mimeType !== 'string') {
+    throw new RangeError('mimeType must be a string.');
+  }
+  return {
+    mimeType,
+    maxBytes: resolveMaxBytes(values.maxBytes),
+  };
+}
+
+function resolveDecodeMaxBytes(options: unknown): number | undefined {
+  const values = readRuntimeOptions(options, ['maxBytes']);
+  return resolveMaxBytes(values.maxBytes);
+}
+
 function canonicalBase64DecodedByteLength(payload: string): number | undefined {
   if (!CANONICAL_BASE64_RE.test(payload)) return undefined;
   const padding = payload.endsWith('==')
@@ -239,11 +298,10 @@ export function bytesToDataUri(
   input: ArrayBuffer | ArrayBufferView | Uint8Array,
   options: EncodeOptions = {},
 ): string {
-  const maxBytes = resolveMaxBytes(options.maxBytes);
+  const { mimeType, maxBytes } = resolveEncodeOptions(options);
   const bytes = toUint8Array(input);
   assertSize(bytes.byteLength, maxBytes);
-  const mime =
-    options.mimeType ?? sniffMimeType(bytes) ?? 'application/octet-stream';
+  const mime = mimeType ?? sniffMimeType(bytes) ?? 'application/octet-stream';
   return `data:${mime};base64,${bytesToBase64(bytes)}`;
 }
 
@@ -282,12 +340,12 @@ export async function blobToDataUri(
   blob: Blob,
   options: EncodeOptions = {},
 ): Promise<string> {
-  const maxBytes = resolveMaxBytes(options.maxBytes);
+  const { mimeType, maxBytes } = resolveEncodeOptions(options);
   assertSize(blob.size, maxBytes);
   const bytes = await readBlobBytes(blob);
   assertSize(bytes.byteLength, maxBytes);
   const mime =
-    options.mimeType ||
+    mimeType ||
     (blob.type && blob.type.length > 0 ? blob.type : undefined) ||
     sniffMimeType(bytes) ||
     'application/octet-stream';
@@ -339,7 +397,7 @@ export function dataUriToBytes(
   dataUri: string,
   options: { maxBytes?: number } = {},
 ): DecodedDataUri {
-  const maxBytes = resolveMaxBytes(options.maxBytes);
+  const maxBytes = resolveDecodeMaxBytes(options);
   const { mimeType, isBase64, payload } = parseDataUri(dataUri);
   let bytes: Uint8Array;
   if (isBase64) {
