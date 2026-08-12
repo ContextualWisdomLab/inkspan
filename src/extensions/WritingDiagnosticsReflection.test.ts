@@ -86,7 +86,7 @@ describe('WritingDiagnostics hostile reflection failures', () => {
       throw new Error('Missing writing diagnostics decoration prop');
     }
 
-    expect(decorations(stateWithoutDiagnostics())).toBeNull();
+    expect(decorations.call(plugin, stateWithoutDiagnostics())).toBeNull();
   });
 
   it('rejects prototype, own-key, and property-descriptor traps without leaking or throwing', () => {
