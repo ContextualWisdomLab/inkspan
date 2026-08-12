@@ -60,7 +60,7 @@ const cssReadMarker = process.env.INKSPAN_FONT_CSS_READ_MARKER;
 const hostileAsset = 'https://attacker.example.invalid/subset.woff2';
 const trustedAsset = 'https://fonts.gstatic.com/s/notosans/test-subset.woff2';
 const cssAsset = mode === 'hostile-origin' ? hostileAsset : trustedAsset;
-const css = \`@font-face {\n  font-family: 'Noto Sans';\n  font-style: normal;\n  font-weight: 400;\n  src: url(\${cssAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\`;
+const css = \`@font-face {\n  font-family: 'Noto Sans';\n  font-style: normal;\n  font-weight: 400;\n  src: url(\${cssAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\n@font-face {\n  font-family: 'Noto Sans';\n  font-style: normal;\n  font-weight: 700;\n  src: url(\${cssAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\`;
 let trustedAssetRequests = 0;
 globalThis.fetch = async (input) => {
   const url = String(input);
@@ -185,6 +185,9 @@ describe('font regeneration supply-chain boundary', () => {
 
     expect(result.error).toBeUndefined();
     expect(result.status).not.toBe(0);
+    expect(`${result.stdout}\n${result.stderr}`).toContain(
+      'font asset fetch failed with status 503',
+    );
     expect(existsSync(existingFontMarker)).toBe(true);
     expect(readFileSync(existingFontMarker, 'utf8')).toBe('known-good');
   });
