@@ -194,6 +194,18 @@ function assertSize(bytes: number, maxBytes?: number): void {
   }
 }
 
+function resolveMaxBytes(maxBytes: unknown): number | undefined {
+  if (maxBytes === undefined) return undefined;
+  if (
+    typeof maxBytes !== 'number' ||
+    !Number.isSafeInteger(maxBytes) ||
+    maxBytes < 0
+  ) {
+    throw new RangeError('maxBytes must be a non-negative safe integer.');
+  }
+  return maxBytes;
+}
+
 function canonicalBase64DecodedByteLength(payload: string): number | undefined {
   if (!CANONICAL_BASE64_RE.test(payload)) return undefined;
   const padding = payload.endsWith('==')
@@ -227,8 +239,9 @@ export function bytesToDataUri(
   input: ArrayBuffer | ArrayBufferView | Uint8Array,
   options: EncodeOptions = {},
 ): string {
+  const maxBytes = resolveMaxBytes(options.maxBytes);
   const bytes = toUint8Array(input);
-  assertSize(bytes.byteLength, options.maxBytes);
+  assertSize(bytes.byteLength, maxBytes);
   const mime =
     options.mimeType ?? sniffMimeType(bytes) ?? 'application/octet-stream';
   return `data:${mime};base64,${bytesToBase64(bytes)}`;
@@ -269,9 +282,10 @@ export async function blobToDataUri(
   blob: Blob,
   options: EncodeOptions = {},
 ): Promise<string> {
-  assertSize(blob.size, options.maxBytes);
+  const maxBytes = resolveMaxBytes(options.maxBytes);
+  assertSize(blob.size, maxBytes);
   const bytes = await readBlobBytes(blob);
-  assertSize(bytes.byteLength, options.maxBytes);
+  assertSize(bytes.byteLength, maxBytes);
   const mime =
     options.mimeType ||
     (blob.type && blob.type.length > 0 ? blob.type : undefined) ||
@@ -325,21 +339,22 @@ export function dataUriToBytes(
   dataUri: string,
   options: { maxBytes?: number } = {},
 ): DecodedDataUri {
+  const maxBytes = resolveMaxBytes(options.maxBytes);
   const { mimeType, isBase64, payload } = parseDataUri(dataUri);
   let bytes: Uint8Array;
   if (isBase64) {
-    if (typeof options.maxBytes === 'number') {
+    if (maxBytes !== undefined) {
       const decodedLength = canonicalBase64DecodedByteLength(payload);
       if (decodedLength !== undefined) {
-        assertSize(decodedLength, options.maxBytes);
+        assertSize(decodedLength, maxBytes);
       }
     }
     bytes = base64ToBytes(payload);
   } else {
-    if (typeof options.maxBytes === 'number') {
+    if (maxBytes !== undefined) {
       const decodedLength = canonicalPercentEncodedAsciiDecodedByteLength(payload);
       if (decodedLength !== undefined) {
-        assertSize(decodedLength, options.maxBytes);
+        assertSize(decodedLength, maxBytes);
       }
     }
     // Non-base64 data URIs carry percent-encoded text. `decodeURIComponent`
@@ -356,7 +371,7 @@ export function dataUriToBytes(
     }
     bytes = new TextEncoder().encode(decoded);
   }
-  assertSize(bytes.byteLength, options.maxBytes);
+  assertSize(bytes.byteLength, maxBytes);
   return { mimeType, bytes };
 }
 
