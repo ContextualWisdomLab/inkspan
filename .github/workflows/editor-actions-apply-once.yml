@@ -1,0 +1,254 @@
+name: Editor Actions Apply Once
+
+on:
+  push:
+    branches:
+      - feat/writing-diagnostics-editor-actions
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: editor-actions-apply-once-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  implement-revision-safe-apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: true
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Implement exact-revision plain-text application
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_once(source: str, old: str, new: str, label: str) -> str:
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label} anchor count was {count}')
+              return source.replace(old, new, 1)
+
+          controller_path = Path('src/components/useWritingDiagnosticsController.ts')
+          controller = controller_path.read_text(encoding='utf-8')
+
+          old = (
+              "  readonly documentRevision: CwlEditorDocumentRevision;\n"
+              "  readonly categoryCode: string;\n"
+          )
+          new = (
+              "  readonly documentRevision: CwlEditorDocumentRevision;\n"
+              "  /** Strong revision produced by a successful document mutation. */\n"
+              "  readonly resultingDocumentRevision?: CwlEditorDocumentRevision;\n"
+              "  readonly categoryCode: string;\n"
+          )
+          controller = replace_once(controller, old, new, 'action event revision')
+
+          old = (
+              "  readonly focusDiagnostic: (diagnosticId: string) => boolean;\n"
+              "  readonly ignoreDiagnostic: (\n"
+          )
+          new = (
+              "  readonly focusDiagnostic: (diagnosticId: string) => boolean;\n"
+              "  readonly applyDiagnostic: (\n"
+              "    diagnosticId: string,\n"
+              "  ) => Promise<CwlWritingDiagnosticActionEvent | null>;\n"
+              "  readonly ignoreDiagnostic: (\n"
+          )
+          controller = replace_once(controller, old, new, 'controller apply contract')
+
+          old = "  const focusDiagnostic = useCallback((diagnosticId: string): boolean => {\n"
+          apply_implementation = r'''  const applyDiagnostic = useCallback(
+    async (
+      diagnosticId: string,
+    ): Promise<CwlWritingDiagnosticActionEvent | null> => {
+      const active = currentRef.current;
+      if (
+        active.status !== 'active' ||
+        active.editor === null ||
+        active.editor.isDestroyed
+      ) {
+        return null;
+      }
+      const target = active.diagnostics.find(
+        (candidate) => candidate.diagnostic.diagnosticId === diagnosticId,
+      );
+      const replacement = target?.diagnostic.suggestedReplacement;
+      if (target === undefined || replacement === undefined) return null;
+
+      const activeEditor = active.editor;
+      const capturedDocument = activeEditor.state.doc;
+      const transaction = activeEditor.state.tr.insertText(
+        replacement,
+        target.from,
+        target.to,
+      );
+      let currentRevision: CwlEditorDocumentRevision;
+      let resultingRevision: CwlEditorDocumentRevision;
+      try {
+        const currentEnvelope = createDocumentEnvelope(
+          capturedDocument.toJSON(),
+        );
+        const resultingEnvelope = createDocumentEnvelope(
+          transaction.doc.toJSON(),
+        );
+        [currentRevision, resultingRevision] = await Promise.all([
+          createValidatedDocumentEnvelopeRevision(
+            currentEnvelope,
+            digestProvider,
+          ),
+          createValidatedDocumentEnvelopeRevision(
+            resultingEnvelope,
+            digestProvider,
+          ),
+        ]);
+      } catch {
+        const error = new WritingDiagnosticError('revision');
+        notifyError(errorRef.current, error);
+        return null;
+      }
+
+      const latest = currentRef.current;
+      const revisionMatches = revisionsEqual(
+        currentRevision,
+        target.diagnostic.documentRevision,
+      );
+      const documentMatches = activeEditor.state.doc.eq(capturedDocument);
+      if (
+        latest.status !== 'active' ||
+        latest.generation !== active.generation ||
+        latest.editor !== activeEditor ||
+        activeEditor.isDestroyed ||
+        !revisionMatches ||
+        !documentMatches
+      ) {
+        const conflict = Object.freeze({
+          action: 'conflict' as const,
+          reasonCode: revisionMatches
+            ? ('document_changed' as const)
+            : ('revision_mismatch' as const),
+          diagnosticId: target.diagnostic.diagnosticId,
+          documentRevision: target.diagnostic.documentRevision,
+          categoryCode: target.diagnostic.categoryCode,
+          generation: generationRef.current,
+        });
+        notifyAction(actionRef.current, conflict);
+        return conflict;
+      }
+
+      try {
+        activeEditor.view.dispatch(transaction);
+      } catch {
+        const error = new WritingDiagnosticError('lifecycle');
+        notifyError(errorRef.current, error);
+        return null;
+      }
+
+      const event = Object.freeze({
+        action: 'applied' as const,
+        reasonCode: 'explicit' as const,
+        diagnosticId: target.diagnostic.diagnosticId,
+        documentRevision: target.diagnostic.documentRevision,
+        resultingDocumentRevision: resultingRevision,
+        categoryCode: target.diagnostic.categoryCode,
+        generation: generationRef.current,
+      });
+      notifyAction(actionRef.current, event);
+      return event;
+    },
+    [actionRef, digestProvider, errorRef],
+  );
+
+'''
+          controller = replace_once(
+              controller,
+              old,
+              apply_implementation + old,
+              'controller apply implementation',
+          )
+
+          old = (
+              "    focusDiagnostic,\n"
+              "    ignoreDiagnostic,\n"
+          )
+          new = (
+              "    focusDiagnostic,\n"
+              "    applyDiagnostic,\n"
+              "    ignoreDiagnostic,\n"
+          )
+          controller = replace_once(controller, old, new, 'controller return')
+          controller_path.write_text(controller, encoding='utf-8')
+
+          editor_path = Path('src/components/CwlEditor.tsx')
+          editor = editor_path.read_text(encoding='utf-8')
+          old = (
+              "              label={writingDiagnosticsLabel ?? 'Writing guidance'}\n"
+              "              printEnabled={printWritingDiagnostics}\n"
+          )
+          new = (
+              "              label={writingDiagnosticsLabel ?? 'Writing guidance'}\n"
+              "              onApplyDiagnostic={(diagnosticId) => {\n"
+              "                void writingDiagnosticsController.applyDiagnostic(\n"
+              "                  diagnosticId,\n"
+              "                );\n"
+              "              }}\n"
+              "              printEnabled={printWritingDiagnostics}\n"
+          )
+          editor = replace_once(editor, old, new, 'editor apply callback')
+          editor_path.write_text(editor, encoding='utf-8')
+
+          for test_path in [
+              Path('src/components/WritingDiagnosticsPanel.test.tsx'),
+              Path('src/components/WritingDiagnosticsPanel.keyboard.test.tsx'),
+              Path('src/components/WritingDiagnosticsPanel.print.test.tsx'),
+          ]:
+              source = test_path.read_text(encoding='utf-8')
+              old = "    focusDiagnostic: vi.fn(() => "
+              index = source.find(old)
+              if index < 0:
+                  raise SystemExit(f'{test_path} focus mock anchor missing')
+              line_end = source.find('\n', index)
+              if line_end < 0:
+                  raise SystemExit(f'{test_path} focus mock line incomplete')
+              insertion = "    applyDiagnostic: vi.fn(async () => null),\n"
+              source = source[: line_end + 1] + insertion + source[line_end + 1 :]
+              test_path.write_text(source, encoding='utf-8')
+          PY
+      - name: Verify revision-safe application
+        run: |
+          pnpm exec vitest run \
+            src/components/CwlEditor.writingDiagnostics.test.tsx \
+            src/components/CwlEditor.writingDiagnosticApply.test.tsx \
+            src/components/WritingDiagnosticsPanel.test.tsx \
+            src/components/WritingDiagnosticsPanel.keyboard.test.tsx \
+            src/components/WritingDiagnosticsPanel.print.test.tsx \
+            --pool=forks --maxWorkers=1
+          pnpm typecheck
+      - name: Publish validated application and remove this workflow
+        env:
+          TARGET_BRANCH: feat/writing-diagnostics-editor-actions
+        run: |
+          set -euo pipefail
+          rm .github/workflows/editor-actions-apply-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            src/components/useWritingDiagnosticsController.ts \
+            src/components/CwlEditor.tsx \
+            src/components/WritingDiagnosticsPanel.test.tsx \
+            src/components/WritingDiagnosticsPanel.keyboard.test.tsx \
+            src/components/WritingDiagnosticsPanel.print.test.tsx \
+            .github/workflows/editor-actions-apply-once.yml
+          git diff --cached --check
+          git commit -m 'feat(diagnostics): apply revision-safe replacements'
+          git push origin "HEAD:${TARGET_BRANCH}"
