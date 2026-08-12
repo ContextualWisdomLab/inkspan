@@ -69,6 +69,11 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     if (typeof editable !== 'boolean') {
       throw new RangeError('editor editable state must be a boolean when provided');
     }
+    if (typeof hideToolbar !== 'boolean') {
+      throw new RangeError(
+        'editor toolbar visibility state must be a boolean when provided',
+      );
+    }
 
     const isControlled = value !== undefined;
     const selectedDocumentValue = value ?? defaultValue ?? '';
