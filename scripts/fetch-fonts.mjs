@@ -15,6 +15,7 @@
  * Fonts are Noto Sans (OFL 1.1). See src/fonts/OFL.txt and src/fonts/NOTICE.
  */
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   renameSync,
@@ -221,6 +222,55 @@ async function processFamily(def, outputFilesDir) {
   return { css: out.join('\n\n'), totalBytes, count: out.length };
 }
 
+/** Install validated generated outputs and restore the prior bundle on failure. */
+function commitGeneratedOutputs(stagingRoot, outputs) {
+  const backupRoot = resolve(stagingRoot, 'backup');
+  mkdirSync(backupRoot, { recursive: true });
+
+  const backedUp = [];
+  const installed = [];
+  try {
+    for (const output of outputs) {
+      if (!existsSync(output.target)) continue;
+      renameSync(output.target, output.backup);
+      backedUp.push(output);
+    }
+
+    for (const output of outputs) {
+      renameSync(output.staged, output.target);
+      installed.push(output);
+    }
+  } catch (commitError) {
+    let rollbackFailed = false;
+
+    for (const output of installed.reverse()) {
+      try {
+        rmSync(output.target, { recursive: true, force: true });
+      } catch {
+        rollbackFailed = true;
+      }
+    }
+
+    for (const output of backedUp.reverse()) {
+      try {
+        if (existsSync(output.target)) {
+          rmSync(output.target, { recursive: true, force: true });
+        }
+        renameSync(output.backup, output.target);
+      } catch {
+        rollbackFailed = true;
+      }
+    }
+
+    if (rollbackFailed) {
+      throw new Error(
+        'Font bundle commit failed and the previous generated outputs could not be fully restored',
+      );
+    }
+    throw commitError;
+  }
+}
+
 const HEADER = (title) =>
   `/* ${title}\n` +
   ` * Bundled Noto Sans web fonts — SIL Open Font License 1.1.\n` +
@@ -270,14 +320,27 @@ async function main() {
     writeFileSync(stagedFullCss, fullCss);
     writeFileSync(stagedLatinCss, latinCss);
 
-    // This is the commit boundary. No network-derived mutation of the existing
-    // bundle occurs before all CSS and WOFF2 inputs have passed validation.
-    rmSync(FILES_DIR, { recursive: true, force: true });
-    renameSync(stagingFilesDir, FILES_DIR);
-    rmSync(resolve(FONTS_DIR, 'fonts.css'), { force: true });
-    renameSync(stagedFullCss, resolve(FONTS_DIR, 'fonts.css'));
-    rmSync(resolve(FONTS_DIR, 'fonts-latin.css'), { force: true });
-    renameSync(stagedLatinCss, resolve(FONTS_DIR, 'fonts-latin.css'));
+    // Back up each previous output on the same filesystem before installing any
+    // staged output. An ordinary synchronous installation failure can therefore
+    // restore the complete prior generated bundle before the error escapes.
+    const backupRoot = resolve(stagingRoot, 'backup');
+    commitGeneratedOutputs(stagingRoot, [
+      {
+        staged: stagingFilesDir,
+        target: FILES_DIR,
+        backup: resolve(backupRoot, 'files'),
+      },
+      {
+        staged: stagedFullCss,
+        target: resolve(FONTS_DIR, 'fonts.css'),
+        backup: resolve(backupRoot, 'fonts.css'),
+      },
+      {
+        staged: stagedLatinCss,
+        target: resolve(FONTS_DIR, 'fonts-latin.css'),
+        backup: resolve(backupRoot, 'fonts-latin.css'),
+      },
+    ]);
 
     console.log(
       `\nTotal bundled: ${(grandTotal / 1024 / 1024).toFixed(2)} MB across ` +
