@@ -1,0 +1,167 @@
+name: Controller Coverage Fix Once
+
+on:
+  push:
+    branches:
+      - feat/writing-diagnostics-controller
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: controller-coverage-fix-once-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  repair-controller-boundaries:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: true
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Repair stale publication and remove the impossible error fallback
+        run: |
+          set -euo pipefail
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('src/components/useWritingDiagnosticsController.ts')
+          source = path.read_text(encoding='utf-8')
+          replacements = [
+              (
+                  """interface InvalidProcessedInput {
+            readonly kind: 'invalid';
+            readonly rawInput: unknown;
+            readonly editor: Editor | null;
+            readonly digestProvider: DocumentEnvelopeDigestProvider | null | undefined;
+            readonly errorCode: WritingDiagnosticError['code'];
+          }
+          """,
+                  """interface InvalidProcessedInput {
+            readonly kind: 'invalid';
+            readonly rawInput: unknown;
+            readonly editor: Editor | null;
+            readonly digestProvider: DocumentEnvelopeDigestProvider | null | undefined;
+            readonly error: WritingDiagnosticError;
+          }
+          """,
+              ),
+              (
+                  """  if (previous.kind === 'invalid' && next.kind === 'invalid') {
+              return previous.errorCode === next.errorCode;
+            }
+          """,
+                  """  if (previous.kind === 'invalid' && next.kind === 'invalid') {
+              return previous.error.code === next.error.code;
+            }
+          """,
+              ),
+              (
+                  """    let processed: ProcessedInput;
+            let validationError: WritingDiagnosticError | null = null;
+          """,
+                  """    let processed: ProcessedInput;
+          """,
+              ),
+              (
+                  """      } catch (error) {
+                validationError =
+                  error instanceof WritingDiagnosticError
+                    ? error
+                    : new WritingDiagnosticError('contract');
+                processed = {
+                  kind: 'invalid',
+                  rawInput: diagnostics,
+                  editor,
+                  digestProvider,
+                  errorCode: validationError.code,
+                };
+              }
+          """,
+                  """      } catch (error) {
+                const validationError =
+                  error instanceof WritingDiagnosticError
+                    ? error
+                    : new WritingDiagnosticError('contract');
+                processed = {
+                  kind: 'invalid',
+                  rawInput: diagnostics,
+                  editor,
+                  digestProvider,
+                  error: validationError,
+                };
+              }
+          """,
+              ),
+              (
+                  """    if (processed.kind === 'invalid') {
+              const error = validationError ?? new WritingDiagnosticError(processed.errorCode);
+              publish(snapshot('invalid', nextGeneration, editor));
+              notifyError(errorRef.current, error);
+              return;
+            }
+          """,
+                  """    if (processed.kind === 'invalid') {
+              publish(snapshot('invalid', nextGeneration, editor));
+              notifyError(errorRef.current, processed.error);
+              return;
+            }
+          """,
+              ),
+              (
+                  """      if (generationRef.current !== nextGeneration || editor.isDestroyed) return;
+              const frozenVerified = Object.freeze(verified);
+          """,
+                  """      if (generationRef.current !== nextGeneration) return;
+              if (editor.isDestroyed) {
+                publish(snapshot('stale', nextGeneration, editor));
+                return;
+              }
+              const frozenVerified = Object.freeze(verified);
+          """,
+              ),
+          ]
+
+          for old, new in replacements:
+              if source.count(old) != 1:
+                  raise SystemExit(f'unexpected replacement count for:\n{old}')
+              source = source.replace(old, new)
+          path.write_text(source, encoding='utf-8')
+          PY
+      - name: Verify exact controller behavior, coverage, and public types
+        run: |
+          set -euo pipefail
+          pnpm exec vitest run \
+            src/components/useWritingDiagnosticsController.test.tsx \
+            src/components/useWritingDiagnosticsController.actions.test.tsx \
+            src/components/useWritingDiagnosticsController.boundary.test.tsx \
+            src/components/useWritingDiagnosticsController.coverage.test.tsx \
+            --pool=forks \
+            --maxWorkers=1 \
+            --coverage \
+            --coverage.include=src/components/useWritingDiagnosticsController.ts
+          pnpm typecheck
+      - name: Publish the validated source repair and remove this workflow
+        env:
+          TARGET_BRANCH: feat/writing-diagnostics-controller
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/components/useWritingDiagnosticsController.ts
+          git rm .github/workflows/controller-coverage-fix-once.yml
+          git diff --cached --check
+          git commit -m 'fix(diagnostics): close controller teardown gaps'
+          git push origin "HEAD:${TARGET_BRANCH}"
