@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   CwlVerifiedWritingDiagnostic,
@@ -79,7 +85,9 @@ describe('WritingDiagnosticsPanel keyboard navigation', () => {
     );
 
     const items = screen.getAllByRole('listitem');
-    items[0]!.focus();
+    act(() => {
+      items[0]!.focus();
+    });
     fireEvent.keyDown(items[0]!, { key: 'ArrowDown' });
     expect(items[1]).toHaveFocus();
     expect(activeController.focusDiagnostic).toHaveBeenLastCalledWith('second');
@@ -99,7 +107,9 @@ describe('WritingDiagnosticsPanel keyboard navigation', () => {
     const focusButton = screen.getByRole('button', {
       name: 'Focus affected text for First',
     });
-    focusButton.focus();
+    act(() => {
+      focusButton.focus();
+    });
     fireEvent.keyDown(focusButton, { key: 'ArrowDown' });
     expect(focusButton).toHaveFocus();
   });
