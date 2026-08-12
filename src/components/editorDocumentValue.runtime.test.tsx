@@ -21,6 +21,18 @@ describe('standalone editor document value runtime contract', () => {
     );
   });
 
+  it('rejects a defined non-string native-form reset document before wiring', () => {
+    expect(() =>
+      renderToString(
+        <CwlEditor formResetValue={42 as unknown as string} />,
+      ),
+    ).toThrowError(
+      new RangeError(
+        'editor form reset value must be a string when provided',
+      ),
+    );
+  });
+
   it('preserves controlled precedence and exact empty or Unicode strings', () => {
     expect(() =>
       renderToString(
@@ -28,7 +40,12 @@ describe('standalone editor document value runtime contract', () => {
       ),
     ).not.toThrow();
     expect(() =>
-      renderToString(<CwlEditor defaultValue="# 안녕하세요 👋" />),
+      renderToString(
+        <CwlEditor
+          defaultValue="# 안녕하세요 👋"
+          formResetValue="복원할 문서 🧾"
+        />,
+      ),
     ).not.toThrow();
   });
 });
