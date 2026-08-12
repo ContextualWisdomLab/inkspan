@@ -92,6 +92,29 @@ def test_temporary_creation_file_exists_is_not_target_conflict(
     assert not output.exists()
 
 
+def test_temporary_publication_name_does_not_reflect_output_basename(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    private_marker = "tenant-741-private-matter"
+    output = tmp_path / f"{private_marker}.docx"
+    observed_prefix: str | None = None
+
+    def observe_temporary_name(**kwargs: object) -> object:
+        nonlocal observed_prefix
+        prefix = kwargs.get("prefix")
+        observed_prefix = prefix if isinstance(prefix, str) else None
+        raise OSError("stop after temporary-name observation")
+
+    monkeypatch.setattr(safe_renderer, "NamedTemporaryFile", observe_temporary_name)
+
+    with pytest.raises(OSError, match=r"^output could not be written$"):
+        write_office_document(_docx_payload(), output)
+
+    assert observed_prefix is not None
+    assert private_marker not in observed_prefix
+
+
 def test_overwrite_replace_failure_is_redacted_and_preserves_existing_output(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
