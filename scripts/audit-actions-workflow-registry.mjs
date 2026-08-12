@@ -102,7 +102,7 @@ function readFixture(inputPath) {
     !hasExactKeys(
       value,
       ['defaultBranchSha', 'observedAt', 'presentWorkflowPaths', 'pages'],
-      ['ownedActiveRepairPaths'],
+      ['defaultBranchShaAfter', 'ownedActiveRepairPaths'],
     )
   ) {
     throw new Error('input has an invalid top-level contract');
@@ -240,6 +240,18 @@ function classifyWorkflow(path, state, presentPaths, ownedRepairPaths, foldedPat
 function auditFixture(fixture) {
   if (!SHA_1.test(fixture.defaultBranchSha)) {
     throw new Error('default branch SHA is invalid');
+  }
+  if (
+    fixture.defaultBranchShaAfter !== undefined &&
+    !SHA_1.test(fixture.defaultBranchShaAfter)
+  ) {
+    throw new Error('ending default branch SHA is invalid');
+  }
+  if (
+    fixture.defaultBranchShaAfter !== undefined &&
+    fixture.defaultBranchShaAfter !== fixture.defaultBranchSha
+  ) {
+    throw new Error('default branch moved during observation');
   }
   if (
     typeof fixture.observedAt !== 'string' ||
