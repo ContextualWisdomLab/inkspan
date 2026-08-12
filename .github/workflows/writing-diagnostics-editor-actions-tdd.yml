@@ -35,6 +35,7 @@ jobs:
         run: >-
           pnpm exec vitest run
           src/components/CwlEditor.writingDiagnostics.test.tsx
+          src/components/CwlEditor.writingDiagnosticApply.test.tsx
           --pool=forks
           --maxWorkers=1
       - name: Typecheck standalone writing-diagnostic contracts
