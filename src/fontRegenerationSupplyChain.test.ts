@@ -20,7 +20,9 @@ type FontRegenerationTestMode =
   | 'invalid-css'
   | 'invalid-font'
   | 'midstream-failure'
-  | 'oversized-css';
+  | 'oversized-css'
+  | 'redirected-asset'
+  | 'redirected-css';
 
 function createIsolatedFontRegenerator(): {
   root: string;
@@ -62,9 +64,12 @@ const trustedAsset = 'https://fonts.gstatic.com/s/notosans/test-subset.woff2';
 const cssAsset = mode === 'hostile-origin' ? hostileAsset : trustedAsset;
 const css = \`@font-face {\n  font-family: 'Noto Sans';\n  font-style: normal;\n  font-weight: 400;\n  src: url(\${cssAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\n@font-face {\n  font-family: 'Noto Sans';\n  font-style: normal;\n  font-weight: 700;\n  src: url(\${cssAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\`;
 let trustedAssetRequests = 0;
-globalThis.fetch = async (input) => {
+globalThis.fetch = async (input, init) => {
   const url = String(input);
   if (url.startsWith('https://fonts.googleapis.com/css2?')) {
+    if (mode === 'redirected-css' && init?.redirect !== 'error') {
+      writeFileSync(contactMarker, 'redirect-followed', 'utf8');
+    }
     if (mode === 'invalid-css') {
       return new Response('<html>PRIVATE_PROXY_RESPONSE</html>', {
         status: 200,
@@ -108,6 +113,9 @@ globalThis.fetch = async (input) => {
     });
   }
   if (url === trustedAsset) {
+    if (mode === 'redirected-asset' && init?.redirect !== 'error') {
+      writeFileSync(contactMarker, 'redirect-followed', 'utf8');
+    }
     trustedAssetRequests += 1;
     if (mode === 'midstream-failure' && trustedAssetRequests === 2) {
       return new Response('upstream unavailable', { status: 503 });
@@ -171,6 +179,20 @@ describe('font regeneration supply-chain boundary', () => {
     expect(`${result.stdout}\n${result.stderr}`).not.toContain(
       'attacker.example.invalid',
     );
+  });
+
+  it('disables automatic redirects for CSS discovery', () => {
+    const { contactMarker, result } = runRegenerator('redirected-css');
+
+    expect(result.error).toBeUndefined();
+    expect(existsSync(contactMarker)).toBe(false);
+  });
+
+  it('disables automatic redirects for trusted font asset downloads', () => {
+    const { contactMarker, result } = runRegenerator('redirected-asset');
+
+    expect(result.error).toBeUndefined();
+    expect(existsSync(contactMarker)).toBe(false);
   });
 
   it('rejects a 200 response that is not a WOFF2 artifact', () => {
