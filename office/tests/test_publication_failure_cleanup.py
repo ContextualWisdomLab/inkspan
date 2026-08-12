@@ -8,6 +8,13 @@ import inkspan_office.safe_renderer as safe_renderer
 from inkspan_office import write_office_document
 
 
+def _docx_payload() -> dict[str, object]:
+    return {
+        "format": "docx",
+        "blocks": [{"type": "paragraph", "text": "confidential document"}],
+    }
+
+
 def test_write_failure_removes_partial_temporary_output(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -40,13 +47,9 @@ def test_write_failure_removes_partial_temporary_output(
         "NamedTemporaryFile",
         lambda **_kwargs: FailingTemporaryFile(),
     )
-    payload = {
-        "format": "docx",
-        "blocks": [{"type": "paragraph", "text": "confidential document"}],
-    }
 
     with pytest.raises(OSError, match=r"^output could not be written$"):
-        write_office_document(payload, output)
+        write_office_document(_docx_payload(), output)
 
     assert not output.exists()
     assert not temporary.exists()
@@ -62,13 +65,9 @@ def test_temporary_creation_failure_is_redacted_without_cleanup_attempt(
         raise OSError("private temporary-file creation detail")
 
     monkeypatch.setattr(safe_renderer, "NamedTemporaryFile", fail_temporary_creation)
-    payload = {
-        "format": "docx",
-        "blocks": [{"type": "paragraph", "text": "confidential document"}],
-    }
 
     with pytest.raises(OSError, match=r"^output could not be written$") as error:
-        write_office_document(payload, output)
+        write_office_document(_docx_payload(), output)
 
     assert "private temporary-file creation detail" not in str(error.value)
     assert not output.exists()
@@ -84,14 +83,58 @@ def test_temporary_creation_file_exists_is_not_target_conflict(
         raise FileExistsError("private temporary-file creation collision")
 
     monkeypatch.setattr(safe_renderer, "NamedTemporaryFile", fail_temporary_creation)
-    payload = {
-        "format": "docx",
-        "blocks": [{"type": "paragraph", "text": "confidential document"}],
-    }
 
     with pytest.raises(OSError, match=r"^output could not be written$") as error:
-        write_office_document(payload, output)
+        write_office_document(_docx_payload(), output)
 
     assert type(error.value) is OSError
     assert "private temporary-file creation collision" not in str(error.value)
     assert not output.exists()
+
+
+def test_overwrite_replace_failure_is_redacted_and_preserves_existing_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "customer-private-output.docx"
+    output.write_bytes(b"existing")
+    real_replace = Path.replace
+
+    def fail_output_replace(self: Path, target: str | Path) -> Path:
+        if Path(target) == output and self.name.startswith(f".{output.name}."):
+            raise OSError("private replacement failure detail")
+        return real_replace(self, target)
+
+    monkeypatch.setattr(Path, "replace", fail_output_replace)
+
+    with pytest.raises(OSError, match=r"^output could not be written$") as error:
+        write_office_document(_docx_payload(), output, overwrite=True)
+
+    assert "private replacement failure detail" not in str(error.value)
+    assert output.read_bytes() == b"existing"
+    assert list(tmp_path.glob(f".{output.name}.*.tmp")) == []
+
+
+def test_cleanup_failure_is_redacted_after_atomic_publication(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "customer-private-output.docx"
+    real_unlink = Path.unlink
+
+    def fail_temporary_cleanup(self: Path, missing_ok: bool = False) -> None:
+        if self.name.startswith(f".{output.name}.") and self.suffix == ".tmp":
+            raise OSError("private cleanup failure detail")
+        real_unlink(self, missing_ok=missing_ok)
+
+    monkeypatch.setattr(Path, "unlink", fail_temporary_cleanup)
+
+    with pytest.raises(OSError, match=r"^output could not be written$") as error:
+        write_office_document(_docx_payload(), output)
+
+    assert "private cleanup failure detail" not in str(error.value)
+    assert output.exists()
+    temporary_files = list(tmp_path.glob(f".{output.name}.*.tmp"))
+    assert len(temporary_files) == 1
+    for temporary in temporary_files:
+        real_unlink(temporary)
