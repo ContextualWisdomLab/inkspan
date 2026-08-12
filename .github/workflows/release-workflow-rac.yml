@@ -22,7 +22,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: true
-      - name: Apply the exact YAML scalar repair
+      - name: Apply exact release workflow repairs
         run: |
           set -euo pipefail
           python <<'PY'
@@ -30,11 +30,21 @@ jobs:
 
           path = Path('.github/workflows/release.yml')
           source = path.read_text(encoding='utf-8')
-          old = "        run: python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt\n"
-          new = "        run: |\n          python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt\n"
-          if source.count(old) != 1:
-              raise SystemExit('release workflow did not contain exactly one expected invalid scalar')
-          path.write_text(source.replace(old, new), encoding='utf-8')
+          replacements = (
+              (
+                  "        run: python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt\n",
+                  "        run: |\n          python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt\n",
+              ),
+              (
+                  "              process.stdout.write(url.origin);\n              NODE\n              )\" || {\n",
+                  "              process.stdout.write(url.origin);\n          NODE\n              )\" || {\n",
+              ),
+          )
+          for old, new in replacements:
+              if source.count(old) != 1:
+                  raise SystemExit('release workflow did not contain exactly one expected invalid construct')
+              source = source.replace(old, new)
+          path.write_text(source, encoding='utf-8')
           PY
       - name: Verify YAML syntax with the runner's Ruby parser
         run: ruby -e "require 'psych'; Psych.parse_file('.github/workflows/release.yml')"
@@ -76,7 +86,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add .github/workflows/release.yml .github/workflows/release-workflow-rac.yml
           git diff --cached --check
-          git commit -m 'fix(ci): quote release dependency command safely'
+          git commit -m 'fix(ci): make release workflow executable'
           git push origin "HEAD:${TARGET_BRANCH}"
       - name: Enforce actionlint validation
         if: steps.actionlint.outcome != 'success'
