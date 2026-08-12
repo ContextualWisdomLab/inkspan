@@ -8,6 +8,7 @@
  * bounded JSON fixture, and invokes this script. The script never calls GitHub,
  * reads credentials, disables a workflow, restores source, or mutates a ref.
  */
+import { isUtf8 } from 'node:buffer';
 import { readFileSync } from 'node:fs';
 
 const MAX_INPUT_BYTES = 1024 * 1024;
@@ -86,6 +87,9 @@ function readFixture(inputPath) {
   const bytes = readFileSync(inputPath);
   if (bytes.byteLength === 0 || bytes.byteLength > MAX_INPUT_BYTES) {
     throw new Error('input size is outside the supported bound');
+  }
+  if (!isUtf8(bytes)) {
+    throw new Error('input is not valid UTF-8');
   }
   let value;
   try {
