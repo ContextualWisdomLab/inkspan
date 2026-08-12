@@ -31,9 +31,11 @@ export type {
 export {
   TEXT_POSITION_PROJECTION_ID,
   TEXT_POSITION_PROJECTION_VERSION,
+  TextPositionSelectorEvidenceError,
 } from '../textPositionSelectorEvidence.js';
 export type {
   CwlEditorTextPositionSelector,
   CwlEditorTextPositionSelectorEvidence,
   CwlEditorTextProjectionIdentity,
+  TextPositionSelectorEvidenceErrorCode,
 } from '../textPositionSelectorEvidence.js';
