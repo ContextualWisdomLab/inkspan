@@ -106,12 +106,13 @@ describe('writing diagnostics controller defensive dependency boundaries', () =>
   it('normalizes an unexpected validator exception to a redacted contract error', async () => {
     boundaryState.failValidationUnexpectedly = true;
     const editor = createEditor();
+    const provider = digestProvider();
     const onError = vi.fn();
     const { result } = renderHook(() =>
       useWritingDiagnosticsController({
         editor,
         diagnostics: [diagnostic()],
-        digestProvider: digestProvider(),
+        digestProvider: provider,
         onError,
       }),
     );
@@ -125,12 +126,13 @@ describe('writing diagnostics controller defensive dependency boundaries', () =>
   it('preserves the projection classification from the inverse-projection boundary', async () => {
     boundaryState.failProjectionIdentity = true;
     const editor = createEditor();
+    const provider = digestProvider();
     const onError = vi.fn();
     const { result } = renderHook(() =>
       useWritingDiagnosticsController({
         editor,
         diagnostics: [diagnostic()],
-        digestProvider: digestProvider(),
+        digestProvider: provider,
         onError,
       }),
     );
@@ -144,6 +146,7 @@ describe('writing diagnostics controller defensive dependency boundaries', () =>
   it('ignores a stale editor transaction if a retired listener fires after replacement', async () => {
     const first = createEditor();
     const second = createEditor();
+    const provider = digestProvider();
     vi.spyOn(first, 'off').mockImplementation(() => first);
 
     const { result, rerender } = renderHook(
@@ -151,7 +154,7 @@ describe('writing diagnostics controller defensive dependency boundaries', () =>
         useWritingDiagnosticsController({
           editor,
           diagnostics: [],
-          digestProvider: digestProvider(),
+          digestProvider: provider,
         }),
       { initialProps: { editor: first } },
     );
