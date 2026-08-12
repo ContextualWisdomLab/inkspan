@@ -12,6 +12,7 @@ import type { CwlWritingDiagnostic } from '../writingDiagnostics.js';
 const boundaryState = vi.hoisted(() => ({
   failValidationUnexpectedly: false,
   failProjectionIdentity: false,
+  afterProjection: null as null | (() => void),
 }));
 
 vi.mock('../writingDiagnostics.js', async (importOriginal) => {
@@ -39,7 +40,9 @@ vi.mock('../writingDiagnosticProjection.js', async (importOriginal) => {
       if (boundaryState.failProjectionIdentity) {
         throw Object.freeze({ code: 'projection' });
       }
-      return actual.resolveTextPositionSelector(...args);
+      const range = actual.resolveTextPositionSelector(...args);
+      boundaryState.afterProjection?.();
+      return range;
     },
   };
 });
@@ -96,6 +99,7 @@ function digestProvider(): DocumentEnvelopeDigestProvider {
 afterEach(() => {
   boundaryState.failValidationUnexpectedly = false;
   boundaryState.failProjectionIdentity = false;
+  boundaryState.afterProjection = null;
   for (const editor of openEditors.splice(0)) {
     if (!editor.isDestroyed) editor.destroy();
   }
@@ -141,6 +145,23 @@ describe('writing diagnostics controller defensive dependency boundaries', () =>
     expect(onError).toHaveBeenCalledWith(
       expect.objectContaining({ code: 'projection' }),
     );
+  });
+
+  it('publishes stale when the editor is destroyed after selector resolution', async () => {
+    const editor = createEditor();
+    const provider = digestProvider();
+    boundaryState.afterProjection = () => editor.destroy();
+    const { result } = renderHook(() =>
+      useWritingDiagnosticsController({
+        editor,
+        diagnostics: [diagnostic()],
+        digestProvider: provider,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('stale'));
+    expect(editor.isDestroyed).toBe(true);
+    expect(result.current.diagnostics).toEqual([]);
   });
 
   it('ignores a stale editor transaction if a retired listener fires after replacement', async () => {
