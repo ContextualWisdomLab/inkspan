@@ -51,7 +51,8 @@ export function WritingDiagnosticsPanel({
     const diagnosticId = target.diagnostic.diagnosticId;
     setActiveDiagnosticId(diagnosticId);
     controller.focusDiagnostic(diagnosticId);
-    itemRefs.current[targetIndex]?.focus();
+    // Only mounted diagnostic cards and enabled navigation invoke this helper.
+    itemRefs.current[targetIndex]!.focus();
   };
 
   const navigate = (offset: number): void => {
