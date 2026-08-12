@@ -51,6 +51,8 @@ const FAMILIES = [
 
 const FONT_FACE_RE = /@font-face\s*{([^}]*)}/g;
 const SRC_URL_RE = /url\((https:\/\/[^)]+\.woff2)\)/;
+const FAMILY_RE = /font-family:\s*(?:"([^"]+)"|'([^']+)')\s*;/;
+const STYLE_RE = /font-style:\s*([a-z-]+)\s*;/i;
 const RANGE_RE = /unicode-range:\s*([^;]+);/;
 const WEIGHT_RE = /font-weight:\s*(\d+)\s*;/;
 const UNICODE_RANGE_HEX_RE = /^[0-9a-f]{1,6}$/i;
@@ -238,9 +240,21 @@ async function processFamily(def, outputFilesDir) {
   const counters = {};
   for (const block of blocks) {
     const urlMatch = SRC_URL_RE.exec(block);
+    if (!urlMatch) continue;
+
+    const familyMatch = FAMILY_RE.exec(block);
+    const family = familyMatch?.[1] ?? familyMatch?.[2];
+    if (family !== def.family) {
+      throw new Error('Google Fonts returned unexpected font family metadata');
+    }
+
+    const styleMatch = STYLE_RE.exec(block);
+    if (!styleMatch || styleMatch[1].toLowerCase() !== 'normal') {
+      throw new Error('Google Fonts returned unexpected font style metadata');
+    }
+
     const rangeMatch = RANGE_RE.exec(block);
     const weightMatch = WEIGHT_RE.exec(block);
-    if (!urlMatch) continue;
     if (!weightMatch || !def.weights.includes(Number(weightMatch[1]))) {
       throw new Error('Google Fonts returned unexpected font weight metadata');
     }
