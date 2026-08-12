@@ -2,7 +2,7 @@
 
 Status values: Proposed, Accepted, Superseded.
 
-This index records durable architectural decisions. Protected-main implementation is required before a feature-specific decision may be treated as shipped behavior. Detailed ADR files are authoritative for their decision; this index is authoritative for discovery and status.
+This index records durable architectural decisions. An ADR on a branch or protected `main` is not shipped behavior by status alone. `Accepted` requires protected-main implementation or process authority plus applicable verification evidence.
 
 | ADR | Status | Decision |
 |---|---|---|
@@ -32,29 +32,16 @@ This index records durable architectural decisions. Protected-main implementatio
 | [0024](0024-bounded-docx-paragraph-alignment.md) | Accepted | Bounded paragraph alignment in deterministic DOCX output |
 | [0025](0025-bounded-docx-heading-alignment.md) | Accepted | Bounded heading alignment in deterministic DOCX output |
 | [0026](0026-bounded-docx-external-hyperlinks.md) | Accepted | Bounded external hyperlinks in deterministic DOCX rich text |
+| [0027](0027-host-owned-llm-writing-diagnostics.md) | Proposed | Host-owned, revision-bound LLM writing diagnostics |
 
 ## Decision discipline
 
-- **Proposed**: documented decision whose acceptance evidence is incomplete or whose governing implementation/operational boundary is still being validated; not protected-main implementation authority by status alone.
-- **Accepted**: decision has protected-main implementation or process authority with the applicable verification evidence and its canonical ADR status has been reconciled to that authority.
-- **Superseded**: retained for historical traceability but explicitly replaced by a later ADR.
+- **Proposed:** the decision is documented, but implementation or operational acceptance evidence is incomplete.
+- **Accepted:** protected `main` contains the governing implementation or process and its verification evidence is current.
+- **Superseded:** the ADR remains for history but a later ADR replaces it.
 
-ADR decision status and implementation maturity are related but distinct. An ADR file may be present on protected `main` while its decision remains Proposed; conversely, an implemented capability can expose stale documentation until the ADR is reconciled. Canonical fitness and traceability records state implementation maturity explicitly, and an ADR cannot promote an unmerged feature to shipped behavior.
-
-When a decision changes materially, add or supersede an ADR rather than silently rewriting history.
+Material changes add or supersede an ADR rather than silently rewriting history.
 
 ## ADR quality requirements
 
-Every material ADR records explicit sections for:
-
-1. context and the problem boundary;
-2. materially distinct alternatives considered;
-3. the selected decision;
-4. consequences and ownership trade-offs;
-5. failure and recovery semantics;
-6. security and privacy impact;
-7. compatibility and migration behavior;
-8. verification/acceptance evidence; and
-9. rollback or explicit supersession conditions.
-
-Accessibility, operability, research/standards traceability, and release implications are included wherever the decision affects them. Canonical PRD, TRD, Architecture, contracts, UML, data/evidence model, threat model, test strategy, operability, and traceability documents must remain synchronized with Accepted decisions.
+Each material ADR covers context, alternatives, decision, consequences, failure and recovery, security and privacy, compatibility and migration, verification, and rollback or supersession. Accessibility, operability, standards/research traceability, release impact, and synchronized PRD/TRD/Architecture/contracts/UML/data model/threat model/test strategy are required where affected.
