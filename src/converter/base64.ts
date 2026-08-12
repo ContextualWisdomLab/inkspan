@@ -61,6 +61,8 @@ export interface ParsedDataUri {
 const DATA_URI_RE = /^data:([^;,]*)?((?:;[^;,]+)*)?,([\s\S]*)$/;
 const CANONICAL_BASE64_RE =
   /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+const CANONICAL_PERCENT_ENCODED_ASCII_RE =
+  /^(?:[\x00-\x24\x26-\x7f]|%[0-7][0-9a-f])*$/i;
 
 const hasBuffer = typeof globalThis.Buffer !== 'undefined';
 
@@ -202,6 +204,20 @@ function canonicalBase64DecodedByteLength(payload: string): number | undefined {
   return (payload.length / 4) * 3 - padding;
 }
 
+function canonicalPercentEncodedAsciiDecodedByteLength(
+  payload: string,
+): number | undefined {
+  if (!CANONICAL_PERCENT_ENCODED_ASCII_RE.test(payload)) return undefined;
+  let escapeCount = 0;
+  for (let index = 0; index < payload.length; index += 1) {
+    if (payload.charCodeAt(index) === 0x25) {
+      escapeCount += 1;
+      index += 2;
+    }
+  }
+  return payload.length - escapeCount * 2;
+}
+
 /**
  * Encode raw bytes (ArrayBuffer / typed array / Uint8Array) into a base64
  * data URI. MIME is taken from `options.mimeType`, otherwise sniffed, otherwise
@@ -320,6 +336,12 @@ export function dataUriToBytes(
     }
     bytes = base64ToBytes(payload);
   } else {
+    if (typeof options.maxBytes === 'number') {
+      const decodedLength = canonicalPercentEncodedAsciiDecodedByteLength(payload);
+      if (decodedLength !== undefined) {
+        assertSize(decodedLength, options.maxBytes);
+      }
+    }
     // Non-base64 data URIs carry percent-encoded text. `decodeURIComponent`
     // throws a raw `URIError` on malformed escapes (e.g. `%`, `%ZZ`); surface
     // the module's documented `DataUriParseError` instead so callers guarding
