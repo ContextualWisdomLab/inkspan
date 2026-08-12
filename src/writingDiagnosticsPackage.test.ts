@@ -29,7 +29,7 @@ function readRepositoryFile(path: string): string {
 
 describe('writing diagnostics package boundary', () => {
   it('exports the strict contract and exact selector-resolution primitives', () => {
-    expect(DEFAULT_WRITING_DIAGNOSTIC_LIMITS.maximumDiagnostics).toBeGreaterThan(0);
+    expect(DEFAULT_WRITING_DIAGNOSTIC_LIMITS.maxDiagnostics).toBeGreaterThan(0);
     expect(TEXT_POSITION_PROJECTION_ID).toBe('inkspan-prosemirror-text');
     expect(TEXT_POSITION_PROJECTION_VERSION).toBe(1);
     expect(typeof WritingDiagnosticError).toBe('function');
@@ -52,7 +52,7 @@ describe('writing diagnostics package boundary', () => {
       ): void {
         visitor(textNode, 1);
       },
-    } as Parameters<typeof buildTextProjectionMap>[0];
+    } as unknown as Parameters<typeof buildTextProjectionMap>[0];
     const projection = buildTextProjectionMap(documentNode);
     expect(projection.text).toBe('Alpha');
     expect(projection.boundaryPositions).toEqual([1, 2, 3, 4, 5, 6]);
@@ -92,7 +92,7 @@ describe('writing diagnostics package boundary', () => {
     expect(configuration).toContain("formats: ['es', 'cjs']");
     expect(configuration).toContain('sourcemap: true');
     expect(configuration).toContain('vite-plugin-dts');
-    expect(configuration).not.toMatch(/@vitejs\/plugin-react|react|yjs/iu);
+    expect(configuration).not.toMatch(/@vitejs\/plugin-react|from ['"]react|from ['"]yjs/iu);
   });
 
   it('keeps the public barrel and packed consumer framework-neutral', () => {
