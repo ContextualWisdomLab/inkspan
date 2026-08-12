@@ -12,6 +12,8 @@ const workflow = repositoryFile('.github/workflows/ci.yml');
 
 const CHECKOUT_PIN =
   'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1';
+const PNPM_ACTION_SETUP_PIN =
+  'pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10';
 const SETUP_NODE_PIN =
   'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0';
 
@@ -43,6 +45,13 @@ describe('exact-head CI workflow contract', () => {
     for (const line of usesLines) {
       expect(line).toMatch(/@[0-9a-f]{40}(?:\s+#\s+v[^\s]+)?$/u);
     }
+  });
+
+  it('does not bootstrap pnpm through the vulnerable action release', () => {
+    expect(workflow.match(new RegExp(PNPM_ACTION_SETUP_PIN, 'g'))).toHaveLength(2);
+    expect(workflow).not.toContain(
+      'pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8',
+    );
   });
 
   it('uses the current native-Node-24 setup-node release in every JavaScript job', () => {
