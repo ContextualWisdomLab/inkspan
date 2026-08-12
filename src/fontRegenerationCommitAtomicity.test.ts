@@ -56,11 +56,26 @@ fs.renameSync = (source, destination) => {
 syncBuiltinESMExports();
 
 const trustedAsset = 'https://fonts.gstatic.com/s/notosans/test-subset.woff2';
-const css = \`@font-face {\n  font-family: 'Noto Sans';\n  font-style: normal;\n  font-weight: 400;\n  src: url(\${trustedAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\`;
+const familyDefinitions = [
+  ['Noto Sans KR', [400]],
+  ['Noto Sans JP', [400]],
+  ['Noto Sans SC', [400]],
+  ['Noto Sans TC', [400]],
+  ['Noto Sans', [400, 700]],
+];
+function cssFor(url) {
+  const request = new URL(url).searchParams.get('family') ?? '';
+  const definition = familyDefinitions.find(([family]) =>
+    request.startsWith(\`${'${family}'}:wght@\`),
+  );
+  if (!definition) throw new Error('unexpected family request');
+  const [family, weights] = definition;
+  return weights.map((weight) => \`@font-face {\n  font-family: '\${family}';\n  font-style: normal;\n  font-weight: \${weight};\n  src: url(\${trustedAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\`).join('\\n');
+}
 globalThis.fetch = async (input) => {
   const url = String(input);
   if (url.startsWith('https://fonts.googleapis.com/css2?')) {
-    return new Response(css, {
+    return new Response(cssFor(url), {
       status: 200,
       headers: { 'content-type': 'text/css; charset=utf-8' },
     });
