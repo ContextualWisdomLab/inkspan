@@ -37,6 +37,7 @@ jobs:
         run: >-
           pnpm exec vitest run
           src/writingDiagnostics.test.ts
+          src/writingDiagnosticsBoundary.test.ts
           src/writingDiagnosticsExports.test.ts
           --coverage
           --coverage.include=src/writingDiagnostics.ts
