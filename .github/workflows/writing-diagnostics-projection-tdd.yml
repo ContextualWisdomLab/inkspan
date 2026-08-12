@@ -40,6 +40,7 @@ jobs:
           src/writingDiagnosticProjectionBoundary.test.ts
           src/writingDiagnosticProjectionCoverage.test.ts
           src/textPositionSelectorEvidenceBoundary.test.ts
+          src/writingDiagnosticProjectionExports.test.ts
           --coverage
           --coverage.include=src/graphemeBoundary.ts
           --coverage.include=src/textPositionSelectorEvidence.ts
