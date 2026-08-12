@@ -68,28 +68,30 @@ def write_office_document(
             f"output extension must be {rendered.extension}, got {path.suffix or '<none>'}"
         )
     if path.exists() and not overwrite:
-        raise FileExistsError(f"output already exists: {path}")
+        raise FileExistsError("output already exists")
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with NamedTemporaryFile(
-        mode="wb",
-        prefix=f".{path.name}.",
-        suffix=".tmp",
-        dir=path.parent,
-        delete=False,
-    ) as handle:
-        handle.write(rendered.data)
-        temporary = Path(handle.name)
     try:
-        if overwrite:
-            temporary.replace(path)
-        else:
-            try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with NamedTemporaryFile(
+            mode="wb",
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            dir=path.parent,
+            delete=False,
+        ) as handle:
+            handle.write(rendered.data)
+            temporary = Path(handle.name)
+        try:
+            if overwrite:
+                temporary.replace(path)
+            else:
                 os.link(temporary, path)
-            except FileExistsError as exc:
-                raise FileExistsError(f"output already exists: {path}") from exc
-    finally:
-        temporary.unlink(missing_ok=True)
+        finally:
+            temporary.unlink(missing_ok=True)
+    except FileExistsError as exc:
+        raise FileExistsError("output already exists") from exc
+    except OSError as exc:
+        raise OSError("output could not be written") from exc
     return path
 
 
