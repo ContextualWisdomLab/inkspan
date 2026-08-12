@@ -31,6 +31,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - name: Correct repeated verification repair anchor
+        run: python .github/scripts/fix_review_repair_counter.py
       - name: Apply verified review fixes
         run: python .github/scripts/address_writing_diagnostics_review.py
       - name: Regenerate isolated browser-test lock
@@ -86,6 +88,7 @@ jobs:
             tests/browser/pnpm-lock.yaml
           git rm \
             .github/scripts/address_writing_diagnostics_review.py \
+            .github/scripts/fix_review_repair_counter.py \
             .github/workflows/address-writing-diagnostics-review.yml
           git commit -m "fix(diagnostics): address assurance review findings"
           git push origin "HEAD:${BRANCH_NAME}"
