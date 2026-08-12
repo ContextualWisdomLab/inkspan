@@ -70,6 +70,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --dir tests/browser install --frozen-lockfile
+      - name: Restore exact Playwright browser revisions
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /tmp/inkspan-playwright-browsers
+          key: ${{ runner.os }}-playwright-${{ runner.arch }}-${{ hashFiles('tests/browser/pnpm-lock.yaml') }}
       - name: Install Playwright revisions pinned by the browser-test lock
         run: pnpm --dir tests/browser exec playwright install --with-deps chromium firefox webkit
       - name: Run writing-diagnostic browser assurance on exact head
