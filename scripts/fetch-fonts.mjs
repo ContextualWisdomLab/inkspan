@@ -51,8 +51,8 @@ const FAMILIES = [
 
 const FONT_FACE_RE = /@font-face\s*{([^}]*)}/g;
 const SRC_URL_RE = /url\((https:\/\/[^)]+\.woff2)\)/;
-const FAMILY_RE = /font-family:\s*(?:"([^"]+)"|'([^']+)')\s*;/;
-const STYLE_RE = /font-style:\s*([a-z-]+)\s*;/i;
+const FAMILY_RE = /font-family:\s*(?:"([^"]+)"|'([^']+)')\s*;/g;
+const STYLE_RE = /font-style:\s*([a-z-]+)\s*;/gi;
 const RANGE_RE = /unicode-range:\s*([^;]+);/;
 const WEIGHT_RE = /font-weight:\s*(\d+)\s*;/;
 const UNICODE_RANGE_HEX_RE = /^[0-9a-f]{1,6}$/i;
@@ -248,14 +248,20 @@ async function processFamily(def, outputFilesDir) {
     const urlMatch = SRC_URL_RE.exec(block);
     if (!urlMatch) continue;
 
-    const familyMatch = FAMILY_RE.exec(block);
-    const family = familyMatch?.[1] ?? familyMatch?.[2];
+    const familyMatches = [...block.matchAll(FAMILY_RE)];
+    if (familyMatches.length !== 1) {
+      throw new Error('Google Fonts returned ambiguous font family metadata');
+    }
+    const family = familyMatches[0][1] ?? familyMatches[0][2];
     if (family !== def.family) {
       throw new Error('Google Fonts returned unexpected font family metadata');
     }
 
-    const styleMatch = STYLE_RE.exec(block);
-    if (!styleMatch || styleMatch[1].toLowerCase() !== 'normal') {
+    const styleMatches = [...block.matchAll(STYLE_RE)];
+    if (styleMatches.length !== 1) {
+      throw new Error('Google Fonts returned ambiguous font style metadata');
+    }
+    if (styleMatches[0][1].toLowerCase() !== 'normal') {
       throw new Error('Google Fonts returned unexpected font style metadata');
     }
 
