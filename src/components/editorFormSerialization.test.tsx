@@ -8,7 +8,10 @@ import type { CwlEditorHandle } from '../types.js';
 import { CwlEditor } from './CwlEditor.js';
 import { EditorFormField } from './EditorFormField.js';
 
-afterEach(cleanup);
+afterEach(() => {
+  vi.restoreAllMocks();
+  cleanup();
+});
 
 function submittedValue(
   form: HTMLFormElement,
@@ -23,6 +26,14 @@ async function dispatchReset(form: HTMLFormElement): Promise<boolean> {
   );
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
   return allowed;
+}
+
+function reactActWarnings(
+  consoleError: ReturnType<typeof vi.spyOn>,
+): string[] {
+  return consoleError.mock.calls
+    .map((arguments_) => arguments_.map(String).join(' '))
+    .filter((message) => message.includes('not wrapped in act'));
 }
 
 describe('native form serialization', () => {
@@ -302,6 +313,9 @@ describe('native form serialization', () => {
   });
 
   it('reports collaborative form resets without mutating shared state', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
     const collaborationDocument = new Y.Doc();
     const editorRef = createRef<CwlEditorHandle>();
     const onFormReset = vi.fn();
@@ -333,6 +347,7 @@ describe('native form serialization', () => {
     expect(onFormReset).toHaveBeenCalledTimes(1);
     expect(editorRef.current!.getValue()).toContain('Shared body');
     expect(String(submittedValue(form, 'shared_body'))).toContain('Shared body');
+    expect(reactActWarnings(consoleError)).toEqual([]);
 
     unmount();
     collaborationDocument.destroy();
