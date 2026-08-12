@@ -17,8 +17,8 @@ _ALLOWED_ORIENTATIONS = {"portrait", "landscape"}
 _MARGIN_NAMES = ("top", "right", "bottom", "left")
 
 
-def apply_docx_page_layout(data: bytes, value: Any) -> bytes:
-    """Return DOCX bytes with one validated page layout applied to its sole section."""
+def normalize_docx_page_layout(value: Any) -> dict[str, object]:
+    """Validate and detach one bounded page-layout value before DOCX rendering."""
 
     layout = _mapping(value, "page_layout")
     _reject_unknown(
@@ -50,6 +50,23 @@ def apply_docx_page_layout(data: bytes, value: Any) -> bytes:
         )
         for name in _MARGIN_NAMES
     }
+    return {
+        "paper_size": paper_size,
+        "orientation": orientation,
+        "margins_mm": normalized_margins,
+    }
+
+
+def apply_docx_page_layout(data: bytes, value: Any) -> bytes:
+    """Return DOCX bytes with one validated page layout applied to its sole section."""
+
+    layout = normalize_docx_page_layout(value)
+    paper_size = layout["paper_size"]
+    orientation = layout["orientation"]
+    normalized_margins = layout["margins_mm"]
+    assert isinstance(paper_size, str)
+    assert isinstance(orientation, str)
+    assert isinstance(normalized_margins, dict)
 
     document = Document(BytesIO(data))
     if len(document.sections) != 1:
