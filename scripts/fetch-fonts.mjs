@@ -53,7 +53,7 @@ const FONT_FACE_RE = /@font-face\s*{([^}]*)}/g;
 const SRC_URL_RE = /url\((https:\/\/[^)]+\.woff2)\)/g;
 const FAMILY_RE = /font-family:\s*(?:"([^"]+)"|'([^']+)')\s*;/g;
 const STYLE_RE = /font-style:\s*([a-z-]+)\s*;/gi;
-const STRETCH_RE = /font-stretch:\s*([a-z-]+)\s*;/gi;
+const STRETCH_RE = /font-stretch:\s*([^;]*);/gi;
 const RANGE_RE = /unicode-range:\s*([^;]+);/g;
 const WEIGHT_RE = /font-weight:\s*(\d+)\s*;/g;
 const UNICODE_RANGE_HEX_RE = /^[0-9a-f]{1,6}$/i;
@@ -275,7 +275,7 @@ async function processFamily(def, outputFilesDir) {
     }
     if (
       stretchMatches.length === 1 &&
-      stretchMatches[0][1].toLowerCase() !== 'normal'
+      stretchMatches[0][1].trim().toLowerCase() !== 'normal'
     ) {
       throw new Error('Google Fonts returned unexpected font stretch metadata');
     }
