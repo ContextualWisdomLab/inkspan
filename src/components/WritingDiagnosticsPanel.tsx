@@ -45,7 +45,6 @@ export function WritingDiagnosticsPanel({
   const activeIndex = selectedIndex < 0 ? 0 : selectedIndex;
 
   const focusIndex = (requestedIndex: number): void => {
-    if (diagnostics.length === 0) return;
     const targetIndex =
       (requestedIndex + diagnostics.length) % diagnostics.length;
     const target = diagnostics[targetIndex]!;
