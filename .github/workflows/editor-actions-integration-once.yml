@@ -33,105 +33,119 @@ jobs:
           python <<'PY'
           from pathlib import Path
 
+          def replace_once(source: str, old: str, new: str, label: str) -> str:
+              if source.count(old) != 1:
+                  raise SystemExit(f'{label} anchor count was {source.count(old)}')
+              return source.replace(old, new, 1)
+
           types_path = Path('src/types.ts')
           types = types_path.read_text(encoding='utf-8')
-          import_anchor = """import type {
-            ClipboardConfig,
-            ClipboardSanitizationError,
-          } from './extensions/SafeClipboard.js';
-          """
-          import_replacement = import_anchor + """import type {
-            CwlWritingDiagnostic,
-            WritingDiagnosticError,
-          } from './writingDiagnostics.js';
-          import type { CwlWritingDiagnosticActionEvent } from './components/useWritingDiagnosticsController.js';
-          """
-          props_anchor = """  /** Whether the host form requires editor input before submission. */
-            ariaRequired?: boolean;
-          }
-          """
-          props_replacement = """  /** Whether the host form requires editor input before submission. */
-            ariaRequired?: boolean;
-            /** Host-supplied diagnostics already produced by a trusted external reviewer. */
-            writingDiagnostics?: readonly CwlWritingDiagnostic[];
-            /** Privacy-minimized observer for explicit diagnostic actions. */
-            onWritingDiagnosticAction?: (
-              event: CwlWritingDiagnosticActionEvent,
-            ) => void;
-            /** Redacted observer for structural verification failures. */
-            onWritingDiagnosticsError?: (error: WritingDiagnosticError) => void;
-            /** Accessible name for the built-in writing-guidance region. */
-            writingDiagnosticsLabel?: string;
-            /** Include a compact diagnostic appendix in printed output. */
-            printWritingDiagnostics?: boolean;
-          }
-          """
-          if import_anchor not in types or props_anchor not in types:
-              raise SystemExit('types.ts integration anchors changed')
-          types = types.replace(import_anchor, import_replacement, 1)
-          types = types.replace(props_anchor, props_replacement, 1)
+          old = (
+              "import type {\n"
+              "  ClipboardConfig,\n"
+              "  ClipboardSanitizationError,\n"
+              "} from './extensions/SafeClipboard.js';\n"
+          )
+          new = old + (
+              "import type {\n"
+              "  CwlWritingDiagnostic,\n"
+              "  WritingDiagnosticError,\n"
+              "} from './writingDiagnostics.js';\n"
+              "import type { CwlWritingDiagnosticActionEvent } from "
+              "'./components/useWritingDiagnosticsController.js';\n"
+          )
+          types = replace_once(types, old, new, 'types imports')
+          old = (
+              "  /** Whether the host form requires editor input before submission. */\n"
+              "  ariaRequired?: boolean;\n"
+              "}\n"
+          )
+          new = (
+              "  /** Whether the host form requires editor input before submission. */\n"
+              "  ariaRequired?: boolean;\n"
+              "  /** Host-supplied diagnostics already produced by a trusted external reviewer. */\n"
+              "  writingDiagnostics?: readonly CwlWritingDiagnostic[];\n"
+              "  /** Privacy-minimized observer for explicit diagnostic actions. */\n"
+              "  onWritingDiagnosticAction?: (\n"
+              "    event: CwlWritingDiagnosticActionEvent,\n"
+              "  ) => void;\n"
+              "  /** Redacted observer for structural verification failures. */\n"
+              "  onWritingDiagnosticsError?: (error: WritingDiagnosticError) => void;\n"
+              "  /** Accessible name for the built-in writing-guidance region. */\n"
+              "  writingDiagnosticsLabel?: string;\n"
+              "  /** Include a compact diagnostic appendix in printed output. */\n"
+              "  printWritingDiagnostics?: boolean;\n"
+              "}\n"
+          )
+          types = replace_once(types, old, new, 'types props')
           types_path.write_text(types, encoding='utf-8')
 
           editor_path = Path('src/components/CwlEditor.tsx')
           editor = editor_path.read_text(encoding='utf-8')
-          import_anchor = """import { useEditorHandle } from './useEditorHandle.js';
-          import { useLatestRef } from './useLatestRef.js';
-          """
-          import_replacement = """import { useEditorHandle } from './useEditorHandle.js';
-          import { useLatestRef } from './useLatestRef.js';
-          import { useWritingDiagnosticsController } from './useWritingDiagnosticsController.js';
-          import { WritingDiagnosticsPanel } from './WritingDiagnosticsPanel.js';
-          """
-          props_anchor = """      ariaInvalid,
-                ariaRequired,
-              },
-          """
-          props_replacement = """      ariaInvalid,
-                ariaRequired,
-                writingDiagnostics,
-                onWritingDiagnosticAction,
-                onWritingDiagnosticsError,
-                writingDiagnosticsLabel,
-                printWritingDiagnostics,
-              },
-          """
-          hook_anchor = """    useEditorHandle(ref, editor, modeRef);
-
-              useEffect(() => {
-          """
-          hook_replacement = """    useEditorHandle(ref, editor, modeRef);
-
-              const writingDiagnosticsController = useWritingDiagnosticsController({
-                editor,
-                diagnostics: writingDiagnostics,
-                onAction: onWritingDiagnosticAction,
-                onError: onWritingDiagnosticsError,
-              });
-
-              useEffect(() => {
-          """
-          frame_anchor = """        onFormReset={editor && observesFormReset ? handleFormReset : undefined}
-              />
-          """
-          frame_replacement = """        onFormReset={editor && observesFormReset ? handleFormReset : undefined}
-                writingDiagnosticsPanel={
-                  writingDiagnostics === undefined ? undefined : (
-                    <WritingDiagnosticsPanel
-                      controller={writingDiagnosticsController}
-                      label={writingDiagnosticsLabel ?? 'Writing guidance'}
-                      printEnabled={printWritingDiagnostics}
-                    />
-                  )
-                }
-              />
-          """
-          for anchor in (import_anchor, props_anchor, hook_anchor, frame_anchor):
-              if anchor not in editor:
-                  raise SystemExit('CwlEditor.tsx integration anchor changed')
-          editor = editor.replace(import_anchor, import_replacement, 1)
-          editor = editor.replace(props_anchor, props_replacement, 1)
-          editor = editor.replace(hook_anchor, hook_replacement, 1)
-          editor = editor.replace(frame_anchor, frame_replacement, 1)
+          old = (
+              "import { useEditorHandle } from './useEditorHandle.js';\n"
+              "import { useLatestRef } from './useLatestRef.js';\n"
+          )
+          new = (
+              "import { useEditorHandle } from './useEditorHandle.js';\n"
+              "import { useLatestRef } from './useLatestRef.js';\n"
+              "import { useWritingDiagnosticsController } from "
+              "'./useWritingDiagnosticsController.js';\n"
+              "import { WritingDiagnosticsPanel } from './WritingDiagnosticsPanel.js';\n"
+          )
+          editor = replace_once(editor, old, new, 'editor imports')
+          old = (
+              "      ariaInvalid,\n"
+              "      ariaRequired,\n"
+              "    },\n"
+          )
+          new = (
+              "      ariaInvalid,\n"
+              "      ariaRequired,\n"
+              "      writingDiagnostics,\n"
+              "      onWritingDiagnosticAction,\n"
+              "      onWritingDiagnosticsError,\n"
+              "      writingDiagnosticsLabel,\n"
+              "      printWritingDiagnostics,\n"
+              "    },\n"
+          )
+          editor = replace_once(editor, old, new, 'editor props')
+          old = (
+              "    useEditorHandle(ref, editor, modeRef);\n"
+              "\n"
+              "    useEffect(() => {\n"
+          )
+          new = (
+              "    useEditorHandle(ref, editor, modeRef);\n"
+              "\n"
+              "    const writingDiagnosticsController = useWritingDiagnosticsController({\n"
+              "      editor,\n"
+              "      diagnostics: writingDiagnostics,\n"
+              "      onAction: onWritingDiagnosticAction,\n"
+              "      onError: onWritingDiagnosticsError,\n"
+              "    });\n"
+              "\n"
+              "    useEffect(() => {\n"
+          )
+          editor = replace_once(editor, old, new, 'editor controller')
+          old = (
+              "        onFormReset={editor && observesFormReset ? handleFormReset : undefined}\n"
+              "      />\n"
+          )
+          new = (
+              "        onFormReset={editor && observesFormReset ? handleFormReset : undefined}\n"
+              "        writingDiagnosticsPanel={\n"
+              "          writingDiagnostics === undefined ? undefined : (\n"
+              "            <WritingDiagnosticsPanel\n"
+              "              controller={writingDiagnosticsController}\n"
+              "              label={writingDiagnosticsLabel ?? 'Writing guidance'}\n"
+              "              printEnabled={printWritingDiagnostics}\n"
+              "            />\n"
+              "          )\n"
+              "        }\n"
+              "      />\n"
+          )
+          editor = replace_once(editor, old, new, 'editor frame')
           editor_path.write_text(editor, encoding='utf-8')
           PY
       - name: Verify the focused public integration
