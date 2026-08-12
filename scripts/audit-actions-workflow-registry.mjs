@@ -17,6 +17,13 @@ const MAX_WORKFLOWS = 100_000;
 const SHA_1 = /^[0-9a-f]{40}$/u;
 const REPOSITORY_WORKFLOW_PREFIX = '.github/workflows/';
 const GITHUB_DYNAMIC_PREFIX = 'dynamic/';
+const WORKFLOW_STATES = new Set([
+  'active',
+  'deleted',
+  'disabled_fork',
+  'disabled_inactivity',
+  'disabled_manually',
+]);
 
 /** Write one bounded operator-facing failure and terminate without JSON output. */
 function fail(message) {
@@ -128,8 +135,7 @@ function readWorkflowItem(value) {
     value.id <= 0 ||
     !isBoundedPath(value.path) ||
     typeof value.state !== 'string' ||
-    value.state.length === 0 ||
-    value.state.length > 32
+    !WORKFLOW_STATES.has(value.state)
   ) {
     throw new Error('workflow registry item is invalid');
   }
