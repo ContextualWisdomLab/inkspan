@@ -35,6 +35,7 @@ jobs:
         run: >-
           pnpm exec vitest run
           src/extensions/WritingDiagnostics.test.ts
+          src/extensions/WritingDiagnosticsBoundary.test.ts
           src/extensions/WritingDiagnosticsKit.test.ts
       - name: Typecheck command and plugin contracts
         run: pnpm typecheck
