@@ -50,11 +50,11 @@ const FAMILIES = [
 ];
 
 const FONT_FACE_RE = /@font-face\s*{([^}]*)}/g;
-const SRC_URL_RE = /url\((https:\/\/[^)]+\.woff2)\)/;
+const SRC_URL_RE = /url\((https:\/\/[^)]+\.woff2)\)/g;
 const FAMILY_RE = /font-family:\s*(?:"([^"]+)"|'([^']+)')\s*;/g;
 const STYLE_RE = /font-style:\s*([a-z-]+)\s*;/gi;
-const RANGE_RE = /unicode-range:\s*([^;]+);/;
-const WEIGHT_RE = /font-weight:\s*(\d+)\s*;/;
+const RANGE_RE = /unicode-range:\s*([^;]+);/g;
+const WEIGHT_RE = /font-weight:\s*(\d+)\s*;/g;
 const UNICODE_RANGE_HEX_RE = /^[0-9a-f]{1,6}$/i;
 const UNICODE_RANGE_WILDCARD_RE = /^[0-9a-f]*\?+$/i;
 
@@ -245,8 +245,11 @@ async function processFamily(def, outputFilesDir) {
   let totalBytes = 0;
   const counters = {};
   for (const block of blocks) {
-    const urlMatch = SRC_URL_RE.exec(block);
-    if (!urlMatch) continue;
+    const urlMatches = [...block.matchAll(SRC_URL_RE)];
+    if (urlMatches.length === 0) continue;
+    if (urlMatches.length !== 1) {
+      throw new Error('Google Fonts returned ambiguous font source metadata');
+    }
 
     const familyMatches = [...block.matchAll(FAMILY_RE)];
     if (familyMatches.length !== 1) {
@@ -265,20 +268,35 @@ async function processFamily(def, outputFilesDir) {
       throw new Error('Google Fonts returned unexpected font style metadata');
     }
 
-    const rangeMatch = RANGE_RE.exec(block);
-    const weightMatch = WEIGHT_RE.exec(block);
-    if (!weightMatch || !def.weights.includes(Number(weightMatch[1]))) {
+    const weightMatches = [...block.matchAll(WEIGHT_RE)];
+    if (weightMatches.length === 0) {
       throw new Error('Google Fonts returned unexpected font weight metadata');
     }
-    const range = rangeMatch?.[1].trim();
+    if (weightMatches.length !== 1) {
+      throw new Error('Google Fonts returned ambiguous font weight metadata');
+    }
+    const weightMatch = weightMatches[0];
+    if (!def.weights.includes(Number(weightMatch[1]))) {
+      throw new Error('Google Fonts returned unexpected font weight metadata');
+    }
+
+    const rangeMatches = [...block.matchAll(RANGE_RE)];
+    if (rangeMatches.length === 0) {
+      throw new Error('Google Fonts returned invalid unicode-range metadata');
+    }
+    if (rangeMatches.length !== 1) {
+      throw new Error('Google Fonts returned ambiguous unicode-range metadata');
+    }
+    const range = rangeMatches[0][1].trim();
     if (!range || !isValidUnicodeRangeDescriptor(range)) {
       throw new Error('Google Fonts returned invalid unicode-range metadata');
     }
+
     const weight = weightMatch[1];
     counters[weight] = (counters[weight] ?? 0) + 1;
     const idx = counters[weight];
     const localName = `${def.slug}-${weight}-${idx}.woff2`;
-    const bytes = await download(urlMatch[1]);
+    const bytes = await download(urlMatches[0][1]);
     totalBytes += bytes.byteLength;
     writeFileSync(resolve(outputFilesDir, localName), bytes);
     out.push(
