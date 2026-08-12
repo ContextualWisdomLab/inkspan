@@ -1,0 +1,40 @@
+name: Release Workflow Root-Cause Analysis
+
+on:
+  push:
+    branches:
+      - fix/release-workflow-parse
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-workflow-rac-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-release-workflow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify YAML syntax with the runner's Ruby parser
+        run: ruby -e "require 'psych'; Psych.parse_file('.github/workflows/release.yml')"
+      - name: Download checksum-pinned actionlint 1.7.12
+        run: |
+          set -euo pipefail
+          archive='actionlint_1.7.12_linux_amd64.tar.gz'
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output "$archive" \
+            "https://github.com/rhysd/actionlint/releases/download/v1.7.12/$archive"
+          printf '%s  %s\n' \
+            '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8' \
+            "$archive" | sha256sum --check --strict
+          mkdir actionlint-bin
+          tar -xzf "$archive" -C actionlint-bin actionlint
+      - name: Validate the release workflow with actionlint
+        run: ./actionlint-bin/actionlint -oneline .github/workflows/release.yml
