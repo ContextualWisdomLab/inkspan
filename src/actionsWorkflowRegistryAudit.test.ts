@@ -166,6 +166,54 @@ describe('Actions workflow registry audit', () => {
     expect(result.stderr).toContain('workflow registry pagination is incomplete');
   });
 
+  it('rejects an oversized fixture before whole-file materialization', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-actions-registry-audit-'));
+    temporaryRoots.push(root);
+    const inputPath = join(root, 'oversized-input.json');
+    const preloadPath = join(root, 'guard-read-file-sync.cjs');
+    writeFileSync(inputPath, Buffer.alloc(1024 * 1024 + 1, 0x20));
+    writeFileSync(
+      preloadPath,
+      [
+        "const fs = require('node:fs');",
+        "const { syncBuiltinESMExports } = require('node:module');",
+        'const originalReadFileSync = fs.readFileSync;',
+        'fs.readFileSync = function guardedReadFileSync(path, ...args) {',
+        "  if (String(path) === process.env.INKSPAN_GUARDED_INPUT) throw new Error('whole-file fixture materialization reached');",
+        '  return originalReadFileSync.call(this, path, ...args);',
+        '};',
+        'syncBuiltinESMExports();',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const nodeOptions = [
+      process.env.NODE_OPTIONS,
+      `--require=${preloadPath}`,
+    ]
+      .filter((value): value is string => Boolean(value))
+      .join(' ');
+    const result = spawnSync(
+      process.execPath,
+      [resolve('scripts/audit-actions-workflow-registry.mjs'), '--input', inputPath],
+      {
+        cwd: resolve('.'),
+        encoding: 'utf8',
+        timeout: 10_000,
+        env: {
+          ...process.env,
+          INKSPAN_GUARDED_INPUT: inputPath,
+          NODE_OPTIONS: nodeOptions,
+        },
+      },
+    );
+
+    expect(result.status).not.toBe(0);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toContain('input size is outside the supported bound');
+    expect(result.stderr).not.toContain('whole-file fixture materialization reached');
+  });
+
   it('does not silently treat path case or percent-encoding drift as an orphan match', () => {
     const fixture = baseFixture();
     const result = runAudit({
