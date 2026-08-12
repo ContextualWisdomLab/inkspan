@@ -123,12 +123,20 @@ import {
   TEXT_POSITION_PROJECTION_ID,
   TEXT_POSITION_PROJECTION_VERSION,
   TextPositionSelectorEvidenceError,
+  WritingDiagnosticProjectionError,
+  buildTextProjectionMap,
   createTextPositionSelector,
+  resolveTextPositionSelector,
 } from '${packageJson.name}/text-position-selector';
 assert.equal(TEXT_POSITION_PROJECTION_ID, 'inkspan-prosemirror-text');
 assert.equal(TEXT_POSITION_PROJECTION_VERSION, 1);
 assert.equal(typeof TextPositionSelectorEvidenceError, 'function');
+assert.equal(typeof WritingDiagnosticProjectionError, 'function');
+assert.equal(typeof buildTextProjectionMap, 'function');
 assert.equal(typeof createTextPositionSelector, 'function');
+assert.equal(typeof resolveTextPositionSelector, 'function');
+const failure = new WritingDiagnosticProjectionError('selector');
+assert.equal(failure.code, 'selector');
 `,
     'utf8',
   );
@@ -141,7 +149,12 @@ const selector = require('${packageJson.name}/text-position-selector');
 assert.equal(selector.TEXT_POSITION_PROJECTION_ID, 'inkspan-prosemirror-text');
 assert.equal(selector.TEXT_POSITION_PROJECTION_VERSION, 1);
 assert.equal(typeof selector.TextPositionSelectorEvidenceError, 'function');
+assert.equal(typeof selector.WritingDiagnosticProjectionError, 'function');
+assert.equal(typeof selector.buildTextProjectionMap, 'function');
 assert.equal(typeof selector.createTextPositionSelector, 'function');
+assert.equal(typeof selector.resolveTextPositionSelector, 'function');
+const failure = new selector.WritingDiagnosticProjectionError('ambiguous_boundary');
+assert.equal(failure.code, 'ambiguous_boundary');
 `,
     'utf8',
   );
@@ -160,26 +173,40 @@ function verifyDeclarationConsumer() {
   TEXT_POSITION_PROJECTION_ID,
   TEXT_POSITION_PROJECTION_VERSION,
   TextPositionSelectorEvidenceError,
+  WritingDiagnosticProjectionError,
+  buildTextProjectionMap,
   createTextPositionSelector,
+  resolveTextPositionSelector,
   type CwlEditorTextPositionSelector,
   type CwlEditorTextProjectionIdentity,
+  type CwlWritingDiagnosticTextProjectionMap,
   type TextPositionSelectorEvidenceErrorCode,
+  type WritingDiagnosticProjectionErrorCode,
 } from '${packageJson.name}/text-position-selector';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Selection } from '@tiptap/pm/state';
 declare const documentNode: ProseMirrorNode;
 declare const selection: Selection;
-const result = createTextPositionSelector(documentNode, selection);
-const selector: CwlEditorTextPositionSelector = result.selector;
-const projection: CwlEditorTextProjectionIdentity = result.textProjection;
-const code: TextPositionSelectorEvidenceErrorCode = 'segmenter_unavailable';
-const failure = new TextPositionSelectorEvidenceError(code);
+const forward = createTextPositionSelector(documentNode, selection);
+const selector: CwlEditorTextPositionSelector = forward.selector;
+const projection: CwlEditorTextProjectionIdentity = forward.textProjection;
+const map: CwlWritingDiagnosticTextProjectionMap = buildTextProjectionMap(documentNode);
+const resolved = resolveTextPositionSelector(documentNode, selector, projection);
+const evidenceCode: TextPositionSelectorEvidenceErrorCode = 'segmenter_unavailable';
+const projectionCode: WritingDiagnosticProjectionErrorCode = 'ambiguous_boundary';
+const evidenceFailure = new TextPositionSelectorEvidenceError(evidenceCode);
+const projectionFailure = new WritingDiagnosticProjectionError(projectionCode);
 void [
   selector.start,
   selector.end,
   projection.id === TEXT_POSITION_PROJECTION_ID,
   projection.version === TEXT_POSITION_PROJECTION_VERSION,
-  failure.code,
+  map.text,
+  map.boundaryPositions.length,
+  resolved.from,
+  resolved.to,
+  evidenceFailure.code,
+  projectionFailure.code,
 ];
 `,
     'utf8',
