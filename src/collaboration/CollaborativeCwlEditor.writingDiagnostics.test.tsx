@@ -11,6 +11,7 @@ import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import type { CwlEditorDocumentRevision } from '../documentEnvelopeRevision.js';
+import { writingDiagnosticsPluginKey } from '../extensions/WritingDiagnostics.js';
 import type { CwlEditorHandle } from '../types.js';
 import type { CwlWritingDiagnostic } from '../writingDiagnostics.js';
 import { CollaborativeCwlEditor } from './CollaborativeCwlEditor.js';
@@ -215,7 +216,11 @@ describe('CollaborativeCwlEditor writing diagnostics', () => {
         screen.getByRole('region', { name: 'Remote-safe guidance' }),
       ).toHaveTextContent('2 writing diagnostics'),
     );
-    expect(document.querySelectorAll('.cwl-writing-diagnostic')).toHaveLength(2);
+    expect(
+      writingDiagnosticsPluginKey.getState(
+        rightRef.current!.getEditor()!.state,
+      )?.diagnostics,
+    ).toHaveLength(2);
 
     act(() => leftRef.current!.insertValue('<p>Remote edit</p>'));
     await waitFor(() =>
@@ -223,7 +228,11 @@ describe('CollaborativeCwlEditor writing diagnostics', () => {
         screen.getByRole('region', { name: 'Remote-safe guidance' }),
       ).toHaveTextContent('0 writing diagnostics'),
     );
-    expect(document.querySelector('.cwl-writing-diagnostic')).toBeNull();
+    expect(
+      writingDiagnosticsPluginKey.getState(
+        rightRef.current!.getEditor()!.state,
+      )?.diagnostics,
+    ).toEqual([]);
     await expect(
       rightRef.current!.applyWritingDiagnostic('remote-diagnostic-one'),
     ).resolves.toBeNull();
