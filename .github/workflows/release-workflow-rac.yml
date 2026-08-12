@@ -1,4 +1,4 @@
-name: Release Workflow Root-Cause Analysis
+name: Release Workflow Root-Cause Repair
 
 on:
   push:
@@ -7,34 +7,44 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: release-workflow-rac-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  validate-release-workflow:
+  repair-release-workflow:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
-          persist-credentials: false
-      - name: Verify YAML syntax with the runner's Ruby parser
-        id: yaml_syntax
-        continue-on-error: true
+          persist-credentials: true
+      - name: Apply the exact YAML scalar repair
         run: |
           set -euo pipefail
-          if output="$(ruby -e "require 'psych'; Psych.parse_file('.github/workflows/release.yml')" 2>&1)"; then
-            exit 0
-          fi
-          escaped="${output//'%'/'%25'}"
-          escaped="${escaped//$'\r'/'%0D'}"
-          escaped="${escaped//$'\n'/'%0A'}"
-          echo "::error file=.github/workflows/release.yml,line=1::$escaped"
-          exit 1
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/release.yml')
+          source = path.read_text(encoding='utf-8')
+          old = """      - name: Install hash-locked Office dependencies
+                working-directory: office
+                run: python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt
+          """
+          new = """      - name: Install hash-locked Office dependencies
+                working-directory: office
+                run: |
+                  python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt
+          """
+          if source.count(old) != 1:
+              raise SystemExit('release workflow did not contain exactly one expected invalid scalar')
+          path.write_text(source.replace(old, new), encoding='utf-8')
+          PY
+      - name: Verify YAML syntax with the runner's Ruby parser
+        run: ruby -e "require 'psych'; Psych.parse_file('.github/workflows/release.yml')"
       - name: Download checksum-pinned actionlint 1.7.12
         run: |
           set -euo pipefail
@@ -48,20 +58,16 @@ jobs:
           mkdir actionlint-bin
           tar -xzf "$archive" -C actionlint-bin actionlint
       - name: Validate the release workflow with actionlint
-        id: actionlint
-        continue-on-error: true
+        run: ./actionlint-bin/actionlint -oneline .github/workflows/release.yml
+      - name: Remove one-shot repair workflow and commit validated repair
+        env:
+          TARGET_BRANCH: fix/release-workflow-parse
         run: |
           set -euo pipefail
-          if output="$(./actionlint-bin/actionlint -oneline .github/workflows/release.yml 2>&1)"; then
-            exit 0
-          fi
-          while IFS= read -r line; do
-            escaped="${line//'%'/'%25'}"
-            echo "::error file=.github/workflows/release.yml,line=1::$escaped"
-          done <<< "$output"
-          exit 1
-      - name: Enforce both validators
-        if: always()
-        run: |
-          test '${{ steps.yaml_syntax.outcome }}' = 'success'
-          test '${{ steps.actionlint.outcome }}' = 'success'
+          rm .github/workflows/release-workflow-rac.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/release.yml .github/workflows/release-workflow-rac.yml
+          git diff --cached --check
+          git commit -m 'fix(ci): quote release dependency command safely'
+          git push origin "HEAD:${TARGET_BRANCH}"
