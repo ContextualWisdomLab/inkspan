@@ -35,6 +35,7 @@ const UA =
 const TRUSTED_FONT_ASSET_HOST = 'fonts.gstatic.com';
 const MAX_FONT_CSS_BYTES = 1024 * 1024;
 const MAX_FONT_SUBSET_BYTES = 16 * 1024 * 1024;
+const MAX_UNICODE_CODE_POINT = 0x10ffff;
 const WOFF2_SIGNATURE = Buffer.from([0x77, 0x4f, 0x46, 0x32]);
 
 // Latin/Vietnamese carries the primary UI text and is cheap, so ship 400+700.
@@ -52,6 +53,8 @@ const FONT_FACE_RE = /@font-face\s*{([^}]*)}/g;
 const SRC_URL_RE = /url\((https:\/\/[^)]+\.woff2)\)/;
 const RANGE_RE = /unicode-range:\s*([^;]+);/;
 const WEIGHT_RE = /font-weight:\s*(\d+)\s*;/;
+const UNICODE_RANGE_HEX_RE = /^[0-9a-f]{1,6}$/i;
+const UNICODE_RANGE_WILDCARD_RE = /^[0-9a-f]*\?+$/i;
 
 /** Read CSS discovery data through a bounded stream before decoding it. */
 async function readBoundedCssBody(response) {
@@ -133,6 +136,52 @@ function validateFontAssetUrl(source) {
   return url.href;
 }
 
+/** Validate the CSS Fonts unicode-range subset grammar without evaluating CSS. */
+function isValidUnicodeRangeDescriptor(value) {
+  const terms = value.split(',');
+  return (
+    terms.length > 0 &&
+    terms.every((rawTerm) => {
+      const term = rawTerm.trim();
+      if (!/^u\+/i.test(term)) return false;
+      const body = term.slice(2);
+      const dashIndex = body.indexOf('-');
+
+      if (dashIndex >= 0) {
+        if (body.indexOf('-', dashIndex + 1) >= 0) return false;
+        const start = body.slice(0, dashIndex);
+        const end = body.slice(dashIndex + 1);
+        if (!UNICODE_RANGE_HEX_RE.test(start) || !UNICODE_RANGE_HEX_RE.test(end)) {
+          return false;
+        }
+        const startCodePoint = Number.parseInt(start, 16);
+        const endCodePoint = Number.parseInt(end, 16);
+        return (
+          startCodePoint <= endCodePoint &&
+          endCodePoint <= MAX_UNICODE_CODE_POINT
+        );
+      }
+
+      if (UNICODE_RANGE_HEX_RE.test(body)) {
+        return Number.parseInt(body, 16) <= MAX_UNICODE_CODE_POINT;
+      }
+
+      if (
+        body.length < 1 ||
+        body.length > 6 ||
+        !UNICODE_RANGE_WILDCARD_RE.test(body)
+      ) {
+        return false;
+      }
+      const wildcardUpperBound = Number.parseInt(body.replaceAll('?', 'f'), 16);
+      return (
+        Number.isFinite(wildcardUpperBound) &&
+        wildcardUpperBound <= MAX_UNICODE_CODE_POINT
+      );
+    })
+  );
+}
+
 /** Read one response body without allowing an unbounded subset allocation. */
 async function readBoundedFontBody(response) {
   const declaredLength = response.headers.get('content-length');
@@ -195,6 +244,10 @@ async function processFamily(def, outputFilesDir) {
     if (!weightMatch || !def.weights.includes(Number(weightMatch[1]))) {
       throw new Error('Google Fonts returned unexpected font weight metadata');
     }
+    const range = rangeMatch?.[1].trim();
+    if (!range || !isValidUnicodeRangeDescriptor(range)) {
+      throw new Error('Google Fonts returned invalid unicode-range metadata');
+    }
     const weight = weightMatch[1];
     counters[weight] = (counters[weight] ?? 0) + 1;
     const idx = counters[weight];
@@ -202,7 +255,6 @@ async function processFamily(def, outputFilesDir) {
     const bytes = await download(urlMatch[1]);
     totalBytes += bytes.byteLength;
     writeFileSync(resolve(outputFilesDir, localName), bytes);
-    const range = rangeMatch ? rangeMatch[1].trim() : '';
     out.push(
       [
         '@font-face {',
@@ -211,11 +263,9 @@ async function processFamily(def, outputFilesDir) {
         `  font-weight: ${weight};`,
         '  font-display: swap;',
         `  src: url('./files/${localName}') format('woff2');`,
-        range ? `  unicode-range: ${range};` : null,
+        `  unicode-range: ${range};`,
         '}',
-      ]
-        .filter(Boolean)
-        .join('\n'),
+      ].join('\n'),
     );
   }
 
