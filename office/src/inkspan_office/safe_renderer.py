@@ -32,6 +32,39 @@ _EXCEL_MAX_SIGNIFICANT_DIGITS = 15
 _MAX_CONTAINER_DEPTH = 128
 _CANONICAL_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 _CANONICAL_CORE_TIMESTAMP = b"1980-01-01T00:00:00Z"
+_DIAGNOSTIC_SCHEMA_KEYS = frozenset(
+    {
+        "alignment",
+        "alt_text",
+        "author",
+        "auto_filter",
+        "blocks",
+        "bold",
+        "bullets",
+        "format",
+        "freeze_panes",
+        "header_row",
+        "headers",
+        "href",
+        "italic",
+        "items",
+        "level",
+        "name",
+        "ordered",
+        "rows",
+        "runs",
+        "sheets",
+        "slides",
+        "source",
+        "subject",
+        "subtitle",
+        "text",
+        "title",
+        "type",
+        "underline",
+        "width_px",
+    }
+)
 
 
 def load_schema() -> dict[str, Any]:
@@ -154,7 +187,11 @@ def _validate_xml_tree(
         active.add(identity)
         try:
             for key, child in value.items():
-                child_path = f"{path}.{key}" if isinstance(key, str) else path
+                child_path = (
+                    f"{path}.{key}"
+                    if isinstance(key, str) and key in _DIAGNOSTIC_SCHEMA_KEYS
+                    else path
+                )
                 _validate_xml_tree(child, child_path, active, depth + 1)
         finally:
             active.remove(identity)
