@@ -73,11 +73,12 @@ describe('writing diagnostic feedback actions', () => {
     const editor = createEditor();
     const before = editor.getJSON();
     const onAction = vi.fn();
+    const provider = digestProvider();
     const { result } = renderHook(() =>
       useWritingDiagnosticsController({
         editor,
         diagnostics: [diagnostic()],
-        digestProvider: digestProvider(),
+        digestProvider: provider,
         onAction,
       }),
     );
@@ -106,11 +107,12 @@ describe('writing diagnostic feedback actions', () => {
     const editor = createEditor();
     const before = editor.getJSON();
     const onAction = vi.fn();
+    const provider = digestProvider();
     const { result } = renderHook(() =>
       useWritingDiagnosticsController({
         editor,
         diagnostics: [diagnostic()],
-        digestProvider: digestProvider(),
+        digestProvider: provider,
         onAction,
       }),
     );
@@ -140,11 +142,12 @@ describe('writing diagnostic feedback actions', () => {
   it('dismisses only local presentation and never mutates authored content', async () => {
     const editor = createEditor();
     const before = editor.getJSON();
+    const provider = digestProvider();
     const { result } = renderHook(() =>
       useWritingDiagnosticsController({
         editor,
         diagnostics: [diagnostic()],
-        digestProvider: digestProvider(),
+        digestProvider: provider,
       }),
     );
     await waitFor(() => expect(result.current.status).toBe('active'));
@@ -168,11 +171,12 @@ describe('writing diagnostic feedback actions', () => {
 
   it('focuses only an installed current diagnostic', async () => {
     const editor = createEditor();
+    const provider = digestProvider();
     const { result } = renderHook(() =>
       useWritingDiagnosticsController({
         editor,
         diagnostics: [diagnostic()],
-        digestProvider: digestProvider(),
+        digestProvider: provider,
       }),
     );
     await waitFor(() => expect(result.current.status).toBe('active'));
