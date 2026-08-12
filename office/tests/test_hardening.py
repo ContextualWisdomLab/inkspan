@@ -101,11 +101,27 @@ def test_rejects_excel_rows_beyond_worksheet_limit() -> None:
         render_office_document(payload)
 
 
+def test_write_redacts_preexisting_output_path(tmp_path: Path) -> None:
+    private_marker = "customer-private-output"
+    output = tmp_path / f"{private_marker}.docx"
+    output.write_bytes(b"existing")
+    payload = {
+        "format": "docx",
+        "blocks": [{"type": "paragraph", "text": "hello"}],
+    }
+
+    with pytest.raises(FileExistsError, match=r"^output already exists$") as caught:
+        write_office_document(payload, output)
+
+    assert private_marker not in str(caught.value)
+
+
 def test_non_overwrite_write_is_race_safe(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    output = tmp_path / "document.docx"
+    private_marker = "race-private-output"
+    output = tmp_path / f"{private_marker}.docx"
     real_link = os.link
 
     def competing_link(
@@ -121,10 +137,36 @@ def test_non_overwrite_write_is_race_safe(
         "blocks": [{"type": "paragraph", "text": "hello"}],
     }
 
-    with pytest.raises(FileExistsError, match="already exists"):
+    with pytest.raises(FileExistsError, match=r"^output already exists$") as caught:
         write_office_document(payload, output)
 
+    assert private_marker not in str(caught.value)
     assert output.read_text(encoding="utf-8") == "competitor"
+
+
+def test_write_redacts_other_filesystem_errors(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    private_marker = "filesystem-private-output"
+    output = tmp_path / f"{private_marker}.docx"
+
+    def failing_link(
+        source: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+        destination: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+    ) -> None:
+        raise OSError(f"publication failed for {private_marker}")
+
+    monkeypatch.setattr(os, "link", failing_link)
+    payload = {
+        "format": "docx",
+        "blocks": [{"type": "paragraph", "text": "hello"}],
+    }
+
+    with pytest.raises(OSError, match=r"^output could not be written$") as caught:
+        write_office_document(payload, output)
+
+    assert private_marker not in str(caught.value)
 
 
 def test_rejects_cyclic_object_payloads() -> None:
