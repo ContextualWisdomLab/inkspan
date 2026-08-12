@@ -169,6 +169,43 @@ def test_write_redacts_other_filesystem_errors(
     assert private_marker not in str(caught.value)
 
 
+def test_xml_preflight_does_not_reflect_unknown_top_level_key() -> None:
+    private_marker = "customer-private-top-level-key"
+    payload = {
+        "format": "docx",
+        "blocks": [],
+        private_marker: "bad\u0000text",
+    }
+
+    with pytest.raises(OfficeDocumentError, match="XML-incompatible") as caught:
+        render_office_document(payload)
+
+    message = str(caught.value)
+    assert private_marker not in message
+    assert "payload" in message
+
+
+def test_xml_preflight_does_not_reflect_unknown_nested_key() -> None:
+    private_marker = "customer-private-nested-key"
+    payload = {
+        "format": "xlsx",
+        "sheets": [
+            {
+                "name": "Data",
+                "rows": [["ok"]],
+                private_marker: "bad\u0000text",
+            }
+        ],
+    }
+
+    with pytest.raises(OfficeDocumentError, match="XML-incompatible") as caught:
+        render_office_document(payload)
+
+    message = str(caught.value)
+    assert private_marker not in message
+    assert "sheets[0]" in message
+
+
 def test_rejects_cyclic_object_payloads() -> None:
     payload: dict[str, object] = {"format": "docx", "blocks": []}
     payload["cycle"] = payload
