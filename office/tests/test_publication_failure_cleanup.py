@@ -72,3 +72,26 @@ def test_temporary_creation_failure_is_redacted_without_cleanup_attempt(
 
     assert "private temporary-file creation detail" not in str(error.value)
     assert not output.exists()
+
+
+def test_temporary_creation_file_exists_is_not_target_conflict(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "customer-private-output.docx"
+
+    def fail_temporary_creation(**_kwargs: object) -> object:
+        raise FileExistsError("private temporary-file creation collision")
+
+    monkeypatch.setattr(safe_renderer, "NamedTemporaryFile", fail_temporary_creation)
+    payload = {
+        "format": "docx",
+        "blocks": [{"type": "paragraph", "text": "confidential document"}],
+    }
+
+    with pytest.raises(OSError, match=r"^output could not be written$") as error:
+        write_office_document(payload, output)
+
+    assert type(error.value) is OSError
+    assert "private temporary-file creation collision" not in str(error.value)
+    assert not output.exists()
