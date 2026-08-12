@@ -60,6 +60,14 @@ function applyInstallCandidate(
   );
 }
 
+/** Create an editor that includes the shared writing-diagnostics command surface. */
+function commandEditor(): Editor {
+  return new Editor({
+    extensions: buildExtensions(),
+    content: '<p>Alpha beta gamma</p>',
+  });
+}
+
 describe('WritingDiagnostics hostile reflection failures', () => {
   it('rejects prototype, own-key, and property-descriptor traps without leaking or throwing', () => {
     let state = stateWithText();
@@ -101,11 +109,29 @@ describe('WritingDiagnostics hostile reflection failures', () => {
     }
   });
 
+  it('rejects every invalid install-command input before dispatch', () => {
+    const editor = commandEditor();
+
+    try {
+      expect(
+        editor.commands.installWritingDiagnostics(Number.NaN, [diagnostic()]),
+      ).toBe(false);
+      expect(
+        editor.commands.installWritingDiagnostics(-1, [diagnostic()]),
+      ).toBe(false);
+      expect(
+        editor.commands.installWritingDiagnostics(
+          0,
+          null as unknown as readonly CwlResolvedWritingDiagnosticDecoration[],
+        ),
+      ).toBe(false);
+    } finally {
+      editor.destroy();
+    }
+  });
+
   it('rejects every invalid focus-command scalar before dispatch', () => {
-    const editor = new Editor({
-      extensions: buildExtensions(),
-      content: '<p>Alpha beta gamma</p>',
-    });
+    const editor = commandEditor();
 
     try {
       expect(editor.commands.focusWritingDiagnostic(Number.NaN, 'diag')).toBe(false);
