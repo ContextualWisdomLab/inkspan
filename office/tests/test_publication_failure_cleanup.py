@@ -139,7 +139,7 @@ def test_overwrite_replace_failure_is_redacted_and_preserves_existing_output(
     assert list(tmp_path.glob(".inkspan-office-*.tmp")) == []
 
 
-def test_cleanup_failure_is_redacted_after_atomic_publication(
+def test_cleanup_failure_reports_committed_output_without_reflecting_private_detail(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -153,7 +153,10 @@ def test_cleanup_failure_is_redacted_after_atomic_publication(
 
     monkeypatch.setattr(Path, "unlink", fail_temporary_cleanup)
 
-    with pytest.raises(OSError, match=r"^output could not be written$") as error:
+    with pytest.raises(
+        OSError,
+        match=r"^output was written but temporary cleanup failed$",
+    ) as error:
         write_office_document(_docx_payload(), output)
 
     assert "private cleanup failure detail" not in str(error.value)
