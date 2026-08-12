@@ -35,8 +35,11 @@ jobs:
         run: >-
           pnpm exec vitest run
           src/components/WritingDiagnosticsPanel.test.tsx
+          src/components/WritingDiagnosticsPanel.keyboard.test.tsx
           src/components/WritingDiagnosticsPanel.print.test.tsx
           src/components/EditorFrame.test.tsx
           src/printStyles.test.ts
+          --pool=forks
+          --maxWorkers=1
       - name: Typecheck writing-guidance contracts
         run: pnpm typecheck
