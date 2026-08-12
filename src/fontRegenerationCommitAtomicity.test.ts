@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 const temporaryRoots: string[] = [];
 const OLD_FULL_CSS = '/* known-good full css */\n';
 const OLD_LATIN_CSS = '/* known-good latin css */\n';
+const INJECTED_COMMIT_FAILURE = 'injected font commit rename failure';
 
 function runRegeneratorWithCommitFailure(target: 'files' | 'fonts.css' | 'fonts-latin.css') {
   const root = mkdtempSync(join(tmpdir(), 'inkspan-font-commit-'));
@@ -47,7 +48,7 @@ fs.renameSync = (source, destination) => {
     destinationText.endsWith('/src/fonts/' + failTarget)
   ) {
     injected = true;
-    throw new Error('injected font commit rename failure');
+    throw new Error('${INJECTED_COMMIT_FAILURE}');
   }
   return originalRenameSync(source, destination);
 };
@@ -106,6 +107,7 @@ describe('font regeneration commit atomicity', () => {
 
       expect(result.error).toBeUndefined();
       expect(result.status).not.toBe(0);
+      expect(`${result.stdout}\n${result.stderr}`).toContain(INJECTED_COMMIT_FAILURE);
       expect(readFileSync(existingFontMarker, 'utf8')).toBe('known-good');
       expect(readFileSync(fullCssPath, 'utf8')).toBe(OLD_FULL_CSS);
       expect(readFileSync(latinCssPath, 'utf8')).toBe(OLD_LATIN_CSS);
