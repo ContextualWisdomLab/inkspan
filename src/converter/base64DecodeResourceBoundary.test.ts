@@ -67,14 +67,18 @@ describe('data URI decode resource boundary', () => {
 
   it('preserves accepted mixed literal and percent-encoded ASCII', () => {
     expect(
-      dataUriToBytes('data:text/plain,ab%20c', { maxBytes: 4 }).bytes,
-    ).toEqual(new Uint8Array([0x61, 0x62, 0x20, 0x63]));
+      Array.from(
+        dataUriToBytes('data:text/plain,ab%20c', { maxBytes: 4 }).bytes,
+      ),
+    ).toEqual([0x61, 0x62, 0x20, 0x63]);
   });
 
   it('preserves Unicode percent-encoding fallback decoding', () => {
     expect(
-      dataUriToBytes('data:text/plain,%C3%A9', { maxBytes: 2 }).bytes,
-    ).toEqual(new Uint8Array([0xc3, 0xa9]));
+      Array.from(
+        dataUriToBytes('data:text/plain,%C3%A9', { maxBytes: 2 }).bytes,
+      ),
+    ).toEqual([0xc3, 0xa9]);
   });
 
   it('preserves malformed percent-encoding error precedence', () => {
