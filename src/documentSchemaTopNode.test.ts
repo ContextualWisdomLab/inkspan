@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import type { JSONContent } from '@tiptap/core';
 import { Editor } from '@tiptap/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import { buildExtensions } from './extensions/kit.js';
 import {
   DocumentSchemaError,
@@ -31,10 +32,10 @@ afterEach(() => {
 describe('complete document schema boundary', () => {
   it('rejects a schema-valid paragraph instead of treating it as a document root', () => {
     const editor = makeEditor();
-    const paragraph = {
+    const paragraph: JSONContent = {
       type: 'paragraph',
       content: [{ type: 'text', text: 'private fragment' }],
-    } as const;
+    };
     const schemaValidFragment = editor.schema.nodeFromJSON(paragraph);
 
     expect(() => schemaValidFragment.check()).not.toThrow();
@@ -47,7 +48,7 @@ describe('complete document schema boundary', () => {
 
   it('preserves a valid complete document rooted at the active top node', () => {
     const editor = makeEditor();
-    const completeDocument = {
+    const completeDocument: JSONContent = {
       type: 'doc',
       content: [
         {
@@ -55,7 +56,7 @@ describe('complete document schema boundary', () => {
           content: [{ type: 'text', text: 'accepted document' }],
         },
       ],
-    } as const;
+    };
 
     expect(validateDocumentJson(editor, completeDocument)).toBe(true);
     expect(parseDocumentJsonForEditor(editor, completeDocument).type).toBe(
