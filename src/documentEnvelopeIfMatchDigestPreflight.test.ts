@@ -2,11 +2,15 @@ import { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { Editor } from '@tiptap/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDocumentEnvelope } from './documentEnvelope.js';
+import { encodeDocumentEnvelope } from './documentEnvelopeCanonical.js';
 import {
   DocumentEnvelopeRevisionError,
   type DocumentEnvelopeDigestProvider,
 } from './documentEnvelopeRevision.js';
-import { restoreDocumentEnvelopeIfMatch } from './documentEnvelopeIfMatch.js';
+import {
+  restoreDocumentEnvelopeBytesIfMatch,
+  restoreDocumentEnvelopeIfMatch,
+} from './documentEnvelopeIfMatch.js';
 import { buildExtensions } from './extensions/kit.js';
 
 const ZERO_REVISION_TAG = `"sha256-${'00'.repeat(32)}"`;
@@ -56,6 +60,25 @@ describe('revision-guarded restore digest capability preflight', () => {
         editor,
         ZERO_REVISION_TAG,
         incomingEnvelope(),
+        undefined,
+        provider,
+      ),
+    ).rejects.toThrow(new DocumentEnvelopeRevisionError(DIGEST_FAILURE));
+
+    expect(toJson).not.toHaveBeenCalled();
+  });
+
+  it('preflights the same capability before current-document work on the byte path', async () => {
+    const editor = makeEditor();
+    const sourceBytes = encodeDocumentEnvelope(incomingEnvelope());
+    const toJson = vi.spyOn(ProseMirrorNode.prototype, 'toJSON');
+    const provider = { digest: 7 } as unknown as DocumentEnvelopeDigestProvider;
+
+    await expect(
+      restoreDocumentEnvelopeBytesIfMatch(
+        editor,
+        ZERO_REVISION_TAG,
+        sourceBytes,
         undefined,
         provider,
       ),
