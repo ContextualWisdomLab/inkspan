@@ -3,8 +3,9 @@
  *
  * This subpath validates bounded revision-scoped diagnostic proposals and maps
  * exact W3C text-position selectors to structural ProseMirror ranges. It does
- * not import React, create editor instances, call models/providers or networks,
- * persist authored content, infer language quality, or mutate a document.
+ * not import a UI framework, create editor instances, call models, providers,
+ * or networks, persist authored content, infer language quality, or mutate a
+ * document.
  */
 export {
   DEFAULT_WRITING_DIAGNOSTIC_LIMITS,
