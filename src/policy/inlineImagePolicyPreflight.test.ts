@@ -36,4 +36,20 @@ describe('inline image decoded-size preflight', () => {
       );
     },
   );
+
+  it('rejects an unusable byte limit before scanning caller-controlled image source text', () => {
+    const source = 'data:image/png;base64,QUJDRA==';
+    const regexpTestSpy = vi.spyOn(RegExp.prototype, 'test');
+
+    try {
+      expect(() => validateInlineImageSource(source, Number.NaN)).toThrowError(
+        new RangeError('inline image byte limit must be a non-negative safe integer'),
+      );
+      expect(
+        regexpTestSpy.mock.calls.some((call) => call[0] === source),
+      ).toBe(false);
+    } finally {
+      regexpTestSpy.mockRestore();
+    }
+  });
 });
