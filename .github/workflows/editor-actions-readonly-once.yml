@@ -36,67 +36,61 @@ jobs:
           python <<'PY'
           from pathlib import Path
 
-          def replace_once(source: str, old: str, new: str, label: str) -> str:
-              count = source.count(old)
-              if count != 1:
-                  raise SystemExit(f'{label} anchor count was {count}')
-              return source.replace(old, new, 1)
-
           controller_path = Path('src/components/useWritingDiagnosticsController.ts')
           controller = controller_path.read_text(encoding='utf-8')
-          old = """  const applyDiagnostic = useCallback(
-            async (
-              diagnosticId: string,
-            ): Promise<CwlWritingDiagnosticActionEvent | null> => {
-              const active = currentRef.current;
-              if (
-                active.status !== 'active' ||
-                active.editor === null ||
-                active.editor.isDestroyed
-              ) {
-          """
-          new = """  const applyDiagnostic = useCallback(
-            async (
-              diagnosticId: string,
-            ): Promise<CwlWritingDiagnosticActionEvent | null> => {
-              const active = currentRef.current;
-              if (
-                active.status !== 'active' ||
-                active.editor === null ||
-                !active.editor.isEditable ||
-                active.editor.isDestroyed
-              ) {
-          """
-          controller = replace_once(
-              controller,
-              old,
-              new,
-              'apply read-only guard',
+          marker = '  const applyDiagnostic = useCallback(\n'
+          marker_index = controller.find(marker)
+          if marker_index < 0:
+              raise SystemExit('applyDiagnostic marker missing')
+          prefix = controller[:marker_index]
+          suffix = controller[marker_index:]
+          old_guard = (
+              '      const active = currentRef.current;\n'
+              '      if (\n'
+              "        active.status !== 'active' ||\n"
+              '        active.editor === null ||\n'
+              '        active.editor.isDestroyed\n'
+              '      ) {\n'
           )
+          new_guard = (
+              '      const active = currentRef.current;\n'
+              '      if (\n'
+              "        active.status !== 'active' ||\n"
+              '        active.editor === null ||\n'
+              '        !active.editor.isEditable ||\n'
+              '        active.editor.isDestroyed\n'
+              '      ) {\n'
+          )
+          if suffix.count(old_guard) != 1:
+              raise SystemExit(
+                  f'apply read-only guard count was {suffix.count(old_guard)}'
+              )
+          controller = prefix + suffix.replace(old_guard, new_guard, 1)
           controller_path.write_text(controller, encoding='utf-8')
 
           editor_path = Path('src/components/CwlEditor.tsx')
           editor = editor_path.read_text(encoding='utf-8')
-          old = """              onApplyDiagnostic={(diagnosticId) => {
-                            void writingDiagnosticsController.applyDiagnostic(diagnosticId);
-                          }}
-          """
-          new = """              onApplyDiagnostic={
-                            editable
-                              ? (diagnosticId) => {
-                                  void writingDiagnosticsController.applyDiagnostic(
-                                    diagnosticId,
-                                  );
-                                }
-                              : undefined
-                          }
-          """
-          editor = replace_once(
-              editor,
-              old,
-              new,
-              'read-only panel application',
+          old_callback = (
+              '              onApplyDiagnostic={(diagnosticId) => {\n'
+              '                void writingDiagnosticsController.applyDiagnostic(diagnosticId);\n'
+              '              }}\n'
           )
+          new_callback = (
+              '              onApplyDiagnostic={\n'
+              '                editable\n'
+              '                  ? (diagnosticId) => {\n'
+              '                      void writingDiagnosticsController.applyDiagnostic(\n'
+              '                        diagnosticId,\n'
+              '                      );\n'
+              '                    }\n'
+              '                  : undefined\n'
+              '              }\n'
+          )
+          if editor.count(old_callback) != 1:
+              raise SystemExit(
+                  f'read-only panel callback count was {editor.count(old_callback)}'
+              )
+          editor = editor.replace(old_callback, new_callback, 1)
           editor_path.write_text(editor, encoding='utf-8')
           PY
       - name: Verify read-only behavior
