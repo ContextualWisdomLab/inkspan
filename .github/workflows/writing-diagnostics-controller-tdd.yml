@@ -41,23 +41,70 @@ jobs:
           status=$?
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          const report = JSON.parse(fs.readFileSync('coverage/coverage-final.json', 'utf8'));
-          const entry = Object.entries(report).find(([path]) => path.endsWith('/src/components/useWritingDiagnosticsController.ts'));
+
+          const sourcePath = 'src/components/useWritingDiagnosticsController.ts';
+          const report = JSON.parse(
+            fs.readFileSync('coverage/coverage-final.json', 'utf8'),
+          );
+          const entry = Object.entries(report).find(([path]) =>
+            path.endsWith(`/${sourcePath}`),
+          );
           if (!entry) {
-            console.log('::error title=Controller coverage gaps::controller coverage entry missing');
+            console.log(
+              `::error file=${sourcePath},line=1::Controller coverage entry is missing.`,
+            );
             process.exit(0);
           }
+
           const [, file] = entry;
-          const statements = Object.entries(file.s).filter(([, count]) => count === 0).map(([id]) => file.statementMap[id].start.line);
-          const functions = Object.entries(file.f).filter(([, count]) => count === 0).map(([id]) => file.fnMap[id].loc.start.line);
-          const branches = [];
-          for (const [id, counts] of Object.entries(file.b)) {
-            counts.forEach((count, index) => {
-              if (count === 0) branches.push(`${file.branchMap[id].loc.start.line}:${index}`);
-            });
+          const statementEntries = Object.entries(file.s);
+          const functionEntries = Object.entries(file.f);
+          const branchEntries = Object.entries(file.b);
+          const statementCovered = statementEntries.filter(([, count]) => count > 0).length;
+          const functionCovered = functionEntries.filter(([, count]) => count > 0).length;
+          const branchCounts = branchEntries.flatMap(([, counts]) => counts);
+          const branchCovered = branchCounts.filter((count) => count > 0).length;
+          console.log(
+            `::notice file=${sourcePath},line=1::Statements ${statementCovered}/${statementEntries.length}; ` +
+              `functions ${functionCovered}/${functionEntries.length}; branches ${branchCovered}/${branchCounts.length}.`,
+          );
+
+          const missingStatements = new Set();
+          for (const [id, count] of statementEntries) {
+            if (count === 0) {
+              missingStatements.add(file.statementMap[id].start.line);
+            }
           }
-          if (statements.length || functions.length || branches.length) {
-            console.log(`::error title=Controller coverage gaps::statements=${[...new Set(statements)].join(',')}; functions=${[...new Set(functions)].join(',')}; branches=${branches.join(',')}`);
+          for (const line of [...missingStatements].sort((left, right) => left - right)) {
+            console.log(
+              `::error file=${sourcePath},line=${line}::Controller statement is not covered.`,
+            );
+          }
+
+          const missingFunctions = new Set();
+          for (const [id, count] of functionEntries) {
+            if (count === 0) {
+              const definition = file.fnMap[id];
+              missingFunctions.add(
+                definition.decl?.start.line ?? definition.loc.start.line,
+              );
+            }
+          }
+          for (const line of [...missingFunctions].sort((left, right) => left - right)) {
+            console.log(
+              `::error file=${sourcePath},line=${line}::Controller function is not covered.`,
+            );
+          }
+
+          for (const [id, counts] of branchEntries) {
+            const branch = file.branchMap[id];
+            counts.forEach((count, index) => {
+              if (count !== 0) return;
+              const location = branch.locations?.[index] ?? branch.loc;
+              console.log(
+                `::error file=${sourcePath},line=${location.start.line}::Controller branch ${index} is not covered.`,
+              );
+            });
           }
           NODE
           exit "$status"
