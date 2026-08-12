@@ -61,11 +61,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         source = Path(args.input)
         try:
-            payload = json.loads(_read_request_text(source))
+            request_text = _read_request_text(source)
+        except OSError as exc:
+            raise OfficeDocumentError("input could not be read") from exc
+        try:
+            payload = json.loads(request_text)
         except json.JSONDecodeError as exc:
             raise OfficeDocumentError(f"input must contain valid JSON: {exc.msg}") from exc
-        write_office_document(payload, Path(args.output), overwrite=args.force)
-    except (OfficeDocumentError, OSError) as exc:
+
+        try:
+            write_office_document(payload, Path(args.output), overwrite=args.force)
+        except FileExistsError as exc:
+            raise OfficeDocumentError("output already exists") from exc
+        except OSError as exc:
+            raise OfficeDocumentError("output could not be written") from exc
+    except OfficeDocumentError as exc:
         parser.error(str(exc))
     return 0
 
