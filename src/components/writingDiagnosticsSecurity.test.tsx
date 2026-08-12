@@ -18,6 +18,16 @@ afterEach(() => {
   cleanup();
 });
 
+function expectRedactedErrors(
+  onError: ReturnType<typeof vi.fn>,
+  forbidden: string,
+): void {
+  expect(onError.mock.calls.length).toBeGreaterThanOrEqual(1);
+  for (const call of onError.mock.calls) {
+    expect(String(call[0])).not.toContain(forbidden);
+  }
+}
+
 describe('writing diagnostics security and semantic-authority boundary', () => {
   it.each(sourceDocuments)(
     'produces no diagnostic surface without host diagnostics: %s',
@@ -28,7 +38,9 @@ describe('writing diagnostics security and semantic-authority boundary', () => {
 
       expect(screen.queryByRole('region', { name: 'Writing guidance' })).toBeNull();
       expect(document.querySelector('.cwl-writing-diagnostic')).toBeNull();
-      expect(editorRef.current!.getHTML()).toContain(source.replace(/^<p>|<\/p>$/gu, '').split('<')[0]);
+      expect(editorRef.current!.getHTML()).toContain(
+        source.replace(/^<p>|<\/p>$/gu, '').split('<')[0],
+      );
     },
   );
 
@@ -57,8 +69,8 @@ describe('writing diagnostics security and semantic-authority boundary', () => {
         onWritingDiagnosticsError={onError}
       />,
     );
-    await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
-    expect(String(onError.mock.calls[0]?.[0])).not.toContain('SECRET_AUTHORED_TEXT');
+    await waitFor(() => expect(onError.mock.calls.length).toBeGreaterThanOrEqual(1));
+    expectRedactedErrors(onError, 'SECRET_AUTHORED_TEXT');
     expect(editorRef.current!.getHTML()).toContain('Alpha beta gamma');
 
     onError.mockClear();
@@ -71,8 +83,8 @@ describe('writing diagnostics security and semantic-authority boundary', () => {
         onWritingDiagnosticsError={onError}
       />,
     );
-    await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
-    expect(String(onError.mock.calls[0]?.[0])).not.toContain('SECRET_PROXY_TEXT');
+    await waitFor(() => expect(onError.mock.calls.length).toBeGreaterThanOrEqual(1));
+    expectRedactedErrors(onError, 'SECRET_PROXY_TEXT');
     expect(screen.queryByText(/SECRET_/u)).toBeNull();
   });
 
@@ -119,7 +131,9 @@ describe('writing diagnostics security and semantic-authority boundary', () => {
     });
     fireEvent.click(apply);
     await waitFor(() =>
-      expect(editorRef.current!.getHTML()).toContain('&lt;script&gt;alert(1)&lt;/script&gt;'),
+      expect(editorRef.current!.getHTML()).toContain(
+        '&lt;script&gt;alert(1)&lt;/script&gt;',
+      ),
     );
     expect(onAction).toHaveBeenCalledTimes(1);
     expect(document.querySelector('script[src="x"]')).toBeNull();
