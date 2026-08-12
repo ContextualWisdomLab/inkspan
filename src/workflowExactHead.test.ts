@@ -9,11 +9,16 @@ function repositoryFile(path: string): string {
 }
 
 const workflow = repositoryFile('.github/workflows/ci.yml');
+const releaseWorkflow = repositoryFile('.github/workflows/release.yml');
 
 const CHECKOUT_PIN =
   'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1';
 const SETUP_NODE_PIN =
   'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0';
+const SAFE_PNPM_ACTION_PIN =
+  'pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10';
+const VULNERABLE_PNPM_ACTION_PIN =
+  'pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8';
 
 describe('exact-head CI workflow contract', () => {
   it('uses a fixed runner and checks out the immutable current PR head', () => {
@@ -50,6 +55,13 @@ describe('exact-head CI workflow contract', () => {
     expect(workflow).not.toContain(
       'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0',
     );
+  });
+
+  it('rejects the vulnerable pnpm action bootstrap in release jobs', () => {
+    expect(releaseWorkflow).not.toContain(VULNERABLE_PNPM_ACTION_PIN);
+    expect(
+      releaseWorkflow.match(new RegExp(SAFE_PNPM_ACTION_PIN, 'g')),
+    ).toHaveLength(2);
   });
 
   it('records the evidence boundary and unreleased hardening', () => {
