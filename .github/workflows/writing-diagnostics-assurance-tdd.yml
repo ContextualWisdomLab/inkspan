@@ -8,6 +8,7 @@ on:
     paths:
       - 'src/components/**'
       - 'src/workflowExactHead.test.ts'
+      - 'src/releaseArtifactSbomContract.test.ts'
       - 'tests/browser/**'
       - '.github/workflows/release.yml'
       - '.github/workflows/writing-diagnostics-assurance-tdd.yml'
@@ -38,12 +39,13 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Run hostile-input, no-fallback, focus, and workflow assurance
+      - name: Run hostile-input, no-fallback, focus, release-provenance, and workflow assurance
         run: >-
           pnpm exec vitest run
           src/components/writingDiagnosticsSecurity.test.tsx
           src/components/writingDiagnosticsFocus.test.tsx
           src/components/WritingDiagnosticsPanel.test.tsx
+          src/releaseArtifactSbomContract.test.ts
           src/workflowExactHead.test.ts
           --pool=forks
           --maxWorkers=1
