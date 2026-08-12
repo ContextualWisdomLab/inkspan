@@ -105,22 +105,24 @@ def write_office_document(
 
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        with NamedTemporaryFile(
-            mode="wb",
-            prefix=f".{path.name}.",
-            suffix=".tmp",
-            dir=path.parent,
-            delete=False,
-        ) as handle:
-            handle.write(rendered.data)
-            temporary = Path(handle.name)
+        temporary: Path | None = None
         try:
+            with NamedTemporaryFile(
+                mode="wb",
+                prefix=f".{path.name}.",
+                suffix=".tmp",
+                dir=path.parent,
+                delete=False,
+            ) as handle:
+                temporary = Path(handle.name)
+                handle.write(rendered.data)
             if overwrite:
                 temporary.replace(path)
             else:
                 os.link(temporary, path)
         finally:
-            temporary.unlink(missing_ok=True)
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
     except FileExistsError as exc:
         raise FileExistsError("output already exists") from exc
     except OSError as exc:
