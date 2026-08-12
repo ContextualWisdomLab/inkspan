@@ -141,7 +141,11 @@ describe('CwlEditor host-supplied writing diagnostics', () => {
     );
     await screen.findByText('Clarify the request');
 
-    expect(handleRef.current!.focusWritingDiagnostic('diagnostic-1')).toBe(true);
+    let focusResult = false;
+    act(() => {
+      focusResult = handleRef.current!.focusWritingDiagnostic('diagnostic-1');
+    });
+    expect(focusResult).toBe(true);
     expect(handleRef.current!.getEditor()!.state.selection).toMatchObject({
       from: 1,
       to: 6,
