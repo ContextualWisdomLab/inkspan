@@ -72,6 +72,12 @@ function cssFor(url) {
   const [family, weights] = definition;
   return weights.map((weight) => \`@font-face {\n  font-family: '\${family}';\n  font-style: normal;\n  font-weight: \${weight};\n  src: url(\${trustedAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\`).join('\\n');
 }
+function validWoff2Fixture() {
+  const bytes = new Uint8Array(48);
+  bytes.set([0x77, 0x4f, 0x46, 0x32]);
+  new DataView(bytes.buffer).setUint32(8, bytes.byteLength, false);
+  return bytes;
+}
 globalThis.fetch = async (input) => {
   const url = String(input);
   if (url.startsWith('https://fonts.googleapis.com/css2?')) {
@@ -81,10 +87,10 @@ globalThis.fetch = async (input) => {
     });
   }
   if (url === trustedAsset) {
-    return new Response(
-      new Uint8Array([0x77, 0x4f, 0x46, 0x32, 0, 0, 0, 0]),
-      { status: 200, headers: { 'content-type': 'font/woff2' } },
-    );
+    return new Response(validWoff2Fixture(), {
+      status: 200,
+      headers: { 'content-type': 'font/woff2' },
+    });
   }
   throw new Error('unexpected test URL');
 };
