@@ -21,10 +21,13 @@ function submittedValue(
 }
 
 async function dispatchReset(form: HTMLFormElement): Promise<boolean> {
-  const allowed = form.dispatchEvent(
-    new Event('reset', { bubbles: true, cancelable: true }),
-  );
-  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  let allowed = false;
+  await act(async () => {
+    allowed = form.dispatchEvent(
+      new Event('reset', { bubbles: true, cancelable: true }),
+    );
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  });
   return allowed;
 }
 
