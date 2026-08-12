@@ -112,20 +112,34 @@ def write_office_document(
             dir=path.parent,
             delete=False,
         )
-        temporary = Path(temporary_handle.name)
+    except OSError as exc:
+        raise OSError("output could not be written") from exc
+
+    temporary = Path(temporary_handle.name)
+    try:
         try:
             with temporary_handle as handle:
                 handle.write(rendered.data)
-            if overwrite:
+        except OSError as exc:
+            raise OSError("output could not be written") from exc
+
+        if overwrite:
+            try:
                 temporary.replace(path)
-            else:
+            except OSError as exc:
+                raise OSError("output could not be written") from exc
+        else:
+            try:
                 os.link(temporary, path)
-        finally:
+            except FileExistsError as exc:
+                raise FileExistsError("output already exists") from exc
+            except OSError as exc:
+                raise OSError("output could not be written") from exc
+    finally:
+        try:
             temporary.unlink(missing_ok=True)
-    except FileExistsError as exc:
-        raise FileExistsError("output already exists") from exc
-    except OSError as exc:
-        raise OSError("output could not be written") from exc
+        except OSError as exc:
+            raise OSError("output could not be written") from exc
     return path
 
 
