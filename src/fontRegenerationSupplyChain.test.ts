@@ -88,6 +88,12 @@ function excessiveCssFor(url) {
     return \`@font-face {\n  font-family: '\${family}';\n  font-style: normal;\n  font-weight: \${weight};\n  src: url(\${trustedAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\`;
   }).join('\\n');
 }
+function validWoff2Fixture() {
+  const bytes = new Uint8Array(48);
+  bytes.set([0x77, 0x4f, 0x46, 0x32]);
+  new DataView(bytes.buffer).setUint32(8, bytes.byteLength, false);
+  return bytes;
+}
 let trustedAssetRequests = 0;
 globalThis.fetch = async (input, init) => {
   const url = String(input);
@@ -144,7 +150,7 @@ globalThis.fetch = async (input, init) => {
   }
   if (url === hostileAsset) {
     writeFileSync(contactMarker, 'contacted', 'utf8');
-    return new Response(new Uint8Array([0x77, 0x4f, 0x46, 0x32, 0, 0, 0, 0]), {
+    return new Response(validWoff2Fixture(), {
       status: 200,
       headers: { 'content-type': 'font/woff2' },
     });
@@ -162,7 +168,7 @@ globalThis.fetch = async (input, init) => {
     }
     const body = mode === 'invalid-font'
       ? new TextEncoder().encode('<html>not a font</html>')
-      : new Uint8Array([0x77, 0x4f, 0x46, 0x32, 0, 0, 0, 0]);
+      : validWoff2Fixture();
     return new Response(body, {
       status: 200,
       headers: { 'content-type': 'font/woff2' },
