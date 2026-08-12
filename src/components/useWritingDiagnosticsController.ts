@@ -533,6 +533,19 @@ export function useWritingDiagnosticsController(
       );
       if (!target) return null;
 
+      if (action !== 'dismissed') {
+        const event = Object.freeze({
+          action,
+          reasonCode: 'explicit' as const,
+          diagnosticId: target.diagnostic.diagnosticId,
+          documentRevision: target.diagnostic.documentRevision,
+          categoryCode: target.diagnostic.categoryCode,
+          generation: active.generation,
+        });
+        notifyAction(actionRef.current, event);
+        return event;
+      }
+
       const remaining = active.diagnostics.filter(
         (candidate) => candidate !== target,
       );
