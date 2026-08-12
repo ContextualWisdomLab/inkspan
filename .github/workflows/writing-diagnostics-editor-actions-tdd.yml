@@ -37,6 +37,7 @@ jobs:
           src/components/CwlEditor.writingDiagnostics.test.tsx
           src/components/CwlEditor.writingDiagnosticApply.test.tsx
           src/components/useWritingDiagnosticsController.apply.test.tsx
+          src/components/useEditorHandle.test.tsx
           --pool=forks
           --maxWorkers=1
       - name: Typecheck standalone writing-diagnostic contracts
