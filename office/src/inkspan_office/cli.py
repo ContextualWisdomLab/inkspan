@@ -74,6 +74,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         except FileExistsError as exc:
             raise OfficeDocumentError("output already exists") from exc
         except OSError as exc:
+            if getattr(exc, "output_committed", False):
+                raise OfficeDocumentError(
+                    "output was written but temporary cleanup failed"
+                ) from exc
             raise OfficeDocumentError("output could not be written") from exc
     except OfficeDocumentError as exc:
         parser.error(str(exc))
