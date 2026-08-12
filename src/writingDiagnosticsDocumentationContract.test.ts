@@ -8,9 +8,15 @@ function repositoryFile(path: string): string {
   return readFileSync(resolve(process.cwd(), path), 'utf8');
 }
 
-/** Collapse prose whitespace so Markdown wrapping cannot weaken the contract. */
+/**
+ * Collapse prose whitespace and code-span punctuation without weakening words.
+ *
+ * Markdown authors may correctly wrap identifiers such as `docChanged` or
+ * `aria-invalid` in code spans. The documentation contract checks the semantic
+ * prose, not that presentational punctuation choice.
+ */
 function normalizeProse(value: string): string {
-  return value.replace(/\s+/gu, ' ').trim();
+  return value.replace(/`/gu, '').replace(/\s+/gu, ' ').trim();
 }
 
 const designPath =
