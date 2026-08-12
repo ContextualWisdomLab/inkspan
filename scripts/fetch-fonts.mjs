@@ -272,6 +272,11 @@ async function processFamily(def, outputFilesDir) {
   if (out.length === 0) {
     throw new Error('Google Fonts returned CSS without usable WOFF2 assets');
   }
+  for (const requestedWeight of def.weights) {
+    if (!counters[String(requestedWeight)]) {
+      throw new Error('Google Fonts returned incomplete requested font weight metadata');
+    }
+  }
   return { css: out.join('\n\n'), totalBytes, count: out.length };
 }
 
