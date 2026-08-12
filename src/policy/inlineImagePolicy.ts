@@ -56,6 +56,7 @@ export function validateInlineImageSource(
   source: unknown,
   maxSizeBytes: number,
 ): string {
+  assertValidInlineImageByteLimit(maxSizeBytes);
   if (
     typeof source !== 'string' ||
     source.length === 0 ||
@@ -64,7 +65,6 @@ export function validateInlineImageSource(
     throw new Base64ImageSourceError(source);
   }
 
-  assertValidInlineImageByteLimit(maxSizeBytes);
   if (maxSizeBytes > 0) {
     const bytes = inlineRasterByteLength(source);
     if (bytes > maxSizeBytes) {
