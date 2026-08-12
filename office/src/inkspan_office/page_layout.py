@@ -119,14 +119,12 @@ def _require(mapping: Mapping[str, Any], key: str, path: str) -> Any:
 
 
 def _reject_unknown(mapping: Mapping[str, Any], allowed: set[str], path: str) -> None:
-    """Reject undeclared page-layout fields so generated requests stay unambiguous."""
+    """Reject undeclared page-layout fields without reflecting caller-owned names."""
 
-    unexpected = sorted(set(mapping) - allowed)
+    unexpected = set(mapping) - allowed
     if unexpected:
         label = "field" if len(unexpected) == 1 else "fields"
-        raise OfficeDocumentError(
-            f"{path} has unexpected {label}: {', '.join(unexpected)}"
-        )
+        raise OfficeDocumentError(f"{path} has unexpected {label}")
 
 
 def _enum_string(value: Any, path: str, allowed: set[str]) -> str:
