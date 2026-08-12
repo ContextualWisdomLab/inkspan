@@ -14,13 +14,19 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 const temporaryRoots: string[] = [];
 
-function createIsolatedFontRegenerator(): {
+function createIsolatedFontRegenerator({
+  weight = 999,
+  unicodeRange = 'U+0000-00FF',
+}: {
+  weight?: number;
+  unicodeRange?: string;
+} = {}): {
   root: string;
   scriptPath: string;
   preloadPath: string;
   existingFontMarker: string;
 } {
-  const root = mkdtempSync(join(tmpdir(), 'inkspan-font-weight-policy-'));
+  const root = mkdtempSync(join(tmpdir(), 'inkspan-font-metadata-policy-'));
   temporaryRoots.push(root);
   const scriptPath = join(root, 'scripts', 'fetch-fonts.mjs');
   const preloadPath = join(root, 'mock-fetch.mjs');
@@ -43,7 +49,7 @@ function createIsolatedFontRegenerator(): {
   writeFileSync(
     preloadPath,
     `const trustedAsset = 'https://fonts.gstatic.com/s/notosans/test-subset.woff2';
-const css = \`@font-face {\n  font-family: 'Noto Sans';\n  font-style: normal;\n  font-weight: 999;\n  src: url(\${trustedAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\`;
+const css = \`@font-face {\n  font-family: 'Noto Sans';\n  font-style: normal;\n  font-weight: ${weight};\n  src: url(\${trustedAsset}) format('woff2');\n  unicode-range: ${unicodeRange};\n}\`;
 globalThis.fetch = async (input) => {
   const url = String(input);
   if (url.startsWith('https://fonts.googleapis.com/css2?')) {
@@ -70,29 +76,46 @@ globalThis.fetch = async (input) => {
   return { root, scriptPath, preloadPath, existingFontMarker };
 }
 
+function runFixture(fixture: ReturnType<typeof createIsolatedFontRegenerator>) {
+  return spawnSync(
+    process.execPath,
+    ['--import', pathToFileURL(fixture.preloadPath).href, fixture.scriptPath],
+    {
+      cwd: fixture.root,
+      encoding: 'utf8',
+      env: process.env,
+      timeout: 15_000,
+    },
+  );
+}
+
+function expectRejectedWithoutReplacingKnownGood(
+  fixture: ReturnType<typeof createIsolatedFontRegenerator>,
+): void {
+  const result = runFixture(fixture);
+  expect(result.error).toBeUndefined();
+  expect(result.status).not.toBe(0);
+  expect(existsSync(fixture.existingFontMarker)).toBe(true);
+  expect(readFileSync(fixture.existingFontMarker, 'utf8')).toBe('known-good');
+}
+
 afterEach(() => {
   while (temporaryRoots.length > 0) {
     rmSync(temporaryRoots.pop()!, { recursive: true, force: true });
   }
 });
 
-describe('font regeneration weight policy', () => {
+describe('font regeneration metadata policy', () => {
   it('rejects CSS weight metadata outside the exact requested family weights', () => {
-    const fixture = createIsolatedFontRegenerator();
-    const result = spawnSync(
-      process.execPath,
-      ['--import', pathToFileURL(fixture.preloadPath).href, fixture.scriptPath],
-      {
-        cwd: fixture.root,
-        encoding: 'utf8',
-        env: process.env,
-        timeout: 15_000,
-      },
-    );
+    expectRejectedWithoutReplacingKnownGood(createIsolatedFontRegenerator());
+  });
 
-    expect(result.error).toBeUndefined();
-    expect(result.status).not.toBe(0);
-    expect(existsSync(fixture.existingFontMarker)).toBe(true);
-    expect(readFileSync(fixture.existingFontMarker, 'utf8')).toBe('known-good');
+  it('rejects invalid CSS unicode-range metadata before publishing the bundle', () => {
+    expectRejectedWithoutReplacingKnownGood(
+      createIsolatedFontRegenerator({
+        weight: 400,
+        unicodeRange: 'not-a-unicode-range',
+      }),
+    );
   });
 });
