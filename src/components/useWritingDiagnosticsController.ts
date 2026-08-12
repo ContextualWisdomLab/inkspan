@@ -507,6 +507,7 @@ export function useWritingDiagnosticsController(
       if (
         active.status !== 'active' ||
         active.editor === null ||
+        !active.editor.isEditable ||
         active.editor.isDestroyed
       ) {
         return null;
