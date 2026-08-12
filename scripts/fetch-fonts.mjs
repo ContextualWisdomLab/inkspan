@@ -37,6 +37,7 @@ const MAX_FONT_CSS_BYTES = 1024 * 1024;
 const MAX_FONT_SUBSET_BYTES = 16 * 1024 * 1024;
 const MAX_FONT_FACE_BLOCKS_PER_FAMILY = 512;
 const MAX_UNICODE_CODE_POINT = 0x10ffff;
+const WOFF2_HEADER_BYTES = 48;
 const WOFF2_SIGNATURE = Buffer.from([0x77, 0x4f, 0x46, 0x32]);
 
 // Latin/Vietnamese carries the primary UI text and is cheap, so ship 400+700.
@@ -247,10 +248,13 @@ async function download(source) {
     throw new Error(`Google Fonts font asset fetch failed with status ${res.status}`);
   }
   const bytes = await readBoundedFontBody(res);
-  if (
-    bytes.byteLength < WOFF2_SIGNATURE.byteLength ||
-    !bytes.subarray(0, WOFF2_SIGNATURE.byteLength).equals(WOFF2_SIGNATURE)
-  ) {
+  const hasWoff2Signature =
+    bytes.byteLength >= WOFF2_SIGNATURE.byteLength &&
+    bytes.subarray(0, WOFF2_SIGNATURE.byteLength).equals(WOFF2_SIGNATURE);
+  const hasConsistentDeclaredLength =
+    bytes.byteLength >= WOFF2_HEADER_BYTES &&
+    bytes.readUInt32BE(8) === bytes.byteLength;
+  if (!hasWoff2Signature || !hasConsistentDeclaredLength) {
     throw new Error('Google Fonts returned a non-WOFF2 font asset');
   }
   return bytes;
