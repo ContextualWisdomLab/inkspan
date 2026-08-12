@@ -31,7 +31,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Run panel accessibility and interaction contract
-        run: pnpm exec vitest run src/components/WritingDiagnosticsPanel.test.tsx
+      - name: Run panel accessibility, shell, and style contracts
+        run: pnpm exec vitest run src/components/WritingDiagnosticsPanel.test.tsx src/components/EditorFrame.test.tsx src/writingDiagnosticsStyles.test.ts
       - name: Typecheck panel contract
         run: pnpm typecheck
