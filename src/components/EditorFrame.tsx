@@ -20,11 +20,14 @@ export interface EditorFrameProps {
   formFieldInitialValue?: string;
   onFormReset?: (event: Event) => void;
   status?: ReactNode;
+  /** Trusted, already-validated writing guidance rendered before the editor. */
+  writingDiagnosticsPanel?: ReactNode;
 }
 
 /**
  * Render the common Inkspan root, toolbar, keyboard surface, native form field,
- * and editor content without owning document state or transport lifecycle.
+ * optional writing guidance, and editor content without owning document state or
+ * transport lifecycle.
  */
 export function EditorFrame({
   editor,
@@ -40,6 +43,7 @@ export function EditorFrame({
   formFieldInitialValue,
   onFormReset,
   status,
+  writingDiagnosticsPanel,
 }: EditorFrameProps) {
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -90,6 +94,7 @@ export function EditorFrame({
           onImageError={onImageError}
         />
       ) : null}
+      {writingDiagnosticsPanel}
       <div className="cwl-editor__surface" onKeyDown={onKeyDown}>
         <EditorContent editor={editor} />
       </div>
