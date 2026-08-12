@@ -19,6 +19,8 @@ import { applyEditorFormReset } from '../components/editorFormReset.js';
 import { editorHtmlToValue } from '../components/editorSerialization.js';
 import { useEditorHandle } from '../components/useEditorHandle.js';
 import { useLatestRef } from '../components/useLatestRef.js';
+import { useWritingDiagnosticsController } from '../components/useWritingDiagnosticsController.js';
+import { WritingDiagnosticsPanel } from '../components/WritingDiagnosticsPanel.js';
 import type { ClipboardSanitizationError } from '../extensions/SafeClipboard.js';
 import { buildExtensions } from '../extensions/kit.js';
 import type { CwlEditorHandle } from '../types.js';
@@ -95,6 +97,11 @@ export const CollaborativeCwlEditor = forwardRef<
     ariaErrorMessage,
     ariaInvalid,
     ariaRequired,
+    writingDiagnostics,
+    onWritingDiagnosticAction,
+    onWritingDiagnosticsError,
+    writingDiagnosticsLabel,
+    printWritingDiagnostics,
   } = props;
 
   assertCollaborationConfiguration(provider, user);
@@ -260,7 +267,14 @@ export const CollaborativeCwlEditor = forwardRef<
     [collaborationDocument, scopedProvider, normalizedField, presenceEnabled],
   );
 
-  useEditorHandle(ref, editor, modeRef);
+  const writingDiagnosticsController = useWritingDiagnosticsController({
+    editor,
+    diagnostics: writingDiagnostics,
+    onAction: onWritingDiagnosticAction,
+    onError: onWritingDiagnosticsError,
+  });
+
+  useEditorHandle(ref, editor, modeRef, writingDiagnosticsController);
 
   useEffect(() => {
     editor?.setEditable(editable);
@@ -346,6 +360,24 @@ export const CollaborativeCwlEditor = forwardRef<
       formFieldDisabled={formFieldDisabled}
       onFormReset={editor && onFormReset ? handleFormReset : undefined}
       status={status}
+      writingDiagnosticsPanel={
+        writingDiagnostics === undefined ? undefined : (
+          <WritingDiagnosticsPanel
+            controller={writingDiagnosticsController}
+            label={writingDiagnosticsLabel ?? 'Writing guidance'}
+            onApplyDiagnostic={
+              editable
+                ? (diagnosticId) => {
+                    void writingDiagnosticsController.applyDiagnostic(
+                      diagnosticId,
+                    );
+                  }
+                : undefined
+            }
+            printEnabled={printWritingDiagnostics}
+          />
+        )
+      }
     />
   );
 });
