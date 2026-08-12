@@ -21,6 +21,15 @@ function inlineRasterByteLength(source: string): number {
   return (payloadLength / 4) * 3 - padding;
 }
 
+/** Reject malformed public byte ceilings without coercion or intent inference. */
+function assertValidInlineImageByteLimit(maxSizeBytes: number): void {
+  if (!Number.isSafeInteger(maxSizeBytes) || maxSizeBytes < 0) {
+    throw new RangeError(
+      'inline image byte limit must be a non-negative safe integer',
+    );
+  }
+}
+
 /** Error thrown when an image source violates Inkspan's inline raster policy. */
 export class Base64ImageSourceError extends Error {
   /** Redacted source category safe for logs and host telemetry. */
@@ -54,6 +63,8 @@ export function validateInlineImageSource(
   ) {
     throw new Base64ImageSourceError(source);
   }
+
+  assertValidInlineImageByteLimit(maxSizeBytes);
   if (maxSizeBytes > 0) {
     const bytes = inlineRasterByteLength(source);
     if (bytes > maxSizeBytes) {
