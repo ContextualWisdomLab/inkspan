@@ -87,7 +87,7 @@ jobs:
             src/components/writingDiagnosticsSecurity.test.tsx \
             tests/browser/package.json \
             tests/browser/pnpm-lock.yaml
-          git rm \
+          git rm -f \
             .github/scripts/address_writing_diagnostics_review.py \
             .github/scripts/fix_review_repair_counter.py \
             .github/workflows/address-writing-diagnostics-review.yml
