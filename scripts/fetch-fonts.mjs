@@ -51,7 +51,7 @@ const FAMILIES = [
 const FONT_FACE_RE = /@font-face\s*{([^}]*)}/g;
 const SRC_URL_RE = /url\((https:\/\/[^)]+\.woff2)\)/;
 const RANGE_RE = /unicode-range:\s*([^;]+);/;
-const WEIGHT_RE = /font-weight:\s*(\d+)/;
+const WEIGHT_RE = /font-weight:\s*(\d+)\s*;/;
 
 /** Read CSS discovery data through a bounded stream before decoding it. */
 async function readBoundedCssBody(response) {
@@ -192,7 +192,10 @@ async function processFamily(def, outputFilesDir) {
     const rangeMatch = RANGE_RE.exec(block);
     const weightMatch = WEIGHT_RE.exec(block);
     if (!urlMatch) continue;
-    const weight = weightMatch ? weightMatch[1] : '400';
+    if (!weightMatch || !def.weights.includes(Number(weightMatch[1]))) {
+      throw new Error('Google Fonts returned unexpected font weight metadata');
+    }
+    const weight = weightMatch[1];
     counters[weight] = (counters[weight] ?? 0) + 1;
     const idx = counters[weight];
     const localName = `${def.slug}-${weight}-${idx}.woff2`;
