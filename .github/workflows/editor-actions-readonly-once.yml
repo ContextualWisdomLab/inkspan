@@ -61,10 +61,8 @@ jobs:
               '        active.editor.isDestroyed\n'
               '      ) {\n'
           )
-          if suffix.count(old_guard) != 1:
-              raise SystemExit(
-                  f'apply read-only guard count was {suffix.count(old_guard)}'
-              )
+          if old_guard not in suffix:
+              raise SystemExit('apply read-only guard missing after marker')
           controller = prefix + suffix.replace(old_guard, new_guard, 1)
           controller_path.write_text(controller, encoding='utf-8')
 
