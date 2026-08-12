@@ -79,6 +79,12 @@ The decision prevents opaque host category strings from gaining semantic executi
 
 The panel must expose a named region, count, ordered list, category, priority, title, explanation, affected-range navigation, and explicit Apply/Ignore/Dismiss/Explain controls. Information must remain available without color, hover, pointer input, animation, or generated CSS content. Asynchronous arrival must not steal focus. An assertive alert is reserved for an actual application conflict; ordinary actions use polite status messaging.
 
+## Compatibility and migration
+
+The decision is additive to hosts that do not enable writing diagnostics. Diagnostics remain noncanonical review state, so no document-envelope, persistence, collaboration, or database migration is required. Existing Task 1–4 implementation work already follows strict invalidation and, after the corresponding runtime correction, semantic-neutral decoration behavior. Downstream tasks must consume the same exact contract; predecessor checks and reviews do not transfer after any stack refresh.
+
+A future public contract may add explicit accessibility semantics or evidence-backed diagnostic continuity only through a new versioned type and compatibility plan. Opaque v1 category strings do not acquire new meaning retrospectively.
+
 ## Verification
 
 Acceptance requires deterministic tests proving:
@@ -91,10 +97,8 @@ Acceptance requires deterministic tests proving:
 - the accessible panel exposes host strings as text and remains usable without visual-only cues;
 - Inkspan produces no diagnostic when the host supplies none.
 
-## Migration and rollback
+## Rollback or supersession
 
-No document migration is required because diagnostics are noncanonical review state. Existing Task 1–4 implementation work already follows strict invalidation and semantic-neutral decoration behavior; downstream tasks must retain that contract. Rollback removes the optional diagnostic surface without altering document envelopes, revisions, persistence, or collaboration data.
-
-## Supersession
+Rollback removes the optional diagnostic surface without altering canonical document envelopes, revisions, persistence records, collaboration data, or host storage. The host simply stops supplying diagnostics and the editor retains its ordinary deterministic behavior.
 
 A future diagnostic-continuity design may supersede strict invalidation only with a versioned evidence model that proves target identity across changes, defines standalone/collaborative parity, contains privacy and accessibility semantics, and passes cross-engine and realistic semantic-integrity validation. A future semantic ARIA field likewise requires an explicit typed contract rather than inference from opaque strings.
