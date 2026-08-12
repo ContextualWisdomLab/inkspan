@@ -36,108 +36,55 @@ jobs:
           set -euo pipefail
           python <<'PY'
           from pathlib import Path
+          import re
 
           path = Path('src/components/useWritingDiagnosticsController.ts')
           source = path.read_text(encoding='utf-8')
-          replacements = [
+
+          patterns = [
               (
-                  """interface InvalidProcessedInput {
-            readonly kind: 'invalid';
-            readonly rawInput: unknown;
-            readonly editor: Editor | null;
-            readonly digestProvider: DocumentEnvelopeDigestProvider | null | undefined;
-            readonly errorCode: WritingDiagnosticError['code'];
-          }
-          """,
-                  """interface InvalidProcessedInput {
-            readonly kind: 'invalid';
-            readonly rawInput: unknown;
-            readonly editor: Editor | null;
-            readonly digestProvider: DocumentEnvelopeDigestProvider | null | undefined;
-            readonly error: WritingDiagnosticError;
-          }
-          """,
+                  r"\n\s*let validationError: WritingDiagnosticError \| null = null;\n",
+                  "\n",
               ),
               (
-                  """  if (previous.kind === 'invalid' && next.kind === 'invalid') {
-              return previous.errorCode === next.errorCode;
-            }
-          """,
-                  """  if (previous.kind === 'invalid' && next.kind === 'invalid') {
-              return previous.error.code === next.error.code;
-            }
-          """,
+                  r"(?m)^(\s*)validationError =\n\1  error instanceof WritingDiagnosticError\n\1    \? error\n\1    : new WritingDiagnosticError\('contract'\);$",
+                  lambda match: (
+                      f"{match.group(1)}const validationError =\n"
+                      f"{match.group(1)}  error instanceof WritingDiagnosticError\n"
+                      f"{match.group(1)}    ? error\n"
+                      f"{match.group(1)}    : new WritingDiagnosticError('contract');"
+                  ),
               ),
               (
-                  """    let processed: ProcessedInput;
-            let validationError: WritingDiagnosticError | null = null;
-          """,
-                  """    let processed: ProcessedInput;
-          """,
+                  r"(?m)^(\s*)const error = validationError \?\? new WritingDiagnosticError\(processed\.errorCode\);\n"
+                  r"\1publish\(snapshot\('invalid', nextGeneration, editor\)\);\n"
+                  r"\1notifyError\(errorRef\.current, error\);$",
+                  lambda match: (
+                      f"{match.group(1)}publish(snapshot('invalid', nextGeneration, editor));\n"
+                      f"{match.group(1)}notifyError(\n"
+                      f"{match.group(1)}  errorRef.current,\n"
+                      f"{match.group(1)}  new WritingDiagnosticError(processed.errorCode),\n"
+                      f"{match.group(1)});"
+                  ),
               ),
               (
-                  """      } catch (error) {
-                validationError =
-                  error instanceof WritingDiagnosticError
-                    ? error
-                    : new WritingDiagnosticError('contract');
-                processed = {
-                  kind: 'invalid',
-                  rawInput: diagnostics,
-                  editor,
-                  digestProvider,
-                  errorCode: validationError.code,
-                };
-              }
-          """,
-                  """      } catch (error) {
-                const validationError =
-                  error instanceof WritingDiagnosticError
-                    ? error
-                    : new WritingDiagnosticError('contract');
-                processed = {
-                  kind: 'invalid',
-                  rawInput: diagnostics,
-                  editor,
-                  digestProvider,
-                  error: validationError,
-                };
-              }
-          """,
-              ),
-              (
-                  """    if (processed.kind === 'invalid') {
-              const error = validationError ?? new WritingDiagnosticError(processed.errorCode);
-              publish(snapshot('invalid', nextGeneration, editor));
-              notifyError(errorRef.current, error);
-              return;
-            }
-          """,
-                  """    if (processed.kind === 'invalid') {
-              publish(snapshot('invalid', nextGeneration, editor));
-              notifyError(errorRef.current, processed.error);
-              return;
-            }
-          """,
-              ),
-              (
-                  """      if (generationRef.current !== nextGeneration || editor.isDestroyed) return;
-              const frozenVerified = Object.freeze(verified);
-          """,
-                  """      if (generationRef.current !== nextGeneration) return;
-              if (editor.isDestroyed) {
-                publish(snapshot('stale', nextGeneration, editor));
-                return;
-              }
-              const frozenVerified = Object.freeze(verified);
-          """,
+                  r"(?m)^(\s*)if \(generationRef\.current !== nextGeneration \|\| editor\.isDestroyed\) return;\n"
+                  r"\1const frozenVerified = Object\.freeze\(verified\);$",
+                  lambda match: (
+                      f"{match.group(1)}if (generationRef.current !== nextGeneration) return;\n"
+                      f"{match.group(1)}if (editor.isDestroyed) {{\n"
+                      f"{match.group(1)}  publish(snapshot('stale', nextGeneration, editor));\n"
+                      f"{match.group(1)}  return;\n"
+                      f"{match.group(1)}}}\n"
+                      f"{match.group(1)}const frozenVerified = Object.freeze(verified);"
+                  ),
               ),
           ]
 
-          for old, new in replacements:
-              if source.count(old) != 1:
-                  raise SystemExit(f'unexpected replacement count for:\n{old}')
-              source = source.replace(old, new)
+          for pattern, replacement in patterns:
+              source, count = re.subn(pattern, replacement, source, count=1)
+              if count != 1:
+                  raise SystemExit(f'unexpected replacement count {count} for {pattern}')
           path.write_text(source, encoding='utf-8')
           PY
       - name: Verify exact controller behavior, coverage, and public types
