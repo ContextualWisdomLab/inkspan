@@ -97,9 +97,7 @@ def write_office_document(
     rendered = render_office_document(payload)
     path = Path(output_path)
     if path.suffix.lower() != rendered.extension:
-        raise OfficeDocumentError(
-            f"output extension must be {rendered.extension}, got {path.suffix or '<none>'}"
-        )
+        raise OfficeDocumentError(f"output extension must be {rendered.extension}")
     if path.exists() and not overwrite:
         raise FileExistsError("output already exists")
 
