@@ -38,6 +38,8 @@ jobs:
           src/components/useWritingDiagnosticsController.actions.test.tsx
           src/components/useWritingDiagnosticsController.boundary.test.tsx
           src/components/useWritingDiagnosticsController.coverage.test.tsx
+          --pool=forks
+          --maxWorkers=1
       - name: Prove complete owned production coverage
         shell: bash
         run: |
@@ -47,6 +49,8 @@ jobs:
             src/components/useWritingDiagnosticsController.actions.test.tsx \
             src/components/useWritingDiagnosticsController.boundary.test.tsx \
             src/components/useWritingDiagnosticsController.coverage.test.tsx \
+            --pool=forks \
+            --maxWorkers=1 \
             --coverage \
             --coverage.include=src/components/useWritingDiagnosticsController.ts \
             --coverage.reporter=json
