@@ -19,7 +19,7 @@ env:
 jobs:
   focused-editor-actions:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -40,3 +40,11 @@ jobs:
           --maxWorkers=1
       - name: Typecheck standalone writing-diagnostic contracts
         run: pnpm typecheck
+      - name: Run complete production coverage gate
+        run: pnpm coverage
+      - name: Build all package entrypoints
+        run: pnpm build
+      - name: Verify isolated packed-package consumers
+        run: pnpm verify:package
+      - name: Build demonstration application
+        run: pnpm build:demo
