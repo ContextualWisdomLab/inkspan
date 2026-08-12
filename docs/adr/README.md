@@ -44,4 +44,15 @@ Material changes add or supersede an ADR rather than silently rewriting history.
 
 ## ADR quality requirements
 
-Each material ADR covers context, alternatives, decision, consequences, failure and recovery, security and privacy, compatibility and migration, verification, and rollback or supersession. Accessibility, operability, standards/research traceability, release impact, and synchronized PRD/TRD/Architecture/contracts/UML/data model/threat model/test strategy are required where affected.
+Every material ADR documents the following evidence explicitly:
+
+- context and the problem boundary;
+- materially distinct alternatives considered;
+- the selected decision and its consequences;
+- failure and recovery semantics;
+- security and privacy impact;
+- compatibility and migration behavior;
+- verification/acceptance evidence;
+- rollback or explicit supersession conditions.
+
+Accessibility, operability, standards/research traceability, release impact, and synchronized PRD/TRD/Architecture/contracts/UML/data model/threat model/test strategy are also required where affected.
