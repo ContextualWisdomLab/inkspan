@@ -180,6 +180,9 @@ function readCompletePages(value) {
     } else if (page.totalCount !== expectedTotal) {
       throw new Error('workflow registry total changed between pages');
     }
+    if (index < value.length - 1 && page.items.length !== page.perPage) {
+      throw new Error('workflow registry pagination is incomplete');
+    }
 
     for (const rawItem of page.items) {
       const item = readWorkflowItem(rawItem);
