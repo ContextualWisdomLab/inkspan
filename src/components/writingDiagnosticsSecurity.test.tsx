@@ -131,6 +131,11 @@ describe('writing diagnostics security and semantic-authority boundary', () => {
     const apply = await screen.findByRole('button', {
       name: /Apply suggestion for/u,
     });
+    expect(document.querySelector('img[src="x"]')).toBeNull();
+    expect(
+      screen.getByText('<img src=x onerror=alert(1)> explanation'),
+    ).toBeVisible();
+
     fireEvent.click(apply);
     await waitFor(() =>
       expect(editorRef.current!.getHTML()).toContain(
@@ -139,9 +144,6 @@ describe('writing diagnostics security and semantic-authority boundary', () => {
     );
     expect(onAction).toHaveBeenCalledTimes(1);
     expect(document.querySelector('img[src="x"]')).toBeNull();
-    expect(
-      screen.getByText('<img src=x onerror=alert(1)> explanation'),
-    ).toBeVisible();
     expect(screen.queryByText('HOST_CALLBACK_SECRET')).toBeNull();
   });
 });
