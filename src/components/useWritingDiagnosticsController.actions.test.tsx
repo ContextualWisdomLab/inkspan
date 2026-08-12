@@ -74,10 +74,11 @@ describe('writing diagnostic feedback actions', () => {
     const before = editor.getJSON();
     const onAction = vi.fn();
     const provider = digestProvider();
+    const diagnostics = [diagnostic()];
     const { result } = renderHook(() =>
       useWritingDiagnosticsController({
         editor,
-        diagnostics: [diagnostic()],
+        diagnostics,
         digestProvider: provider,
         onAction,
       }),
@@ -108,10 +109,11 @@ describe('writing diagnostic feedback actions', () => {
     const before = editor.getJSON();
     const onAction = vi.fn();
     const provider = digestProvider();
+    const diagnostics = [diagnostic()];
     const { result } = renderHook(() =>
       useWritingDiagnosticsController({
         editor,
-        diagnostics: [diagnostic()],
+        diagnostics,
         digestProvider: provider,
         onAction,
       }),
@@ -143,10 +145,11 @@ describe('writing diagnostic feedback actions', () => {
     const editor = createEditor();
     const before = editor.getJSON();
     const provider = digestProvider();
+    const diagnostics = [diagnostic()];
     const { result } = renderHook(() =>
       useWritingDiagnosticsController({
         editor,
-        diagnostics: [diagnostic()],
+        diagnostics,
         digestProvider: provider,
       }),
     );
@@ -172,10 +175,11 @@ describe('writing diagnostic feedback actions', () => {
   it('focuses only an installed current diagnostic', async () => {
     const editor = createEditor();
     const provider = digestProvider();
+    const diagnostics = [diagnostic()];
     const { result } = renderHook(() =>
       useWritingDiagnosticsController({
         editor,
-        diagnostics: [diagnostic()],
+        diagnostics,
         digestProvider: provider,
       }),
     );
