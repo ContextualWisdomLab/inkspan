@@ -19,7 +19,7 @@ env:
 jobs:
   focused-projection:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -31,21 +31,85 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Run inverse projection contract tests
+      - name: Collect forward and inverse projection coverage
+        id: focused_coverage
+        continue-on-error: true
+        run: >-
+          pnpm exec vitest run
+          src/writingDiagnosticProjection.test.ts
+          src/writingDiagnosticProjectionBoundary.test.ts
+          --coverage
+          --coverage.include=src/graphemeBoundary.ts
+          --coverage.include=src/textPositionSelectorEvidence.ts
+          --coverage.include=src/writingDiagnosticProjection.ts
+          --coverage.reporter=text
+          --coverage.reporter=json
+          --coverage.reporter=json-summary
+      - name: Report and enforce exact projection coverage
         run: |
-          set -euo pipefail
-          if output="$(pnpm exec vitest run src/writingDiagnosticProjection.test.ts 2>&1)"; then
-            printf '%s\n' "$output"
-            exit 0
-          fi
-          printf '%s\n' "$output"
-          while IFS= read -r line; do
-            [[ -z "$line" ]] && continue
-            escaped="${line//'%'/'%25'}"
-            escaped="${escaped//$'\r'/'%0D'}"
-            escaped="${escaped//$'\n'/'%0A'}"
-            echo "::error file=src/writingDiagnosticProjection.test.ts,line=1::$escaped"
-          done <<< "$output"
-          exit 1
+          node <<'NODE'
+          const { readFileSync } = require('node:fs');
+          const coverage = JSON.parse(readFileSync('coverage/coverage-final.json', 'utf8'));
+          const requiredSuffixes = [
+            '/src/graphemeBoundary.ts',
+            '/src/textPositionSelectorEvidence.ts',
+            '/src/writingDiagnosticProjection.ts',
+          ];
+          let failed = process.env.FOCUSED_COVERAGE_OUTCOME !== 'success';
+
+          for (const suffix of requiredSuffixes) {
+            const entry = Object.entries(coverage).find(([path]) => path.endsWith(suffix));
+            const displayPath = suffix.slice(1);
+            if (!entry) {
+              console.error(`::error file=${displayPath},line=1::Focused coverage record is missing.`);
+              failed = true;
+              continue;
+            }
+            const [, fileCoverage] = entry;
+            const missingStatementLines = [...new Set(
+              Object.entries(fileCoverage.s)
+                .filter(([, count]) => count === 0)
+                .map(([id]) => fileCoverage.statementMap[id].start.line),
+            )].sort((a, b) => a - b);
+            const missingFunctionLines = [...new Set(
+              Object.entries(fileCoverage.f)
+                .filter(([, count]) => count === 0)
+                .map(([id]) => fileCoverage.fnMap[id].decl.start.line),
+            )].sort((a, b) => a - b);
+            const missingBranches = [];
+            for (const [id, counts] of Object.entries(fileCoverage.b)) {
+              counts.forEach((count, index) => {
+                if (count === 0) {
+                  const branch = fileCoverage.branchMap[id];
+                  const location = branch.locations?.[index] ?? branch.loc;
+                  missingBranches.push(`${location.start.line}:${index}`);
+                }
+              });
+            }
+            const statementTotal = Object.keys(fileCoverage.s).length;
+            const statementCovered = Object.values(fileCoverage.s).filter((count) => count > 0).length;
+            const functionTotal = Object.keys(fileCoverage.f).length;
+            const functionCovered = Object.values(fileCoverage.f).filter((count) => count > 0).length;
+            const branchCounts = Object.values(fileCoverage.b).flat();
+            const branchTotal = branchCounts.length;
+            const branchCovered = branchCounts.filter((count) => count > 0).length;
+            console.log(
+              `::notice file=${displayPath},line=1::Statements ${statementCovered}/${statementTotal}; ` +
+              `functions ${functionCovered}/${functionTotal}; branches ${branchCovered}/${branchTotal}.`,
+            );
+            if (missingStatementLines.length || missingFunctionLines.length || missingBranches.length) {
+              console.error(
+                `::error file=${displayPath},line=1::` +
+                `Missing statement lines: ${missingStatementLines.join(', ') || 'none'}; ` +
+                `missing function lines: ${missingFunctionLines.join(', ') || 'none'}; ` +
+                `missing branches line:index: ${missingBranches.join(', ') || 'none'}.`,
+              );
+              failed = true;
+            }
+          }
+          if (failed) process.exit(1);
+          NODE
+        env:
+          FOCUSED_COVERAGE_OUTCOME: ${{ steps.focused_coverage.outcome }}
       - name: Typecheck inverse projection contracts
         run: pnpm typecheck
