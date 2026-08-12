@@ -29,6 +29,16 @@ function stateWithText(): EditorState {
   });
 }
 
+/** Create one equivalent document state without installing the diagnostics plugin. */
+function stateWithoutDiagnostics(): EditorState {
+  return EditorState.create({
+    schema,
+    doc: schema.node('doc', undefined, [
+      schema.node('paragraph', undefined, [schema.text('Alpha beta gamma')]),
+    ]),
+  });
+}
+
 /** Read the writing-diagnostics state or fail the test fixture explicitly. */
 function pluginState(state: EditorState): WritingDiagnosticsPluginState {
   const result = writingDiagnosticsPluginKey.getState(state);
@@ -69,6 +79,16 @@ function commandEditor(): Editor {
 }
 
 describe('WritingDiagnostics hostile reflection failures', () => {
+  it('returns no decorations when the plugin prop is queried against an unrelated state', () => {
+    const plugin = createWritingDiagnosticsPlugin();
+    const decorations = plugin.props.decorations;
+    if (decorations === undefined) {
+      throw new Error('Missing writing diagnostics decoration prop');
+    }
+
+    expect(decorations(stateWithoutDiagnostics())).toBeNull();
+  });
+
   it('rejects prototype, own-key, and property-descriptor traps without leaking or throwing', () => {
     let state = stateWithText();
     const initial = pluginState(state);
