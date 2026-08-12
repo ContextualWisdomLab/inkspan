@@ -233,7 +233,7 @@ describe('useWritingDiagnosticsController', () => {
       textProjection: {
         id: TEXT_POSITION_PROJECTION_ID,
         version: 999,
-      } as CwlWritingDiagnostic['textProjection'],
+      } as unknown as CwlWritingDiagnostic['textProjection'],
     });
     const { result } = renderController({
       editor,
@@ -429,12 +429,12 @@ describe('useWritingDiagnosticsController', () => {
     });
     await waitFor(() => expect(result.current.status).toBe('active'));
 
-    let actionResult: ReturnType<typeof result.current.ignoreDiagnostic>;
+    let actionResult: ReturnType<typeof result.current.ignoreDiagnostic> = null;
     act(() => {
       actionResult = result.current.ignoreDiagnostic('diag-1');
     });
 
-    expect(actionResult!).toEqual(
+    expect(actionResult).toEqual(
       expect.objectContaining({
         action: 'ignored',
         diagnosticId: 'diag-1',
