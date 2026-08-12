@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 interface DiagnosticsProbeOptions {
   readonly sourceHtml: string;
@@ -7,7 +7,7 @@ interface DiagnosticsProbeOptions {
 }
 
 async function mountProbe(
-  page: Parameters<typeof test>[0] extends never ? never : any,
+  page: Page,
   options: DiagnosticsProbeOptions,
 ): Promise<void> {
   await page.goto('/tests/browser/harness.html');
