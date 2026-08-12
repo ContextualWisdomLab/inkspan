@@ -94,7 +94,10 @@ async function fetchCss(family, weights) {
   const url = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(
     family,
   )}:wght@${w}&display=swap`;
-  const res = await fetch(url, { headers: { 'User-Agent': UA } });
+  const res = await fetch(url, {
+    redirect: 'error',
+    headers: { 'User-Agent': UA },
+  });
   if (!res.ok) throw new Error(`css2 fetch failed for ${family}: ${res.status}`);
 
   const mediaType = res.headers
@@ -218,7 +221,10 @@ async function readBoundedFontBody(response) {
 /** Download and authenticate the minimal file-format boundary for one subset. */
 async function download(source) {
   const url = validateFontAssetUrl(source);
-  const res = await fetch(url, { headers: { 'User-Agent': UA } });
+  const res = await fetch(url, {
+    redirect: 'error',
+    headers: { 'User-Agent': UA },
+  });
   if (!res.ok) {
     throw new Error(`Google Fonts font asset fetch failed with status ${res.status}`);
   }
