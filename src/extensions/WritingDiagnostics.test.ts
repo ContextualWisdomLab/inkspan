@@ -86,27 +86,22 @@ describe('WritingDiagnostics extension contract', () => {
   it('installs verified ranges with only static privacy-minimized attributes', () => {
     let state = stateWithText();
     state = state.apply(
-      installWritingDiagnostics(state.tr, 4, [
-        diagnostic({ ariaInvalid: 'spelling' }),
-      ]),
+      installWritingDiagnostics(state.tr, 4, [diagnostic()]),
     );
 
     const current = pluginState(state);
     expect(current.generation).toBe(4);
-    expect(current.diagnostics).toEqual([
-      diagnostic({ ariaInvalid: 'spelling' }),
-    ]);
+    expect(current.diagnostics).toEqual([diagnostic()]);
     expect(Object.isFrozen(current.diagnostics)).toBe(true);
     expect(Object.isFrozen(current.diagnostics[0])).toBe(true);
     expect(decorationAttributes(state)).toEqual({
       class: 'cwl-writing-diagnostic cwl-writing-diagnostic--important',
       'data-cwl-diagnostic-id': 'diag-1',
-      'aria-invalid': 'spelling',
     });
     expect(JSON.stringify(decorationAttributes(state))).not.toContain('Alpha');
   });
 
-  it('never infers aria-invalid from category-like identifiers', () => {
+  it('never infers semantic ARIA state from category-like identifiers', () => {
     let state = stateWithText();
     state = state.apply(
       installWritingDiagnostics(state.tr, 1, [
@@ -231,13 +226,14 @@ describe('WritingDiagnostics extension contract', () => {
     expect(pluginState(state).decorations.find()).toEqual([]);
   });
 
-  it('fails closed for invalid ranges, duplicate ids, or unsupported attributes', () => {
+  it('fails closed for invalid ranges, duplicate ids, or semantic attributes', () => {
     let state = stateWithText();
     const invalidSets: readonly (readonly CwlResolvedWritingDiagnosticDecoration[])[] = [
       [diagnostic({ from: -1 })],
       [diagnostic({ from: 9, to: 8 })],
       [diagnostic({ to: state.doc.content.size + 1 })],
       [diagnostic(), diagnostic()],
+      [diagnostic({ ariaInvalid: 'spelling' })],
       [
         diagnostic({
           ariaInvalid: 'grammar' as CwlResolvedWritingDiagnosticDecoration['ariaInvalid'],
