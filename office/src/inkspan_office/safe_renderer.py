@@ -116,6 +116,7 @@ def write_office_document(
         raise OSError("output could not be written") from exc
 
     temporary = Path(temporary_handle.name)
+    cleanup_failure_message = "output could not be written"
     try:
         try:
             with temporary_handle as handle:
@@ -135,11 +136,12 @@ def write_office_document(
                 raise FileExistsError("output already exists") from exc
             except OSError as exc:
                 raise OSError("output could not be written") from exc
+        cleanup_failure_message = "output was written but temporary cleanup failed"
     finally:
         try:
             temporary.unlink(missing_ok=True)
         except OSError as exc:
-            raise OSError("output could not be written") from exc
+            raise OSError(cleanup_failure_message) from exc
     return path
 
 
