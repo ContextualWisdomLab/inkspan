@@ -134,12 +134,12 @@ describe('writing diagnostics controller defensive coverage', () => {
       diagnostics,
       digestProvider: provider,
     });
-    await waitFor(() => expect(result.current.diagnostics)).toHaveLength(1);
+    await waitFor(() => expect(result.current.diagnostics).toHaveLength(1));
 
     diagnostics.push(diagnostic('second'));
     rerender({ editor, diagnostics, digestProvider: provider });
 
-    await waitFor(() => expect(result.current.diagnostics)).toHaveLength(2);
+    await waitFor(() => expect(result.current.diagnostics).toHaveLength(2));
     expect(installedIds(editor)).toEqual(['first', 'second']);
     expect(provider.digest).toHaveBeenCalledTimes(2);
   });
@@ -265,13 +265,31 @@ describe('writing diagnostics controller defensive coverage', () => {
     expect(installedIds(editor)).toEqual(['second']);
   });
 
-  it('marks the captured generation stale when the verified document no longer compares equal', async () => {
+  it('marks the captured generation stale when view state changes without a transaction event', async () => {
+    let resolveDigest: ((value: ArrayBuffer) => void) | undefined;
+    const provider: DocumentEnvelopeDigestProvider = {
+      digest: vi.fn(
+        () =>
+          new Promise<ArrayBuffer>((resolve) => {
+            resolveDigest = resolve;
+          }),
+      ),
+    };
     const editor = createEditor();
-    vi.spyOn(editor.state.doc, 'eq').mockReturnValue(false);
     const { result } = renderController({
       editor,
       diagnostics: [diagnostic()],
-      digestProvider: staticDigestProvider(),
+      digestProvider: provider,
+    });
+    await waitFor(() => expect(provider.digest).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      const state = editor.state;
+      editor.view.updateState(state.apply(state.tr.insertText('X', 1)));
+    });
+    await act(async () => {
+      resolveDigest?.(digestBytes());
+      await Promise.resolve();
     });
 
     await waitFor(() => expect(result.current.status).toBe('stale'));
