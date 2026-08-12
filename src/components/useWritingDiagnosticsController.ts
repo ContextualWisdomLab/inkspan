@@ -314,7 +314,6 @@ export function useWritingDiagnosticsController(
 
   useEffect(() => {
     let processed: ProcessedInput;
-    let validationError: WritingDiagnosticError | null = null;
 
     if (diagnostics === undefined) {
       processed = {
@@ -334,7 +333,7 @@ export function useWritingDiagnosticsController(
           diagnostics: validated,
         };
       } catch (error) {
-        validationError =
+        const validationError =
           error instanceof WritingDiagnosticError
             ? error
             : new WritingDiagnosticError('contract');
@@ -368,9 +367,11 @@ export function useWritingDiagnosticsController(
     }
 
     if (processed.kind === 'invalid') {
-      const error = validationError ?? new WritingDiagnosticError(processed.errorCode);
       publish(snapshot('invalid', nextGeneration, editor));
-      notifyError(errorRef.current, error);
+      notifyError(
+        errorRef.current,
+        new WritingDiagnosticError(processed.errorCode),
+      );
       return;
     }
 
@@ -468,7 +469,11 @@ export function useWritingDiagnosticsController(
         return;
       }
 
-      if (generationRef.current !== nextGeneration || editor.isDestroyed) return;
+      if (generationRef.current !== nextGeneration) return;
+      if (editor.isDestroyed) {
+        publish(snapshot('stale', nextGeneration, editor));
+        return;
+      }
       const frozenVerified = Object.freeze(verified);
       let installed = false;
       try {
