@@ -15,6 +15,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 const temporaryRoots: string[] = [];
 
 type FontRegenerationTestMode =
+  | 'duplicate-face'
   | 'empty-css'
   | 'excessive-assets'
   | 'hostile-origin'
@@ -64,6 +65,7 @@ const hostileAsset = 'https://attacker.example.invalid/subset.woff2';
 const trustedAsset = 'https://fonts.gstatic.com/s/notosans/test-subset.woff2';
 const cssAsset = mode === 'hostile-origin' ? hostileAsset : trustedAsset;
 const css = \`@font-face {\n  font-family: 'Noto Sans';\n  font-style: normal;\n  font-weight: 400;\n  src: url(\${cssAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\n@font-face {\n  font-family: 'Noto Sans';\n  font-style: normal;\n  font-weight: 700;\n  src: url(\${cssAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\`;
+const duplicateFaceCss = \`@font-face {\n  font-family: 'Noto Sans';\n  font-style: normal;\n  font-weight: 400;\n  src: url(\${trustedAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\n@font-face {\n  font-family: 'Noto Sans';\n  font-style: normal;\n  font-weight: 400;\n  src: url(\${trustedAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\n@font-face {\n  font-family: 'Noto Sans';\n  font-style: normal;\n  font-weight: 700;\n  src: url(\${trustedAsset}) format('woff2');\n  unicode-range: U+0100-017F;\n}\`;
 const familyDefinitions = [
   ['Noto Sans KR', [400]],
   ['Noto Sans JP', [400]],
@@ -129,6 +131,12 @@ globalThis.fetch = async (input, init) => {
         headers: { 'content-type': 'text/css; charset=utf-8' },
       });
     }
+    if (mode === 'duplicate-face') {
+      return new Response(duplicateFaceCss, {
+        status: 200,
+        headers: { 'content-type': 'text/css; charset=utf-8' },
+      });
+    }
     return new Response(css, {
       status: 200,
       headers: { 'content-type': 'text/css; charset=utf-8' },
@@ -145,7 +153,7 @@ globalThis.fetch = async (input, init) => {
     if (mode === 'redirected-asset' && init?.redirect !== 'error') {
       writeFileSync(contactMarker, 'redirect-followed', 'utf8');
     }
-    if (mode === 'excessive-assets') {
+    if (mode === 'duplicate-face' || mode === 'excessive-assets') {
       writeFileSync(contactMarker, 'contacted', 'utf8');
     }
     trustedAssetRequests += 1;
@@ -281,6 +289,17 @@ describe('font regeneration supply-chain boundary', () => {
   it('rejects excessive font-face expansion before downloading any assets', () => {
     const { contactMarker, existingFontMarker, result } =
       runRegenerator('excessive-assets');
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).not.toBe(0);
+    expect(existsSync(contactMarker)).toBe(false);
+    expect(existsSync(existingFontMarker)).toBe(true);
+    expect(readFileSync(existingFontMarker, 'utf8')).toBe('known-good');
+  });
+
+  it('rejects duplicate font-face metadata before downloading any assets', () => {
+    const { contactMarker, existingFontMarker, result } =
+      runRegenerator('duplicate-face');
 
     expect(result.error).toBeUndefined();
     expect(result.status).not.toBe(0);
