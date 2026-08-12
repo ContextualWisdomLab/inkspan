@@ -197,14 +197,14 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       },
     });
 
-    useEditorHandle(ref, editor, modeRef);
-
     const writingDiagnosticsController = useWritingDiagnosticsController({
       editor,
       diagnostics: writingDiagnostics,
       onAction: onWritingDiagnosticAction,
       onError: onWritingDiagnosticsError,
     });
+
+    useEditorHandle(ref, editor, modeRef, writingDiagnosticsController);
 
     useEffect(() => {
       editor?.setEditable(editable);
