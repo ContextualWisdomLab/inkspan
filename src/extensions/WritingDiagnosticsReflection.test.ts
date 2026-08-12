@@ -1,6 +1,8 @@
 import { Schema } from '@tiptap/pm/model';
 import { EditorState } from '@tiptap/pm/state';
+import { Editor } from '@tiptap/react';
 import { describe, expect, it } from 'vitest';
+import { buildExtensions } from './kit.js';
 import {
   createWritingDiagnosticsPlugin,
   writingDiagnosticsPluginKey,
@@ -44,6 +46,20 @@ function diagnostic(): CwlResolvedWritingDiagnosticDecoration {
   };
 }
 
+/** Apply untrusted transaction metadata without using typed helper functions. */
+function applyInstallCandidate(
+  state: EditorState,
+  candidate: unknown,
+): EditorState {
+  return state.apply(
+    state.tr.setMeta(writingDiagnosticsPluginKey, {
+      type: 'install',
+      generation: 1,
+      diagnostics: [candidate],
+    }),
+  );
+}
+
 describe('WritingDiagnostics hostile reflection failures', () => {
   it('rejects prototype and property-descriptor traps without leaking or throwing', () => {
     let state = stateWithText();
@@ -62,15 +78,45 @@ describe('WritingDiagnostics hostile reflection failures', () => {
 
     for (const candidate of [prototypeTrap, descriptorTrap]) {
       expect(() => {
-        state = state.apply(
-          state.tr.setMeta(writingDiagnosticsPluginKey, {
-            type: 'install',
-            generation: 1,
-            diagnostics: [candidate],
-          }),
-        );
+        state = applyInstallCandidate(state, candidate);
       }).not.toThrow();
       expect(pluginState(state)).toBe(initial);
+    }
+  });
+
+  it('rejects primitive, null, and array diagnostic members as inert metadata', () => {
+    let state = stateWithText();
+    const initial = pluginState(state);
+
+    for (const candidate of ['diagnostic', null, []]) {
+      expect(() => {
+        state = applyInstallCandidate(state, candidate);
+      }).not.toThrow();
+      expect(pluginState(state)).toBe(initial);
+    }
+  });
+
+  it('rejects every invalid focus-command scalar before dispatch', () => {
+    const editor = new Editor({
+      extensions: buildExtensions(),
+      content: '<p>Alpha beta gamma</p>',
+    });
+
+    try {
+      expect(editor.commands.focusWritingDiagnostic(Number.NaN, 'diag')).toBe(false);
+      expect(editor.commands.focusWritingDiagnostic(-1, 'diag')).toBe(false);
+      expect(
+        editor.commands.focusWritingDiagnostic(
+          0,
+          42 as unknown as string,
+        ),
+      ).toBe(false);
+      expect(editor.commands.focusWritingDiagnostic(0, '')).toBe(false);
+      expect(
+        editor.commands.focusWritingDiagnostic(0, 'x'.repeat(257)),
+      ).toBe(false);
+    } finally {
+      editor.destroy();
     }
   });
 });
