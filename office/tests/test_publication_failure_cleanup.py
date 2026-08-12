@@ -50,3 +50,25 @@ def test_write_failure_removes_partial_temporary_output(
 
     assert not output.exists()
     assert not temporary.exists()
+
+
+def test_temporary_creation_failure_is_redacted_without_cleanup_attempt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "customer-private-output.docx"
+
+    def fail_temporary_creation(**_kwargs: object) -> object:
+        raise OSError("private temporary-file creation detail")
+
+    monkeypatch.setattr(safe_renderer, "NamedTemporaryFile", fail_temporary_creation)
+    payload = {
+        "format": "docx",
+        "blocks": [{"type": "paragraph", "text": "confidential document"}],
+    }
+
+    with pytest.raises(OSError, match=r"^output could not be written$") as error:
+        write_office_document(payload, output)
+
+    assert "private temporary-file creation detail" not in str(error.value)
+    assert not output.exists()
