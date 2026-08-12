@@ -66,6 +66,10 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     },
     ref,
   ) {
+    if (typeof editable !== 'boolean') {
+      throw new RangeError('editor editable state must be a boolean when provided');
+    }
+
     const isControlled = value !== undefined;
     const selectedDocumentValue = value ?? defaultValue ?? '';
     const emittingRef = useRef(false);
