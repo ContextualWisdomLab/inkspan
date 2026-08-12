@@ -91,7 +91,8 @@ jobs:
           mv "$package_file" release/
       - name: Install hash-locked Office dependencies
         working-directory: office
-        run: python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt
       - name: Verify Office dependency consistency
         working-directory: office
         run: python -m pip check
