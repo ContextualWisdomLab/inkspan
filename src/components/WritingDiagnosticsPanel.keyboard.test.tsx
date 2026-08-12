@@ -62,6 +62,7 @@ function controller(
     diagnostics,
     digestProvider: null,
     focusDiagnostic: vi.fn(() => true),
+    applyDiagnostic: vi.fn(async () => null),
     ignoreDiagnostic: vi.fn(() => null),
     dismissDiagnostic: vi.fn(() => null),
     requestDiagnosticExplanation: vi.fn(() => null),

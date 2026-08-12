@@ -10,6 +10,7 @@ const emptyController: WritingDiagnosticsController = {
   diagnostics: [],
   digestProvider: null,
   focusDiagnostic: vi.fn(() => false),
+  applyDiagnostic: vi.fn(async () => null),
   ignoreDiagnostic: vi.fn(() => null),
   dismissDiagnostic: vi.fn(() => null),
   requestDiagnosticExplanation: vi.fn(() => null),

@@ -267,6 +267,9 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
             <WritingDiagnosticsPanel
               controller={writingDiagnosticsController}
               label={writingDiagnosticsLabel ?? 'Writing guidance'}
+              onApplyDiagnostic={(diagnosticId) => {
+                void writingDiagnosticsController.applyDiagnostic(diagnosticId);
+              }}
               printEnabled={printWritingDiagnostics}
             />
           )
