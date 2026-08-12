@@ -159,21 +159,30 @@ export function createWritingDiagnosticsPlugin(): Plugin<WritingDiagnosticsPlugi
             : previous;
         }
 
-        const meta = transaction.getMeta(
-          writingDiagnosticsPluginKey,
-        ) as WritingDiagnosticsMeta | undefined;
-        if (meta === undefined) {
+        const rawMeta = transaction.getMeta(writingDiagnosticsPluginKey) as unknown;
+        if (rawMeta === undefined) {
           return previous;
         }
-        if (meta.type === 'clear') {
-          return hasActiveDiagnostics(previous)
-            ? emptyPluginState(previous.generation)
-            : previous;
+        try {
+          if (typeof rawMeta !== 'object' || rawMeta === null) {
+            return previous;
+          }
+          const meta = rawMeta as WritingDiagnosticsMeta;
+          if (meta.type === 'clear') {
+            return hasActiveDiagnostics(previous)
+              ? emptyPluginState(previous.generation)
+              : previous;
+          }
+          if (meta.type === 'focus') {
+            return applyFocusMeta(previous, meta);
+          }
+          if (meta.type === 'install') {
+            return applyInstallMeta(transaction.doc, previous, meta);
+          }
+          return previous;
+        } catch {
+          return previous;
         }
-        if (meta.type === 'focus') {
-          return applyFocusMeta(previous, meta);
-        }
-        return applyInstallMeta(transaction.doc, previous, meta);
       },
     },
     props: {
@@ -332,20 +341,24 @@ function normalizeResolvedDiagnostics(
   documentNode: ProseMirrorNode,
   input: unknown,
 ): readonly CwlResolvedWritingDiagnosticDecoration[] | null {
-  if (!Array.isArray(input) || input.length > MAX_DECORATIONS) {
-    return null;
-  }
-  const result: CwlResolvedWritingDiagnosticDecoration[] = [];
-  const identifiers = new Set<string>();
-  for (const candidate of input) {
-    const normalized = normalizeResolvedDiagnostic(documentNode, candidate);
-    if (normalized === null || identifiers.has(normalized.diagnosticId)) {
+  try {
+    if (!Array.isArray(input) || input.length > MAX_DECORATIONS) {
       return null;
     }
-    identifiers.add(normalized.diagnosticId);
-    result.push(normalized);
+    const result: CwlResolvedWritingDiagnosticDecoration[] = [];
+    const identifiers = new Set<string>();
+    for (const candidate of input) {
+      const normalized = normalizeResolvedDiagnostic(documentNode, candidate);
+      if (normalized === null || identifiers.has(normalized.diagnosticId)) {
+        return null;
+      }
+      identifiers.add(normalized.diagnosticId);
+      result.push(normalized);
+    }
+    return Object.freeze(result);
+  } catch {
+    return null;
   }
-  return Object.freeze(result);
 }
 
 /** Detach one exact resolved diagnostic object. */
