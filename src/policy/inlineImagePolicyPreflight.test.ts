@@ -27,4 +27,13 @@ describe('inline image decoded-size preflight', () => {
       decodeSpy.mockRestore();
     }
   });
+
+  it.each([Number.NaN, -1, 1.5, Number.POSITIVE_INFINITY])(
+    'rejects malformed public byte limit %s instead of weakening the resource policy',
+    (maxSizeBytes) => {
+      expect(() => validateInlineImageSource(OVERSIZED_IMAGE, maxSizeBytes)).toThrowError(
+        new RangeError('inline image byte limit must be a non-negative safe integer'),
+      );
+    },
+  );
 });
