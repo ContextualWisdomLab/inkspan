@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: release-workflow-rac-${{ github.ref }}
@@ -23,6 +24,7 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: true
       - name: Apply exact release workflow repairs
+        id: repair
         run: |
           set -euo pipefail
           python <<'PY'
@@ -30,21 +32,33 @@ jobs:
 
           path = Path('.github/workflows/release.yml')
           source = path.read_text(encoding='utf-8')
-          replacements = (
-              (
-                  "        run: python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt\n",
-                  "        run: |\n          python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt\n",
-              ),
-              (
-                  "              process.stdout.write(url.origin);\n              NODE\n              )\" || {\n",
-                  "              process.stdout.write(url.origin);\n          NODE\n              )\" || {\n",
-              ),
+          invalid_scalar = "        run: python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt\n"
+          repaired_scalar = "        run: |\n          python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt\n"
+          invalid_heredoc = "              process.stdout.write(url.origin);\n              NODE\n              )\" || {\n"
+          repaired_heredoc = "              process.stdout.write(url.origin);\n          NODE\n              )\" || {\n"
+
+          already_repaired = (
+              source.count(repaired_scalar) == 1
+              and source.count(repaired_heredoc) == 1
+              and invalid_scalar not in source
+              and invalid_heredoc not in source
           )
-          for old, new in replacements:
+          if already_repaired:
+              print('release workflow is already repaired')
+              with Path('/tmp/release-repair-state').open('w', encoding='utf-8') as handle:
+                  handle.write('unchanged')
+              raise SystemExit(0)
+
+          for old, new in (
+              (invalid_scalar, repaired_scalar),
+              (invalid_heredoc, repaired_heredoc),
+          ):
               if source.count(old) != 1:
                   raise SystemExit('release workflow did not contain exactly one expected invalid construct')
               source = source.replace(old, new)
           path.write_text(source, encoding='utf-8')
+          with Path('/tmp/release-repair-state').open('w', encoding='utf-8') as handle:
+              handle.write('changed')
           PY
       - name: Verify YAML syntax with the runner's Ruby parser
         run: ruby -e "require 'psych'; Psych.parse_file('.github/workflows/release.yml')"
@@ -60,34 +74,28 @@ jobs:
             "$archive" | sha256sum --check --strict
           mkdir actionlint-bin
           tar -xzf "$archive" -C actionlint-bin actionlint
-      - name: Diagnose actionlint findings
-        id: actionlint
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          if output="$(./actionlint-bin/actionlint -oneline .github/workflows/release.yml 2>&1)"; then
-            exit 0
-          fi
-          while IFS= read -r line; do
-            escaped="${line//'%'/'%25'}"
-            escaped="${escaped//$'\r'/'%0D'}"
-            escaped="${escaped//$'\n'/'%0A'}"
-            echo "::error file=.github/workflows/release.yml,line=1::$escaped"
-          done <<< "$output"
-          exit 1
-      - name: Remove one-shot repair workflow and commit validated repair
-        if: steps.actionlint.outcome == 'success'
+      - name: Validate release workflow with actionlint
+        run: ./actionlint-bin/actionlint -oneline .github/workflows/release.yml
+      - name: Commit only the validated release workflow repair
         env:
           TARGET_BRANCH: fix/release-workflow-parse
         run: |
           set -euo pipefail
-          rm .github/workflows/release-workflow-rac.yml
+          if [[ "$(cat /tmp/release-repair-state)" == 'unchanged' ]]; then
+            echo 'No release workflow change remains to publish.'
+            exit 0
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .github/workflows/release.yml .github/workflows/release-workflow-rac.yml
+          git add .github/workflows/release.yml
           git diff --cached --check
           git commit -m 'fix(ci): make release workflow executable'
-          git push origin "HEAD:${TARGET_BRANCH}"
-      - name: Enforce actionlint validation
-        if: steps.actionlint.outcome != 'success'
-        run: exit 1
+          if output="$(git push origin "HEAD:${TARGET_BRANCH}" 2>&1)"; then
+            printf '%s\n' "$output"
+            exit 0
+          fi
+          escaped="${output//'%'/'%25'}"
+          escaped="${escaped//$'\r'/'%0D'}"
+          escaped="${escaped//$'\n'/'%0A'}"
+          echo "::error file=.github/workflows/release.yml,line=1::$escaped"
+          exit 1
