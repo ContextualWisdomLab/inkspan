@@ -110,6 +110,12 @@ describe('font regeneration metadata policy', () => {
     expectRejectedWithoutReplacingKnownGood(createIsolatedFontRegenerator());
   });
 
+  it('rejects CSS that omits one of the exact requested family weights', () => {
+    expectRejectedWithoutReplacingKnownGood(
+      createIsolatedFontRegenerator({ weight: 400 }),
+    );
+  });
+
   it('rejects invalid CSS unicode-range metadata before publishing the bundle', () => {
     expectRejectedWithoutReplacingKnownGood(
       createIsolatedFontRegenerator({
