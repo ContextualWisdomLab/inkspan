@@ -14,7 +14,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 const temporaryRoots: string[] = [];
 
-type DescriptorMutation = 'family' | 'style' | 'duplicate-family' | 'duplicate-style';
+type DescriptorMutation =
+  | 'family'
+  | 'style'
+  | 'duplicate-family'
+  | 'duplicate-style'
+  | 'duplicate-weight'
+  | 'duplicate-range'
+  | 'duplicate-src';
 
 function createIsolatedFontRegenerator(mutation: DescriptorMutation): {
   root: string;
@@ -46,6 +53,7 @@ function createIsolatedFontRegenerator(mutation: DescriptorMutation): {
     preloadPath,
     `const mutation = ${JSON.stringify(mutation)};
 const trustedAsset = 'https://fonts.gstatic.com/s/notosans/test-subset.woff2';
+const alternateTrustedAsset = 'https://fonts.gstatic.com/s/notosans/alternate-subset.woff2';
 const familyDefinitions = [
   ['Noto Sans KR', [400]],
   ['Noto Sans JP', [400]],
@@ -74,7 +82,16 @@ function cssFor(url) {
     const styleDescriptors = mutation === 'duplicate-style' && family === 'Noto Sans'
       ? 'font-style: normal;\\n  font-style: italic;'
       : \`font-style: \${cssStyle};\`;
-    return \`@font-face {\n  \${familyDescriptors}\n  \${styleDescriptors}\n  font-weight: \${weight};\n  src: url(\${trustedAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\`;
+    const weightDescriptors = mutation === 'duplicate-weight' && family === 'Noto Sans'
+      ? \`font-weight: \${weight};\\n  font-weight: 999;\`
+      : \`font-weight: \${weight};\`;
+    const sourceDescriptors = mutation === 'duplicate-src' && family === 'Noto Sans'
+      ? \`src: url(\${trustedAsset}) format('woff2');\\n  src: url(\${alternateTrustedAsset}) format('woff2');\`
+      : \`src: url(\${trustedAsset}) format('woff2');\`;
+    const rangeDescriptors = mutation === 'duplicate-range' && family === 'Noto Sans'
+      ? 'unicode-range: U+0000-00FF;\\n  unicode-range: U+0100-017F;'
+      : 'unicode-range: U+0000-00FF;';
+    return \`@font-face {\n  \${familyDescriptors}\n  \${styleDescriptors}\n  \${weightDescriptors}\n  \${sourceDescriptors}\n  \${rangeDescriptors}\n}\`;
   }).join('\\n');
 }
 globalThis.fetch = async (input) => {
@@ -85,7 +102,7 @@ globalThis.fetch = async (input) => {
       headers: { 'content-type': 'text/css; charset=utf-8' },
     });
   }
-  if (url === trustedAsset) {
+  if (url === trustedAsset || url === alternateTrustedAsset) {
     return new Response(
       new Uint8Array([0x77, 0x4f, 0x46, 0x32, 0, 0, 0, 0]),
       {
@@ -143,5 +160,17 @@ describe('font regeneration CSS descriptor policy', () => {
 
   it('rejects conflicting duplicate style descriptors instead of trusting the first one', () => {
     expectRejectedWithoutReplacingKnownGood('duplicate-style');
+  });
+
+  it('rejects conflicting duplicate weight descriptors instead of trusting the first one', () => {
+    expectRejectedWithoutReplacingKnownGood('duplicate-weight');
+  });
+
+  it('rejects conflicting duplicate unicode-range descriptors instead of trusting the first one', () => {
+    expectRejectedWithoutReplacingKnownGood('duplicate-range');
+  });
+
+  it('rejects conflicting duplicate source descriptors instead of trusting the first one', () => {
+    expectRejectedWithoutReplacingKnownGood('duplicate-src');
   });
 });
