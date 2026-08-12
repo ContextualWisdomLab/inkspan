@@ -119,6 +119,12 @@ export function EditorFormField({
     };
   }, [formId, name, onFormReset]);
 
+  if (disabled !== undefined && typeof disabled !== 'boolean') {
+    throw new RangeError(
+      'native form field disabled state must be a boolean when provided',
+    );
+  }
+
   if (name === undefined && onFormReset === undefined) return null;
 
   return (
