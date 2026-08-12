@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 const temporaryRoots: string[] = [];
 
-type DescriptorMutation = 'family' | 'style';
+type DescriptorMutation = 'family' | 'style' | 'duplicate-family' | 'duplicate-style';
 
 function createIsolatedFontRegenerator(mutation: DescriptorMutation): {
   root: string;
@@ -68,7 +68,13 @@ function cssFor(url) {
     const cssStyle = mutation === 'style' && family === 'Noto Sans'
       ? 'italic'
       : 'normal';
-    return \`@font-face {\n  font-family: '\${cssFamily}';\n  font-style: \${cssStyle};\n  font-weight: \${weight};\n  src: url(\${trustedAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\`;
+    const familyDescriptors = mutation === 'duplicate-family' && family === 'Noto Sans'
+      ? \`font-family: '\${family}';\\n  font-family: 'Noto Serif';\`
+      : \`font-family: '\${cssFamily}';\`;
+    const styleDescriptors = mutation === 'duplicate-style' && family === 'Noto Sans'
+      ? 'font-style: normal;\\n  font-style: italic;'
+      : \`font-style: \${cssStyle};\`;
+    return \`@font-face {\n  \${familyDescriptors}\n  \${styleDescriptors}\n  font-weight: \${weight};\n  src: url(\${trustedAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\`;
   }).join('\\n');
 }
 globalThis.fetch = async (input) => {
@@ -129,5 +135,13 @@ describe('font regeneration CSS descriptor policy', () => {
 
   it('rejects non-normal CSS style metadata before relabeling the font as normal', () => {
     expectRejectedWithoutReplacingKnownGood('style');
+  });
+
+  it('rejects conflicting duplicate family descriptors instead of trusting the first one', () => {
+    expectRejectedWithoutReplacingKnownGood('duplicate-family');
+  });
+
+  it('rejects conflicting duplicate style descriptors instead of trusting the first one', () => {
+    expectRejectedWithoutReplacingKnownGood('duplicate-style');
   });
 });
