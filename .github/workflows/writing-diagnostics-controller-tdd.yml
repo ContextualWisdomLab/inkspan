@@ -34,6 +34,32 @@ jobs:
       - name: Run revision-bound controller contract tests
         run: pnpm exec vitest run src/components/useWritingDiagnosticsController.test.tsx
       - name: Prove complete owned production coverage
-        run: pnpm coverage
+        shell: bash
+        run: |
+          set +e
+          pnpm exec vitest run --coverage --coverage.reporter=json
+          status=$?
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const report = JSON.parse(fs.readFileSync('coverage/coverage-final.json', 'utf8'));
+          const entry = Object.entries(report).find(([path]) => path.endsWith('/src/components/useWritingDiagnosticsController.ts'));
+          if (!entry) {
+            console.log('::error title=Controller coverage gaps::controller coverage entry missing');
+            process.exit(0);
+          }
+          const [, file] = entry;
+          const statements = Object.entries(file.s).filter(([, count]) => count === 0).map(([id]) => file.statementMap[id].start.line);
+          const functions = Object.entries(file.f).filter(([, count]) => count === 0).map(([id]) => file.fnMap[id].loc.start.line);
+          const branches = [];
+          for (const [id, counts] of Object.entries(file.b)) {
+            counts.forEach((count, index) => {
+              if (count === 0) branches.push(`${file.branchMap[id].loc.start.line}:${index}`);
+            });
+          }
+          if (statements.length || functions.length || branches.length) {
+            console.log(`::error title=Controller coverage gaps::statements=${[...new Set(statements)].join(',')}; functions=${[...new Set(functions)].join(',')}; branches=${branches.join(',')}`);
+          }
+          NODE
+          exit "$status"
       - name: Typecheck controller and public action contracts
         run: pnpm typecheck
