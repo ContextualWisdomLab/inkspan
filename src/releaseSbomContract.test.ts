@@ -11,6 +11,42 @@ function repositoryFile(path: string): string {
 const workflow = repositoryFile('.github/workflows/release.yml');
 
 describe('release SBOM contract', () => {
+  it('signature-verifies the pinned Syft release before generating the SBOM', () => {
+    const cosignIndex = workflow.indexOf('- name: Install Cosign');
+    const syftInstallIndex = workflow.indexOf(
+      '- name: Install signature-verified Syft',
+    );
+    const generationIndex = workflow.indexOf('- name: Generate release SBOM');
+    const validationIndex = workflow.indexOf('- name: Validate release SBOM');
+
+    expect(cosignIndex).toBeGreaterThan(-1);
+    expect(syftInstallIndex).toBeGreaterThan(cosignIndex);
+    expect(generationIndex).toBeGreaterThan(syftInstallIndex);
+    expect(validationIndex).toBeGreaterThan(generationIndex);
+
+    const cosignStep = workflow.slice(cosignIndex, syftInstallIndex);
+    expect(cosignStep).toContain(
+      'sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6',
+    );
+    expect(cosignStep).toContain("cosign-release: 'v3.0.6'");
+
+    const syftInstallStep = workflow.slice(syftInstallIndex, generationIndex);
+    expect(syftInstallStep).toContain(
+      'https://raw.githubusercontent.com/anchore/syft/16223e6dd7893fe578787658ceb876257483d404/install.sh',
+    );
+    expect(syftInstallStep).toContain('DOWNLOAD_TAG_INSTALL_SCRIPT=false');
+    expect(syftInstallStep).toContain(
+      'sh "$syft_installer" -v -b "$RUNNER_TEMP/syft-bin" v1.50.0',
+    );
+    expect(syftInstallStep).toContain('"$RUNNER_TEMP/syft-bin/syft" version');
+
+    const generationStep = workflow.slice(generationIndex, validationIndex);
+    expect(generationStep).not.toContain('anchore/sbom-action@');
+    expect(generationStep).toContain(
+      'syft scan dir:. -o spdx-json > release/inkspan.spdx.json',
+    );
+  });
+
   it('generates and validates one deterministic SPDX JSON SBOM before checksums', () => {
     const generationIndex = workflow.indexOf('- name: Generate release SBOM');
     const validationIndex = workflow.indexOf('- name: Validate release SBOM');
@@ -22,14 +58,8 @@ describe('release SBOM contract', () => {
 
     const generationStep = workflow.slice(generationIndex, validationIndex);
     expect(generationStep).toContain(
-      'anchore/sbom-action@fbfd9c6c189226748411491745178e0c2017392d',
+      'syft scan dir:. -o spdx-json > release/inkspan.spdx.json',
     );
-    expect(generationStep).toContain('path: .');
-    expect(generationStep).toContain('format: spdx-json');
-    expect(generationStep).toContain('output-file: release/inkspan.spdx.json');
-    expect(generationStep).toContain('syft-version: v1.50.0');
-    expect(generationStep).toContain('upload-artifact: false');
-    expect(generationStep).toContain('upload-release-assets: false');
 
     const validationStep = workflow.slice(validationIndex, checksumIndex);
     expect(validationStep).toContain('release/inkspan.spdx.json');
@@ -85,5 +115,16 @@ describe('release SBOM contract', () => {
     expect(verificationStep).toContain(
       '--predicate-type https://spdx.dev/Document/v2.3',
     );
+  });
+
+  it('documents the four-asset release and SBOM digest-verification boundary', () => {
+    const releaseSecurity = repositoryFile('docs/release-security.md');
+
+    expect(releaseSecurity).toContain('inkspan.spdx.json');
+    expect(releaseSecurity).toContain(
+      'exactly one npm `*.tgz`, one Office `*.whl`, `inkspan.spdx.json`, and `SHA256SUMS`',
+    );
+    expect(releaseSecurity).toContain('SBOM digest');
+    expect(releaseSecurity).toContain('signature-verified Syft');
   });
 });
