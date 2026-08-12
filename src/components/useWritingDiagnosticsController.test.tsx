@@ -445,7 +445,9 @@ describe('useWritingDiagnosticsController', () => {
     expect(JSON.stringify(actionResult)).not.toContain('Host title');
     expect(JSON.stringify(actionResult)).not.toContain('Host explanation');
     expect(JSON.stringify(actionResult)).not.toContain('Omega');
-    expect(pluginDiagnostics(editor)).toEqual([]);
+    expect(pluginDiagnostics(editor)).toEqual([
+      expect.objectContaining({ diagnosticId: 'diag-1' }),
+    ]);
     expect(result.current.status).toBe('active');
   });
 });
