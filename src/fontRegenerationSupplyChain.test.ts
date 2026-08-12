@@ -16,6 +16,7 @@ const temporaryRoots: string[] = [];
 
 type FontRegenerationTestMode =
   | 'empty-css'
+  | 'excessive-assets'
   | 'hostile-origin'
   | 'invalid-css'
   | 'invalid-font'
@@ -63,6 +64,28 @@ const hostileAsset = 'https://attacker.example.invalid/subset.woff2';
 const trustedAsset = 'https://fonts.gstatic.com/s/notosans/test-subset.woff2';
 const cssAsset = mode === 'hostile-origin' ? hostileAsset : trustedAsset;
 const css = \`@font-face {\n  font-family: 'Noto Sans';\n  font-style: normal;\n  font-weight: 400;\n  src: url(\${cssAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\n@font-face {\n  font-family: 'Noto Sans';\n  font-style: normal;\n  font-weight: 700;\n  src: url(\${cssAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\`;
+const familyDefinitions = [
+  ['Noto Sans KR', [400]],
+  ['Noto Sans JP', [400]],
+  ['Noto Sans SC', [400]],
+  ['Noto Sans TC', [400]],
+  ['Noto Sans', [400, 700]],
+];
+function excessiveCssFor(url) {
+  const request = new URL(url).searchParams.get('family') ?? '';
+  const definition = familyDefinitions.find(([family]) =>
+    request.startsWith(\`${'${family}'}:wght@\`),
+  );
+  if (!definition) throw new Error('unexpected family request');
+  const [family, weights] = definition;
+  const faceCount = family === 'Noto Sans' ? 513 : 1;
+  return Array.from({ length: faceCount }, (_, index) => {
+    const weight = family === 'Noto Sans' && index === faceCount - 1
+      ? 700
+      : weights[0];
+    return \`@font-face {\n  font-family: '\${family}';\n  font-style: normal;\n  font-weight: \${weight};\n  src: url(\${trustedAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\`;
+  }).join('\\n');
+}
 let trustedAssetRequests = 0;
 globalThis.fetch = async (input, init) => {
   const url = String(input);
@@ -100,6 +123,12 @@ globalThis.fetch = async (input, init) => {
         },
       };
     }
+    if (mode === 'excessive-assets') {
+      return new Response(excessiveCssFor(url), {
+        status: 200,
+        headers: { 'content-type': 'text/css; charset=utf-8' },
+      });
+    }
     return new Response(css, {
       status: 200,
       headers: { 'content-type': 'text/css; charset=utf-8' },
@@ -115,6 +144,9 @@ globalThis.fetch = async (input, init) => {
   if (url === trustedAsset) {
     if (mode === 'redirected-asset' && init?.redirect !== 'error') {
       writeFileSync(contactMarker, 'redirect-followed', 'utf8');
+    }
+    if (mode === 'excessive-assets') {
+      writeFileSync(contactMarker, 'contacted', 'utf8');
     }
     trustedAssetRequests += 1;
     if (mode === 'midstream-failure' && trustedAssetRequests === 2) {
@@ -242,6 +274,17 @@ describe('font regeneration supply-chain boundary', () => {
     expect(result.error).toBeUndefined();
     expect(result.status).not.toBe(0);
     expect(existsSync(cssReadMarker)).toBe(false);
+    expect(existsSync(existingFontMarker)).toBe(true);
+    expect(readFileSync(existingFontMarker, 'utf8')).toBe('known-good');
+  });
+
+  it('rejects excessive font-face expansion before downloading any assets', () => {
+    const { contactMarker, existingFontMarker, result } =
+      runRegenerator('excessive-assets');
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).not.toBe(0);
+    expect(existsSync(contactMarker)).toBe(false);
     expect(existsSync(existingFontMarker)).toBe(true);
     expect(readFileSync(existingFontMarker, 'utf8')).toBe('known-good');
   });
