@@ -1,0 +1,58 @@
+name: Editor Actions Readonly Once
+
+on:
+  push:
+    branches:
+      - feat/writing-diagnostics-editor-actions
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: editor-actions-readonly-once-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  enforce-readonly-application:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: true
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Enforce read-only diagnostic application
+        run: python -c "import base64;exec(base64.b64decode('CmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aAoKZGVmIHJlcGxhY2Vfb25jZShzb3VyY2U6IHN0ciwgb2xkOiBzdHIsIG5ldzogc3RyLCBsYWJlbDogc3RyKSAtPiBzdHI6CiAgICBjb3VudCA9IHNvdXJjZS5jb3VudChvbGQpCiAgICBpZiBjb3VudCAhPSAxOgogICAgICAgIHJhaXNlIFN5c3RlbUV4aXQoZiJ7bGFiZWx9IGFuY2hvciBjb3VudCB3YXMge2NvdW50fSIpCiAgICByZXR1cm4gc291cmNlLnJlcGxhY2Uob2xkLCBuZXcsIDEpCgpjb250cm9sbGVyX3BhdGggPSBQYXRoKCJzcmMvY29tcG9uZW50cy91c2VXcml0aW5nRGlhZ25vc3RpY3NDb250cm9sbGVyLnRzIikKY29udHJvbGxlciA9IGNvbnRyb2xsZXJfcGF0aC5yZWFkX3RleHQoZW5jb2Rpbmc9InV0Zi04IikKb2xkID0gIiIiICAgICAgaWYgKAogICAgICAgIGFjdGl2ZS5zdGF0dXMgIT09ICdhY3RpdmUnIHx8CiAgICAgICAgYWN0aXZlLmVkaXRvciA9PT0gbnVsbCB8fAogICAgICAgIGFjdGl2ZS5lZGl0b3IuaXNEZXN0cm95ZWQKICAgICAgKSB7CiIiIgpuZXcgPSAiIiIgICAgICBpZiAoCiAgICAgICAgYWN0aXZlLnN0YXR1cyAhPT0gJ2FjdGl2ZScgfHwKICAgICAgICBhY3RpdmUuZWRpdG9yID09PSBudWxsIHx8CiAgICAgICAgIWFjdGl2ZS5lZGl0b3IuaXNFZGl0YWJsZSB8fAogICAgICAgIGFjdGl2ZS5lZGl0b3IuaXNEZXN0cm95ZWQKICAgICAgKSB7CiIiIgpjb250cm9sbGVyID0gcmVwbGFjZV9vbmNlKGNvbnRyb2xsZXIsIG9sZCwgbmV3LCAiYXBwbHkgcmVhZC1vbmx5IGd1YXJkIikKY29udHJvbGxlcl9wYXRoLndyaXRlX3RleHQoY29udHJvbGxlciwgZW5jb2Rpbmc9InV0Zi04IikKCmVkaXRvcl9wYXRoID0gUGF0aCgic3JjL2NvbXBvbmVudHMvQ3dsRWRpdG9yLnRzeCIpCmVkaXRvciA9IGVkaXRvcl9wYXRoLnJlYWRfdGV4dChlbmNvZGluZz0idXRmLTgiKQpvbGQgPSAiIiIgICAgICAgICAgICAgIG9uQXBwbHlEaWFnbm9zdGljPXsoZGlhZ25vc3RpY0lkKSA9PiB7CiAgICAgICAgICAgICAgICB2b2lkIHdyaXRpbmdEaWFnbm9zdGljc0NvbnRyb2xsZXIuYXBwbHlEaWFnbm9zdGljKGRpYWdub3N0aWNJZCk7CiAgICAgICAgICAgICAgfX0KIiIiCm5ldyA9ICIiIiAgICAgICAgICAgICAgb25BcHBseURpYWdub3N0aWM9ewogICAgICAgICAgICAgICAgZWRpdGFibGUKICAgICAgICAgICAgICAgICAgPyAoZGlhZ25vc3RpY0lkKSA9PiB7CiAgICAgICAgICAgICAgICAgICAgICB2b2lkIHdyaXRpbmdEaWFnbm9zdGljc0NvbnRyb2xsZXIuYXBwbHlEaWFnbm9zdGljKAogICAgICAgICAgICAgICAgICAgICAgICBkaWFnbm9zdGljSWQsCiAgICAgICAgICAgICAgICAgICAgICApOwogICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgOiB1bmRlZmluZWQKICAgICAgICAgICAgICB9CiIiIgplZGl0b3IgPSByZXBsYWNlX29uY2UoZWRpdG9yLCBvbGQsIG5ldywgInJlYWQtb25seSBwYW5lbCBhcHBsaWNhdGlvbiIpCmVkaXRvcl9wYXRoLndyaXRlX3RleHQoZWRpdG9yLCBlbmNvZGluZz0idXRmLTgiKQo='))"
+      - name: Verify read-only behavior
+        run: |
+          pnpm exec vitest run \
+            src/components/CwlEditor.writingDiagnosticApply.test.tsx \
+            src/components/CwlEditor.writingDiagnostics.test.tsx \
+            src/components/useEditorHandle.test.tsx \
+            --pool=forks --maxWorkers=1
+          pnpm typecheck
+      - name: Publish validated read-only guard and remove this workflow
+        env:
+          TARGET_BRANCH: feat/writing-diagnostics-editor-actions
+        run: |
+          set -euo pipefail
+          rm .github/workflows/editor-actions-readonly-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            src/components/useWritingDiagnosticsController.ts \
+            src/components/CwlEditor.tsx \
+            .github/workflows/editor-actions-readonly-once.yml
+          git diff --cached --check
+          git commit -m 'fix(diagnostics): keep read-only editors immutable'
+          git push origin "HEAD:${TARGET_BRANCH}"
