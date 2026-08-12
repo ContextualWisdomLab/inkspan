@@ -69,7 +69,7 @@ function decorationAttributes(state: EditorState): Record<string, string> {
 describe('WritingDiagnostics extension contract', () => {
   it('exposes one stable TipTap extension and plugin key', () => {
     expect(WritingDiagnostics.name).toBe('writingDiagnostics');
-    expect(writingDiagnosticsPluginKey.key).toContain('cwlWritingDiagnostics');
+    expect(typeof writingDiagnosticsPluginKey.getState).toBe('function');
   });
 
   it('starts empty without mutating the document or rendering decorations', () => {

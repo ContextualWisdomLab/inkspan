@@ -192,24 +192,24 @@ export const WritingDiagnostics = Extension.create({
     return {
       installWritingDiagnostics:
         (generation, diagnostics) =>
-        ({ transaction, dispatch }) => {
+        ({ tr, dispatch }) => {
           if (
             !Number.isSafeInteger(generation) ||
             generation < 0 ||
-            normalizeResolvedDiagnostics(transaction.doc, diagnostics) === null
+            normalizeResolvedDiagnostics(tr.doc, diagnostics) === null
           ) {
             return false;
           }
           if (dispatch) {
             dispatch(
-              installWritingDiagnostics(transaction, generation, diagnostics),
+              installWritingDiagnostics(tr, generation, diagnostics),
             );
           }
           return true;
         },
       focusWritingDiagnostic:
         (generation, diagnosticId) =>
-        ({ transaction, dispatch }) => {
+        ({ tr, dispatch }) => {
           if (
             !Number.isSafeInteger(generation) ||
             generation < 0 ||
@@ -221,16 +221,16 @@ export const WritingDiagnostics = Extension.create({
           }
           if (dispatch) {
             dispatch(
-              focusWritingDiagnostic(transaction, generation, diagnosticId),
+              focusWritingDiagnostic(tr, generation, diagnosticId),
             );
           }
           return true;
         },
       clearWritingDiagnostics:
         () =>
-        ({ transaction, dispatch }) => {
+        ({ tr, dispatch }) => {
           if (dispatch) {
-            dispatch(clearWritingDiagnostics(transaction));
+            dispatch(clearWritingDiagnostics(tr));
           }
           return true;
         },
