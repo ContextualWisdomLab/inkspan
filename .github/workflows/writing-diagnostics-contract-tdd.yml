@@ -31,7 +31,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Run focused contract regressions with exact coverage
+      - name: Collect focused contract coverage
+        id: focused_coverage
+        continue-on-error: true
         run: >-
           pnpm exec vitest run
           src/writingDiagnostics.test.ts
@@ -39,6 +41,81 @@ jobs:
           --coverage
           --coverage.include=src/writingDiagnostics.ts
           --coverage.reporter=text
+          --coverage.reporter=json
           --coverage.reporter=json-summary
+      - name: Report and enforce exact contract coverage
+        run: |
+          node <<'NODE'
+          const { readFileSync } = require('node:fs');
+          const coverage = JSON.parse(readFileSync('coverage/coverage-final.json', 'utf8'));
+          const [filePath, fileCoverage] = Object.entries(coverage).find(
+            ([candidate]) => candidate.endsWith('/src/writingDiagnostics.ts'),
+          ) ?? [];
+          if (!filePath || !fileCoverage) {
+            console.error('::error file=src/writingDiagnostics.ts,line=1::Focused coverage record is missing.');
+            process.exit(1);
+          }
+
+          const missingStatementLines = [...new Set(
+            Object.entries(fileCoverage.s)
+              .filter(([, count]) => count === 0)
+              .map(([id]) => fileCoverage.statementMap[id].start.line),
+          )].sort((a, b) => a - b);
+          const missingFunctionLines = [...new Set(
+            Object.entries(fileCoverage.f)
+              .filter(([, count]) => count === 0)
+              .map(([id]) => fileCoverage.fnMap[id].decl.start.line),
+          )].sort((a, b) => a - b);
+          const missingBranches = [];
+          for (const [id, counts] of Object.entries(fileCoverage.b)) {
+            counts.forEach((count, index) => {
+              if (count === 0) {
+                const branch = fileCoverage.branchMap[id];
+                const location = branch.locations?.[index] ?? branch.loc;
+                missingBranches.push(`${location.start.line}:${index}`);
+              }
+            });
+          }
+
+          const total = (values) => Object.values(values).reduce(
+            (sum, value) => sum + (Array.isArray(value) ? value.length : 1),
+            0,
+          );
+          const covered = (values) => Object.values(values).reduce(
+            (sum, value) => sum + (Array.isArray(value)
+              ? value.filter((count) => count > 0).length
+              : Number(value > 0)),
+            0,
+          );
+          const statementTotal = total(fileCoverage.s);
+          const statementCovered = covered(fileCoverage.s);
+          const functionTotal = total(fileCoverage.f);
+          const functionCovered = covered(fileCoverage.f);
+          const branchTotal = total(fileCoverage.b);
+          const branchCovered = covered(fileCoverage.b);
+          console.log(
+            `::notice file=src/writingDiagnostics.ts,line=1::` +
+            `Statements ${statementCovered}/${statementTotal}; ` +
+            `functions ${functionCovered}/${functionTotal}; ` +
+            `branches ${branchCovered}/${branchTotal}.`,
+          );
+
+          if (
+            missingStatementLines.length ||
+            missingFunctionLines.length ||
+            missingBranches.length ||
+            process.env.FOCUSED_COVERAGE_OUTCOME !== 'success'
+          ) {
+            console.error(
+              `::error file=src/writingDiagnostics.ts,line=1::` +
+              `Missing statement lines: ${missingStatementLines.join(', ') || 'none'}; ` +
+              `missing function lines: ${missingFunctionLines.join(', ') || 'none'}; ` +
+              `missing branches line:index: ${missingBranches.join(', ') || 'none'}.`,
+            );
+            process.exit(1);
+          }
+          NODE
+        env:
+          FOCUSED_COVERAGE_OUTCOME: ${{ steps.focused_coverage.outcome }}
       - name: Typecheck public source contracts
         run: pnpm typecheck
