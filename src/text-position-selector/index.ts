@@ -1,9 +1,9 @@
 /**
  * React-free W3C text-position selector projection surface.
  *
- * This subpath exposes only deterministic projection primitives. Interactive
- * editor-handle capture and exact revision binding remain on the root Inkspan
- * editor contract.
+ * This subpath exposes deterministic forward and inverse projection primitives.
+ * Interactive editor-handle capture and exact revision binding remain on the
+ * root Inkspan editor contract.
  */
 export {
   TEXT_POSITION_PROJECTION_ID,
@@ -16,3 +16,12 @@ export type {
   CwlEditorTextProjectionIdentity,
   TextPositionSelectorEvidenceErrorCode,
 } from '../textPositionSelectorEvidence.js';
+export {
+  WritingDiagnosticProjectionError,
+  buildTextProjectionMap,
+  resolveTextPositionSelector,
+} from '../writingDiagnosticProjection.js';
+export type {
+  CwlWritingDiagnosticTextProjectionMap,
+  WritingDiagnosticProjectionErrorCode,
+} from '../writingDiagnosticProjection.js';
