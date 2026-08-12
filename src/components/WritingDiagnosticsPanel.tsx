@@ -11,6 +11,8 @@ export interface WritingDiagnosticsPanelProps {
   readonly onApplyDiagnostic?: (diagnosticId: string) => void;
   /** Host-supplied, already-redacted conflict text announced assertively. */
   readonly conflictMessage?: string;
+  /** Include a compact diagnostic appendix in print output when explicitly enabled. */
+  readonly printEnabled?: boolean;
 }
 
 /**
@@ -24,6 +26,7 @@ export function WritingDiagnosticsPanel({
   label,
   onApplyDiagnostic,
   conflictMessage,
+  printEnabled = false,
 }: WritingDiagnosticsPanelProps) {
   const diagnostics = controller.diagnostics;
   const [activeDiagnosticId, setActiveDiagnosticId] = useState<string | null>(
@@ -52,6 +55,7 @@ export function WritingDiagnosticsPanel({
     <section
       aria-label={label}
       className="cwl-writing-diagnostics"
+      data-print-enabled={printEnabled ? 'true' : undefined}
       role="region"
     >
       <div className="cwl-writing-diagnostics__header">
