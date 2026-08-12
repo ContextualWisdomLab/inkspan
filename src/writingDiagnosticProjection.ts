@@ -296,10 +296,5 @@ function readExactDataObject<K extends string>(
       writable: true,
     });
   }
-  for (const field of expectedFields) {
-    if (!Object.prototype.hasOwnProperty.call(result, field)) {
-      throw new WritingDiagnosticProjectionError(errorCode);
-    }
-  }
   return result;
 }
