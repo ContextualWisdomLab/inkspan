@@ -1,6 +1,7 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Selection } from '@tiptap/pm/state';
 import type { CwlEditorDocumentRevision } from './documentEnvelopeRevision.js';
+import { classifyGraphemeBoundary } from './graphemeBoundary.js';
 
 /** Stable identity of Inkspan's first W3C-compatible logical text projection. */
 export const TEXT_POSITION_PROJECTION_ID = 'inkspan-prosemirror-text' as const;
@@ -60,21 +61,6 @@ export class TextPositionSelectorEvidenceError extends Error {
   }
 }
 
-interface GraphemeSegment {
-  readonly index: number;
-}
-
-interface GraphemeSegmenter {
-  segment(input: string): Iterable<GraphemeSegment>;
-}
-
-interface GraphemeSegmenterConstructor {
-  new (
-    locales?: string | readonly string[],
-    options?: { readonly granularity: 'grapheme' },
-  ): GraphemeSegmenter;
-}
-
 /** Project a prefix of one ProseMirror document under the versioned v1 rules. */
 function projectDocumentPrefix(documentNode: ProseMirrorNode, to: number): string {
   return documentNode.textBetween(0, to, BLOCK_SEPARATOR, LEAF_TEXT);
@@ -87,20 +73,11 @@ function codePointLength(value: string): number {
 
 /** Require a position to coincide with a Unicode grapheme-cluster boundary. */
 function assertGraphemeBoundary(text: string, codeUnitOffset: number): void {
-  const Segmenter = (
-    Intl as unknown as { Segmenter?: GraphemeSegmenterConstructor }
-  ).Segmenter;
-  if (typeof Segmenter !== 'function') {
+  const boundaryState = classifyGraphemeBoundary(text, codeUnitOffset);
+  if (boundaryState === 'unavailable') {
     throw new TextPositionSelectorEvidenceError('segmenter_unavailable');
   }
-
-  const boundaries = new Set<number>([0, text.length]);
-  for (const segment of new Segmenter(undefined, { granularity: 'grapheme' }).segment(
-    text,
-  )) {
-    boundaries.add(segment.index);
-  }
-  if (!boundaries.has(codeUnitOffset)) {
+  if (boundaryState !== 'boundary') {
     throw new TextPositionSelectorEvidenceError('grapheme_boundary');
   }
 }
