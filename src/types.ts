@@ -13,6 +13,11 @@ import type {
   ClipboardConfig,
   ClipboardSanitizationError,
 } from './extensions/SafeClipboard.js';
+import type {
+  CwlWritingDiagnostic,
+  WritingDiagnosticError,
+} from './writingDiagnostics.js';
+import type { CwlWritingDiagnosticActionEvent } from './components/useWritingDiagnosticsController.js';
 
 /** Which document surface the editor reads from and writes to. */
 export type EditorMode = 'markdown' | 'html';
@@ -375,4 +380,16 @@ export interface CwlEditorProps {
   ariaInvalid?: boolean | 'grammar' | 'spelling';
   /** Whether the host form requires editor input before submission. */
   ariaRequired?: boolean;
+  /** Host-supplied diagnostics already produced by a trusted external reviewer. */
+  writingDiagnostics?: readonly CwlWritingDiagnostic[];
+  /** Privacy-minimized observer for explicit diagnostic actions. */
+  onWritingDiagnosticAction?: (
+    event: CwlWritingDiagnosticActionEvent,
+  ) => void;
+  /** Redacted observer for structural verification failures. */
+  onWritingDiagnosticsError?: (error: WritingDiagnosticError) => void;
+  /** Accessible name for the built-in writing-guidance region. */
+  writingDiagnosticsLabel?: string;
+  /** Include a compact diagnostic appendix in printed output. */
+  printWritingDiagnostics?: boolean;
 }
