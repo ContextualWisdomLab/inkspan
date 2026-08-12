@@ -37,6 +37,7 @@ jobs:
           src/collaboration/CollaborativeCwlEditor.writingDiagnostics.test.tsx
           src/collaboration/CollaborativeCwlEditor.writingDiagnostics.race.test.tsx
           src/collaboration/CollaborativeCwlEditor.writingDiagnostics.coverage.test.tsx
+          src/collaboration/CollaborativeCwlEditor.writingDiagnostics.boundary.test.tsx
           --pool=forks
           --maxWorkers=1
       - name: Typecheck collaborative writing-diagnostic contracts
