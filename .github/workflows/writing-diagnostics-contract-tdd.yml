@@ -31,5 +31,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Run focused contract regression
-        run: pnpm exec vitest run src/writingDiagnostics.test.ts
+      - name: Run focused contract regressions
+        run: >-
+          pnpm exec vitest run
+          src/writingDiagnostics.test.ts
+          src/writingDiagnosticsExports.test.ts
+      - name: Typecheck public source contracts
+        run: pnpm typecheck
