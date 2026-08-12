@@ -1,0 +1,173 @@
+name: Editor Actions Handle Once
+
+on:
+  push:
+    branches:
+      - feat/writing-diagnostics-editor-actions
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: editor-actions-handle-once-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  wire-imperative-actions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: true
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Wire public imperative diagnostic actions
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_once(source: str, old: str, new: str, label: str) -> str:
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label} anchor count was {count}')
+              return source.replace(old, new, 1)
+
+          types_path = Path('src/types.ts')
+          types = types_path.read_text(encoding='utf-8')
+          old = """  insertDocumentJson(documentJson: JSONContent | JSONContent[]): void;
+  /** Empty the document. */
+"""
+          new = """  insertDocumentJson(documentJson: JSONContent | JSONContent[]): void;
+  /** Focus the exact current range for one active writing diagnostic. */
+  focusWritingDiagnostic(diagnosticId: string): boolean;
+  /**
+   * Apply one active diagnostic only after exact-current-revision verification.
+   * Ordinary stale and conflict outcomes resolve to a typed event or `null`.
+   */
+  applyWritingDiagnostic(
+    diagnosticId: string,
+  ): Promise<CwlWritingDiagnosticActionEvent | null>;
+  /** Report an explicit ignore action without mutating authored content. */
+  ignoreWritingDiagnostic(
+    diagnosticId: string,
+  ): CwlWritingDiagnosticActionEvent | null;
+  /** Remove one diagnostic from local presentation without editing the document. */
+  dismissWritingDiagnostic(
+    diagnosticId: string,
+  ): CwlWritingDiagnosticActionEvent | null;
+  /** Request an explanation through the host-owned action callback contract. */
+  requestWritingDiagnosticExplanation(
+    diagnosticId: string,
+  ): CwlWritingDiagnosticActionEvent | null;
+  /** Empty the document. */
+"""
+          types = replace_once(types, old, new, 'handle type methods')
+          types_path.write_text(types, encoding='utf-8')
+
+          handle_path = Path('src/components/useEditorHandle.ts')
+          handle = handle_path.read_text(encoding='utf-8')
+          old = """import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
+"""
+          new = old + """import type { WritingDiagnosticsController } from './useWritingDiagnosticsController.js';
+"""
+          handle = replace_once(handle, old, new, 'handle controller import')
+          old = """  editor: Editor | null,
+  modeRef: MutableRefObject<EditorMode>,
+): void {
+"""
+          new = """  editor: Editor | null,
+  modeRef: MutableRefObject<EditorMode>,
+  writingDiagnosticsController?: WritingDiagnosticsController | null,
+): void {
+"""
+          handle = replace_once(handle, old, new, 'handle signature')
+          old = """      insertDocumentJson: (documentJson) => {
+        if (!editor) return;
+        editor.chain().focus().insertContent(documentJson).run();
+      },
+      clear: () => {
+"""
+          new = """      insertDocumentJson: (documentJson) => {
+        if (!editor) return;
+        editor.chain().focus().insertContent(documentJson).run();
+      },
+      focusWritingDiagnostic: (diagnosticId) =>
+        writingDiagnosticsController?.focusDiagnostic(diagnosticId) ?? false,
+      applyWritingDiagnostic: (diagnosticId) =>
+        writingDiagnosticsController?.applyDiagnostic(diagnosticId) ??
+        Promise.resolve(null),
+      ignoreWritingDiagnostic: (diagnosticId) =>
+        writingDiagnosticsController?.ignoreDiagnostic(diagnosticId) ?? null,
+      dismissWritingDiagnostic: (diagnosticId) =>
+        writingDiagnosticsController?.dismissDiagnostic(diagnosticId) ?? null,
+      requestWritingDiagnosticExplanation: (diagnosticId) =>
+        writingDiagnosticsController?.requestDiagnosticExplanation(diagnosticId) ??
+        null,
+      clear: () => {
+"""
+          handle = replace_once(handle, old, new, 'handle action methods')
+          old = """    [editor, modeRef],
+"""
+          new = """    [editor, modeRef, writingDiagnosticsController],
+"""
+          handle = replace_once(handle, old, new, 'handle dependencies')
+          handle_path.write_text(handle, encoding='utf-8')
+
+          editor_path = Path('src/components/CwlEditor.tsx')
+          editor = editor_path.read_text(encoding='utf-8')
+          old = """    useEditorHandle(ref, editor, modeRef);
+
+    const writingDiagnosticsController = useWritingDiagnosticsController({
+      editor,
+      diagnostics: writingDiagnostics,
+      onAction: onWritingDiagnosticAction,
+      onError: onWritingDiagnosticsError,
+    });
+"""
+          new = """    const writingDiagnosticsController = useWritingDiagnosticsController({
+      editor,
+      diagnostics: writingDiagnostics,
+      onAction: onWritingDiagnosticAction,
+      onError: onWritingDiagnosticsError,
+    });
+
+    useEditorHandle(ref, editor, modeRef, writingDiagnosticsController);
+"""
+          editor = replace_once(editor, old, new, 'editor handle wiring')
+          editor_path.write_text(editor, encoding='utf-8')
+          PY
+      - name: Verify imperative diagnostic actions
+        run: |
+          pnpm exec vitest run \
+            src/components/useEditorHandle.test.tsx \
+            src/components/CwlEditor.writingDiagnostics.test.tsx \
+            src/components/CwlEditor.writingDiagnosticApply.test.tsx \
+            src/components/useWritingDiagnosticsController.apply.test.tsx \
+            --pool=forks --maxWorkers=1
+          pnpm typecheck
+      - name: Publish validated handle wiring and remove this workflow
+        env:
+          TARGET_BRANCH: feat/writing-diagnostics-editor-actions
+        run: |
+          set -euo pipefail
+          rm .github/workflows/editor-actions-handle-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            src/types.ts \
+            src/components/useEditorHandle.ts \
+            src/components/CwlEditor.tsx \
+            .github/workflows/editor-actions-handle-once.yml
+          git diff --cached --check
+          git commit -m 'feat(diagnostics): expose imperative editor actions'
+          git push origin "HEAD:${TARGET_BRANCH}"
