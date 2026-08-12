@@ -201,15 +201,7 @@ export function validateWritingDiagnostics(
   input: unknown,
   limits?: WritingDiagnosticLimits,
 ): readonly CwlWritingDiagnostic[] {
-  const resolvedLimits = resolveLimits(limits);
-  try {
-    return validateWritingDiagnosticsWithLimits(input, resolvedLimits);
-  } catch (error) {
-    if (error instanceof WritingDiagnosticError) {
-      throw error;
-    }
-    throw new WritingDiagnosticError('contract');
-  }
+  return validateWritingDiagnosticsWithLimits(input, resolveLimits(limits));
 }
 
 function validateWritingDiagnosticsWithLimits(
@@ -420,7 +412,10 @@ function validateProvenance(
 }
 
 function validatePriority(value: unknown): CwlWritingDiagnosticPriority {
-  if (typeof value !== 'string' || !PRIORITIES.has(value as CwlWritingDiagnosticPriority)) {
+  if (
+    typeof value !== 'string' ||
+    !PRIORITIES.has(value as CwlWritingDiagnosticPriority)
+  ) {
     throw new WritingDiagnosticError('contract');
   }
   return value as CwlWritingDiagnosticPriority;
@@ -582,20 +577,6 @@ function validateDenseExactArray(value: unknown[], length: number): void {
   }
   for (let index = 0; index < length; index += 1) {
     if (!keys.includes(String(index))) {
-      throw new WritingDiagnosticError('contract');
-    }
-  }
-  for (const key of keys) {
-    if (key === 'length') {
-      continue;
-    }
-    if (
-      typeof key !== 'string' ||
-      !Number.isSafeInteger(Number(key)) ||
-      String(Number(key)) !== key ||
-      Number(key) < 0 ||
-      Number(key) >= length
-    ) {
       throw new WritingDiagnosticError('contract');
     }
   }
