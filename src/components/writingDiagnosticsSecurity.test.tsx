@@ -138,7 +138,10 @@ describe('writing diagnostics security and semantic-authority boundary', () => {
       ),
     );
     expect(onAction).toHaveBeenCalledTimes(1);
-    expect(document.querySelector('script[src="x"]')).toBeNull();
+    expect(document.querySelector('img[src="x"]')).toBeNull();
+    expect(
+      screen.getByText('<img src=x onerror=alert(1)> explanation'),
+    ).toBeVisible();
     expect(screen.queryByText('HOST_CALLBACK_SECRET')).toBeNull();
   });
 });
