@@ -50,9 +50,23 @@ jobs:
             "$archive" | sha256sum --check --strict
           mkdir actionlint-bin
           tar -xzf "$archive" -C actionlint-bin actionlint
-      - name: Validate the release workflow with actionlint
-        run: ./actionlint-bin/actionlint -oneline .github/workflows/release.yml
+      - name: Diagnose actionlint findings
+        id: actionlint
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          if output="$(./actionlint-bin/actionlint -oneline .github/workflows/release.yml 2>&1)"; then
+            exit 0
+          fi
+          while IFS= read -r line; do
+            escaped="${line//'%'/'%25'}"
+            escaped="${escaped//$'\r'/'%0D'}"
+            escaped="${escaped//$'\n'/'%0A'}"
+            echo "::error file=.github/workflows/release.yml,line=1::$escaped"
+          done <<< "$output"
+          exit 1
       - name: Remove one-shot repair workflow and commit validated repair
+        if: steps.actionlint.outcome == 'success'
         env:
           TARGET_BRANCH: fix/release-workflow-parse
         run: |
@@ -64,3 +78,6 @@ jobs:
           git diff --cached --check
           git commit -m 'fix(ci): quote release dependency command safely'
           git push origin "HEAD:${TARGET_BRANCH}"
+      - name: Enforce actionlint validation
+        if: steps.actionlint.outcome != 'success'
+        run: exit 1
