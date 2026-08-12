@@ -96,6 +96,11 @@ export function buildTextProjectionMap(
   };
 
   documentNode.descendants((node, position) => {
+    if (!separated && node.isBlock) {
+      appendProjectedCodePoint(BLOCK_SEPARATOR);
+      separated = true;
+    }
+
     if (node.isText) {
       const text = node.text ?? '';
       let codeUnitOffset = 0;
@@ -117,10 +122,6 @@ export function buildTextProjectionMap(
       return false;
     }
 
-    if (!separated && node.isBlock) {
-      appendProjectedCodePoint(BLOCK_SEPARATOR);
-      separated = true;
-    }
     if (node.inlineContent) {
       addBoundaryCandidate(position + 1);
     }
