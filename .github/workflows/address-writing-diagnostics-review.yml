@@ -1,0 +1,328 @@
+name: Address Writing Diagnostics Review
+
+on:
+  push:
+    branches:
+      - feat/writing-diagnostics-assurance
+    paths:
+      - .github/workflows/address-writing-diagnostics-review.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: address-writing-diagnostics-review
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: feat/writing-diagnostics-assurance
+          fetch-depth: 0
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Apply verified review fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          security_path = Path('src/components/writingDiagnosticsSecurity.test.tsx')
+          security = security_path.read_text(encoding='utf-8')
+          old_security = '''    expect(document.querySelector('script[src="x"]')).toBeNull();
+              expect(screen.queryByText('HOST_CALLBACK_SECRET')).toBeNull();'''
+          if old_security not in security:
+              old_security = '''    expect(document.querySelector('script[src="x"]')).toBeNull();
+              expect(screen.queryByText('HOST_CALLBACK_SECRET')).toBeNull();'''
+          # Preserve the source's actual indentation while making the assertion match the payload.
+          old_security = '''    expect(document.querySelector('script[src="x"]')).toBeNull();
+              expect(screen.queryByText('HOST_CALLBACK_SECRET')).toBeNull();'''
+          if old_security not in security:
+              old_security = '''    expect(document.querySelector('script[src="x"]')).toBeNull();
+            expect(screen.queryByText('HOST_CALLBACK_SECRET')).toBeNull();'''
+          if old_security not in security:
+              old_security = '''    expect(document.querySelector('script[src="x"]')).toBeNull();
+    expect(screen.queryByText('HOST_CALLBACK_SECRET')).toBeNull();'''
+          if security.count(old_security) != 1:
+              raise SystemExit('security assertion anchor mismatch')
+          new_security = '''    expect(document.querySelector('img[src="x"]')).toBeNull();
+    expect(
+      screen.getByText('<img src=x onerror=alert(1)> explanation'),
+    ).toBeVisible();
+    expect(screen.queryByText('HOST_CALLBACK_SECRET')).toBeNull();'''
+          security_path.write_text(
+              security.replace(old_security, new_security),
+              encoding='utf-8',
+          )
+
+          package_path = Path('tests/browser/package.json')
+          package = json.loads(package_path.read_text(encoding='utf-8'))
+          development = package.setdefault('devDependencies', {})
+          development['react'] = '18.3.1'
+          development['react-dom'] = '18.3.1'
+          package['devDependencies'] = dict(sorted(development.items()))
+          package_path.write_text(
+              json.dumps(package, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
+          )
+
+          release_path = Path('.github/workflows/release.yml')
+          release = release_path.read_text(encoding='utf-8')
+          old_sbom = '''      - name: Generate release SBOM
+        run: |
+          set -euo pipefail
+          syft scan dir:. -o spdx-json > release/inkspan.spdx.json
+      - name: Validate release SBOM
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { readFileSync, statSync } = require('node:fs');
+
+          const sbomPath = 'release/inkspan.spdx.json';
+          const sbom = JSON.parse(readFileSync(sbomPath, 'utf8'));
+          const packageMetadata = JSON.parse(readFileSync('package.json', 'utf8'));
+          const officeMetadata = readFileSync('office/pyproject.toml', 'utf8');
+          if (statSync(sbomPath).size > 16 * 1024 * 1024) {
+            throw new Error('Release SBOM exceeds the 16 MiB actions/attest input limit.');
+          }
+          if (sbom.spdxVersion !== 'SPDX-2.3') {
+            throw new Error(`Release SBOM must be SPDX-2.3; found ${sbom.spdxVersion ?? 'missing'}.`);
+          }
+          if (!Array.isArray(sbom.packages) || sbom.packages.length === 0) {
+            throw new Error('Release SBOM package inventory must not be empty.');
+          }
+          const sbomPackageNames = new Set(sbom.packages.map((pkg) => pkg.name));
+          if (packageMetadata.name !== '@contextualwisdomlab/cwl-editor') {
+            throw new Error('Release source has an unexpected editor package identity.');
+          }
+          if (!/^name\\s*=\\s*["']inkspan-office["']\\s*$/m.test(officeMetadata)) {
+            throw new Error('Release source has an unexpected Office package identity.');
+          }
+          if (!sbomPackageNames.has(packageMetadata.name)) {
+            throw new Error('Release SBOM inventory must include the editor package identity.');
+          }
+          if (!sbomPackageNames.has('inkspan-office')) {
+            throw new Error('Release SBOM inventory must include the Office package identity.');
+          }
+          NODE
+'''
+          new_sbom = '''      - name: Generate artifact-specific release SBOMs
+        run: |
+          set -euo pipefail
+          mapfile -t npm_assets < <(
+            find release -maxdepth 1 -type f -name '*.tgz' -printf '%f\\n' | LC_ALL=C sort
+          )
+          mapfile -t wheel_assets < <(
+            find release -maxdepth 1 -type f -name '*.whl' -printf '%f\\n' | LC_ALL=C sort
+          )
+          if [[ ${#npm_assets[@]} -ne 1 || ${#wheel_assets[@]} -ne 1 ]]; then
+            echo "::error::SBOM generation requires exactly one npm archive and one wheel."
+            exit 1
+          fi
+          syft scan "release/${npm_assets[0]}" -o spdx-json > release/editor-package.spdx.json
+          syft scan "release/${wheel_assets[0]}" -o spdx-json > release/office-package.spdx.json
+      - name: Validate artifact-specific SBOM relationships
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { readFileSync, statSync } = require('node:fs');
+
+          const specifications = [
+            {
+              sbomPath: 'release/editor-package.spdx.json',
+              expectedName: '@contextualwisdomlab/cwl-editor',
+              forbiddenName: 'inkspan-office',
+            },
+            {
+              sbomPath: 'release/office-package.spdx.json',
+              expectedName: 'inkspan-office',
+              forbiddenName: '@contextualwisdomlab/cwl-editor',
+            },
+          ];
+
+          function describedElementIds(sbom) {
+            const described = new Set(
+              Array.isArray(sbom.documentDescribes) ? sbom.documentDescribes : [],
+            );
+            for (const relationship of sbom.relationships ?? []) {
+              if (relationship.relationshipType === 'DESCRIBES') {
+                described.add(relationship.relatedSpdxElement);
+              } else if (relationship.relationshipType === 'DESCRIBED_BY') {
+                described.add(relationship.spdxElementId);
+              }
+            }
+            return described;
+          }
+
+          for (const specification of specifications) {
+            const sbom = JSON.parse(readFileSync(specification.sbomPath, 'utf8'));
+            if (statSync(specification.sbomPath).size > 16 * 1024 * 1024) {
+              throw new Error(`${specification.sbomPath} exceeds the 16 MiB attest input limit.`);
+            }
+            if (sbom.spdxVersion !== 'SPDX-2.3') {
+              throw new Error(`${specification.sbomPath} must be SPDX-2.3.`);
+            }
+            if (!Array.isArray(sbom.packages) || sbom.packages.length === 0) {
+              throw new Error(`${specification.sbomPath} has no package inventory.`);
+            }
+            const expectedPackages = sbom.packages.filter(
+              (candidate) => candidate.name === specification.expectedName,
+            );
+            if (expectedPackages.length !== 1) {
+              throw new Error(
+                `${specification.sbomPath} must contain exactly one ${specification.expectedName} package.`,
+              );
+            }
+            if (sbom.packages.some((candidate) => candidate.name === specification.forbiddenName)) {
+              throw new Error(
+                `${specification.sbomPath} contains the other release package identity.`,
+              );
+            }
+            const described = describedElementIds(sbom);
+            if (!described.has(expectedPackages[0].SPDXID)) {
+              throw new Error(
+                `${specification.sbomPath} does not describe its matching release package.`,
+              );
+            }
+          }
+          NODE
+'''
+          if release.count(old_sbom) != 1:
+              raise SystemExit('release SBOM block anchor mismatch')
+          release = release.replace(old_sbom, new_sbom)
+
+          old_checksum = '          sha256sum -- *.tgz *.whl inkspan.spdx.json > SHA256SUMS'
+          new_checksum = '          sha256sum -- *.tgz *.whl *.spdx.json > SHA256SUMS'
+          if release.count(old_checksum) != 1:
+              raise SystemExit('release checksum anchor mismatch')
+          release = release.replace(old_checksum, new_checksum)
+
+          if release.count('          expected_asset_count=4') != 2:
+              raise SystemExit('release asset-count anchor mismatch')
+          release = release.replace(
+              '          expected_asset_count=4',
+              '          expected_asset_count=5',
+          )
+
+          old_inventory = '''            || ! -f release/inkspan.spdx.json \\
+            || ! -f release/SHA256SUMS ]]; then
+            echo "::error::Unexpected local release artifact set; require exactly one *.tgz, one *.whl, inkspan.spdx.json, and SHA256SUMS."'''
+          new_inventory = '''            || ! -f release/editor-package.spdx.json \\
+            || ! -f release/office-package.spdx.json \\
+            || ! -f release/SHA256SUMS ]]; then
+            echo "::error::Unexpected local release artifact set; require exactly one *.tgz, one *.whl, two matching *.spdx.json files, and SHA256SUMS."'''
+          if release.count(old_inventory) != 2:
+              raise SystemExit('release inventory anchor mismatch')
+          release = release.replace(old_inventory, new_inventory)
+
+          old_attest = '''      - name: Attest release artifacts
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: |
+            release/*.tgz
+            release/*.whl
+            release/inkspan.spdx.json
+            release/SHA256SUMS
+      - name: Attest release packages with SBOM
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: |
+            release/*.tgz
+            release/*.whl
+          sbom-path: release/inkspan.spdx.json
+'''
+          new_attest = '''      - name: Attest release artifacts
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: |
+            release/*.tgz
+            release/*.whl
+            release/*.spdx.json
+            release/SHA256SUMS
+      - name: Attest npm package with its exact SBOM
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: release/*.tgz
+          sbom-path: release/editor-package.spdx.json
+      - name: Attest Office wheel with its exact SBOM
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: release/*.whl
+          sbom-path: release/office-package.spdx.json
+'''
+          if release.count(old_attest) != 1:
+              raise SystemExit('release attestation anchor mismatch')
+          release = release.replace(old_attest, new_attest)
+
+          old_verify = '          for artifact in release/*.tgz release/*.whl release/inkspan.spdx.json release/SHA256SUMS; do'
+          new_verify = '          for artifact in release/*.tgz release/*.whl release/*.spdx.json release/SHA256SUMS; do'
+          if release.count(old_verify) != 1:
+              raise SystemExit('release verification anchor mismatch')
+          release = release.replace(old_verify, new_verify)
+          release_path.write_text(release, encoding='utf-8')
+          PY
+      - name: Regenerate isolated browser-test lock
+        run: >-
+          pnpm --dir tests/browser install
+          --lockfile-only
+          --ignore-scripts
+          --no-frozen-lockfile
+      - name: Install exact dependency graphs
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --dir tests/browser install --frozen-lockfile
+      - name: Verify isolated React imports
+        run: >-
+          pnpm --dir tests/browser exec node --input-type=module -e
+          "await import('react'); await import('react-dom/client');"
+      - name: Run focused assurance and typecheck
+        run: |
+          pnpm exec vitest run \
+            src/components/writingDiagnosticsSecurity.test.tsx \
+            src/components/writingDiagnosticsFocus.test.tsx \
+            --pool=forks \
+            --maxWorkers=1
+          pnpm typecheck
+      - name: Validate workflow and exact patch scope
+        run: |
+          ruby -e "require 'yaml'; YAML.load_file('.github/workflows/release.yml')"
+          git diff --check
+          mapfile -t changed_files < <(git diff --name-only | LC_ALL=C sort)
+          expected_files=(
+            .github/workflows/release.yml
+            src/components/writingDiagnosticsSecurity.test.tsx
+            tests/browser/package.json
+            tests/browser/pnpm-lock.yaml
+          )
+          if ! diff -u \
+            <(printf '%s\n' "${expected_files[@]}" | LC_ALL=C sort) \
+            <(printf '%s\n' "${changed_files[@]}"); then
+            echo "::error::Review repair changed an unexpected file."
+            exit 1
+          fi
+      - name: Commit verified review repair and remove one-shot workflow
+        env:
+          BRANCH_NAME: feat/writing-diagnostics-assurance
+        run: |
+          set -euo pipefail
+          rm .github/workflows/address-writing-diagnostics-review.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            .github/workflows/release.yml \
+            src/components/writingDiagnosticsSecurity.test.tsx \
+            tests/browser/package.json \
+            tests/browser/pnpm-lock.yaml
+          git rm --cached .github/workflows/address-writing-diagnostics-review.yml
+          git commit -m "fix(diagnostics): address assurance review findings"
+          git push origin "HEAD:${BRANCH_NAME}"
