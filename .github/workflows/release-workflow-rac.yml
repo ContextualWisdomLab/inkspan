@@ -30,15 +30,8 @@ jobs:
 
           path = Path('.github/workflows/release.yml')
           source = path.read_text(encoding='utf-8')
-          old = """      - name: Install hash-locked Office dependencies
-                working-directory: office
-                run: python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt
-          """
-          new = """      - name: Install hash-locked Office dependencies
-                working-directory: office
-                run: |
-                  python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt
-          """
+          old = "        run: python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt\n"
+          new = "        run: |\n          python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt\n"
           if source.count(old) != 1:
               raise SystemExit('release workflow did not contain exactly one expected invalid scalar')
           path.write_text(source.replace(old, new), encoding='utf-8')
