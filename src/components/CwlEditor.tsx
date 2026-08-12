@@ -66,6 +66,14 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     },
     ref,
   ) {
+    if (value !== undefined && typeof value !== 'string') {
+      throw new RangeError('editor value must be a string when provided');
+    }
+    if (defaultValue !== undefined && typeof defaultValue !== 'string') {
+      throw new RangeError(
+        'editor default value must be a string when provided',
+      );
+    }
     if (typeof editable !== 'boolean') {
       throw new RangeError('editor editable state must be a boolean when provided');
     }
