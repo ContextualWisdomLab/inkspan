@@ -23,7 +23,18 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
       - name: Verify YAML syntax with the runner's Ruby parser
-        run: ruby -e "require 'psych'; Psych.parse_file('.github/workflows/release.yml')"
+        id: yaml_syntax
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          if output="$(ruby -e "require 'psych'; Psych.parse_file('.github/workflows/release.yml')" 2>&1)"; then
+            exit 0
+          fi
+          escaped="${output//'%'/'%25'}"
+          escaped="${escaped//$'\r'/'%0D'}"
+          escaped="${escaped//$'\n'/'%0A'}"
+          echo "::error file=.github/workflows/release.yml,line=1::$escaped"
+          exit 1
       - name: Download checksum-pinned actionlint 1.7.12
         run: |
           set -euo pipefail
@@ -37,4 +48,20 @@ jobs:
           mkdir actionlint-bin
           tar -xzf "$archive" -C actionlint-bin actionlint
       - name: Validate the release workflow with actionlint
-        run: ./actionlint-bin/actionlint -oneline .github/workflows/release.yml
+        id: actionlint
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          if output="$(./actionlint-bin/actionlint -oneline .github/workflows/release.yml 2>&1)"; then
+            exit 0
+          fi
+          while IFS= read -r line; do
+            escaped="${line//'%'/'%25'}"
+            echo "::error file=.github/workflows/release.yml,line=1::$escaped"
+          done <<< "$output"
+          exit 1
+      - name: Enforce both validators
+        if: always()
+        run: |
+          test '${{ steps.yaml_syntax.outcome }}' = 'success'
+          test '${{ steps.actionlint.outcome }}' = 'success'
