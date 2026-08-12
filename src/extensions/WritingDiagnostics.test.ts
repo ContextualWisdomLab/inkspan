@@ -16,7 +16,10 @@ import {
 const schema = new Schema({
   nodes: {
     doc: { content: 'paragraph+' },
-    paragraph: { content: 'text*' },
+    paragraph: {
+      content: 'text*',
+      toDOM: () => ['p', 0],
+    },
     text: {},
   },
 });
