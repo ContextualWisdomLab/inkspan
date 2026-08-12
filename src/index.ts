@@ -49,6 +49,15 @@ export type {
   CwlEditorTextProjectionIdentity,
   TextPositionSelectorEvidenceErrorCode,
 } from './textPositionSelectorEvidence.js';
+export {
+  WritingDiagnosticProjectionError,
+  buildTextProjectionMap,
+  resolveTextPositionSelector,
+} from './writingDiagnosticProjection.js';
+export type {
+  CwlWritingDiagnosticTextProjectionMap,
+  WritingDiagnosticProjectionErrorCode,
+} from './writingDiagnosticProjection.js';
 
 // Host-owned, revision-scoped writing diagnostic contract.
 export {
