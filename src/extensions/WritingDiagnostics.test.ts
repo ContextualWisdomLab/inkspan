@@ -56,6 +56,16 @@ function diagnostic(
   };
 }
 
+/** Create one deliberately forged runtime shape outside the public type. */
+function diagnosticWithSemanticAttribute(
+  value: string,
+): CwlResolvedWritingDiagnosticDecoration {
+  return {
+    ...diagnostic(),
+    ariaInvalid: value,
+  } as unknown as CwlResolvedWritingDiagnosticDecoration;
+}
+
 function decorationAttributes(state: EditorState): Record<string, string> {
   const [decoration] = pluginState(state).decorations.find();
   if (!decoration) throw new Error('Missing writing diagnostic decoration');
@@ -233,12 +243,8 @@ describe('WritingDiagnostics extension contract', () => {
       [diagnostic({ from: 9, to: 8 })],
       [diagnostic({ to: state.doc.content.size + 1 })],
       [diagnostic(), diagnostic()],
-      [diagnostic({ ariaInvalid: 'spelling' })],
-      [
-        diagnostic({
-          ariaInvalid: 'grammar' as CwlResolvedWritingDiagnosticDecoration['ariaInvalid'],
-        }),
-      ],
+      [diagnosticWithSemanticAttribute('spelling')],
+      [diagnosticWithSemanticAttribute('grammar')],
     ];
 
     for (const invalid of invalidSets) {
