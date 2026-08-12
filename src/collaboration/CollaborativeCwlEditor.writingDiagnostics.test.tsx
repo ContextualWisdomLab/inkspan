@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -32,9 +33,10 @@ function connectDocuments(left: Y.Doc, right: Y.Doc): () => void {
 function diagnostic(
   revision: CwlEditorDocumentRevision,
   replacement = 'Omega',
+  diagnosticId = 'collaborative-diagnostic',
 ): CwlWritingDiagnostic {
   return {
-    diagnosticId: 'collaborative-diagnostic',
+    diagnosticId,
     documentRevision: revision,
     textProjection: {
       id: 'inkspan-prosemirror-text',
@@ -47,7 +49,7 @@ function diagnostic(
     },
     categoryCode: 'clarity',
     priority: 'important',
-    title: 'Clarify the shared request',
+    title: `Clarify the shared request ${diagnosticId}`,
     explanation: 'Make the shared action explicit.',
     suggestedReplacement: replacement,
     provenance: {
@@ -61,13 +63,14 @@ function diagnostic(
 afterEach(cleanup);
 
 describe('CollaborativeCwlEditor writing diagnostics', () => {
-  it('applies an exact-revision replacement through Yjs, converges, and remains undoable', async () => {
+  it('applies through Yjs, converges, and preserves collaborative undo/redo without fabricating remote actions', async () => {
     const leftDocument = new Y.Doc();
     const rightDocument = new Y.Doc();
     const disconnect = connectDocuments(leftDocument, rightDocument);
     const leftRef = createRef<CwlEditorHandle>();
     const rightRef = createRef<CwlEditorHandle>();
-    const onAction = vi.fn();
+    const leftAction = vi.fn();
+    const rightAction = vi.fn();
 
     const renderEditors = (writingDiagnostics?: readonly CwlWritingDiagnostic[]) => (
       <div>
@@ -75,14 +78,17 @@ describe('CollaborativeCwlEditor writing diagnostics', () => {
           ref={leftRef}
           document={leftDocument}
           mode="html"
+          writingDiagnostics={writingDiagnostics}
+          writingDiagnosticsLabel="Left shared guidance"
+          onWritingDiagnosticAction={leftAction}
         />
         <CollaborativeCwlEditor
           ref={rightRef}
           document={rightDocument}
           mode="html"
           writingDiagnostics={writingDiagnostics}
-          writingDiagnosticsLabel="Shared writing guidance"
-          onWritingDiagnosticAction={onAction}
+          writingDiagnosticsLabel="Right shared guidance"
+          onWritingDiagnosticAction={rightAction}
         />
       </div>
     );
@@ -99,10 +105,21 @@ describe('CollaborativeCwlEditor writing diagnostics', () => {
     );
     const revision = await rightRef.current!.getDocumentEnvelopeRevision();
     expect(revision).not.toBeNull();
+    const sharedDiagnostic = diagnostic(revision!);
 
-    mounted.rerender(renderEditors([diagnostic(revision!)]));
-    const apply = await screen.findByRole('button', {
-      name: 'Apply suggestion for Clarify the shared request',
+    mounted.rerender(renderEditors([sharedDiagnostic]));
+    await waitFor(() => {
+      expect(
+        screen.getByRole('region', { name: 'Left shared guidance' }),
+      ).toHaveTextContent('1 writing diagnostics');
+      expect(
+        screen.getByRole('region', { name: 'Right shared guidance' }),
+      ).toHaveTextContent('1 writing diagnostics');
+    });
+    const apply = within(
+      screen.getByRole('region', { name: 'Right shared guidance' }),
+    ).getByRole('button', {
+      name: 'Apply suggestion for Clarify the shared request collaborative-diagnostic',
     });
     expect(apply).toBeEnabled();
 
@@ -111,7 +128,8 @@ describe('CollaborativeCwlEditor writing diagnostics', () => {
       expect(rightRef.current!.getHTML()).toContain('Omega beta gamma');
       expect(leftRef.current!.getHTML()).toContain('Omega beta gamma');
     });
-    expect(onAction).toHaveBeenCalledWith(
+    expect(rightAction).toHaveBeenCalledTimes(1);
+    expect(rightAction).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'applied',
         reasonCode: 'explicit',
@@ -121,26 +139,45 @@ describe('CollaborativeCwlEditor writing diagnostics', () => {
         }),
       }),
     );
+    expect(leftAction).not.toHaveBeenCalled();
     expect(
-      screen.getByRole('region', { name: 'Shared writing guidance' }),
+      screen.getByRole('region', { name: 'Left shared guidance' }),
+    ).toHaveTextContent('0 writing diagnostics');
+    expect(
+      screen.getByRole('region', { name: 'Right shared guidance' }),
     ).toHaveTextContent('0 writing diagnostics');
 
-    act(() => rightRef.current!.getEditor()!.commands.undo());
+    act(() => {
+      expect(rightRef.current!.getEditor()!.commands.undo()).toBe(true);
+    });
     await waitFor(() => {
       expect(rightRef.current!.getHTML()).toContain('Alpha beta gamma');
       expect(leftRef.current!.getHTML()).toContain('Alpha beta gamma');
     });
+    expect(rightAction).toHaveBeenCalledTimes(1);
+    expect(leftAction).not.toHaveBeenCalled();
+
+    act(() => {
+      expect(rightRef.current!.getEditor()!.commands.redo()).toBe(true);
+    });
+    await waitFor(() => {
+      expect(rightRef.current!.getHTML()).toContain('Omega beta gamma');
+      expect(leftRef.current!.getHTML()).toContain('Omega beta gamma');
+    });
+    expect(rightAction).toHaveBeenCalledTimes(1);
+    expect(leftAction).not.toHaveBeenCalled();
 
     mounted.unmount();
     disconnect();
   });
 
-  it('invalidates current diagnostics when a remote Yjs update changes the document', async () => {
+  it('invalidates every current diagnostic when a remote Yjs update changes the document', async () => {
     const leftDocument = new Y.Doc();
     const rightDocument = new Y.Doc();
     const disconnect = connectDocuments(leftDocument, rightDocument);
     const leftRef = createRef<CwlEditorHandle>();
     const rightRef = createRef<CwlEditorHandle>();
+    const rightAction = vi.fn();
 
     const renderEditors = (writingDiagnostics?: readonly CwlWritingDiagnostic[]) => (
       <div>
@@ -151,6 +188,7 @@ describe('CollaborativeCwlEditor writing diagnostics', () => {
           mode="html"
           writingDiagnostics={writingDiagnostics}
           writingDiagnosticsLabel="Remote-safe guidance"
+          onWritingDiagnosticAction={rightAction}
         />
       </div>
     );
@@ -166,13 +204,18 @@ describe('CollaborativeCwlEditor writing diagnostics', () => {
     );
     const revision = await rightRef.current!.getDocumentEnvelopeRevision();
     expect(revision).not.toBeNull();
+    const diagnostics = [
+      diagnostic(revision!, 'Omega', 'remote-diagnostic-one'),
+      diagnostic(revision!, 'Sigma', 'remote-diagnostic-two'),
+    ];
 
-    mounted.rerender(renderEditors([diagnostic(revision!)]));
+    mounted.rerender(renderEditors(diagnostics));
     await waitFor(() =>
       expect(
         screen.getByRole('region', { name: 'Remote-safe guidance' }),
-      ).toHaveTextContent('1 writing diagnostics'),
+      ).toHaveTextContent('2 writing diagnostics'),
     );
+    expect(document.querySelectorAll('.cwl-writing-diagnostic')).toHaveLength(2);
 
     act(() => leftRef.current!.insertValue('<p>Remote edit</p>'));
     await waitFor(() =>
@@ -180,9 +223,14 @@ describe('CollaborativeCwlEditor writing diagnostics', () => {
         screen.getByRole('region', { name: 'Remote-safe guidance' }),
       ).toHaveTextContent('0 writing diagnostics'),
     );
+    expect(document.querySelector('.cwl-writing-diagnostic')).toBeNull();
     await expect(
-      rightRef.current!.applyWritingDiagnostic('collaborative-diagnostic'),
+      rightRef.current!.applyWritingDiagnostic('remote-diagnostic-one'),
     ).resolves.toBeNull();
+    await expect(
+      rightRef.current!.applyWritingDiagnostic('remote-diagnostic-two'),
+    ).resolves.toBeNull();
+    expect(rightAction).not.toHaveBeenCalled();
     expect(rightRef.current!.getHTML()).toContain('Remote edit');
     expect(rightRef.current!.getHTML()).toContain('Alpha beta gamma');
 
@@ -217,7 +265,7 @@ describe('CollaborativeCwlEditor writing diagnostics', () => {
       />,
     );
     const apply = await screen.findByRole('button', {
-      name: 'Apply suggestion for Clarify the shared request',
+      name: 'Apply suggestion for Clarify the shared request collaborative-diagnostic',
     });
     expect(apply).toBeDisabled();
     await expect(
