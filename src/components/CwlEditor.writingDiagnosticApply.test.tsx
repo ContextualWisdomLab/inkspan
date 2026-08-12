@@ -102,4 +102,46 @@ describe('CwlEditor writing-diagnostic application', () => {
     });
     expect(handleRef.current?.getValue()).toBe('Alpha beta');
   });
+
+  it('keeps replacement application disabled and inert in read-only mode', async () => {
+    const handleRef = createRef<CwlEditorHandle>();
+    const onAction = vi.fn();
+    const view = render(
+      <CwlEditor
+        defaultValue="Alpha beta"
+        editable={false}
+        hideToolbar
+        onWritingDiagnosticAction={onAction}
+        ref={handleRef}
+      />,
+    );
+    await waitFor(() => expect(handleRef.current?.getEditor()).not.toBeNull());
+
+    act(() => {
+      handleRef.current!.getEditor()!.commands.setTextSelection({ from: 1, to: 6 });
+    });
+    const diagnostic = await exactDiagnostic(handleRef.current!, 'Omega');
+
+    view.rerender(
+      <CwlEditor
+        defaultValue="Alpha beta"
+        editable={false}
+        hideToolbar
+        onWritingDiagnosticAction={onAction}
+        ref={handleRef}
+        writingDiagnostics={[diagnostic]}
+      />,
+    );
+
+    const apply = await screen.findByRole('button', {
+      name: 'Apply suggestion for Clarify the request',
+    });
+    expect(apply).toBeDisabled();
+    await expect(
+      handleRef.current!.applyWritingDiagnostic('apply-diagnostic'),
+    ).resolves.toBeNull();
+    expect(handleRef.current!.getValue()).toBe('Alpha beta');
+    expect(onAction).not.toHaveBeenCalled();
+    expect(document.querySelector('.cwl-writing-diagnostic')).not.toBeNull();
+  });
 });
