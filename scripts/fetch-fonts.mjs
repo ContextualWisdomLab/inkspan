@@ -259,9 +259,10 @@ async function download(source) {
 async function processFamily(def, outputFilesDir) {
   const css = await fetchCss(def.css, def.weights);
   const blocks = collectBoundedFontFaceBlocks(css);
-  const out = [];
-  let totalBytes = 0;
-  const counters = {};
+  const descriptors = [];
+  const descriptorKeys = new Set();
+  const requestedWeightCounts = {};
+
   for (const block of blocks) {
     const urlMatches = [...block.matchAll(SRC_URL_RE)];
     if (urlMatches.length === 0) continue;
@@ -282,7 +283,8 @@ async function processFamily(def, outputFilesDir) {
     if (styleMatches.length !== 1) {
       throw new Error('Google Fonts returned ambiguous font style metadata');
     }
-    if (styleMatches[0][1].toLowerCase() !== 'normal') {
+    const style = styleMatches[0][1].toLowerCase();
+    if (style !== 'normal') {
       throw new Error('Google Fonts returned unexpected font style metadata');
     }
 
@@ -290,10 +292,11 @@ async function processFamily(def, outputFilesDir) {
     if (stretchMatches.length > 1) {
       throw new Error('Google Fonts returned ambiguous font stretch metadata');
     }
-    if (
-      stretchMatches.length === 1 &&
-      stretchMatches[0][1].trim().toLowerCase() !== 'normal'
-    ) {
+    const stretch =
+      stretchMatches.length === 0
+        ? 'normal'
+        : stretchMatches[0][1].trim().toLowerCase();
+    if (stretch !== 'normal') {
       throw new Error('Google Fonts returned unexpected font stretch metadata');
     }
 
@@ -304,8 +307,8 @@ async function processFamily(def, outputFilesDir) {
     if (weightMatches.length !== 1) {
       throw new Error('Google Fonts returned ambiguous font weight metadata');
     }
-    const weightMatch = weightMatches[0];
-    if (!def.weights.includes(Number(weightMatch[1]))) {
+    const weight = weightMatches[0][1];
+    if (!def.weights.includes(Number(weight))) {
       throw new Error('Google Fonts returned unexpected font weight metadata');
     }
 
@@ -321,11 +324,44 @@ async function processFamily(def, outputFilesDir) {
       throw new Error('Google Fonts returned invalid unicode-range metadata');
     }
 
-    const weight = weightMatch[1];
+    const source = validateFontAssetUrl(urlMatches[0][1]);
+    const normalizedRange = range
+      .split(',')
+      .map((term) => term.trim().toLowerCase())
+      .join(',');
+    const descriptorKey = JSON.stringify([
+      family,
+      style,
+      stretch,
+      weight,
+      normalizedRange,
+    ]);
+    if (descriptorKeys.has(descriptorKey)) {
+      throw new Error('Google Fonts returned duplicate font-face metadata');
+    }
+    descriptorKeys.add(descriptorKey);
+    requestedWeightCounts[weight] = (requestedWeightCounts[weight] ?? 0) + 1;
+    descriptors.push({ source, weight, range });
+  }
+
+  if (descriptors.length === 0) {
+    throw new Error('Google Fonts returned CSS without usable WOFF2 assets');
+  }
+  for (const requestedWeight of def.weights) {
+    if (!requestedWeightCounts[String(requestedWeight)]) {
+      throw new Error('Google Fonts returned incomplete requested font weight metadata');
+    }
+  }
+
+  const out = [];
+  let totalBytes = 0;
+  const counters = {};
+  for (const descriptor of descriptors) {
+    const { source, weight, range } = descriptor;
     counters[weight] = (counters[weight] ?? 0) + 1;
     const idx = counters[weight];
     const localName = `${def.slug}-${weight}-${idx}.woff2`;
-    const bytes = await download(urlMatches[0][1]);
+    const bytes = await download(source);
     totalBytes += bytes.byteLength;
     writeFileSync(resolve(outputFilesDir, localName), bytes);
     out.push(
@@ -342,14 +378,6 @@ async function processFamily(def, outputFilesDir) {
     );
   }
 
-  if (out.length === 0) {
-    throw new Error('Google Fonts returned CSS without usable WOFF2 assets');
-  }
-  for (const requestedWeight of def.weights) {
-    if (!counters[String(requestedWeight)]) {
-      throw new Error('Google Fonts returned incomplete requested font weight metadata');
-    }
-  }
   return { css: out.join('\n\n'), totalBytes, count: out.length };
 }
 
