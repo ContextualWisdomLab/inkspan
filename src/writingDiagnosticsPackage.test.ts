@@ -5,6 +5,7 @@ import {
   DEFAULT_WRITING_DIAGNOSTIC_LIMITS,
   TEXT_POSITION_PROJECTION_ID,
   TEXT_POSITION_PROJECTION_VERSION,
+  TextPositionSelectorEvidenceError,
   WritingDiagnosticError,
   WritingDiagnosticProjectionError,
   buildTextProjectionMap,
@@ -34,6 +35,14 @@ describe('writing diagnostics package boundary', () => {
     expect(TEXT_POSITION_PROJECTION_VERSION).toBe(1);
     expect(typeof WritingDiagnosticError).toBe('function');
     expect(typeof WritingDiagnosticProjectionError).toBe('function');
+    expect(typeof TextPositionSelectorEvidenceError).toBe('function');
+    const evidenceError = new TextPositionSelectorEvidenceError(
+      'grapheme_boundary',
+    );
+    expect(evidenceError).toMatchObject({
+      name: 'TextPositionSelectorEvidenceError',
+      code: 'grapheme_boundary',
+    });
     expect(typeof validateWritingDiagnostics).toBe('function');
     expect(typeof buildTextProjectionMap).toBe('function');
     expect(typeof resolveTextPositionSelector).toBe('function');
