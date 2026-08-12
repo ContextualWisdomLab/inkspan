@@ -63,6 +63,7 @@ jobs:
           git diff --check
           mapfile -t changed_files < <(git diff --name-only | LC_ALL=C sort)
           expected_files=(
+            .github/scripts/address_writing_diagnostics_review.py
             .github/workflows/release.yml
             src/components/writingDiagnosticsSecurity.test.tsx
             tests/browser/package.json
