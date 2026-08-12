@@ -75,8 +75,8 @@ describe('writing diagnostic hostile-boundary coverage', () => {
   });
 
   it('rejects a missing required own field', () => {
-    const missingTitle = { ...diagnostic() } as Partial<CwlWritingDiagnostic>;
-    delete missingTitle.title;
+    const { title: omittedTitle, ...missingTitle } = diagnostic();
+    expect(omittedTitle).toBe('Host title');
 
     expectCode([missingTitle], 'contract');
   });
