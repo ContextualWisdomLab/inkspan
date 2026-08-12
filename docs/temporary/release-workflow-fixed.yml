@@ -1,0 +1,650 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '22'
+  PYTHON_VERSION: '3.14'
+
+jobs:
+  build-release-artifacts:
+    if: github.repository == 'ContextualWisdomLab/inkspan'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: office/requirements-ci.txt
+      - name: Verify release identity and current main tip
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { readFileSync } = require('node:fs');
+
+          const packageMetadata = JSON.parse(readFileSync('package.json', 'utf8'));
+          const changelog = readFileSync('CHANGELOG.md', 'utf8');
+          const releaseTag = process.env.RELEASE_TAG;
+          const expectedTag = `v${packageMetadata.version}`;
+          const repositoryUrl = 'git+https://github.com/ContextualWisdomLab/inkspan.git';
+
+          if (!/^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/.test(releaseTag)) {
+            throw new Error(`Release tag is not valid semantic version syntax: ${releaseTag}`);
+          }
+          if (releaseTag !== expectedTag) {
+            throw new Error(`Release tag ${releaseTag} does not match package version ${expectedTag}`);
+          }
+          if (!changelog.includes(`## [${packageMetadata.version}]`)) {
+            throw new Error(`CHANGELOG.md has no release section for ${packageMetadata.version}`);
+          }
+          if (packageMetadata.repository?.url !== repositoryUrl) {
+            throw new Error('package.json repository URL must identify the canonical public repository');
+          }
+          NODE
+          git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+          main_sha="$(git rev-parse refs/remotes/origin/main)"
+          if [[ "$GITHUB_SHA" != "$main_sha" ]]; then
+            echo "::error::Release tags must point to the current protected main tip."
+            exit 1
+          fi
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck JavaScript package
+        run: pnpm typecheck
+      - name: Test JavaScript package with 100% coverage
+        run: pnpm coverage
+      - name: Build JavaScript package
+        run: pnpm build
+      - name: Verify packed package consumers
+        run: pnpm verify:package
+      - name: Build demo
+        run: pnpm build:demo
+      - name: Pack npm distribution
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          package_file="$({ npm pack --ignore-scripts --json; } | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => process.stdout.write(JSON.parse(input)[0].filename));")"
+          mv "$package_file" release/
+      - name: Install hash-locked Office dependencies
+        working-directory: office
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt
+      - name: Verify Office dependency consistency
+        working-directory: office
+        run: python -m pip check
+      - name: Verify Office docstring coverage
+        working-directory: office
+        run: python scripts/check_docstrings.py
+      - name: Test Office package with 100% branch coverage
+        working-directory: office
+        env:
+          PYTHONPATH: src
+        run: |
+          coverage run -m pytest
+          coverage report
+      - name: Build and inspect Office wheel
+        working-directory: office
+        run: |
+          set -euo pipefail
+          python -m pip wheel . --no-deps --no-build-isolation --wheel-dir dist
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          wheel = next(Path('dist').glob('*.whl'))
+          with ZipFile(wheel) as archive:
+              names = set(archive.namelist())
+          assert 'inkspan_office/schema.json' in names
+          assert any(name.endswith('.dist-info/licenses/LICENSE') for name in names)
+          PY
+          mv dist/*.whl ../release/
+      - name: Generate release checksums
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum -- *.tgz *.whl > SHA256SUMS
+      - name: Transfer exact release artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: inkspan-release-${{ github.ref_name }}
+          path: release/
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  browser-release-evidence:
+    name: Cross-engine Clipboard / Playwright 1.62.0
+    if: github.repository == 'ContextualWisdomLab/inkspan'
+    needs: build-release-artifacts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/inkspan-playwright-browsers
+    steps:
+      - name: Check out the exact tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: Install root dependencies from the immutable lock
+        run: pnpm install --frozen-lockfile
+      - name: Install browser-test dependencies from the isolated immutable lock
+        run: pnpm --dir tests/browser install --frozen-lockfile
+      - name: Download validated release artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: inkspan-release-${{ github.ref_name }}
+          path: release
+      - name: Verify transferred release checksums
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum --check SHA256SUMS
+      - name: Install exact packed editor artifact for browser verification
+        run: |
+          set -euo pipefail
+          mapfile -t npm_assets < <(
+            find release -maxdepth 1 -type f -name '*.tgz' -printf '%f\n' | LC_ALL=C sort
+          )
+          if [[ ${#npm_assets[@]} -ne 1 ]]; then
+            echo "::error::Browser release evidence requires exactly one packed npm artifact."
+            exit 1
+          fi
+          package_file="release/${npm_assets[0]}"
+          package_sha="$(sha256sum -- "$package_file" | awk '{print $1}')"
+          package_target="$GITHUB_WORKSPACE/tests/browser/node_modules/@contextualwisdomlab/cwl-editor"
+          rm -rf "$package_target"
+          mkdir -p "$package_target"
+          tar -xzf "$package_file" --strip-components=1 -C "$package_target"
+          test -f "$package_target/package.json"
+          test -f "$package_target/dist/cwl-editor.js"
+          package_name="$(node -e "const fs=require('node:fs'); const p=JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); process.stdout.write(p.name || '')" "$package_target/package.json")"
+          if [[ "$package_name" != '@contextualwisdomlab/cwl-editor' ]]; then
+            echo "::error::Packed browser artifact has an unexpected package identity."
+            exit 1
+          fi
+          echo "INKSPAN_BROWSER_PACKAGE_ENTRY=$package_target/dist/cwl-editor.js" >> "$GITHUB_ENV"
+          echo "INKSPAN_EXPECTED_PACKAGE_SHA256=$package_sha" >> "$GITHUB_ENV"
+      - name: Install Playwright browser revisions pinned by 1.62.0
+        run: pnpm --dir tests/browser exec playwright install --with-deps chromium firefox webkit
+      - name: Verify real-engine rich clipboard release evidence on the tagged source
+        env:
+          INKSPAN_EXPECTED_HEAD_SHA: ${{ github.sha }}
+          INKSPAN_EXPECTED_PACKAGE_SHA256: ${{ env.INKSPAN_EXPECTED_PACKAGE_SHA256 }}
+        run: pnpm --dir tests/browser exec playwright test --config playwright.config.ts
+      - name: Upload bounded browser release evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: inkspan-browser-evidence-${{ github.sha }}
+          path: tests/browser/.browser-evidence/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  publish-release:
+    if: github.repository == 'ContextualWisdomLab/inkspan'
+    needs: [build-release-artifacts, browser-release-evidence]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download validated release artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: inkspan-release-${{ github.ref_name }}
+          path: release
+      - name: Verify transferred checksums
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum --check SHA256SUMS
+      - name: Verify bounded local release artifact set
+        run: |
+          set -euo pipefail
+          expected_asset_count=3
+          mapfile -t local_entries < <(
+            find release -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort
+          )
+          mapfile -t local_assets < <(
+            find release -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort
+          )
+          mapfile -t npm_assets < <(
+            printf '%s\n' "${local_assets[@]}" | grep -E '\.tgz$' || true
+          )
+          mapfile -t wheel_assets < <(
+            printf '%s\n' "${local_assets[@]}" | grep -E '\.whl$' || true
+          )
+          if [[ ${#local_entries[@]} -ne $expected_asset_count \
+            || ${#local_assets[@]} -ne $expected_asset_count \
+            || ${#npm_assets[@]} -ne 1 \
+            || ${#wheel_assets[@]} -ne 1 \
+            || ! -f release/SHA256SUMS ]]; then
+            echo "::error::Unexpected local release artifact set; require exactly one *.tgz, one *.whl, and SHA256SUMS."
+            exit 1
+          fi
+      - name: Attest release artifacts
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: |
+            release/*.tgz
+            release/*.whl
+            release/SHA256SUMS
+      - name: Verify generated attestations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for artifact in release/*.tgz release/*.whl release/SHA256SUMS; do
+            gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY"
+          done
+      - name: Prepare draft GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          release_state="$(gh release view "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json isDraft \
+            --jq '.isDraft' 2>/dev/null || true)"
+
+          if [[ "$release_state" == 'false' ]]; then
+            echo "::error::A published release already exists; refusing to replace its assets."
+            exit 1
+          fi
+          if [[ -z "$release_state" ]]; then
+            gh release create "$GITHUB_REF_NAME" \
+              --repo "$GITHUB_REPOSITORY" \
+              --draft \
+              --verify-tag \
+              --generate-notes \
+              --title "Inkspan ${GITHUB_REF_NAME#v}"
+          fi
+
+          gh release upload "$GITHUB_REF_NAME" release/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
+      - name: Verify exact draft release asset inventory
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          expected_asset_count=3
+          mapfile -t local_entries < <(
+            find release -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort
+          )
+          mapfile -t local_assets < <(
+            find release -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort
+          )
+          mapfile -t npm_assets < <(
+            printf '%s\n' "${local_assets[@]}" | grep -E '\.tgz$' || true
+          )
+          mapfile -t wheel_assets < <(
+            printf '%s\n' "${local_assets[@]}" | grep -E '\.whl$' || true
+          )
+          if [[ ${#local_entries[@]} -ne $expected_asset_count \
+            || ${#local_assets[@]} -ne $expected_asset_count \
+            || ${#npm_assets[@]} -ne 1 \
+            || ${#wheel_assets[@]} -ne 1 \
+            || ! -f release/SHA256SUMS ]]; then
+            echo "::error::Unexpected local release artifact set; require exactly one *.tgz, one *.whl, and SHA256SUMS."
+            exit 1
+          fi
+
+          release_pages="$(gh api \
+            --paginate \
+            --slurp \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2026-03-10' \
+            "repos/$GITHUB_REPOSITORY/releases?per_page=100")"
+          release_match_count="$(jq -r --arg tag "$GITHUB_REF_NAME" \
+            '[.[][] | select(.tag_name == $tag)] | length' \
+            <<< "$release_pages")"
+          if [[ "$release_match_count" != '1' ]]; then
+            echo "::error::Expected exactly one draft release for tag $GITHUB_REF_NAME; found $release_match_count."
+            exit 1
+          fi
+          release_json="$(jq -ce --arg tag "$GITHUB_REF_NAME" \
+            '[.[][] | select(.tag_name == $tag)][0]' \
+            <<< "$release_pages")"
+          release_state='.draft'
+          asset_name='.assets[].name'
+          asset_state='.assets[].state'
+          asset_digest='.assets[].digest'
+
+          if [[ "$(jq -r "$release_state" <<< "$release_json")" != 'true' ]]; then
+            echo "::error::Release must remain a draft while its exact asset inventory is validated."
+            exit 1
+          fi
+
+          mapfile -t remote_assets < <(
+            jq -r "$asset_name" <<< "$release_json" | LC_ALL=C sort
+          )
+          if [[ ${#remote_assets[@]} -ne $expected_asset_count ]] \
+            || ! diff -u \
+              <(printf '%s\n' "${local_assets[@]}") \
+              <(printf '%s\n' "${remote_assets[@]}"); then
+            echo "::error::Unexpected draft release asset inventory; remove the stale draft or unexpected stale asset before retrying."
+            exit 1
+          fi
+
+          mapfile -t remote_states < <(jq -r "$asset_state" <<< "$release_json")
+          if [[ ${#remote_states[@]} -ne $expected_asset_count ]]; then
+            echo "::error::Unexpected draft release asset inventory; asset state evidence is incomplete."
+            exit 1
+          fi
+          for state in "${remote_states[@]}"; do
+            if [[ "$state" != 'uploaded' ]]; then
+              echo "::error::Draft release contains an asset that is not fully uploaded."
+              exit 1
+            fi
+          done
+
+          mapfile -t remote_digests < <(jq -r "$asset_digest" <<< "$release_json")
+          if [[ ${#remote_digests[@]} -ne $expected_asset_count ]]; then
+            echo "::error::Draft release asset digest evidence is incomplete."
+            exit 1
+          fi
+          for filename in "${local_assets[@]}"; do
+            local_digest="sha256:$(sha256sum -- "release/$filename" | awk '{print $1}')"
+            remote_digest="$(jq -r --arg filename "$filename" \
+              '.assets[] | select(.name == $filename) | .digest // empty' \
+              <<< "$release_json")"
+            if [[ "$remote_digest" != "$local_digest" ]]; then
+              echo "::error::Draft release asset digest mismatch for $filename."
+              exit 1
+            fi
+          done
+      - name: Publish immutable GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release edit "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false
+
+          release_immutable="$(gh release view "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json isImmutable \
+            --jq '.isImmutable')"
+          if [[ "$release_immutable" != 'true' ]]; then
+            if ! gh release delete "$GITHUB_REF_NAME" \
+              --repo "$GITHUB_REPOSITORY" \
+              --yes; then
+              echo "::error::The mutable release could not be rolled back automatically."
+            fi
+            echo "::error::Repository release immutability is not enabled; the mutable release was rejected."
+            exit 1
+          fi
+
+          gh release verify "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY"
+          for artifact in release/*.tgz release/*.whl release/SHA256SUMS; do
+            gh release verify-asset "$GITHUB_REF_NAME" "$artifact" \
+              --repo "$GITHUB_REPOSITORY"
+          done
+
+  publish-npm:
+    if: ${{ github.repository == 'ContextualWisdomLab/inkspan' && !contains(github.ref_name, '-') }}
+    needs: [publish-release]
+    runs-on: ubuntu-24.04
+    environment: npm
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - name: Download exact validated release artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: inkspan-release-${{ github.ref_name }}
+          path: release
+      - name: Verify exact npm artifact identity
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum --check SHA256SUMS
+          cd ..
+          mapfile -t npm_assets < <(
+            find release -maxdepth 1 -type f -name '*.tgz' -printf '%p\n' | LC_ALL=C sort
+          )
+          if [[ ${#npm_assets[@]} -ne 1 ]]; then
+            echo "::error::npm publication requires exactly one validated tarball."
+            exit 1
+          fi
+          npm_asset="${npm_assets[0]}"
+          package_json="$(tar -xOf "$npm_asset" package/package.json)"
+          package_name="$(jq -r '.name // empty' <<< "$package_json")"
+          package_version="$(jq -r '.version // empty' <<< "$package_json")"
+          expected_version="${GITHUB_REF_NAME#v}"
+          if [[ "$package_name" != '@contextualwisdomlab/cwl-editor' ]]; then
+            echo "::error::Unexpected npm package identity."
+            exit 1
+          fi
+          if [[ "$package_version" != "$expected_version" ]]; then
+            echo "::error::npm package version must match stable release version $expected_version."
+            exit 1
+          fi
+          echo "INKSPAN_NPM_ASSET=$npm_asset" >> "$GITHUB_ENV"
+      - name: Set up trusted-publishing Node.js runtime
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+      - name: Verify npm Trusted Publishing runtime floor
+        run: |
+          set -euo pipefail
+          npm_version="$(npm --version)"
+          node - "$npm_version" <<'NODE'
+          const version = process.argv[2] ?? '';
+          const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version);
+          if (!match) throw new Error(`Unable to parse npm version: ${version}`);
+          const [major, minor, patch] = match.slice(1).map(Number);
+          const supported = major > 11 || (major === 11 && (minor > 5 || (minor === 5 && patch >= 1)));
+          if (!supported) throw new Error(`npm version must be at least 11.5.1; found ${version}`);
+          NODE
+      - name: Publish exact npm artifact through OIDC Trusted Publishing
+        run: |
+          set -euo pipefail
+          npm_asset="$INKSPAN_NPM_ASSET"
+          npm publish "$npm_asset" --access public
+
+  publish-pypi:
+    if: ${{ github.repository == 'ContextualWisdomLab/inkspan' && !contains(github.ref_name, '-') }}
+    needs: [publish-release]
+    runs-on: ubuntu-24.04
+    environment: pypi
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - name: Download exact validated release artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: inkspan-release-${{ github.ref_name }}
+          path: release
+      - name: Verify and isolate exact Office wheel
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum --check SHA256SUMS
+          cd ..
+          mapfile -t wheel_assets < <(
+            find release -maxdepth 1 -type f -name '*.whl' -printf '%p\n' | LC_ALL=C sort
+          )
+          if [[ ${#wheel_assets[@]} -ne 1 ]]; then
+            echo "::error::PyPI publication requires exactly one validated Office wheel."
+            exit 1
+          fi
+          wheel_asset="${wheel_assets[0]}"
+          metadata="$(unzip -p "$wheel_asset" '*/METADATA')"
+          office_name="$(awk -F': ' '$1 == "Name" { print $2; exit }' <<< "$metadata" | tr -d '\r')"
+          office_version="$(awk -F': ' '$1 == "Version" { print $2; exit }' <<< "$metadata" | tr -d '\r')"
+          expected_version="${GITHUB_REF_NAME#v}"
+          if [[ "$office_name" != 'inkspan-office' ]]; then
+            echo "::error::Unexpected Office package identity."
+            exit 1
+          fi
+          if [[ "$office_version" != "$expected_version" ]]; then
+            echo "::error::Office package version must match stable release version $expected_version."
+            exit 1
+          fi
+          mkdir -p pypi-release
+          cp -- "$wheel_asset" pypi-release/
+          if [[ "$(find pypi-release -maxdepth 1 -type f -name '*.whl' | wc -l)" -ne 1 ]]; then
+            echo "::error::PyPI publication directory must contain exactly one wheel."
+            exit 1
+          fi
+      - name: Publish exact Office wheel through OIDC Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          packages-dir: pypi-release/
+
+  verify-registry-publication:
+    if: ${{ github.repository == 'ContextualWisdomLab/inkspan' && !contains(github.ref_name, '-') }}
+    needs: [publish-npm, publish-pypi]
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Download exact validated release artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: inkspan-release-${{ github.ref_name }}
+          path: release
+      - name: Set up read-only registry verification runtime
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+      - name: Verify public registries serve the exact release artifacts
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum --check SHA256SUMS
+          cd ..
+
+          mapfile -t npm_assets < <(
+            find release -maxdepth 1 -type f -name '*.tgz' -printf '%p\n' | LC_ALL=C sort
+          )
+          mapfile -t wheel_assets < <(
+            find release -maxdepth 1 -type f -name '*.whl' -printf '%p\n' | LC_ALL=C sort
+          )
+          if [[ ${#npm_assets[@]} -ne 1 || ${#wheel_assets[@]} -ne 1 ]]; then
+            echo "::error::Registry verification requires exactly one npm tarball and one Office wheel."
+            exit 1
+          fi
+
+          npm_asset="${npm_assets[0]}"
+          wheel_asset="${wheel_assets[0]}"
+          wheel_name="$(basename "$wheel_asset")"
+          expected_version="${GITHUB_REF_NAME#v}"
+          npm_local_sha="$(sha256sum -- "$npm_asset" | awk '{print $1}')"
+          wheel_local_sha="$(sha256sum -- "$wheel_asset" | awk '{print $1}')"
+          verification_dir="$(mktemp -d)"
+          trap 'rm -rf "$verification_dir"' EXIT
+
+          for attempt in $(seq 1 12); do
+            npm_verified=false
+            pypi_verified=false
+
+            npm_tarball_url="$(
+              npm view "@contextualwisdomlab/cwl-editor@$expected_version" dist.tarball \
+                --registry=https://registry.npmjs.org/ 2>/dev/null | tr -d '\r\n' || true
+            )"
+            if [[ -n "$npm_tarball_url" ]]; then
+              npm_origin="$(node - "$npm_tarball_url" <<'NODE'
+              const input = process.argv[2] ?? '';
+              const url = new URL(input);
+              if (
+                url.protocol !== 'https:' ||
+                url.hostname !== 'registry.npmjs.org' ||
+                url.username !== '' ||
+                url.password !== ''
+              ) {
+                process.exit(2);
+              }
+              process.stdout.write(url.origin);
+          NODE
+              )" || {
+                echo "::error::npm dist.tarball must stay on the canonical registry.npmjs.org HTTPS origin."
+                exit 1
+              }
+              if [[ "$npm_origin" == 'https://registry.npmjs.org' ]] && \
+                curl --fail --silent --show-error \
+                  --proto '=https' \
+                  --connect-timeout 5 \
+                  --max-time 20 \
+                  --output "$verification_dir/npm.tgz" \
+                  "$npm_tarball_url"; then
+                npm_remote_sha="$(sha256sum -- "$verification_dir/npm.tgz" | awk '{print $1}')"
+                if [[ "$npm_remote_sha" == "$npm_local_sha" ]]; then
+                  npm_verified=true
+                fi
+              fi
+            fi
+
+            pypi_json="$(
+              curl --fail --silent --show-error \
+                --proto '=https' \
+                --connect-timeout 5 \
+                --max-time 20 \
+                "https://pypi.org/pypi/inkspan-office/$expected_version/json" 2>/dev/null || true
+            )"
+            if [[ -n "$pypi_json" ]]; then
+              pypi_remote_sha="$(
+                jq -r --arg filename "$wheel_name" \
+                  '[.urls[] | select(.filename == $filename) | .digests.sha256] | if length == 1 then .[0] else empty end' \
+                  <<< "$pypi_json"
+              )"
+              if [[ "$pypi_remote_sha" == "$wheel_local_sha" ]]; then
+                pypi_verified=true
+              fi
+            fi
+
+            if [[ "$npm_verified" == true && "$pypi_verified" == true ]]; then
+              exit 0
+            fi
+            if [[ "$attempt" -lt 12 ]]; then
+              sleep 5
+            fi
+          done
+
+          echo "::error::Registry publication verification did not converge to the exact artifact digests."
+          exit 1
