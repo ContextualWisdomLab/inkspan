@@ -62,6 +62,12 @@ async function waitForEditorHandle(): Promise<CwlEditorHandle> {
   throw new Error('writing_diagnostics_editor_unavailable');
 }
 
+function requireDiagnosticsHandle(): CwlEditorHandle {
+  const handle = diagnosticsEditorRef.current;
+  if (handle === null) throw new Error('writing_diagnostics_editor_unavailable');
+  return handle;
+}
+
 function probeContainer(): HTMLElement {
   const harness = document.getElementById('harness');
   if (harness === null) throw new Error('browser_harness_missing');
@@ -228,17 +234,19 @@ window.runInkspanHostileDocumentProbe = (
 window.mountInkspanWritingDiagnosticsProbe = mountWritingDiagnosticsProbe;
 
 window.mutateInkspanWritingDiagnosticsProbe = (sourceHtml: string): void => {
-  diagnosticsEditorRef.current?.setValue(sourceHtml);
+  requireDiagnosticsHandle().setValue(sourceHtml);
 };
 
 window.applyInkspanWritingDiagnosticProbe = (
   diagnosticId: string,
 ): Promise<CwlWritingDiagnosticActionEvent | null> =>
-  diagnosticsEditorRef.current?.applyWritingDiagnostic(diagnosticId) ??
-  Promise.resolve(null);
+  requireDiagnosticsHandle().applyWritingDiagnostic(diagnosticId);
 
-window.undoInkspanWritingDiagnosticsProbe = (): boolean =>
-  diagnosticsEditorRef.current?.getEditor()?.commands.undo() ?? false;
+window.undoInkspanWritingDiagnosticsProbe = (): boolean => {
+  const editor = requireDiagnosticsHandle().getEditor();
+  if (editor === null) throw new Error('writing_diagnostics_editor_unavailable');
+  return editor.commands.undo();
+};
 
 window.getInkspanWritingDiagnosticsProbeState =
   (): BrowserWritingDiagnosticsProbeState =>
