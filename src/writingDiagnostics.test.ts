@@ -4,6 +4,7 @@ import {
   WritingDiagnosticError,
   validateWritingDiagnostics,
   type CwlWritingDiagnostic,
+  type WritingDiagnosticLimits,
 } from './writingDiagnostics.js';
 
 const DIGEST = 'a'.repeat(64);
@@ -43,9 +44,13 @@ function validDiagnostic(
   };
 }
 
-function expectCode(input: unknown, code: WritingDiagnosticError['code']): void {
+function expectCode(
+  input: unknown,
+  code: WritingDiagnosticError['code'],
+  limits?: WritingDiagnosticLimits,
+): void {
   try {
-    validateWritingDiagnostics(input);
+    validateWritingDiagnostics(input, limits);
   } catch (error) {
     expect(error).toBeInstanceOf(WritingDiagnosticError);
     expect((error as WritingDiagnosticError).code).toBe(code);
@@ -309,14 +314,16 @@ describe('validateWritingDiagnostics', () => {
   });
 
   it('supports stricter caller limits without mutating defaults', () => {
-    const result = validateWritingDiagnostics([validDiagnostic()], {
+    const stricterLimits = {
       ...DEFAULT_WRITING_DIAGNOSTIC_LIMITS,
       maxTitleCodeUnits: 32,
-    });
+    };
+    const result = validateWritingDiagnostics([validDiagnostic()], stricterLimits);
     expect(result[0].title).toBe('Check agreement');
     expectCode(
       [validDiagnostic({ title: 'x'.repeat(33) })],
       'limit',
+      stricterLimits,
     );
     expect(DEFAULT_WRITING_DIAGNOSTIC_LIMITS.maxTitleCodeUnits).toBe(256);
   });
