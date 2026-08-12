@@ -61,12 +61,17 @@ function applyInstallCandidate(
 }
 
 describe('WritingDiagnostics hostile reflection failures', () => {
-  it('rejects prototype and property-descriptor traps without leaking or throwing', () => {
+  it('rejects prototype, own-key, and property-descriptor traps without leaking or throwing', () => {
     let state = stateWithText();
     const initial = pluginState(state);
     const prototypeTrap = new Proxy(diagnostic(), {
       getPrototypeOf() {
         throw new Error('private prototype detail');
+      },
+    });
+    const ownKeyTrap = new Proxy(diagnostic(), {
+      ownKeys() {
+        throw new Error('private key detail');
       },
     });
     const descriptorTrap = new Proxy(diagnostic(), {
@@ -76,7 +81,7 @@ describe('WritingDiagnostics hostile reflection failures', () => {
       },
     });
 
-    for (const candidate of [prototypeTrap, descriptorTrap]) {
+    for (const candidate of [prototypeTrap, ownKeyTrap, descriptorTrap]) {
       expect(() => {
         state = applyInstallCandidate(state, candidate);
       }).not.toThrow();
