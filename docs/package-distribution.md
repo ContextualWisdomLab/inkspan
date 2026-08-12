@@ -17,6 +17,7 @@ integrations.
 | `@contextualwisdomlab/cwl-editor/envelope-identity` | Framework-independent identity-only envelope routing for bounded schema identity inspection; migration remains host-owned |
 | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent revision evidence and document-transition evidence for local content equality/lineage claims |
 | `@contextualwisdomlab/cwl-editor/text-position-selector` | `implemented_on_protected_main` — React-free text-position projection core implementing W3C `TextPositionSelector`; interactive capture, revision binding, authorization, persistence, and re-anchoring remain outside this subpath |
+| `@contextualwisdomlab/cwl-editor/writing-diagnostics` | React-free revision-bound writing-diagnostic validation and text-position projection/resolution utilities; semantic review, model calls, policy, persistence, authorization, and editor mutation remain outside this subpath |
 | `@contextualwisdomlab/cwl-editor/markdown` | `implemented_on_active_pr` — headless deterministic Markdown/HTML/email/plain-text conversion with the same safe-link and strict inline-raster policies as the editor, without importing the React/TipTap editor graph |
 | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
 | `@contextualwisdomlab/cwl-editor/fonts.css` | Full offline KR/EN/JP/SC/TC/VI font bundle |
@@ -81,6 +82,13 @@ embedded in the npm tarball.
   state or bind a selector to a document revision. Hosts remain responsible for
   annotation identifiers/bodies, source-resource identity, authorization,
   tenancy, persistence, audit, and cross-revision re-anchoring.
+- The writing-diagnostics subpath deliberately exposes only strict diagnostic
+  validation, bounded diagnostic errors, deterministic text-projection mapping,
+  and exact `TextPositionSelector` resolution. It imports no React, Yjs, provider,
+  network, credential, model, naruon, or contextual-orchestrator runtime. It never
+  decides whether authored text is wrong and never applies a replacement. The
+  host owns semantic review, policy admission, authorization, persistence,
+  revision capture, and any editor mutation.
 - Envelope identity output is routing metadata only. It does not accept an
   unsupported document generation as current semantics and does not move schema
   registry, migration, persistence, rollback, or authorization authority into
@@ -109,7 +117,7 @@ production library build. The verification chain:
 4. rejects internal source, tests, demos, Office files, coverage output, and
    workflow files from the npm tarball;
 5. imports the root, collaboration, converter, autosave, envelope-identity,
-   revision-evidence, text-position-selector, and Markdown surfaces through their
+   revision-evidence, text-position-selector, writing-diagnostics, and Markdown surfaces through their
    dedicated packed-consumer checks, including framework-free isolation where
    that is part of the public contract;
 6. exercises supported ESM/CommonJS entrypoints and compiles strict TypeScript
