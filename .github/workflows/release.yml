@@ -91,7 +91,8 @@ jobs:
           mv "$package_file" release/
       - name: Install hash-locked Office dependencies
         working-directory: office
-        run: python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt
       - name: Verify Office dependency consistency
         working-directory: office
         run: python -m pip check
@@ -121,11 +122,65 @@ jobs:
           assert any(name.endswith('.dist-info/licenses/LICENSE') for name in names)
           PY
           mv dist/*.whl ../release/
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: 'v3.0.6'
+      - name: Install signature-verified Syft
+        run: |
+          set -euo pipefail
+          syft_installer="$RUNNER_TEMP/syft-install.sh"
+          curl --fail --silent --show-error --location \
+            --proto '=https' \
+            --output "$syft_installer" \
+            https://raw.githubusercontent.com/anchore/syft/16223e6dd7893fe578787658ceb876257483d404/install.sh
+          mkdir -p "$RUNNER_TEMP/syft-bin"
+          DOWNLOAD_TAG_INSTALL_SCRIPT=false \
+            sh "$syft_installer" -v -b "$RUNNER_TEMP/syft-bin" v1.50.0
+          "$RUNNER_TEMP/syft-bin/syft" version
+          echo "$RUNNER_TEMP/syft-bin" >> "$GITHUB_PATH"
+      - name: Generate release SBOM
+        run: |
+          set -euo pipefail
+          syft scan dir:. -o spdx-json > release/inkspan.spdx.json
+      - name: Validate release SBOM
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { readFileSync, statSync } = require('node:fs');
+
+          const sbomPath = 'release/inkspan.spdx.json';
+          const sbom = JSON.parse(readFileSync(sbomPath, 'utf8'));
+          const packageMetadata = JSON.parse(readFileSync('package.json', 'utf8'));
+          const officeMetadata = readFileSync('office/pyproject.toml', 'utf8');
+          if (statSync(sbomPath).size > 16 * 1024 * 1024) {
+            throw new Error('Release SBOM exceeds the 16 MiB actions/attest input limit.');
+          }
+          if (sbom.spdxVersion !== 'SPDX-2.3') {
+            throw new Error(`Release SBOM must be SPDX-2.3; found ${sbom.spdxVersion ?? 'missing'}.`);
+          }
+          if (!Array.isArray(sbom.packages) || sbom.packages.length === 0) {
+            throw new Error('Release SBOM package inventory must not be empty.');
+          }
+          const sbomPackageNames = new Set(sbom.packages.map((pkg) => pkg.name));
+          if (packageMetadata.name !== '@contextualwisdomlab/cwl-editor') {
+            throw new Error('Release source has an unexpected editor package identity.');
+          }
+          if (!/^name\s*=\s*["']inkspan-office["']\s*$/m.test(officeMetadata)) {
+            throw new Error('Release source has an unexpected Office package identity.');
+          }
+          if (!sbomPackageNames.has(packageMetadata.name)) {
+            throw new Error('Release SBOM inventory must include the editor package identity.');
+          }
+          if (!sbomPackageNames.has('inkspan-office')) {
+            throw new Error('Release SBOM inventory must include the Office package identity.');
+          }
+          NODE
       - name: Generate release checksums
         run: |
           set -euo pipefail
           cd release
-          sha256sum -- *.tgz *.whl > SHA256SUMS
+          sha256sum -- *.tgz *.whl inkspan.spdx.json > SHA256SUMS
       - name: Transfer exact release artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -237,7 +292,7 @@ jobs:
       - name: Verify bounded local release artifact set
         run: |
           set -euo pipefail
-          expected_asset_count=3
+          expected_asset_count=4
           mapfile -t local_entries < <(
             find release -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort
           )
@@ -254,8 +309,9 @@ jobs:
             || ${#local_assets[@]} -ne $expected_asset_count \
             || ${#npm_assets[@]} -ne 1 \
             || ${#wheel_assets[@]} -ne 1 \
+            || ! -f release/inkspan.spdx.json \
             || ! -f release/SHA256SUMS ]]; then
-            echo "::error::Unexpected local release artifact set; require exactly one *.tgz, one *.whl, and SHA256SUMS."
+            echo "::error::Unexpected local release artifact set; require exactly one *.tgz, one *.whl, inkspan.spdx.json, and SHA256SUMS."
             exit 1
           fi
       - name: Attest release artifacts
@@ -264,14 +320,27 @@ jobs:
           subject-path: |
             release/*.tgz
             release/*.whl
+            release/inkspan.spdx.json
             release/SHA256SUMS
+      - name: Attest release packages with SBOM
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: |
+            release/*.tgz
+            release/*.whl
+          sbom-path: release/inkspan.spdx.json
       - name: Verify generated attestations
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          for artifact in release/*.tgz release/*.whl release/SHA256SUMS; do
+          for artifact in release/*.tgz release/*.whl release/inkspan.spdx.json release/SHA256SUMS; do
             gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY"
+          done
+          for artifact in release/*.tgz release/*.whl; do
+            gh attestation verify "$artifact" \
+              --repo "$GITHUB_REPOSITORY" \
+              --predicate-type https://spdx.dev/Document/v2.3
           done
       - name: Prepare draft GitHub release
         env:
@@ -304,7 +373,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          expected_asset_count=3
+          expected_asset_count=4
           mapfile -t local_entries < <(
             find release -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort
           )
@@ -321,8 +390,9 @@ jobs:
             || ${#local_assets[@]} -ne $expected_asset_count \
             || ${#npm_assets[@]} -ne 1 \
             || ${#wheel_assets[@]} -ne 1 \
+            || ! -f release/inkspan.spdx.json \
             || ! -f release/SHA256SUMS ]]; then
-            echo "::error::Unexpected local release artifact set; require exactly one *.tgz, one *.whl, and SHA256SUMS."
+            echo "::error::Unexpected local release artifact set; require exactly one *.tgz, one *.whl, inkspan.spdx.json, and SHA256SUMS."
             exit 1
           fi
 
@@ -414,7 +484,7 @@ jobs:
           fi
 
           gh release verify "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY"
-          for artifact in release/*.tgz release/*.whl release/SHA256SUMS; do
+          for artifact in release/*.tgz release/*.whl release/inkspan.spdx.json release/SHA256SUMS; do
             gh release verify-asset "$GITHUB_REF_NAME" "$artifact" \
               --repo "$GITHUB_REPOSITORY"
           done
@@ -600,7 +670,7 @@ jobs:
                 process.exit(2);
               }
               process.stdout.write(url.origin);
-              NODE
+          NODE
               )" || {
                 echo "::error::npm dist.tarball must stay on the canonical registry.npmjs.org HTTPS origin."
                 exit 1
