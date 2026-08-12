@@ -3,7 +3,10 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import type { WritingDiagnosticsController } from './useWritingDiagnosticsController.js';
+import type {
+  CwlVerifiedWritingDiagnostic,
+  WritingDiagnosticsController,
+} from './useWritingDiagnosticsController.js';
 
 /** Props for Inkspan's provider-neutral writing-guidance presentation surface. */
 export interface WritingDiagnosticsPanelProps {
@@ -53,6 +56,20 @@ export function WritingDiagnosticsPanel({
     controller.focusDiagnostic(diagnosticId);
     // Only mounted diagnostic cards and enabled navigation invoke this helper.
     itemRefs.current[targetIndex]!.focus();
+  };
+
+  const focusAffectedText = (
+    verified: CwlVerifiedWritingDiagnostic,
+  ): void => {
+    const diagnosticId = verified.diagnostic.diagnosticId;
+    setActiveDiagnosticId(diagnosticId);
+    const editor = controller.editor;
+    if (!controller.focusDiagnostic(diagnosticId) || editor === null) return;
+    editor
+      .chain()
+      .setTextSelection({ from: verified.from, to: verified.to })
+      .focus()
+      .run();
   };
 
   const navigate = (offset: number): void => {
@@ -147,10 +164,7 @@ export function WritingDiagnosticsPanel({
                 <div className="cwl-writing-diagnostics__actions">
                   <button
                     aria-label={`Focus affected text for ${diagnostic.title}`}
-                    onClick={() => {
-                      setActiveDiagnosticId(diagnostic.diagnosticId);
-                      controller.focusDiagnostic(diagnostic.diagnosticId);
-                    }}
+                    onClick={() => focusAffectedText(verified)}
                     type="button"
                   >
                     Focus text

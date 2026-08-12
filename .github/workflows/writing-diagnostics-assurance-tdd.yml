@@ -31,8 +31,13 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Run hostile-input and no-fallback assurance
-        run: pnpm exec vitest run src/components/writingDiagnosticsSecurity.test.tsx --pool=forks --maxWorkers=1
+      - name: Run hostile-input, no-fallback, and focus assurance
+        run: >-
+          pnpm exec vitest run
+          src/components/writingDiagnosticsSecurity.test.tsx
+          src/components/writingDiagnosticsFocus.test.tsx
+          --pool=forks
+          --maxWorkers=1
       - name: Typecheck assurance changes
         run: pnpm typecheck
 

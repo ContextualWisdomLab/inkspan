@@ -54,10 +54,11 @@ describe('writing diagnostics security and semantic-authority boundary', () => {
         throw new Error('SECRET_AUTHORED_TEXT');
       },
     });
+    const proxyOwnKeys = vi.fn(() => {
+      throw new Error('SECRET_PROXY_TEXT');
+    });
     const proxy = new Proxy(Object.create(null), {
-      ownKeys() {
-        throw new Error('SECRET_PROXY_TEXT');
-      },
+      ownKeys: proxyOwnKeys,
     });
 
     const mounted = render(
@@ -83,8 +84,9 @@ describe('writing diagnostics security and semantic-authority boundary', () => {
         onWritingDiagnosticsError={onError}
       />,
     );
-    await waitFor(() => expect(onError.mock.calls.length).toBeGreaterThanOrEqual(1));
-    expectRedactedErrors(onError, 'SECRET_PROXY_TEXT');
+    await waitFor(() => expect(proxyOwnKeys).toHaveBeenCalled());
+    expect(onError).not.toHaveBeenCalled();
+    expect(screen.getByText('0 writing diagnostics')).toBeVisible();
     expect(screen.queryByText(/SECRET_/u)).toBeNull();
   });
 
