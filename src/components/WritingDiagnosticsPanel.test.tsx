@@ -1,6 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import {
+  TEXT_POSITION_PROJECTION_ID,
+  TEXT_POSITION_PROJECTION_VERSION,
+} from '../textPositionSelectorEvidence.js';
 import type { CwlVerifiedWritingDiagnostic } from './useWritingDiagnosticsController.js';
 import { WritingDiagnosticsPanel } from './WritingDiagnosticsPanel.js';
 
@@ -22,8 +26,8 @@ function verified(
         strongEntityTag: `"sha256-${DIGEST}"`,
       },
       textProjection: {
-        id: 'cwl-prosemirror-text-v1',
-        version: 1,
+        id: TEXT_POSITION_PROJECTION_ID,
+        version: TEXT_POSITION_PROJECTION_VERSION,
       },
       selector: {
         type: 'TextPositionSelector',
