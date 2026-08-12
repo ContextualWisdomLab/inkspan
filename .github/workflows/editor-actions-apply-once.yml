@@ -71,12 +71,15 @@ jobs:
           ]:
               test_path = Path(test_name)
               source = test_path.read_text(encoding='utf-8')
-              marker = "    focusDiagnostic: vi.fn(() => "
+              marker = 'focusDiagnostic: vi.fn(() =>'
               index = source.find(marker)
               if index < 0:
                   raise SystemExit(f'{test_name} focus mock anchor missing')
+              line_start = source.rfind('\n', 0, index) + 1
+              indent = source[line_start:index]
               line_end = source.find('\n', index)
-              source = source[: line_end + 1] + "    applyDiagnostic: vi.fn(async () => null),\n" + source[line_end + 1 :]
+              insertion = f'{indent}applyDiagnostic: vi.fn(async () => null),\n'
+              source = source[: line_end + 1] + insertion + source[line_end + 1 :]
               test_path.write_text(source, encoding='utf-8')
           PY
       - name: Verify revision-safe application
