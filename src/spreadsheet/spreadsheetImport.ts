@@ -1,5 +1,9 @@
 import type { JSONContent } from '@tiptap/core';
 
+const MAX_WORKSHEET_COLUMNS = 256;
+const MAX_CELL_TEXT_CODE_UNITS = 32_768;
+const RESOURCE_LIMIT_MESSAGE = 'Spreadsheet exceeds the configured resource limits.';
+
 /** One parser-neutral worksheet supplied to the bounded spreadsheet converter. */
 export interface SpreadsheetWorksheetData {
   /** Display name used only after the worksheet passes visibility and resource checks. */
@@ -17,7 +21,9 @@ export interface SpreadsheetWorkbookData {
 }
 
 /** Stable categories for spreadsheet-import failures. */
-export type SpreadsheetImportErrorCode = 'UNSUPPORTED_OR_CORRUPT';
+export type SpreadsheetImportErrorCode =
+  | 'UNSUPPORTED_OR_CORRUPT'
+  | 'RESOURCE_LIMIT_EXCEEDED';
 
 /** Bounded spreadsheet content ready for one TipTap insertion transaction. */
 export interface SpreadsheetImportResult {
@@ -42,6 +48,13 @@ export class SpreadsheetImportError extends Error {
     this.name = 'SpreadsheetImportError';
     this.code = code;
   }
+}
+
+function resourceLimitExceeded(): never {
+  throw new SpreadsheetImportError(
+    'RESOURCE_LIMIT_EXCEEDED',
+    RESOURCE_LIMIT_MESSAGE,
+  );
 }
 
 function paragraphWithText(text: string): JSONContent {
@@ -75,6 +88,13 @@ export function spreadsheetWorkbookToDocumentJson(
       0,
     );
     if (columnCount === 0) continue;
+    if (columnCount > MAX_WORKSHEET_COLUMNS) resourceLimitExceeded();
+
+    for (const row of worksheet.rows) {
+      for (const cellText of row) {
+        if (cellText.length > MAX_CELL_TEXT_CODE_UNITS) resourceLimitExceeded();
+      }
+    }
 
     content.push({
       type: 'heading',
