@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { spreadsheetWorkbookToDocumentJson } from './spreadsheetImport.js';
+import {
+  SpreadsheetImportError,
+  spreadsheetWorkbookToDocumentJson,
+} from './spreadsheetImport.js';
 
 describe('spreadsheetWorkbookToDocumentJson', () => {
   it('converts visible worksheet text into an editable heading and table', () => {
@@ -87,5 +90,17 @@ describe('spreadsheetWorkbookToDocumentJson', () => {
         },
       ],
     });
+  });
+
+  it('exposes a stable payload-redacted import error identity', () => {
+    const error = new SpreadsheetImportError(
+      'UNSUPPORTED_OR_CORRUPT',
+      'Workbook cannot be imported.',
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error.name).toBe('SpreadsheetImportError');
+    expect(error.code).toBe('UNSUPPORTED_OR_CORRUPT');
+    expect(error.message).toBe('Workbook cannot be imported.');
   });
 });
