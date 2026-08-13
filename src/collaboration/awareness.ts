@@ -25,6 +25,16 @@ const FALLBACK_CURSOR_COLOR = '#475569';
 const MAX_CURSOR_LABEL_LENGTH = 80;
 const MAX_PUBLIC_IDENTIFIER_LENGTH = 80;
 
+/** Reject malformed local awareness identity fields before string operations. */
+function assertCollaborationUserStringField(
+  field: 'userId' | 'displayName' | 'cursorColor',
+  value: unknown,
+): asserts value is string {
+  if (typeof value !== 'string') {
+    throw new Error(`collaboration ${field} must be a string`);
+  }
+}
+
 /** Trim and bound a public cursor label without splitting Unicode code points. */
 function truncateCursorLabel(value: string): string {
   const trimmed = value.trim();
@@ -52,6 +62,9 @@ function exceedsPublicIdentifierLength(value: string): boolean {
 export function serializeCollaborationUser(
   user: CollaborationUser,
 ): CollaborationCursorUser {
+  assertCollaborationUserStringField('userId', user.userId);
+  assertCollaborationUserStringField('displayName', user.displayName);
+  assertCollaborationUserStringField('cursorColor', user.cursorColor);
   const id = user.userId.trim();
   const name = truncateCursorLabel(user.displayName);
   const color = user.cursorColor.trim();
