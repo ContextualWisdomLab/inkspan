@@ -64,7 +64,12 @@ const CANONICAL_BASE64_RE =
 const CANONICAL_PERCENT_ENCODED_ASCII_RE =
   /^(?:[\x00-\x24\x26-\x7f]|%[0-7][0-9a-f])*$/i;
 const INVALID_OPTIONS_MESSAGE = 'converter options are invalid.';
+const INVALID_BINARY_INPUT_MESSAGE = 'converter binary input is invalid.';
 const MAX_MIME_TYPE_CODE_UNITS = 1_024;
+const ARRAY_BUFFER_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
+  ArrayBuffer.prototype,
+  'byteLength',
+)!.get!;
 
 const hasBuffer = typeof globalThis.Buffer !== 'undefined';
 
@@ -106,7 +111,17 @@ export function base64ToBytes(base64: string): Uint8Array {
   return new Uint8Array(globalThis.Buffer.from(normalized, 'base64'));
 }
 
-/** Coerce any binary-ish input to a `Uint8Array` view without copying twice. */
+/** Return whether a value carries the platform ArrayBuffer internal slot. */
+function isArrayBuffer(input: unknown): input is ArrayBuffer {
+  try {
+    ARRAY_BUFFER_BYTE_LENGTH_GETTER.call(input);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Convert only declared binary inputs to a `Uint8Array` without coercion. */
 export function toUint8Array(
   input: ArrayBuffer | ArrayBufferView | Uint8Array,
 ): Uint8Array {
@@ -114,7 +129,8 @@ export function toUint8Array(
   if (ArrayBuffer.isView(input)) {
     return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
   }
-  return new Uint8Array(input);
+  if (isArrayBuffer(input)) return new Uint8Array(input);
+  throw new TypeError(INVALID_BINARY_INPUT_MESSAGE);
 }
 
 /**
