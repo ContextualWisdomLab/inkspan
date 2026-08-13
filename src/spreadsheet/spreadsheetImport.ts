@@ -44,17 +44,46 @@ export class SpreadsheetImportError extends Error {
   }
 }
 
-/**
- * Convert parser-neutral displayed worksheet text into editable TipTap blocks.
- *
- * This test-first placeholder intentionally reaches the public product boundary
- * and fails until the bounded conversion contract is implemented.
- */
+function paragraphWithText(text: string): JSONContent {
+  return {
+    type: 'paragraph',
+    content: [{ type: 'text', text }],
+  };
+}
+
+/** Convert parser-neutral displayed worksheet text into editable TipTap blocks. */
 export function spreadsheetWorkbookToDocumentJson(
-  _workbook: SpreadsheetWorkbookData,
+  workbook: SpreadsheetWorkbookData,
 ): SpreadsheetImportResult {
-  throw new SpreadsheetImportError(
-    'UNSUPPORTED_OR_CORRUPT',
-    'Spreadsheet import is not implemented.',
-  );
+  const content: JSONContent[] = [];
+  let worksheetCount = 0;
+  let rowCount = 0;
+  let cellCount = 0;
+
+  for (const worksheet of workbook.worksheets) {
+    if (worksheet.hidden) continue;
+
+    content.push({
+      type: 'heading',
+      attrs: { level: 3 },
+      content: [{ type: 'text', text: worksheet.name }],
+    });
+    content.push({
+      type: 'table',
+      content: worksheet.rows.map((row) => ({
+        type: 'tableRow',
+        content: row.map((cell) => ({
+          type: 'tableCell',
+          content: [paragraphWithText(cell)],
+        })),
+      })),
+    });
+    content.push({ type: 'paragraph' });
+
+    worksheetCount += 1;
+    rowCount += worksheet.rows.length;
+    cellCount += worksheet.rows.reduce((count, row) => count + row.length, 0);
+  }
+
+  return { content, worksheetCount, rowCount, cellCount };
 }
