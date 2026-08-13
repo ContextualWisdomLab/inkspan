@@ -24,6 +24,7 @@ const NUMERIC_IDENTIFIER_PATTERN = /^\d+$/;
 const FALLBACK_CURSOR_COLOR = '#475569';
 const MAX_CURSOR_LABEL_LENGTH = 80;
 const MAX_PUBLIC_IDENTIFIER_LENGTH = 80;
+const MAX_REMOTE_IDENTIFIER_SOURCE_LENGTH = 1_024;
 
 /** Reject malformed local awareness identity fields before string operations. */
 function assertCollaborationUserStringField(
@@ -190,6 +191,7 @@ export function countRemoteCollaborators(
     if (typeof user !== 'object' || user === null) continue;
     const id = (user as Record<string, unknown>).id;
     if (typeof id !== 'string') continue;
+    if (id.length > MAX_REMOTE_IDENTIFIER_SOURCE_LENGTH) continue;
     const normalizedId = id.trim();
     if (
       normalizedId === '' ||
