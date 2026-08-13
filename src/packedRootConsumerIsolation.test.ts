@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 const verifierSource = readFileSync(
-  new URL('../tests/package/verify-package.mjs', import.meta.url),
+  resolve(process.cwd(), 'tests/package/verify-package.mjs'),
   'utf8',
 );
 
