@@ -35,18 +35,25 @@ describe('text-position selector allocation bounds', () => {
     }
   });
 
-  it('stops grapheme segmentation once each selected boundary is proven', () => {
+  it('validates both selected boundaries in one grapheme segmentation pass', () => {
     const descriptor = Object.getOwnPropertyDescriptor(Intl, 'Segmenter');
+    let constructedSegmenters = 0;
+    let segmentCalls = 0;
     let yieldedSegments = 0;
 
-    class BoundedSegmenter {
+    class SinglePassSegmenter {
+      constructor() {
+        constructedSegmenters += 1;
+      }
+
       segment(input: string): Iterable<{ index: number }> {
+        segmentCalls += 1;
         return {
           *[Symbol.iterator]() {
             for (let index = 0; index < input.length; index += 1) {
               yieldedSegments += 1;
               if (index > 2) {
-                throw new Error('segmented beyond the selected prefix');
+                throw new Error('segmented beyond the selected range');
               }
               yield { index };
             }
@@ -57,7 +64,7 @@ describe('text-position selector allocation bounds', () => {
 
     Object.defineProperty(Intl, 'Segmenter', {
       configurable: true,
-      value: BoundedSegmenter,
+      value: SinglePassSegmenter,
     });
 
     try {
@@ -67,7 +74,9 @@ describe('text-position selector allocation bounds', () => {
       );
 
       expect(result.selector).toEqual({ type: 'TextPositionSelector', start: 1, end: 2 });
-      expect(yieldedSegments).toBe(5);
+      expect(constructedSegmenters).toBe(1);
+      expect(segmentCalls).toBe(1);
+      expect(yieldedSegments).toBe(3);
     } finally {
       if (descriptor) {
         Object.defineProperty(Intl, 'Segmenter', descriptor);
