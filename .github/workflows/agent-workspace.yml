@@ -37,11 +37,11 @@ jobs:
         run: |
           set -euo pipefail
           tar \
-            --exclude=.git \
-            --exclude=coverage \
-            --exclude=dist \
-            --exclude=office/.coverage \
-            --exclude=office/dist \
+            --exclude=./.git \
+            --exclude=./coverage \
+            --exclude=./dist \
+            --exclude=./office/.coverage \
+            --exclude=./office/dist \
             -czf "$RUNNER_TEMP/inkspan-agent-workspace.tgz" .
       - name: Upload the bounded read-only workspace snapshot
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
