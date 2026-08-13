@@ -27,4 +27,12 @@ describe('packed root consumer release evidence', () => {
       'CommonJS root package must resolve from isolated consumer node_modules',
     );
   });
+
+  it('keeps the consumer outside the checkout dependency-resolution ancestry', () => {
+    expect(verifierSource).toContain("from 'node:os'");
+    expect(verifierSource).toContain('tmpdir()');
+    expect(verifierSource).not.toContain(
+      "join(repositoryRoot, '.package-verification-')",
+    );
+  });
 });
