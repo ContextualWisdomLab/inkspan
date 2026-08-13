@@ -215,6 +215,38 @@ describe('spreadsheetWorkbookToDocumentJson', () => {
     });
   });
 
+  it('fails closed before materializing an over-wide worksheet', () => {
+    const workbook = {
+      worksheets: [
+        {
+          name: 'Too wide',
+          hidden: false,
+          rows: [Array.from({ length: 257 }, (_, index) => String(index))],
+        },
+      ],
+    };
+
+    expect(() => spreadsheetWorkbookToDocumentJson(workbook)).toThrowError(
+      'Spreadsheet exceeds the configured resource limits.',
+    );
+  });
+
+  it('fails closed before materializing oversized cell text', () => {
+    const workbook = {
+      worksheets: [
+        {
+          name: 'Oversized text',
+          hidden: false,
+          rows: [['x'.repeat(32_769)]],
+        },
+      ],
+    };
+
+    expect(() => spreadsheetWorkbookToDocumentJson(workbook)).toThrowError(
+      'Spreadsheet exceeds the configured resource limits.',
+    );
+  });
+
   it('exposes a stable payload-redacted import error identity', () => {
     const error = new SpreadsheetImportError(
       'UNSUPPORTED_OR_CORRUPT',
