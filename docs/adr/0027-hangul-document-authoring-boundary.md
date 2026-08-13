@@ -61,7 +61,7 @@ Acceptance requires all of the following on one exact PR head:
 
 Until that evidence is merged to protected `main`, this ADR remains Proposed.
 
-## Rollback and supersession
+## Rollback or supersession
 
 The feature can be rolled back by removing the Hangul package subpath while retaining this ADR as historical evidence. A future design that makes native OWPML the canonical editable authority or grants the package filesystem/network authority requires a superseding ADR.
 
