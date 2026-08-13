@@ -33,6 +33,12 @@ describe('exact-head CI workflow contract', () => {
     expect(workflow.match(/persist-credentials: false/g)).toHaveLength(3);
   });
 
+  it('runs exact-head CI for pull requests regardless of stacked base branch', () => {
+    expect(workflow).toContain('  push:\n    branches: [main]');
+    expect(workflow).toContain('  pull_request:\n');
+    expect(workflow).not.toContain('  pull_request:\n    branches: [main]');
+  });
+
   it('keeps the workflow read-only and hash-pins every third-party action', () => {
     expect(workflow).toContain('permissions:\n  contents: read');
     expect(workflow).not.toContain('contents: write');
