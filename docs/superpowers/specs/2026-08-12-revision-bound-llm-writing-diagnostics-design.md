@@ -1,4 +1,4 @@
-# Revision-Bound LLM Writing Diagnostics Design
+# Revision-Bound Writing Diagnostics Design
 
 **Date:** 2026-08-12  
 **Status:** Proposed design; not shipped behavior  
@@ -6,99 +6,108 @@
 
 ## Objective
 
-Add a provider-neutral, Grammarly-like writing-diagnostic surface to Inkspan without turning Inkspan into a language model, email product, policy engine, or persistence service.
+Add a provider-neutral, Grammarly-like writing-diagnostic surface without turning Inkspan into a language model, email product, policy engine, persistence service, or hidden semantic classifier.
 
-A host application will generate contextual writing proposals using an LLM and its own review policy. Inkspan will display those proposals against the exact document revision from which they were generated, let the author inspect and apply or ignore each one, and prevent stale asynchronous output from mutating newer content.
+A host application generates contextual writing proposals using its own model, rubric, authorization, privacy, retention, and review policy. Inkspan admits only structurally valid host proposals, binds them to one exact document revision and text projection, renders them accessibly, and permits explicit user actions without allowing stale asynchronous output to mutate changed content.
 
-The feature must support spelling, grammar, spacing, punctuation, clarity, concision, structure, tone, pragmatics, technical precision, and actionability as host-defined categories. Inkspan does not determine any of those categories. It exposes a generic review contract and deterministic document integrity.
+Host-defined categories may describe spelling, grammar, spacing, punctuation, clarity, concision, structure, tone, pragmatics, technical precision, or actionability. Inkspan treats those fields as opaque proposal data. It does not determine whether a category, explanation, confidence, priority, or replacement is semantically correct.
 
 ## Product behavior
 
-An author sees normal Inkspan editing first. When the host supplies diagnostics:
+An author sees normal Inkspan editing first. When the host supplies an admitted diagnostic set:
 
-1. affected ranges receive non-color-only decorations;
-2. the diagnostics summary reports the number and categories of suggestions;
-3. keyboard and pointer users can move to the previous or next suggestion;
-4. a suggestion card explains the issue and shows an optional replacement;
-5. Apply changes only the selected range;
-6. Ignore reports a host-visible feedback action without changing the document;
-7. Dismiss removes the local presentation until the host changes the diagnostic set;
-8. Explain requests no model call from Inkspan; it reveals the explanation already supplied by the host or invokes a host callback;
-9. any document change revalidates or invalidates affected diagnostics;
-10. stale diagnostics never apply by nearest-text search, keyword search, or silent position repair.
+1. non-empty affected ranges receive non-color-only visual decorations;
+2. a named diagnostics region reports the count and exposes an ordered list;
+3. each item exposes category, priority, title, explanation, and optional replacement as plain text;
+4. keyboard, pointer, touch, and assistive-technology users can navigate the previous or next diagnostic;
+5. Focus moves to an affected structural range only after explicit user navigation;
+6. Apply rechecks the exact current revision and applies one selected plain-text replacement through one ordinary ProseMirror transaction;
+7. Ignore and Dismiss emit privacy-minimized host-visible actions without changing canonical content;
+8. Explain reveals the supplied explanation or invokes an explicit host callback; Inkspan performs no model call;
+9. asynchronous arrival never steals focus; and
+10. stale diagnostics never apply through nearest-text search, keyword search, quote search, remapping, or silent position repair.
 
-Diagnostics remain advisory. Their presence does not block form submission, email sending, export, or persistence in the editor package.
+Diagnostics remain advisory. Their presence, absence, invalidity, or staleness does not block form submission, sending, export, persistence, or collaboration in the editor package.
 
 ## Selected architecture
 
 ```mermaid
 flowchart LR
     H[Host review service] -->|revision-bound diagnostics| P[Inkspan public props]
-    P --> V[Deterministic diagnostic validator]
-    V --> D[ProseMirror decorations]
-    D --> U[Accessible diagnostics UI]
-    U --> A{Author action}
-    A -->|Apply| R[Revision/selector revalidation]
-    A -->|Ignore or Dismiss| C[Privacy-minimized callback]
-    R -->|match| T[Normal ProseMirror transaction]
-    R -->|stale or ambiguous| X[Typed conflict/invalidation]
-    T --> E[Normal onChange/onDocumentChange/undo]
+    P --> V[Deterministic contract validator]
+    V --> R[Exact revision and selector resolver]
+    R --> D[Semantic-neutral ProseMirror decorations]
+    D --> U[Accessible diagnostics panel]
+    U --> A{Explicit author action}
+    A -->|Apply| C[Exact current-revision check]
+    A -->|Ignore Dismiss Explain| E[Privacy-minimized action event]
+    C -->|match| T[Ordinary ProseMirror transaction]
+    C -->|stale conflict| X[Typed non-mutating outcome]
+    T --> O[Normal change revision and undo behavior]
 ```
 
-The host may be Naruon, another CWL product, or an unrelated consumer. No host name appears in the runtime API.
+The host may be Naruon, another CWL product, or an unrelated consumer. No host, provider, model, email, or tenant name appears in the generic runtime contract.
 
 ## Public contract
 
-The exact implementation names may be refined during planning, but the semantic contract is fixed.
+The v1 design mirrors the implementation types rather than maintaining a second approximate schema.
 
 ```ts
-export type CwlWritingDiagnosticPriority = 'suggestion' | 'important';
-
-export interface CwlWritingDiagnosticSelector {
-  readonly type: 'TextPositionSelector';
-  readonly start: number;
-  readonly end: number;
-}
+export type CwlWritingDiagnosticPriority =
+  | 'advisory'
+  | 'important'
+  | 'critical';
 
 export interface CwlWritingDiagnosticProvenance {
   readonly workflowId: string;
   readonly workflowVersion: string;
-  readonly policyVersion: string;
-  readonly providerName?: string;
-  readonly modelName?: string;
+  readonly judgePolicyVersion: string;
+  readonly orchestrationMode?: string;
 }
 
 export interface CwlWritingDiagnostic {
   readonly diagnosticId: string;
-  readonly documentRevision: string;
-  readonly projectionName: 'inkspan-prosemirror-text';
-  readonly projectionVersion: 1;
-  readonly selector: CwlWritingDiagnosticSelector;
+  readonly documentRevision: CwlEditorDocumentRevision;
+  readonly textProjection: CwlEditorTextProjectionIdentity;
+  readonly selector: CwlEditorTextPositionSelector;
   readonly categoryCode: string;
   readonly priority: CwlWritingDiagnosticPriority;
   readonly title: string;
   readonly explanation: string;
   readonly suggestedReplacement?: string;
   readonly confidence?: number;
-  readonly provenance: CwlWritingDiagnosticProvenance;
+  readonly provenance: Readonly<CwlWritingDiagnosticProvenance>;
 }
 
 export type CwlWritingDiagnosticAction =
-  | 'apply'
-  | 'ignore'
-  | 'dismiss'
-  | 'explain';
+  | 'applied'
+  | 'ignored'
+  | 'dismissed'
+  | 'requested_explanation'
+  | 'stale'
+  | 'conflict';
+
+export type CwlWritingDiagnosticActionReasonCode =
+  | 'explicit'
+  | 'document_changed'
+  | 'revision_mismatch'
+  | 'projection_mismatch'
+  | 'selector_invalid'
+  | 'verification_failed'
+  | 'lifecycle_ended'
+  | 'diagnostic_missing';
 
 export interface CwlWritingDiagnosticActionEvent {
-  readonly diagnosticId: string;
   readonly action: CwlWritingDiagnosticAction;
-  readonly status: 'completed' | 'stale' | 'conflict' | 'rejected';
-  readonly currentRevision?: string;
-  readonly reasonCode?: string;
+  readonly reasonCode: CwlWritingDiagnosticActionReasonCode;
+  readonly diagnosticId: string;
+  readonly documentRevision: CwlEditorDocumentRevision;
+  readonly categoryCode: string;
+  readonly generation: number;
 }
 ```
 
-Candidate props:
+Candidate additive editor props are:
 
 ```ts
 interface CwlEditorProps {
@@ -106,235 +115,191 @@ interface CwlEditorProps {
   onWritingDiagnosticAction?: (
     event: CwlWritingDiagnosticActionEvent,
   ) => void;
+  onWritingDiagnosticsError?: (error: WritingDiagnosticError) => void;
+  writingDiagnosticsLabel?: string;
+  printWritingDiagnostics?: boolean;
 }
 ```
 
-Candidate imperative method for hosts that render their own panel:
-
-```ts
-interface CwlEditorHandle {
-  applyWritingDiagnosticIfMatch(
-    diagnosticId: string,
-  ): Promise<CwlWritingDiagnosticActionEvent>;
-}
-```
-
-The component and imperative paths must call the same implementation. There cannot be a “trusted imperative” bypass.
+Candidate imperative methods use the same controller and validation path as the built-in panel. There is no trusted imperative bypass.
 
 ## Validation boundary
 
-The diagnostic validator is deterministic and fail-closed. It verifies:
+The deterministic validator fails closed and verifies:
 
-- the collection is an array within a documented maximum count;
-- every object contains exactly the supported fields;
-- identifiers and category codes satisfy bounded syntax contracts;
-- identifiers are unique within the supplied collection;
-- text fields are non-empty where required and within documented limits;
-- confidence, if present, is finite and in `[0, 1]`;
-- the projection name and version are supported;
-- the declared revision has valid Inkspan strong-entity-tag syntax;
-- selector values are non-negative integers with `start < end`;
-- selector boundaries are valid Unicode-code-point and grapheme-cluster boundaries;
-- the range exists in the declared projection;
-- replacement content passes the existing editor input, link, image, and schema policies;
-- diagnostics do not contain executable markup or hidden event handlers;
-- a bounded batch application contains no overlapping edits.
+- exact own enumerable data properties and no unsupported fields, symbols, accessors, sparse arrays, inherited fields, or hostile reflection;
+- bounded collection size, identifier length, category length, title, explanation, replacement, and provenance identifiers;
+- unique diagnostic identifiers within one submitted generation;
+- supported finite priority and confidence values;
+- an exact lowercase SHA-256 revision object and matching strong entity tag;
+- the exact `inkspan-prosemirror-text` version 1 projection identity;
+- selector values are non-negative safe integers with start <= end;
+- Unicode-code-point and grapheme-cluster boundaries;
+- one unambiguous structural range in the exact projected snapshot; and
+- plain-text replacement values only.
 
-The validator does not decide whether an explanation is true, whether a replacement is grammatically better, or whether a message is polite. Regexes may validate identifiers and revision syntax but cannot create or admit a semantic diagnostic based on source wording.
+Collapsed selectors are valid evidence and remain navigable, but they create no inline range decoration. Empty and non-empty selectors use the same exact revision/projection admission path.
+
+The validator does not decide whether an explanation is true, a replacement is better, a message is polite, or a category label is accurate. Regexes may validate bounded identifiers and revision syntax, but they cannot create, prioritize, admit, or semantically classify a diagnostic.
 
 ## Revision and position lifecycle
 
 ### Initial admission
 
-The host captures one document revision and text projection, sends that material through its review system, and returns diagnostics carrying the same revision and projection identity. Inkspan compares those fields with the editor state before rendering the proposals as current.
+The host reviews one immutable document snapshot and returns diagnostics carrying that snapshot's exact `CwlEditorDocumentRevision`, projection identity, and W3C text-position selector. Inkspan validates the complete untrusted set before reading editor state, derives one current revision from one immutable editor snapshot, resolves all selectors against that same snapshot, and publishes only a complete verified generation.
 
-### Local edits
+### Strict invalidation
 
-ProseMirror can map a range through transactions. Inkspan may keep a diagnostic current only when all of the following hold:
+Every local or collaborative transaction with docChanged === true invalidates the complete active diagnostic generation.
 
-- the original revision was admitted;
-- every intervening transaction exposes a valid mapping;
-- the mapped range is not deleted, split ambiguously, or replaced by unrelated content;
-- the host's declared policy allows mapped presentation;
-- application still performs a fresh current-state check.
+Version 1 does not preserve, map, remap, repair, or re-admit a diagnostic after changed document content. ProseMirror mapping and Yjs relative positions are useful editor mechanisms, but neither proves that a host model judgment remains semantically current. A stale async digest or selector result is discarded through the generation fence. The host must submit a new set bound to the new exact revision.
 
-A mapped decoration is presentation convenience, not permission to apply stale model output. The final replacement action verifies the active state under the implementation plan's exact conflict contract.
+### Explicit action
 
-### Remote collaborative edits
+Version 1 applies exactly one explicitly selected diagnostic at a time.
 
-Yjs collaboration can remap local ProseMirror positions, but a model proposal remains bound to the original strong revision. A remote edit that changes the reviewed content invalidates the proposal for application. Inkspan must not treat a Yjs relative position as proof that the semantic target remained unchanged.
+Immediately before application, Inkspan derives and compares the current exact revision again. A matching diagnostic with a valid plain-text replacement produces one ordinary ProseMirror transaction and normal undo history. A mismatch, missing diagnostic, invalid selector, ended lifecycle, or changed document returns a typed non-mutating event. Successful application invalidates every remaining diagnostic and derives the resulting revision from the post-transaction document.
+
+There is no Apply All or batch mutation authority in v1. Overlapping diagnostics may be displayed independently, but each action is revalidated after every document change.
 
 ### Re-review
 
-The host receives stale/conflict callbacks and may request a new review. Inkspan itself performs no network call and has no retry loop.
+The host may use a stale/conflict action event to request a new review. Inkspan performs no network call, retry, provider fallback, or diagnostic regeneration.
 
-## Decoration and interaction model
+## Decoration and accessibility model
 
-- Different categories may use distinct underline patterns, but color alone is insufficient.
-- Hover may show a preview, but every operation must be keyboard reachable.
-- The editor toolbar remains one composite tab stop; diagnostic navigation may be a separate named toolbar or panel with a documented roving-tabindex pattern.
-- Opening a diagnostic card does not move the caret unless the author explicitly chooses to navigate to the affected range.
-- Applying a replacement creates one normal ProseMirror transaction and one normal undo step.
-- After Apply, focus returns predictably to the editor at the end of the inserted replacement unless the host chooses a documented alternative.
-- New asynchronous diagnostics must not steal focus or close a card the author is actively reading.
-- Screen-reader output identifies category, ordinal position, affected range context, and available actions without reading the entire document.
+Inline decorations contain only:
+
+```text
+class="cwl-writing-diagnostic cwl-writing-diagnostic--{priority}"
+data-cwl-diagnostic-id="opaque-id"
+```
+
+Inkspan does not derive aria-invalid or any other semantic accessibility state from opaque host strings.
+
+The editor does not infer spelling, grammar, mechanics, tone, or correctness from `categoryCode`, title, explanation, replacement, confidence, provenance, or source text. It does not place those strings in decoration attributes. The named diagnostics panel is the semantic accessibility surface.
+
+The panel must provide:
+
+- a named region and count summary;
+- an ordered list with category, priority, title, and explanation;
+- explicit previous/next navigation with roving focus;
+- an affected-range Focus action;
+- Apply, Ignore, Dismiss, and Explain native buttons;
+- a disabled Apply action when no replacement exists;
+- a polite status region for ordinary completed actions;
+- an assertive alert only for an actual application conflict;
+- no focus theft when diagnostics arrive asynchronously; and
+- equivalent information without color, hover, pointer input, animation, or generated CSS content.
+
+Host strings render as React text nodes only. Action names may use the diagnostic title but never copy selected source text into DOM attributes. Underlines are a visual supplement, not the sole information channel.
 
 ## Host feedback surface
 
-Inkspan reports action metadata only. The default event contains no selected source text, replacement text, explanation, prompt, raw model output, email recipient, or tenant identifier.
+Default action events contain only opaque identifiers, exact revision evidence, opaque category code, generation, action, and bounded reason code. They contain no selected source text, replacement text, explanation, prompt, raw model output, email recipient, credential, document envelope, or tenant identifier.
 
-A host that needs richer audit evidence must deliberately read it from its own authorized review-session store. This prevents generic analytics from becoming a shadow copy of authored documents.
-
-Recommended action reason codes include:
-
-```text
-revision_mismatch
-projection_mismatch
-range_deleted
-range_ambiguous
-replacement_rejected
-batch_overlap
-unsupported_diagnostic
-editor_destroyed
-```
-
-Reason codes are stable machine data. Human-readable failure messages remain localized host/editor UI text.
+A host requiring richer audit evidence reads it from its own authorized review-session store. Generic analytics must not become a shadow copy of authored content.
 
 ## Security and privacy
 
-- Treat every diagnostic field as attacker-controlled input.
-- Render title and explanation as text, not trusted HTML.
-- Route replacements through existing safe-link, safe-image, clipboard, and schema policy.
-- Do not allow a diagnostic to carry commands, JavaScript, arbitrary TipTap JSON, or host callbacks.
-- Do not place source or replacement text in logs, exceptions, analytics, or performance marks.
-- Do not expose provider credentials or full provider traces through provenance.
-- Bound diagnostic count, text lengths, selector sizes, and decoration work to prevent rendering denial of service.
-- Reject duplicate identifiers and unsupported fields rather than accepting ambiguous objects.
+- Treat every diagnostic object and host string as untrusted input.
+- Reject accessors, prototypes, symbols, extra fields, sparse arrays, proxies, duplicate identifiers, and resource-limit violations.
+- Render title, explanation, category, and replacement previews as text, never trusted HTML.
+- Accept only plain-text replacement values in v1.
+- Do not allow commands, JavaScript, arbitrary TipTap JSON, host callbacks, or executable markup inside a diagnostic.
+- Do not place authored or model-produced text in logs, exceptions, analytics, performance marks, awareness payloads, or decoration attributes.
+- Do not expose provider credentials, raw provider traces, or tenant data through provenance.
 - Preserve Inkspan's no-runtime-environment-read and no-network-call contracts.
 
-## Keyword-judgment prohibition
+## Semantic keyword prohibition
 
-Inkspan must contain no semantic rule such as:
-
-```text
-if text includes "무슨 말씀이신가요" then category = "tone"
-if text includes "당황스럽습니다" then priority = "important"
-if sender domain ends with X then apply business-language rule Y
-```
-
-Test fixtures will include:
-
-- the same phrase quoted neutrally and used as a direct rebuke;
-- the same pragmatic problem expressed with unrelated vocabulary;
-- intentionally misspelled words inside code, quotations, and proper names;
-- recipient metadata that changes the host's interpretation while the draft text remains identical.
-
-Inkspan must produce zero diagnostics in every fixture unless the host explicitly supplies them. This proves the package is a renderer and integrity boundary, not a hidden classifier.
+Inkspan must produce zero diagnostics unless the host explicitly supplies them. It contains no semantic rule based on keywords, regexes, phrase dictionaries, sender domains, recipient counts, language names, positions, or nearest-text similarity. Opaque values that happen to contain words such as `spelling`, `grammar`, `mechanics`, `rude`, `incorrect`, or multilingual equivalents do not gain behavior or semantic ARIA authority.
 
 ## Failure behavior
 
 | Condition | Inkspan behavior |
 |---|---|
 | No diagnostics supplied | Normal editor behavior |
-| Host review pending | Normal editor; optional host-owned loading UI |
-| Host review failed | Normal editor; no fabricated fallback |
-| Malformed diagnostic | Reject diagnostic collection or invalid entry according to the typed contract; no mutation |
-| Stale revision | Mark invalid/stale; Apply unavailable; emit callback |
-| Unsupported projection | Reject; no nearest-text recovery |
-| Hostile explanation/replacement | Render safely or reject under existing policy |
-| Overlapping batch | Reject batch; allow individually revalidated actions |
-| Editor destroyed | Return typed non-mutating result |
+| Host review pending or unavailable | Normal editor; optional host-owned status UI |
+| Malformed or oversized input | Reject complete set through a redacted typed error; no editor mutation |
+| Revision mismatch | Do not install or apply; return bounded stale/conflict evidence |
+| Unsupported projection | Reject; no nearest-text or compatibility recovery |
+| Invalid or ambiguous selector | Reject complete set; no guessed position |
+| Local or remote document change | Invalidate complete active generation immediately |
+| Host callback throws | Contain callback failure; preserve deterministic editor state |
+| Editor destroyed | Return typed non-mutating lifecycle evidence |
 
 ## Testing strategy
 
-### Pure contract tests
+### Contract and hostile-input tests
 
-- exact field, type, length, and count validation;
-- duplicate IDs and unexpected fields;
-- finite confidence and revision syntax;
-- Unicode code-point ranges and grapheme boundaries;
-- immutable/frozen public event snapshots where applicable;
-- overlap detection and deterministic ordering.
+- exact fields, types, limits, priorities, confidence, revision, projection, and selector validation;
+- duplicate identifiers, sparse arrays, accessors, inherited fields, symbols, proxies, and hostile reflection;
+- Unicode astral characters, Korean/CJK, combining marks, emoji, bidirectional text, empty/collapsed selectors, and grapheme boundaries;
+- immutable detached public values and redacted errors.
 
-### Editor tests
+### Editor and concurrency tests
 
-- decorations on exact ranges;
-- local transaction mapping and invalidation;
-- stale application rejection;
-- safe replacement and one-step undo;
-- no mutation on rejected input;
-- action callback content minimization;
-- no diagnostic generation from source text.
+- exact decoration attributes and no semantic ARIA derivation;
+- local and remote `docChanged` invalidation;
+- generation fencing for overlapping async verification;
+- exact application recheck, ordinary transaction, resulting revision, and one-step undo;
+- no mutation on rejected or stale input;
+- privacy-minimized action events and callback-failure containment;
+- zero diagnostics without host input.
 
 ### Accessibility tests
 
-- keyboard navigation and all actions;
-- named regions and controls;
-- focus restoration;
-- polite live status;
-- non-color-only rendering;
-- arrival of new diagnostics while focus remains stable.
+- named region, ordered list, count, category, priority, title, and explanation;
+- keyboard navigation, roving focus, and explicit actions;
+- no focus theft, polite status, conflict alert, forced colors, high contrast, reduced motion, print, zoom, and touch targets;
+- no visual-only or hover-only information.
 
-### Collaborative tests
+### Collaboration, package, and browser tests
 
-- local and remote edits;
-- Yjs remapping followed by revision rejection;
-- no awareness publication caused by diagnostics;
-- standalone/collaborative public API parity.
-
-### Package and browser tests
-
-- packed ESM/CommonJS/type consumers;
-- React 18 and 19 host builds;
-- SSR/hydration;
-- Chromium, Firefox, and WebKit behavior;
-- production statement, branch, function, and line coverage at exactly 100%;
-- public declarations and JSDoc completeness.
+- standalone/collaborative API parity and remote invalidation;
+- no diagnostics in Yjs awareness payloads;
+- SSR-safe shell and deterministic hydration;
+- packed ESM/CommonJS/strict-TypeScript consumers;
+- React-free `writing-diagnostics` subpath;
+- Chromium, Firefox, and WebKit evidence; and
+- exact 100% owned production statement, branch, function, and line coverage plus complete public JSDoc.
 
 ## Performance constraints
 
-- Validation is linear in diagnostic count plus bounded text projection work.
-- Decoration updates are incremental where ProseMirror supports it.
-- A configurable hard maximum prevents unbounded diagnostic decorations.
-- No source document clone or SHA-256 digest is repeated merely to render an already-admitted set.
-- Applying one proposal does not serialize the full document more times than required by the existing revision guard.
-- Performance telemetry records counts and timing buckets, not authored text.
+- Validation is linear in bounded diagnostic count and bounded projection size.
+- At most 256 active diagnostics are admitted by default.
+- One immutable snapshot and one revision derivation are shared across one verification generation.
+- No document clone or digest is repeated merely to render an already admitted set.
+- A document change invalidates rather than remaps the set, keeping v1 lifecycle cost deterministic.
+- Telemetry records counts and timing buckets, not authored text.
 
-## Documentation updates required with implementation
+## Documentation and release requirements
 
-- root README and React editor examples;
-- public API declarations and JSDoc;
-- selection lifecycle and revision evidence guides;
-- accessibility guide;
-- collaboration guide;
-- security/privacy guidance;
-- package distribution and packed-consumer verification;
-- ADR index and documentation-fitness traceability;
-- CHANGELOG and release evidence.
+Implementation must synchronize root README, public API/JSDoc, PRD, TRD, API contract, architecture, threat model, operability, selector/revision guides, collaboration guide, test strategy, ADR index, traceability, CHANGELOG, package consumers, SBOM/provenance, rollback, and release evidence.
+
+The feature remains `Unreleased`. It may ship only after the complete stack is reconciled onto protected main, temporary branch-specific workflows are removed, exact-head CI/security/coverage/package/browser evidence succeeds, zero valid findings remain, qualifying independent review exists, and a separate release-only PR publishes immutable artifacts.
 
 ## Out of scope
 
-- model invocation or model selection;
-- spelling dictionaries or grammar models;
+- model invocation, model selection, prompt construction, rubric ownership, judge calibration, or provider failover;
+- spelling dictionaries or deterministic grammar/tone classifiers;
 - email/thread/recipient semantics;
-- host policy or submission blocking;
-- persistent review sessions;
-- diagnostic aggregation across users;
-- human-review assignment;
-- provider billing and retention;
-- training or calibrating an LLM judge.
-
-Those responsibilities belong to the host or separate CWL services.
+- host submission, send, persistence, or compliance gates;
+- persistent review sessions and cross-user aggregation;
+- human-review assignment; and
+- provider billing, retention, or training.
 
 ## Primary references
 
-- W3C Web Annotation Data Model Recommendation for Unicode-code-point `TextPositionSelector` semantics and its warning that positions are brittle across resource changes.
-- TipTap v2 and ProseMirror documentation for immutable editor state, transactions, selections, decorations, and mapping.
-- RFC 9110 for strong entity-tag and conditional-write semantics used by Inkspan's revision boundary.
-- Inkspan ADR 0011 for the deterministic versus model-assisted authoring boundary.
+- W3C Web Annotation Data Model for Unicode-code-point `TextPositionSelector` semantics and its warning that positions are brittle across resource changes.
+- TipTap v2 and ProseMirror documentation for immutable editor state, transactions, selections, and decorations.
+- RFC 9110 for strong entity-tag semantics used by Inkspan revision evidence.
+- Inkspan ADR 0011 for deterministic versus model-assisted authoring.
 - Inkspan ADR 0018 for revision-scoped W3C selector authority.
+- Inkspan ADR 0027 and ADR 0028 for host semantic authority, strict invalidation, and semantic-neutral accessibility.
 - The accompanying doctoring record for LLM-judge bias and host calibration implications.
 
 ## Approval boundary
 
-Approval of this design authorizes an implementation plan, not production claims. The feature remains unshipped until protected `main` contains the implementation, documentation, exact 100% coverage evidence, packed-package verification, cross-engine evidence, security checks, review approval, and release reconciliation.
+Approval of this design authorizes implementation work, not production claims. The feature remains unshipped until protected main contains the reconciled implementation, canonical documentation, exact acceptance evidence, independent approval, and verified release artifacts.
