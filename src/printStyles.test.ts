@@ -79,6 +79,12 @@ describe('print stylesheet contract', () => {
     );
   });
 
+  it('keeps the empty-guidance focus handoff visibly perceivable', () => {
+    expect(styles).toMatch(
+      /\.cwl-writing-diagnostics:focus-visible[\s\S]*\{[^}]*outline:\s*2px solid var\(--cwl-accent\)\s*;[^}]*outline-offset:\s*2px\s*;/u,
+    );
+  });
+
   it('preserves forced-colors, reduced-motion, and touch-target guidance', () => {
     expect(styles).toMatch(
       /@media\s*\(forced-colors:\s*active\)[\s\S]*\.cwl-writing-diagnostic[\s\S]*CanvasText/u,

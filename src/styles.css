@@ -110,6 +110,7 @@
 
 @media (forced-colors: active) {
   .cwl-tb-btn:focus-visible,
+  .cwl-writing-diagnostics:focus-visible,
   .cwl-writing-diagnostics__item:focus-visible,
   .cwl-writing-diagnostics__actions button:focus-visible,
   .cwl-writing-diagnostics__navigation-button:focus-visible {
@@ -357,6 +358,7 @@
   border-left-color: var(--cwl-critical);
 }
 
+.cwl-writing-diagnostics:focus-visible,
 .cwl-writing-diagnostics__item:focus-visible,
 .cwl-writing-diagnostics__actions button:focus-visible,
 .cwl-writing-diagnostics__navigation-button:focus-visible {
