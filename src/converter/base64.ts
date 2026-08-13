@@ -65,10 +65,15 @@ const CANONICAL_PERCENT_ENCODED_ASCII_RE =
   /^(?:[\x00-\x24\x26-\x7f]|%[0-7][0-9a-f])*$/i;
 const INVALID_OPTIONS_MESSAGE = 'converter options are invalid.';
 const INVALID_BINARY_INPUT_MESSAGE = 'converter binary input is invalid.';
+const INVALID_BLOB_INPUT_MESSAGE = 'converter Blob input is invalid.';
 const MAX_MIME_TYPE_CODE_UNITS = 1_024;
 const ARRAY_BUFFER_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
   ArrayBuffer.prototype,
   'byteLength',
+)!.get!;
+const BLOB_SIZE_GETTER = Object.getOwnPropertyDescriptor(
+  Blob.prototype,
+  'size',
 )!.get!;
 
 const hasBuffer = typeof globalThis.Buffer !== 'undefined';
@@ -118,6 +123,15 @@ function isArrayBuffer(input: unknown): input is ArrayBuffer {
     return true;
   } catch {
     return false;
+  }
+}
+
+/** Return the Blob byte length only after the platform internal-slot check. */
+function readBlobSize(input: unknown): number {
+  try {
+    return BLOB_SIZE_GETTER.call(input) as number;
+  } catch {
+    throw new TypeError(INVALID_BLOB_INPUT_MESSAGE);
   }
 }
 
@@ -364,7 +378,7 @@ export async function blobToDataUri(
   options: EncodeOptions = {},
 ): Promise<string> {
   const { mimeType, maxBytes } = resolveEncodeOptions(options);
-  assertSize(blob.size, maxBytes);
+  assertSize(readBlobSize(blob), maxBytes);
   const bytes = await readBlobBytes(blob);
   assertSize(bytes.byteLength, maxBytes);
   const mime =
