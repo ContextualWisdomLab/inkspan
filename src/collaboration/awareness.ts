@@ -264,6 +264,15 @@ export function renderCollaborationSelection(
 
 /** Select black or white text using the WCAG relative-luminance threshold. */
 export function contrastingTextColor(hexColor: string): '#000000' | '#ffffff' {
+  if (
+    typeof hexColor !== 'string' ||
+    !CURSOR_COLOR_PATTERN.test(hexColor)
+  ) {
+    throw new RangeError(
+      'collaboration contrast color must be a six-digit hexadecimal color',
+    );
+  }
+
   const red = Number.parseInt(hexColor.slice(1, 3), 16) / 255;
   const green = Number.parseInt(hexColor.slice(3, 5), 16) / 255;
   const blue = Number.parseInt(hexColor.slice(5, 7), 16) / 255;
