@@ -352,6 +352,20 @@ try {
   assert.equal(extractedPackageJson.name, packageName);
   assert.equal(extractedPackageJson.version, packageJson.version);
 
+  writeFileSync(
+    join(consumerDirectory, 'package.json'),
+    `${JSON.stringify(
+      {
+        name: 'inkspan-package-verification-consumer',
+        private: true,
+        type: 'module',
+      },
+      null,
+      2,
+    )}\n`,
+    'utf8',
+  );
+
   runConsumerSmokeTest(
     'consumer-esm.mjs',
     `import assert from 'node:assert/strict';
