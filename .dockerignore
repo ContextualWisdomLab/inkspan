@@ -4,3 +4,17 @@ dist-demo
 coverage
 .git
 *.log
+
+# The standalone demo build is credential-free. Keep local configuration,
+# registry credentials, and private key material out of recursive build context.
+**/.env
+**/.env.*
+!**/.env.example
+**/.npmrc
+**/.pnpmrc
+**/.yarnrc*
+**/.netrc
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
