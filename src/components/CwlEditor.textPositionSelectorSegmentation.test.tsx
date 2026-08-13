@@ -39,6 +39,7 @@ describe('CwlEditor text-position selector segmentation', () => {
     if (typeof OriginalSegmenter !== 'function') {
       throw new Error('test runtime requires Intl.Segmenter');
     }
+    const SegmenterConstructor: GraphemeSegmenterConstructor = OriginalSegmenter;
 
     let constructions = 0;
     let completedPasses = 0;
@@ -51,7 +52,7 @@ describe('CwlEditor text-position selector segmentation', () => {
         options?: { readonly granularity: 'grapheme' },
       ) {
         constructions += 1;
-        this.#delegate = new OriginalSegmenter(locales, options);
+        this.#delegate = new SegmenterConstructor(locales, options);
       }
 
       segment(input: string): Iterable<GraphemeSegment> {
