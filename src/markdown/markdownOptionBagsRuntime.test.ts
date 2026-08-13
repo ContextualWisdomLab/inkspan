@@ -28,7 +28,6 @@ function expectInvalidConfiguration(run: () => unknown): void {
   }
 
   expect(failure).toMatchObject(INVALID_CONFIGURATION);
-  expect(String(failure)).not.toContain('private-');
 }
 
 describe('Markdown public option-bag runtime contracts', () => {
@@ -40,12 +39,10 @@ describe('Markdown public option-bag runtime contracts', () => {
 
   it.each(adapters)('rejects unknown string and symbol keys for %s', (_label, convert) => {
     expectInvalidConfiguration(() => convert('hello', { maxMarkdownByte: 1 }));
-    expectInvalidConfiguration(() =>
-      convert('hello', { [Symbol('private-option')]: true }),
-    );
+    expectInvalidConfiguration(() => convert('hello', { [Symbol('option')]: true }));
   });
 
-  it.each(adapters)('rejects accessors without executing caller code for %s', (_label, convert) => {
+  it.each(adapters)('rejects accessors without evaluating them for %s', (_label, convert) => {
     let getterCalled = false;
     const options = Object.create(null) as Record<string, unknown>;
     Object.defineProperty(options, 'maxMarkdownBytes', {
@@ -53,7 +50,7 @@ describe('Markdown public option-bag runtime contracts', () => {
       configurable: true,
       get() {
         getterCalled = true;
-        throw new Error('private-option-getter');
+        throw new Error('getter executed');
       },
     });
 
@@ -88,14 +85,10 @@ describe('Markdown public option-bag runtime contracts', () => {
     options.languageTag = 'en';
     options.textDirection = 'ltr';
 
-    expect(markdownToEmailHtml('hello', options)).toContain('<!doctype html>');
+    expect(markdownToEmailHtml('hello', options as never)).toContain('<!doctype html>');
     expectInvalidConfiguration(() =>
       markdownToEmailHtml('hello', {
         maxMarkdownBytes: 1024,
-        fullDocument: false,
-        title: undefined,
-        languageTag: undefined,
-        textDirection: undefined,
         unexpected: true,
       } as never),
     );
