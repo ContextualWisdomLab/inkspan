@@ -190,3 +190,20 @@ def test_cli_reports_committed_output_cleanup_failure_without_reflecting_detail(
     error = capsys.readouterr().err
     assert "output was written but temporary cleanup failed" in error
     assert private_marker not in error
+
+
+def test_cli_redacts_invalid_input_path_value_error(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    private_marker = "confidential_embedded_null_input"
+    source = tmp_path / f"{private_marker}\0.json"
+    output = tmp_path / "result.docx"
+
+    with pytest.raises(SystemExit) as exc:
+        main([str(source), str(output)])
+
+    assert exc.value.code == 2
+    error = capsys.readouterr().err
+    assert "input could not be read" in error
+    assert private_marker not in error
