@@ -13,6 +13,12 @@ const releaseWorkflow = repositoryFile('.github/workflows/release.yml');
 const diagnosticsWorkflow = repositoryFile(
   '.github/workflows/writing-diagnostics-assurance-tdd.yml',
 );
+const editorActionsWorkflow = repositoryFile(
+  '.github/workflows/writing-diagnostics-editor-actions-tdd.yml',
+);
+const collaborationWorkflow = repositoryFile(
+  '.github/workflows/writing-diagnostics-collaboration-tdd.yml',
+);
 
 const CHECKOUT_PIN =
   'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1';
@@ -79,6 +85,38 @@ describe('exact-head CI workflow contract', () => {
     );
     expect(diagnosticsWorkflow).toContain(
       'playwright install --with-deps chromium firefox webkit',
+    );
+  });
+
+  it('makes editor-action assurance fail closed on React act warnings', () => {
+    expect(editorActionsWorkflow).toContain(SAFE_PNPM_ACTION_PIN);
+    expect(editorActionsWorkflow).not.toContain(VULNERABLE_PNPM_ACTION_PIN);
+    expect(editorActionsWorkflow.match(/not wrapped in act/g)).toHaveLength(2);
+    expect(
+      editorActionsWorkflow.match(/test_status=\$\{PIPESTATUS\[0\]\}/g),
+    ).toHaveLength(2);
+    expect(editorActionsWorkflow).toContain(
+      '::error::Focused editor actions emitted a React act warning.',
+    );
+    expect(editorActionsWorkflow).toContain(
+      '::error::Production coverage emitted a React act warning.',
+    );
+  });
+
+  it('makes collaboration assurance fail closed on React act warnings', () => {
+    expect(collaborationWorkflow).toContain(SAFE_PNPM_ACTION_PIN);
+    expect(collaborationWorkflow).not.toContain(VULNERABLE_PNPM_ACTION_PIN);
+    expect(
+      collaborationWorkflow.match(/not wrapped in act/g),
+    ).toHaveLength(2);
+    expect(
+      collaborationWorkflow.match(/test_status=\$\{PIPESTATUS\[0\]\}/g),
+    ).toHaveLength(2);
+    expect(collaborationWorkflow).toContain(
+      '::error::Focused collaborative diagnostics emitted a React act warning.',
+    );
+    expect(collaborationWorkflow).toContain(
+      '::error::Production coverage emitted a React act warning.',
     );
   });
 
