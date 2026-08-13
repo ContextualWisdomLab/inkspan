@@ -15,6 +15,12 @@ describe('packed root consumer release evidence', () => {
     expect(verifierSource).toContain("'node_modules'");
     expect(verifierSource).toContain('cwd: consumerDirectory');
     expect(verifierSource).toContain(
+      "join(consumerDirectory, 'package.json')",
+    );
+    expect(verifierSource).toContain(
+      "name: 'inkspan-package-verification-consumer'",
+    );
+    expect(verifierSource).toContain(
       'ESM root package must resolve from isolated consumer node_modules',
     );
     expect(verifierSource).toContain(
