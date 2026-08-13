@@ -85,8 +85,8 @@ function codePointLength(value: string): number {
   return Array.from(value).length;
 }
 
-/** Require a position to coincide with a Unicode grapheme-cluster boundary. */
-function assertGraphemeBoundary(text: string, codeUnitOffset: number): void {
+/** Collect Unicode grapheme-cluster boundaries with one pass over the projection. */
+function collectGraphemeBoundaries(text: string): ReadonlySet<number> {
   const Segmenter = (
     Intl as unknown as { Segmenter?: GraphemeSegmenterConstructor }
   ).Segmenter;
@@ -100,6 +100,14 @@ function assertGraphemeBoundary(text: string, codeUnitOffset: number): void {
   )) {
     boundaries.add(segment.index);
   }
+  return boundaries;
+}
+
+/** Require a position to coincide with a Unicode grapheme-cluster boundary. */
+function assertGraphemeBoundary(
+  boundaries: ReadonlySet<number>,
+  codeUnitOffset: number,
+): void {
   if (!boundaries.has(codeUnitOffset)) {
     throw new TextPositionSelectorEvidenceError('grapheme_boundary');
   }
@@ -126,9 +134,10 @@ export function createTextPositionSelector(
   const fullText = projectDocumentPrefix(documentNode, documentNode.content.size);
   const startPrefix = projectDocumentPrefix(documentNode, selection.from);
   const endPrefix = projectDocumentPrefix(documentNode, selection.to);
+  const graphemeBoundaries = collectGraphemeBoundaries(fullText);
 
-  assertGraphemeBoundary(fullText, startPrefix.length);
-  assertGraphemeBoundary(fullText, endPrefix.length);
+  assertGraphemeBoundary(graphemeBoundaries, startPrefix.length);
+  assertGraphemeBoundary(graphemeBoundaries, endPrefix.length);
 
   const selector = Object.freeze({
     type: 'TextPositionSelector' as const,
