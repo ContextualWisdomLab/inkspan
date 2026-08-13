@@ -192,12 +192,13 @@ function isValidUnicodeRangeDescriptor(value) {
 
 /**
  * Parse font-face blocks without materializing an unbounded attacker-controlled
- * expansion. No font asset request occurs until the complete bounded set is
- * accepted.
+ * expansion. CSS comments are removed first so descriptor-like text inside a
+ * comment can never be mistaken for live font metadata.
  */
 function collectBoundedFontFaceBlocks(css) {
+  const commentFreeCss = css.replace(/\/\*[\s\S]*?(?:\*\/|$)/g, '');
   const blocks = [];
-  for (const match of css.matchAll(FONT_FACE_RE)) {
+  for (const match of commentFreeCss.matchAll(FONT_FACE_RE)) {
     if (blocks.length >= MAX_FONT_FACE_BLOCKS_PER_FAMILY) {
       throw new Error('Google Fonts returned excessive font-face metadata');
     }
