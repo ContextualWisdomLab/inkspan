@@ -4,6 +4,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CwlEditorHandle } from './types.js';
 import { CwlEditor } from './components/CwlEditor.js';
 
+interface SegmenterLike {
+  segment(input: string): Iterable<{ readonly index: number }>;
+}
+
+interface SegmenterConstructorLike {
+  readonly prototype: SegmenterLike;
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   cleanup();
@@ -11,7 +19,11 @@ afterEach(() => {
 
 describe('text-position selector evidence resource discipline', () => {
   it('segments one captured projection only once for both selection boundaries', async () => {
-    const segmentSpy = vi.spyOn(Intl.Segmenter.prototype, 'segment');
+    const Segmenter = (
+      Intl as unknown as { readonly Segmenter?: SegmenterConstructorLike }
+    ).Segmenter;
+    expect(Segmenter).toBeDefined();
+    const segmentSpy = vi.spyOn(Segmenter!.prototype, 'segment');
     const editorRef = createRef<CwlEditorHandle>();
     render(<CwlEditor ref={editorRef} defaultValue="Alpha beta gamma" />);
     await waitFor(() => expect(editorRef.current?.getEditor()).not.toBeNull());
