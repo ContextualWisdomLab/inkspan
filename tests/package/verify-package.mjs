@@ -329,6 +329,11 @@ import * as autosave from '${packageName}/autosave';
 import * as collaboration from '${packageName}/collaboration';
 import * as converter from '${packageName}/converter';
 
+const rootEntrypoint = import.meta.resolve('${packageName}');
+assert.ok(
+  rootEntrypoint.includes('/node_modules/@contextualwisdomlab/cwl-editor/'),
+  'ESM root package must resolve from isolated consumer node_modules',
+);
 assert.equal(typeof editor.markdownToHtml, 'function');
 assert.equal(editor.validateSafeLinkHref('/documents/current'), '/documents/current');
 assert.equal(typeof editor.restoreDocumentEnvelopeIfMatch, 'function');
@@ -355,6 +360,11 @@ const autosave = require('${packageName}/autosave');
 const collaboration = require('${packageName}/collaboration');
 const converter = require('${packageName}/converter');
 
+const rootEntrypoint = require.resolve('${packageName}').replaceAll('\\\\', '/');
+assert.ok(
+  rootEntrypoint.includes('/node_modules/@contextualwisdomlab/cwl-editor/'),
+  'CommonJS root package must resolve from isolated consumer node_modules',
+);
 assert.equal(typeof editor.markdownToHtml, 'function');
 assert.equal(editor.validateSafeLinkHref('/documents/current'), '/documents/current');
 assert.equal(typeof editor.restoreDocumentEnvelopeIfMatch, 'function');
