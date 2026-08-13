@@ -29,6 +29,7 @@ _EXCEL_MAX_ROWS = 1_048_576
 _EXCEL_MAX_COLUMNS = 16_384
 _EXCEL_MAX_TEXT_LENGTH = 32_767
 _EXCEL_MAX_SIGNIFICANT_DIGITS = 15
+_DOCX_MAX_RICH_RUNS = 4_096
 _MAX_CONTAINER_DEPTH = 128
 _CANONICAL_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 _CANONICAL_CORE_TIMESTAMP = b"1980-01-01T00:00:00Z"
@@ -173,11 +174,33 @@ def _normalize_core_properties(content: bytes) -> bytes:
 
 
 def _validate_request(payload: Any) -> None:
-    """Apply cross-format text safety and XLSX storage-bound validation."""
+    """Apply cross-format text safety and bounded format-specific validation."""
 
-    if isinstance(payload, Mapping) and payload.get("format") == "xlsx":
-        _validate_xlsx(payload)
+    if isinstance(payload, Mapping):
+        format_name = payload.get("format")
+        if format_name == "xlsx":
+            _validate_xlsx(payload)
+        elif format_name == "docx":
+            _validate_docx_rich_run_counts(payload)
     _validate_xml_tree(payload, "payload", set())
+
+
+def _validate_docx_rich_run_counts(payload: Mapping[str, Any]) -> None:
+    """Reject impossible rich-run sequences before recursive safety traversal."""
+
+    blocks = payload.get("blocks")
+    if not isinstance(blocks, Sequence) or isinstance(blocks, (str, bytes, bytearray)):
+        return
+    for block_index, block in enumerate(blocks):
+        if not isinstance(block, Mapping) or block.get("type") != "rich_paragraph":
+            continue
+        runs = block.get("runs")
+        if not isinstance(runs, Sequence) or isinstance(runs, (str, bytes, bytearray)):
+            continue
+        if len(runs) > _DOCX_MAX_RICH_RUNS:
+            raise OfficeDocumentError(
+                f"blocks[{block_index}].runs must contain at most {_DOCX_MAX_RICH_RUNS} runs"
+            )
 
 
 def _validate_xml_tree(
