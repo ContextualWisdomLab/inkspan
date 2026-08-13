@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { Base64SizeError } from '../converter/base64.js';
-import { validateInlineImageSource } from './inlineImagePolicy.js';
+import {
+  Base64ImageSourceError,
+  validateInlineImageSource,
+} from './inlineImagePolicy.js';
 
 const OVERSIZED_IMAGE = 'data:image/png;base64,QUJDRA==';
 
@@ -51,5 +54,13 @@ describe('inline image decoded-size preflight', () => {
     } finally {
       regexpTestSpy.mockRestore();
     }
+  });
+
+  it('does not reflect a caller-controlled custom URI scheme in diagnostics', () => {
+    const privateMarker = 'privatetenant42';
+    const error = new Base64ImageSourceError(`${privateMarker}:opaque`);
+
+    expect(error.sourcePreview).toBe('<scheme-redacted>');
+    expect(error.message).not.toContain(privateMarker);
   });
 });
