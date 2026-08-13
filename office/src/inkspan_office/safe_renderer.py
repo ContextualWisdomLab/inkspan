@@ -99,7 +99,11 @@ def write_office_document(
     path = Path(output_path)
     if path.suffix.lower() != rendered.extension:
         raise OfficeDocumentError(f"output extension must be {rendered.extension}")
-    if path.exists() and not overwrite:
+    try:
+        output_exists = path.exists()
+    except (OSError, ValueError) as exc:
+        raise OSError("output could not be written") from exc
+    if output_exists and not overwrite:
         raise FileExistsError("output already exists")
 
     try:
@@ -111,7 +115,7 @@ def write_office_document(
             dir=path.parent,
             delete=False,
         )
-    except OSError as exc:
+    except (OSError, ValueError) as exc:
         raise OSError("output could not be written") from exc
 
     temporary = Path(temporary_handle.name)
@@ -126,14 +130,14 @@ def write_office_document(
         if overwrite:
             try:
                 temporary.replace(path)
-            except OSError as exc:
+            except (OSError, ValueError) as exc:
                 raise OSError("output could not be written") from exc
         else:
             try:
                 os.link(temporary, path)
             except FileExistsError as exc:
                 raise FileExistsError("output already exists") from exc
-            except OSError as exc:
+            except (OSError, ValueError) as exc:
                 raise OSError("output could not be written") from exc
         cleanup_failure_message = "output was written but temporary cleanup failed"
     finally:
