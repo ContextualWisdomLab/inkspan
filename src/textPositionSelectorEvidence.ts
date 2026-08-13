@@ -89,6 +89,22 @@ function codePointLength(value: string): number {
   return length;
 }
 
+/** Advance one shared segmentation iterator until the requested boundary is proven. */
+function assertGraphemeBoundary(
+  segments: Iterator<GraphemeSegment>,
+  textLength: number,
+  codeUnitOffset: number,
+): void {
+  if (codeUnitOffset === 0 || codeUnitOffset === textLength) return;
+
+  for (let next = segments.next(); !next.done; next = segments.next()) {
+    if (next.value.index === codeUnitOffset) return;
+    if (next.value.index > codeUnitOffset) break;
+  }
+
+  throw new TextPositionSelectorEvidenceError('grapheme_boundary');
+}
+
 /** Require both positions to coincide with Unicode grapheme-cluster boundaries. */
 function assertGraphemeBoundaries(
   text: string,
@@ -102,34 +118,13 @@ function assertGraphemeBoundaries(
     throw new TextPositionSelectorEvidenceError('segmenter_unavailable');
   }
 
-  let startIsBoundary =
-    startCodeUnitOffset === 0 || startCodeUnitOffset === text.length;
-  let endIsBoundary = endCodeUnitOffset === 0 || endCodeUnitOffset === text.length;
-  if (startIsBoundary && endIsBoundary) return;
-
-  for (const segment of new Segmenter(undefined, { granularity: 'grapheme' }).segment(
-    text,
-  )) {
-    if (!startIsBoundary) {
-      if (segment.index === startCodeUnitOffset) {
-        startIsBoundary = true;
-      } else if (segment.index > startCodeUnitOffset) {
-        throw new TextPositionSelectorEvidenceError('grapheme_boundary');
-      }
-    }
-
-    if (!endIsBoundary) {
-      if (segment.index === endCodeUnitOffset) {
-        endIsBoundary = true;
-      } else if (segment.index > endCodeUnitOffset) {
-        throw new TextPositionSelectorEvidenceError('grapheme_boundary');
-      }
-    }
-
-    if (startIsBoundary && endIsBoundary) return;
+  const segments = new Segmenter(undefined, { granularity: 'grapheme' })
+    .segment(text)
+    [Symbol.iterator]();
+  assertGraphemeBoundary(segments, text.length, startCodeUnitOffset);
+  if (endCodeUnitOffset !== startCodeUnitOffset) {
+    assertGraphemeBoundary(segments, text.length, endCodeUnitOffset);
   }
-
-  throw new TextPositionSelectorEvidenceError('grapheme_boundary');
 }
 
 /**
