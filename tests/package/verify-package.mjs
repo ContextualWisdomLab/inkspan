@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = resolve(
@@ -21,6 +22,12 @@ const packageJson = JSON.parse(
 const packageName = packageJson.name;
 const verificationDirectory = mkdtempSync(
   join(repositoryRoot, '.package-verification-'),
+);
+const consumerDirectory = join(verificationDirectory, 'consumer');
+const packedPackageDirectory = join(
+  consumerDirectory,
+  'node_modules',
+  ...packageName.split('/'),
 );
 
 /** Execute a command from the repository root with inherited diagnostics. */
@@ -128,14 +135,14 @@ function verifyPackedFiles(filePaths) {
 
 /** Write and execute an ESM or CommonJS package-consumer smoke test. */
 function runConsumerSmokeTest(fileName, source) {
-  const smokeTestPath = join(verificationDirectory, fileName);
+  const smokeTestPath = join(consumerDirectory, fileName);
   writeFileSync(smokeTestPath, source, 'utf8');
-  run(process.execPath, [smokeTestPath]);
+  run(process.execPath, [smokeTestPath], { cwd: consumerDirectory });
 }
 
 /** Compile a strict TypeScript consumer against the packed public declarations. */
 function verifyConsumerTypes() {
-  const consumerTypePath = join(verificationDirectory, 'consumer-types.ts');
+  const consumerTypePath = join(consumerDirectory, 'consumer-types.ts');
   writeFileSync(
     consumerTypePath,
     `import {
@@ -311,15 +318,39 @@ void [
 try {
   const packOutput = run('npm', [
     'pack',
-    '--dry-run',
     '--json',
     '--ignore-scripts',
+    '--pack-destination',
+    verificationDirectory,
   ]);
-  const packResult = JSON.parse(packOutput)[0];
+  const packResults = JSON.parse(packOutput);
+  assert.equal(packResults.length, 1, 'npm pack must produce exactly one package');
+  const [packResult] = packResults;
   assert.equal(packResult.name, packageName);
   assert.equal(packResult.version, packageJson.version);
+  assert.equal(
+    packResult.filename,
+    basename(packResult.filename),
+    'npm pack filename must not contain path components',
+  );
+  const packageArchivePath = join(verificationDirectory, packResult.filename);
+  assert.ok(existsSync(packageArchivePath), 'npm pack archive was not created');
   const packedFiles = new Set(packResult.files.map(({ path }) => path));
   verifyPackedFiles(packedFiles);
+
+  mkdirSync(packedPackageDirectory, { recursive: true });
+  run('tar', [
+    '-xzf',
+    packageArchivePath,
+    '--strip-components=1',
+    '-C',
+    packedPackageDirectory,
+  ]);
+  const extractedPackageJson = JSON.parse(
+    readFileSync(join(packedPackageDirectory, 'package.json'), 'utf8'),
+  );
+  assert.equal(extractedPackageJson.name, packageName);
+  assert.equal(extractedPackageJson.version, packageJson.version);
 
   runConsumerSmokeTest(
     'consumer-esm.mjs',
@@ -329,6 +360,12 @@ import * as autosave from '${packageName}/autosave';
 import * as collaboration from '${packageName}/collaboration';
 import * as converter from '${packageName}/converter';
 
+const packagePathFragment = '/node_modules/@contextualwisdomlab/cwl-editor/';
+const rootEntrypoint = import.meta.resolve('${packageName}');
+assert.ok(
+  rootEntrypoint.includes(packagePathFragment),
+  'ESM root package must resolve from isolated consumer node_modules',
+);
 assert.equal(typeof editor.markdownToHtml, 'function');
 assert.equal(editor.validateSafeLinkHref('/documents/current'), '/documents/current');
 assert.equal(typeof editor.restoreDocumentEnvelopeIfMatch, 'function');
@@ -343,6 +380,10 @@ assert.equal(typeof converter.bytesToDataUri, 'function');
 for (const subpath of ['styles.css', 'fonts.css', 'fonts-latin.css']) {
   const resolved = import.meta.resolve('${packageName}/' + subpath);
   assert.ok(resolved.startsWith('file:'));
+  assert.ok(
+    resolved.includes(packagePathFragment),
+    'ESM subpath must resolve from isolated consumer node_modules',
+  );
 }
 `,
   );
@@ -355,6 +396,12 @@ const autosave = require('${packageName}/autosave');
 const collaboration = require('${packageName}/collaboration');
 const converter = require('${packageName}/converter');
 
+const packagePathFragment = '/node_modules/@contextualwisdomlab/cwl-editor/';
+const rootEntrypoint = require.resolve('${packageName}').replaceAll('\\\\', '/');
+assert.ok(
+  rootEntrypoint.includes(packagePathFragment),
+  'CommonJS root package must resolve from isolated consumer node_modules',
+);
 assert.equal(typeof editor.markdownToHtml, 'function');
 assert.equal(editor.validateSafeLinkHref('/documents/current'), '/documents/current');
 assert.equal(typeof editor.restoreDocumentEnvelopeIfMatch, 'function');
@@ -367,23 +414,16 @@ assert.equal(typeof collaboration.assertCollaborationConfiguration, 'function');
 assert.ok(collaboration.CollaborativeCwlEditor);
 assert.equal(typeof converter.bytesToDataUri, 'function');
 for (const subpath of ['styles.css', 'fonts.css', 'fonts-latin.css']) {
-  const resolved = require.resolve('${packageName}/' + subpath);
-  assert.ok(resolved.length > 0);
+  const resolved = require.resolve('${packageName}/' + subpath).replaceAll('\\\\', '/');
+  assert.ok(resolved.includes(packagePathFragment));
 }
 `,
   );
 
   verifyConsumerTypes();
 
-  for (const subpath of ['styles.css', 'fonts.css', 'fonts-latin.css']) {
-    const resolvedPath = fileURLToPath(
-      import.meta.resolve(`${packageName}/${subpath}`),
-    );
-    assert.ok(existsSync(resolvedPath), `Export does not exist: ${subpath}`);
-  }
-
   console.log(
-    `Verified ${packageName}@${packageJson.version}: npm contents, ESM, CommonJS, SSR-safe imports, subpath exports, and TypeScript declarations.`,
+    `Verified ${packageName}@${packageJson.version}: exact npm tarball contents, isolated ESM, CommonJS, SSR-safe imports, subpath exports, and TypeScript declarations.`,
   );
 } finally {
   rmSync(verificationDirectory, { recursive: true, force: true });

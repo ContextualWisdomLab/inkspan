@@ -13,7 +13,12 @@ describe('packed root consumer release evidence', () => {
     expect(verifierSource).not.toContain("'--dry-run'");
     expect(verifierSource).toContain("'--pack-destination'");
     expect(verifierSource).toContain("'node_modules'");
-    expect(verifierSource).toContain("join(extractionDirectory, 'package')");
     expect(verifierSource).toContain('cwd: consumerDirectory');
+    expect(verifierSource).toContain(
+      'ESM root package must resolve from isolated consumer node_modules',
+    );
+    expect(verifierSource).toContain(
+      'CommonJS root package must resolve from isolated consumer node_modules',
+    );
   });
 });
