@@ -15,4 +15,18 @@ describe('autosave detached evidence array resource preflight', () => {
       ownKeys.mockRestore();
     }
   });
+
+  it('does not execute array length get traps while validating frozen evidence', () => {
+    const target = Object.freeze([1]);
+    let lengthRead = false;
+    const proxiedArray = new Proxy(target, {
+      get(currentTarget, property, receiver) {
+        if (property === 'length') lengthRead = true;
+        return Reflect.get(currentTarget, property, receiver);
+      },
+    });
+
+    expect(isDeeplyFrozenDocumentJson(proxiedArray)).toBe(true);
+    expect(lengthRead).toBe(false);
+  });
 });
