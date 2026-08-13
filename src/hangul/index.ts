@@ -61,15 +61,15 @@ function parseInline(parent: ParentNode, marks: JSONContent['marks'] = []): JSON
   for (const child of Array.from(parent.childNodes)) {
     if (child.nodeType === Node.TEXT_NODE) {
       const text = child.textContent ?? '';
-      if (text) output.push({ type: 'text', text, ...(marks?.length ? { marks } : {}) });
+      if (text) output.push({ type: 'text', text, ...(marks.length ? { marks } : {}) });
     } else if (child instanceof Element) {
       const tag = child.tagName.toLowerCase();
       const next = tag === 'strong' || tag === 'b'
-        ? [...(marks ?? []), { type: 'bold' }]
+        ? [...marks, { type: 'bold' }]
         : tag === 'em' || tag === 'i'
-          ? [...(marks ?? []), { type: 'italic' }]
+          ? [...marks, { type: 'italic' }]
           : tag === 's' || tag === 'strike'
-            ? [...(marks ?? []), { type: 'strike' }]
+            ? [...marks, { type: 'strike' }]
             : marks;
       output.push(...parseInline(child, next));
     }
