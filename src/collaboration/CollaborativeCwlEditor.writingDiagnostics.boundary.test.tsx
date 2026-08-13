@@ -104,6 +104,14 @@ function providerWith(awareness: FakeAwareness): CollaborationProviderLike {
   return { awareness };
 }
 
+function reactActWarnings(
+  consoleError: ReturnType<typeof vi.spyOn>,
+): string[] {
+  return consoleError.mock.calls
+    .map((arguments_) => arguments_.map(String).join(' '))
+    .filter((message) => message.includes('not wrapped in act'));
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   cleanup();
@@ -266,6 +274,9 @@ describe('CollaborativeCwlEditor writing-diagnostic boundaries', () => {
   });
 
   it('emits an Apply action only on the client that explicitly invoked it', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
     const leftDocument = new Y.Doc();
     const rightDocument = new Y.Doc();
     const disconnect = connectDocuments(leftDocument, rightDocument);
@@ -317,9 +328,15 @@ describe('CollaborativeCwlEditor writing-diagnostic boundaries', () => {
       ).toHaveTextContent('1 writing diagnostics');
     });
 
-    await expect(
-      rightRef.current!.applyWritingDiagnostic('shared-diagnostic'),
-    ).resolves.toMatchObject({
+    let appliedAction:
+      | Awaited<ReturnType<CwlEditorHandle['applyWritingDiagnostic']>>
+      | undefined;
+    await act(async () => {
+      appliedAction = await rightRef.current!.applyWritingDiagnostic(
+        'shared-diagnostic',
+      );
+    });
+    expect(appliedAction).toMatchObject({
       action: 'applied',
       reasonCode: 'explicit',
       diagnosticId: 'shared-diagnostic',
@@ -330,6 +347,7 @@ describe('CollaborativeCwlEditor writing-diagnostic boundaries', () => {
     });
     expect(rightAction).toHaveBeenCalledTimes(1);
     expect(leftAction).not.toHaveBeenCalled();
+    expect(reactActWarnings(consoleError)).toEqual([]);
 
     mounted.unmount();
     disconnect();
