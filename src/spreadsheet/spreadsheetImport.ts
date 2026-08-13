@@ -45,10 +45,17 @@ export class SpreadsheetImportError extends Error {
 }
 
 function paragraphWithText(text: string): JSONContent {
-  return {
-    type: 'paragraph',
-    content: [{ type: 'text', text }],
-  };
+  const content: JSONContent[] = [];
+  const lines = text.split(/\r\n|\r|\n/u);
+
+  for (const [index, line] of lines.entries()) {
+    if (index > 0) content.push({ type: 'hardBreak' });
+    if (line) content.push({ type: 'text', text: line });
+  }
+
+  return content.length > 0
+    ? { type: 'paragraph', content }
+    : { type: 'paragraph' };
 }
 
 /** Convert parser-neutral displayed worksheet text into editable TipTap blocks. */
@@ -63,6 +70,12 @@ export function spreadsheetWorkbookToDocumentJson(
   for (const worksheet of workbook.worksheets) {
     if (worksheet.hidden) continue;
 
+    const columnCount = worksheet.rows.reduce(
+      (maxColumns, row) => Math.max(maxColumns, row.length),
+      0,
+    );
+    if (columnCount === 0) continue;
+
     content.push({
       type: 'heading',
       attrs: { level: 3 },
@@ -72,9 +85,9 @@ export function spreadsheetWorkbookToDocumentJson(
       type: 'table',
       content: worksheet.rows.map((row) => ({
         type: 'tableRow',
-        content: row.map((cell) => ({
+        content: Array.from({ length: columnCount }, (_, columnIndex) => ({
           type: 'tableCell',
-          content: [paragraphWithText(cell)],
+          content: [paragraphWithText(row[columnIndex] ?? '')],
         })),
       })),
     });
@@ -82,7 +95,7 @@ export function spreadsheetWorkbookToDocumentJson(
 
     worksheetCount += 1;
     rowCount += worksheet.rows.length;
-    cellCount += worksheet.rows.reduce((count, row) => count + row.length, 0);
+    cellCount += worksheet.rows.length * columnCount;
   }
 
   return { content, worksheetCount, rowCount, cellCount };
