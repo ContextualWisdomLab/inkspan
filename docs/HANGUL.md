@@ -1,0 +1,128 @@
+# HWP and HWPX authoring
+
+Inkspan's Hangul bridge opens HWP/HWPX bytes through a host-provided parser/serializer and projects supported content into the same TipTap/ProseMirror JSON edited by `CwlEditor`. HWPX is the recommended save target because it is the open XML/OWPML path standardized by KS X 6101; legacy HWP remains an explicit compatibility target when the selected engine supports it.
+
+## Authority boundary
+
+Inkspan owns:
+
+- the editable TipTap JSON projection;
+- deterministic conversion rules;
+- stable error semantics;
+- byte/resource limits;
+- explicit loss reporting.
+
+The host owns:
+
+- file pickers and drag/drop;
+- filesystem and object-storage access;
+- WASM or native-engine initialization;
+- passwords and protected-document UX;
+- publication/download behavior;
+- telemetry and persistence.
+
+The Hangul package never fetches external resources and never executes active content from a document.
+
+## Import flow
+
+```mermaid
+sequenceDiagram
+    participant Host
+    participant Bridge as Inkspan Hangul bridge
+    participant Engine as Host-provided HWP engine
+    participant Editor as CwlEditor
+
+    Host->>Bridge: openHangulDocument(bytes, { engine })
+    Bridge->>Engine: open(bytes)
+    Engine-->>Bridge: bounded document API
+    Bridge->>Engine: source format / sections / HTML projection
+    Bridge-->>Host: { documentJson, sourceFormat, warnings, lossy }
+    Host->>Editor: setDocumentJson(documentJson)
+```
+
+The original bytes remain host-owned. Importing a file does not mutate it.
+
+## Export flow
+
+```mermaid
+sequenceDiagram
+    participant Host
+    participant Editor as CwlEditor
+    participant Bridge as Inkspan Hangul bridge
+    participant Engine as Host-provided HWP engine
+
+    Host->>Editor: getDocumentJson()
+    Editor-->>Host: edited JSON
+    Host->>Bridge: exportHangulDocument(JSON, format)
+    Bridge->>Engine: create blank document
+    Bridge->>Engine: paste bounded deterministic HTML
+    Bridge->>Engine: exportHwpx() or exportHwp()
+    Engine-->>Bridge: bytes
+    Bridge-->>Host: { bytes, format, warnings }
+```
+
+## Minimal integration
+
+```ts
+import {
+  exportHangulDocument,
+  openHangulDocument,
+  type HangulDocumentEngine,
+} from '@contextualwisdomlab/cwl-editor/hangul';
+
+async function openIntoEditor(
+  source: Uint8Array,
+  engine: HangulDocumentEngine,
+  editor: { setDocumentJson(value: unknown): void },
+) {
+  const imported = await openHangulDocument(source, { engine });
+  editor.setDocumentJson(imported.documentJson);
+  return imported;
+}
+
+async function saveAsHwpx(
+  documentJson: Parameters<typeof exportHangulDocument>[0],
+  engine: HangulDocumentEngine,
+) {
+  return exportHangulDocument(documentJson, {
+    engine,
+    format: 'hwpx',
+  });
+}
+```
+
+## Compatibility contract
+
+The initial bridge deliberately supports a bounded semantic subset and rejects unsupported export nodes instead of silently deleting them. The compatibility matrix expands only when real HWP/HWPX fixtures demonstrate stable round-trip behavior.
+
+| Content | Import | Export | Notes |
+|---|---|---|---|
+| Paragraph text | Yes | Yes | Unicode preserved by JavaScript strings and the selected engine |
+| Headings 1-6 | Yes | Yes | Semantic heading level |
+| Bold | Yes | Yes | Common HTML projection |
+| Italic | Yes | Yes | Common HTML projection |
+| Strike | Yes | Yes | Common HTML projection |
+| Lists | Planned | Planned | Must preserve nesting and numbering |
+| Tables | Planned | Planned | Must preserve cell topology before layout styling |
+| Links | Planned | Planned | Must use Inkspan safe-link policy |
+| Images | Planned | Planned | Must remain inline/host-approved; no external fetch |
+| Shapes/charts/equations | Warning | Rejected | Requires dedicated projection contract |
+| Macros/OLE/active content | Not executed | Not generated | Outside the editor authority boundary |
+
+## Security requirements
+
+Treat both formats as untrusted document containers. Production implementations must enforce bounded source and output bytes. A native HWPX implementation must additionally bound ZIP entry count, expanded bytes, expansion ratio, XML depth, XML node count, text size, relationships, and embedded payloads. DTD and external entity resolution must be disabled. External relationships are metadata only unless the host separately authorizes a resource.
+
+Passwords, cookies, credentials, filesystem paths, and secret values must never enter warnings, error strings, result objects, or deterministic snapshots.
+
+## Standards and format sources
+
+HWPX follows OWPML document structure standardized as KS X 6101. The Korean standards catalogue records the standard as confirmed on 2024-10-30. Hancom publishes HWP 5.x and OWPML format material and recommends HWPX as the open machine-readable Hangul document format.
+
+### References (APA 7th)
+
+Korean Agency for Technology and Standards. (2024). *KS X 6101: Open Word-Processor Markup Language (OWPML) document structure*. e-Nara Standard Certification. https://www.standard.go.kr/KSCI/standardIntro/getStandardSearchView.do?ksNo=KSX6101
+
+Hancom Inc. (n.d.). *HWP/OWPML formats*. https://license.hancom.com/support/downloadCenter/hwpOwpml
+
+Hancom Inc. (n.d.). *HWPX format structure*. Hancom Tech. https://tech.hancom.com/hwpxformat/
