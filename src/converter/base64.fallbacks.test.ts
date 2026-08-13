@@ -29,21 +29,23 @@ describe('readBlobBytes environment fallbacks', () => {
     0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
   ]);
 
+  const withoutArrayBuffer = (blob: Blob): Blob => {
+    Object.defineProperty(blob, 'arrayBuffer', {
+      configurable: true,
+      value: undefined,
+    });
+    return blob;
+  };
+
   it('uses Blob.arrayBuffer when the blob implements it', async () => {
-    const fakeBlob = {
-      type: 'application/octet-stream',
-      arrayBuffer: () => Promise.resolve(BYTES.buffer.slice(0)),
-    } as unknown as Blob;
-    const uri = await blobToDataUri(fakeBlob);
+    const blob = new Blob([BYTES], { type: 'application/octet-stream' });
+    const uri = await blobToDataUri(blob);
     expect(uri.startsWith('data:application/octet-stream;base64,')).toBe(true);
   });
 
   it('falls back to application/octet-stream for a typeless, unsniffable blob', async () => {
-    const fakeBlob = {
-      type: '',
-      arrayBuffer: () => Promise.resolve(new Uint8Array([0, 1, 2, 3]).buffer.slice(0)),
-    } as unknown as Blob;
-    const uri = await blobToDataUri(fakeBlob);
+    const blob = new Blob([new Uint8Array([0, 1, 2, 3])]);
+    const uri = await blobToDataUri(blob);
     expect(uri.startsWith('data:application/octet-stream;base64,')).toBe(true);
   });
 
@@ -58,9 +60,10 @@ describe('readBlobBytes environment fallbacks', () => {
       }
     }
     vi.stubGlobal('FileReader', FailingReader);
-    // No `arrayBuffer` method -> the FileReader branch is taken.
-    const fakeBlob = { type: 'image/png' } as unknown as Blob;
-    await expect(blobToDataUri(fakeBlob)).rejects.toThrow('reader boom');
+    // Shadow `arrayBuffer` on a genuine Blob so only the environment capability
+    // changes; the runtime Blob-brand contract remains realistic.
+    const blob = withoutArrayBuffer(new Blob([PNG], { type: 'image/png' }));
+    await expect(blobToDataUri(blob)).rejects.toThrow('reader boom');
   });
 
   it('rejects with a synthesized error when FileReader has no error object', async () => {
@@ -74,8 +77,8 @@ describe('readBlobBytes environment fallbacks', () => {
       }
     }
     vi.stubGlobal('FileReader', NullErrorReader);
-    const fakeBlob = { type: 'image/png' } as unknown as Blob;
-    await expect(blobToDataUri(fakeBlob)).rejects.toThrow(
+    const blob = withoutArrayBuffer(new Blob([PNG], { type: 'image/png' }));
+    await expect(blobToDataUri(blob)).rejects.toThrow(
       /FileReader failed to read Blob/,
     );
   });
@@ -91,8 +94,8 @@ describe('readBlobBytes environment fallbacks', () => {
         }
       },
     );
-    const fakeBlob = { type: 'image/png' } as unknown as Blob;
-    const uri = await blobToDataUri(fakeBlob);
+    const blob = withoutArrayBuffer(new Blob([PNG], { type: 'image/png' }));
+    const uri = await blobToDataUri(blob);
     expect(uri.startsWith('data:image/png;base64,')).toBe(true);
   });
 });
