@@ -93,6 +93,12 @@ function Harness({
   );
 }
 
+function focusButton(button: HTMLElement): void {
+  act(() => {
+    button.focus();
+  });
+}
+
 async function dismissDiagnostic(button: HTMLElement): Promise<void> {
   await act(async () => {
     fireEvent.click(button);
@@ -114,7 +120,7 @@ describe('WritingDiagnosticsPanel dismissal focus', () => {
     );
 
     const dismiss = screen.getByRole('button', { name: 'Dismiss First diagnostic' });
-    dismiss.focus();
+    focusButton(dismiss);
     expect(dismiss).toHaveFocus();
 
     await dismissDiagnostic(dismiss);
@@ -136,7 +142,7 @@ describe('WritingDiagnosticsPanel dismissal focus', () => {
     );
 
     const dismiss = screen.getByRole('button', { name: 'Dismiss Second diagnostic' });
-    dismiss.focus();
+    focusButton(dismiss);
     expect(dismiss).toHaveFocus();
 
     await dismissDiagnostic(dismiss);
@@ -155,7 +161,7 @@ describe('WritingDiagnosticsPanel dismissal focus', () => {
     );
 
     const dismiss = screen.getByRole('button', { name: 'Dismiss Only diagnostic' });
-    dismiss.focus();
+    focusButton(dismiss);
     expect(dismiss).toHaveFocus();
 
     await dismissDiagnostic(dismiss);
