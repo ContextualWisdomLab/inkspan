@@ -13,6 +13,8 @@ import {
 
 const EMAIL_LANGUAGE_TAG_MAX_CODE_UNITS = 256;
 const EMAIL_TITLE_MAX_CODE_UNITS = 65_536;
+const INVALID_EMAIL_FULL_DOCUMENT_MESSAGE =
+  'Email document fullDocument must be a boolean when provided.';
 const INVALID_EMAIL_LANGUAGE_MESSAGE =
   'Email document language must be a valid BCP 47 language tag within the supported length.';
 const INVALID_EMAIL_TITLE_MESSAGE =
@@ -49,6 +51,15 @@ function assertConfiguredMarkdownInputSize(
 ): void {
   const resolvedMaxBytes = resolveMarkdownToHtmlMaxBytes(maxMarkdownBytes);
   assertMarkdownToHtmlInputSize(markdown, resolvedMaxBytes);
+}
+
+/** Reject malformed runtime document-mode values without coercing representation. */
+function assertEmailFullDocumentMode(
+  value: unknown,
+): asserts value is boolean | undefined {
+  if (value !== undefined && typeof value !== 'boolean') {
+    throw new RangeError(INVALID_EMAIL_FULL_DOCUMENT_MESSAGE);
+  }
 }
 
 /** Reject invalid or oversized full-document title metadata before HTML escaping. */
@@ -101,6 +112,7 @@ export function markdownToEmailHtml(
 ): string {
   const { maxMarkdownBytes, ...serializerOptions } = options;
   assertConfiguredMarkdownInputSize(markdown, maxMarkdownBytes);
+  assertEmailFullDocumentMode(serializerOptions.fullDocument);
   if (serializerOptions.fullDocument === true) {
     assertBoundedEmailTitle(serializerOptions.title);
     assertBoundedEmailLanguageTag(serializerOptions.languageTag);
