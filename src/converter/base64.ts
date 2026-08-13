@@ -64,6 +64,7 @@ const CANONICAL_BASE64_RE =
 const CANONICAL_PERCENT_ENCODED_ASCII_RE =
   /^(?:[\x00-\x24\x26-\x7f]|%[0-7][0-9a-f])*$/i;
 const INVALID_OPTIONS_MESSAGE = 'converter options are invalid.';
+const MAX_MIME_TYPE_CODE_UNITS = 1_024;
 
 const hasBuffer = typeof globalThis.Buffer !== 'undefined';
 
@@ -253,6 +254,12 @@ function resolveEncodeOptions(options: unknown): {
   const mimeType = values.mimeType;
   if (mimeType !== undefined && typeof mimeType !== 'string') {
     throw new RangeError('mimeType must be a string.');
+  }
+  if (
+    typeof mimeType === 'string' &&
+    mimeType.length > MAX_MIME_TYPE_CODE_UNITS
+  ) {
+    throw new RangeError('mimeType must not exceed 1024 UTF-16 code units.');
   }
   return {
     mimeType,
