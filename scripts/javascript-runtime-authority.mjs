@@ -5,11 +5,11 @@ import ts from 'typescript';
  *
  * Parsing the artifact instead of scanning raw text deliberately ignores comments,
  * string literals, and template text that merely mention `require()` or `import()`.
- * Actual static imports/re-exports, bare CommonJS `require()` calls, and dynamic
- * `import()` calls remain fail-closed findings. Literal module specifiers are
- * preserved in diagnostics so a verifier failure identifies the dependency edge
- * that escaped bundling; computed specifiers remain `undefined` and therefore do
- * not acquire an invented interpretation.
+ * Actual static imports/re-exports, statically recognizable CommonJS loader calls,
+ * and dynamic `import()` calls remain fail-closed findings. Literal module
+ * specifiers are preserved in diagnostics so a verifier failure identifies the
+ * dependency edge that escaped bundling; computed specifiers remain `undefined`
+ * and therefore do not acquire an invented interpretation.
  *
  * @param {string} source JavaScript source emitted into the packed artifact.
  * @param {string} [filename='bundle.js'] Diagnostic filename for parse failures.
@@ -42,6 +42,74 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
       : undefined;
   }
 
+  /** Remove syntax-only parentheses without evaluating the expression. */
+  function unwrapParentheses(expression) {
+    let current = expression;
+    while (ts.isParenthesizedExpression(current)) {
+      current = current.expression;
+    }
+    return current;
+  }
+
+  /** Return a statically written member name without evaluating property input. */
+  function staticMemberName(expression) {
+    if (ts.isPropertyAccessExpression(expression)) {
+      return expression.name.text;
+    }
+    if (
+      ts.isElementAccessExpression(expression) &&
+      expression.argumentExpression &&
+      ts.isStringLiteralLike(expression.argumentExpression)
+    ) {
+      return expression.argumentExpression.text;
+    }
+    return undefined;
+  }
+
+  /** Identify direct CommonJS loader values without resolving aliases or scope. */
+  function isCommonJsLoaderExpression(expression) {
+    const current = unwrapParentheses(expression);
+    if (ts.isIdentifier(current)) {
+      return current.text === 'require';
+    }
+    if (
+      ts.isBinaryExpression(current) &&
+      current.operatorToken.kind === ts.SyntaxKind.CommaToken
+    ) {
+      return isCommonJsLoaderExpression(current.right);
+    }
+    if (
+      (ts.isPropertyAccessExpression(current) ||
+        ts.isElementAccessExpression(current)) &&
+      staticMemberName(current) === 'require'
+    ) {
+      const receiver = unwrapParentheses(current.expression);
+      return ts.isIdentifier(receiver) && receiver.text === 'module';
+    }
+    return false;
+  }
+
+  /**
+   * Return the package argument for one recognizable CommonJS loader call.
+   * A wrapper object distinguishes a computed or missing argument from no match.
+   */
+  function commonJsInvocation(node) {
+    if (isCommonJsLoaderExpression(node.expression)) {
+      return { argument: node.arguments[0] };
+    }
+
+    const callee = unwrapParentheses(node.expression);
+    if (
+      (ts.isPropertyAccessExpression(callee) ||
+        ts.isElementAccessExpression(callee)) &&
+      staticMemberName(callee) === 'call' &&
+      isCommonJsLoaderExpression(callee.expression)
+    ) {
+      return { argument: node.arguments[1] };
+    }
+    return null;
+  }
+
   /** @param {import('typescript').Node} node Parsed JavaScript node. */
   function visit(node) {
     if (ts.isImportDeclaration(node) && node.moduleSpecifier) {
@@ -63,15 +131,15 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
           offset: node.getStart(sourceFile),
           specifier: literalSpecifier(node.arguments[0]),
         });
-      } else if (
-        ts.isIdentifier(node.expression) &&
-        node.expression.text === 'require'
-      ) {
-        findings.push({
-          kind: 'commonjs-require',
-          offset: node.getStart(sourceFile),
-          specifier: literalSpecifier(node.arguments[0]),
-        });
+      } else {
+        const invocation = commonJsInvocation(node);
+        if (invocation) {
+          findings.push({
+            kind: 'commonjs-require',
+            offset: node.getStart(sourceFile),
+            specifier: literalSpecifier(invocation.argument),
+          });
+        }
       }
     }
 
