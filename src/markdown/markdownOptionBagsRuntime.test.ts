@@ -85,7 +85,7 @@ describe('Markdown public option-bag runtime contracts', () => {
     options.languageTag = 'en';
     options.textDirection = 'ltr';
 
-    expect(markdownToEmailHtml('hello', options as never)).toContain('<!doctype html>');
+    expect(markdownToEmailHtml('hello', options as never)).toContain('<!DOCTYPE html>');
     expectInvalidConfiguration(() =>
       markdownToEmailHtml('hello', {
         maxMarkdownBytes: 1024,
