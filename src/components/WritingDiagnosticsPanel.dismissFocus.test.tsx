@@ -58,6 +58,7 @@ function Harness({
     diagnostics,
     digestProvider: null,
     focusDiagnostic: () => true,
+    applyDiagnostic: async () => null,
     ignoreDiagnostic: () => null,
     dismissDiagnostic: (diagnosticId) => {
       const target = diagnostics.find(
