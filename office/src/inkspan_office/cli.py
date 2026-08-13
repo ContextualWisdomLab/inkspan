@@ -62,7 +62,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         source = Path(args.input)
         try:
             request_text = _read_request_text(source)
-        except OSError as exc:
+        except (OSError, ValueError) as exc:
             raise OfficeDocumentError("input could not be read") from exc
         try:
             payload = json.loads(request_text)
