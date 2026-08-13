@@ -39,6 +39,10 @@ describe('readBlobBytes environment fallbacks', () => {
 
   it('uses Blob.arrayBuffer when the blob implements it', async () => {
     const blob = new Blob([BYTES], { type: 'application/octet-stream' });
+    Object.defineProperty(blob, 'arrayBuffer', {
+      configurable: true,
+      value: () => Promise.resolve(BYTES.buffer.slice(0)),
+    });
     const uri = await blobToDataUri(blob);
     expect(uri.startsWith('data:application/octet-stream;base64,')).toBe(true);
   });
