@@ -6,6 +6,7 @@ from collections.abc import Sequence
 
 import pytest
 
+import inkspan_office.renderer as strict_renderer
 from inkspan_office import OfficeDocumentError, render_office_document
 
 
@@ -32,3 +33,35 @@ def test_docx_rich_run_count_is_rejected_before_sequence_traversal() -> None:
         match=r"^blocks\[0\]\.runs must contain at most 4096 runs$",
     ):
         render_office_document(payload)
+
+
+def test_docx_rich_run_preflight_defers_non_sequences_to_strict_renderer() -> None:
+    """Malformed run containers must retain the strict renderer's array contract."""
+
+    payload = {
+        "format": "docx",
+        "blocks": [{"type": "rich_paragraph", "runs": {"not": "an array"}}],
+    }
+
+    with pytest.raises(
+        OfficeDocumentError,
+        match=r"^blocks\[0\]\.runs must be an array$",
+    ):
+        render_office_document(payload)
+
+
+def test_strict_renderer_retains_rich_run_count_defense_in_depth() -> None:
+    """The internal renderer must keep its own 4,096-run ceiling."""
+
+    payload = {
+        "format": "docx",
+        "blocks": [
+            {"type": "rich_paragraph", "runs": [{"text": "x"}] * 4_097}
+        ],
+    }
+
+    with pytest.raises(
+        OfficeDocumentError,
+        match=r"^blocks\[0\]\.runs must contain at most 4096 runs$",
+    ):
+        strict_renderer.render_office_document(payload)
