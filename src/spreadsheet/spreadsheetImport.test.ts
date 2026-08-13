@@ -36,7 +36,7 @@ describe('spreadsheetWorkbookToDocumentJson', () => {
       attrs: { level: 3 },
       content: [{ type: 'text', text: 'Summary' }],
     });
-    expect(result.content[1]).toMatchObject({
+    expect(result.content[1]).toEqual({
       type: 'table',
       content: [
         {
@@ -57,6 +57,29 @@ describe('spreadsheetWorkbookToDocumentJson', () => {
                 {
                   type: 'paragraph',
                   content: [{ type: 'text', text: 'Value' }],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          type: 'tableRow',
+          content: [
+            {
+              type: 'tableCell',
+              content: [
+                {
+                  type: 'paragraph',
+                  content: [{ type: 'text', text: '매출' }],
+                },
+              ],
+            },
+            {
+              type: 'tableCell',
+              content: [
+                {
+                  type: 'paragraph',
+                  content: [{ type: 'text', text: '42' }],
                 },
               ],
             },
