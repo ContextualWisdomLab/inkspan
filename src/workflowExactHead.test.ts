@@ -9,6 +9,9 @@ function repositoryFile(path: string): string {
 }
 
 const workflow = repositoryFile('.github/workflows/ci.yml');
+const editorActionsWorkflow = repositoryFile(
+  '.github/workflows/writing-diagnostics-editor-actions-tdd.yml',
+);
 const collaborationWorkflow = repositoryFile(
   '.github/workflows/writing-diagnostics-collaboration-tdd.yml',
 );
@@ -56,6 +59,21 @@ describe('exact-head CI workflow contract', () => {
     expect(workflow.match(new RegExp(SETUP_NODE_PIN, 'g'))).toHaveLength(2);
     expect(workflow).not.toContain(
       'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0',
+    );
+  });
+
+  it('makes editor-action assurance fail closed on React act warnings', () => {
+    expect(editorActionsWorkflow).toContain(SAFE_PNPM_ACTION_PIN);
+    expect(editorActionsWorkflow).not.toContain(VULNERABLE_PNPM_ACTION_PIN);
+    expect(editorActionsWorkflow.match(/not wrapped in act/g)).toHaveLength(2);
+    expect(
+      editorActionsWorkflow.match(/test_status=\$\{PIPESTATUS\[0\]\}/g),
+    ).toHaveLength(2);
+    expect(editorActionsWorkflow).toContain(
+      '::error::Focused editor actions emitted a React act warning.',
+    );
+    expect(editorActionsWorkflow).toContain(
+      '::error::Production coverage emitted a React act warning.',
     );
   });
 
