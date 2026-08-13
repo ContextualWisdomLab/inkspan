@@ -165,3 +165,16 @@ def test_cleanup_failure_reports_committed_output_without_reflecting_private_det
     assert len(temporary_files) == 1
     for temporary in temporary_files:
         real_unlink(temporary)
+
+
+def test_invalid_output_path_uses_stable_redacted_publication_error(
+    tmp_path: Path,
+) -> None:
+    private_marker = "confidential_embedded_null_output"
+    output = tmp_path / f"{private_marker}\0.docx"
+
+    with pytest.raises(OSError, match=r"^output could not be written$") as error:
+        write_office_document(_docx_payload(), output)
+
+    assert private_marker not in str(error.value)
+    assert list(tmp_path.glob(".inkspan-office-*.tmp")) == []
