@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { countRemoteCollaborators } from './awareness.js';
 import type { CollaborationAwareness } from './types.js';
 
@@ -23,5 +23,33 @@ describe('collaboration awareness identity counting', () => {
     };
 
     expect(countRemoteCollaborators(awareness)).toBe(2);
+  });
+
+  it('rejects oversized remote identifiers before normalization', () => {
+    const oversizedId = `editor-${'a'.repeat(1_024)}`;
+    const states = new Map<number, Record<string, unknown>>([
+      [11, { user: { id: 'local-editor' } }],
+      [12, { user: { id: oversizedId } }],
+      [13, { user: { id: ' editor-bob ' } }],
+    ]);
+    const awareness: CollaborationAwareness = {
+      clientID: 11,
+      states,
+      getLocalState: () => states.get(11) ?? null,
+      getStates: () => states,
+      setLocalStateField: () => undefined,
+      on: () => undefined,
+      off: () => undefined,
+    };
+    const trimSpy = vi.spyOn(String.prototype, 'trim');
+
+    try {
+      expect(countRemoteCollaborators(awareness)).toBe(1);
+      expect(
+        trimSpy.mock.instances.some((receiver) => String(receiver) === oversizedId),
+      ).toBe(false);
+    } finally {
+      trimSpy.mockRestore();
+    }
   });
 });
