@@ -89,8 +89,12 @@ function codePointLength(value: string): number {
   return length;
 }
 
-/** Require a position to coincide with a Unicode grapheme-cluster boundary. */
-function assertGraphemeBoundary(text: string, codeUnitOffset: number): void {
+/** Require both positions to coincide with Unicode grapheme-cluster boundaries. */
+function assertGraphemeBoundaries(
+  text: string,
+  startCodeUnitOffset: number,
+  endCodeUnitOffset: number,
+): void {
   const Segmenter = (
     Intl as unknown as { Segmenter?: GraphemeSegmenterConstructor }
   ).Segmenter;
@@ -98,14 +102,33 @@ function assertGraphemeBoundary(text: string, codeUnitOffset: number): void {
     throw new TextPositionSelectorEvidenceError('segmenter_unavailable');
   }
 
-  if (codeUnitOffset === 0 || codeUnitOffset === text.length) return;
+  let startIsBoundary =
+    startCodeUnitOffset === 0 || startCodeUnitOffset === text.length;
+  let endIsBoundary = endCodeUnitOffset === 0 || endCodeUnitOffset === text.length;
+  if (startIsBoundary && endIsBoundary) return;
 
   for (const segment of new Segmenter(undefined, { granularity: 'grapheme' }).segment(
     text,
   )) {
-    if (segment.index === codeUnitOffset) return;
-    if (segment.index > codeUnitOffset) break;
+    if (!startIsBoundary) {
+      if (segment.index === startCodeUnitOffset) {
+        startIsBoundary = true;
+      } else if (segment.index > startCodeUnitOffset) {
+        throw new TextPositionSelectorEvidenceError('grapheme_boundary');
+      }
+    }
+
+    if (!endIsBoundary) {
+      if (segment.index === endCodeUnitOffset) {
+        endIsBoundary = true;
+      } else if (segment.index > endCodeUnitOffset) {
+        throw new TextPositionSelectorEvidenceError('grapheme_boundary');
+      }
+    }
+
+    if (startIsBoundary && endIsBoundary) return;
   }
+
   throw new TextPositionSelectorEvidenceError('grapheme_boundary');
 }
 
@@ -131,8 +154,7 @@ export function createTextPositionSelector(
   const startPrefix = projectDocumentPrefix(documentNode, selection.from);
   const endPrefix = projectDocumentPrefix(documentNode, selection.to);
 
-  assertGraphemeBoundary(fullText, startPrefix.length);
-  assertGraphemeBoundary(fullText, endPrefix.length);
+  assertGraphemeBoundaries(fullText, startPrefix.length, endPrefix.length);
 
   const selector = Object.freeze({
     type: 'TextPositionSelector' as const,
