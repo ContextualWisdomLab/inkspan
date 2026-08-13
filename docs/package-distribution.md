@@ -1,10 +1,10 @@
 # Package distribution and consumer contract
 
 Inkspan publishes the React editor, provider-neutral collaboration adapter,
-framework-independent autosave/evidence/converter utilities, CSS, and offline
-font assets from one npm package. This document defines the supported package
-boundary for standalone applications, CWL organization services, and naruon
-integrations.
+framework-independent autosave/evidence/converter/Hangul utilities, CSS, and
+offline font assets from one npm package. This document defines the supported
+package boundary for standalone applications, CWL organization services, and
+naruon integrations.
 
 ## Public entrypoints
 
@@ -14,6 +14,7 @@ integrations.
 | `@contextualwisdomlab/cwl-editor/autosave` | Framework-independent autosave queue/session APIs for bounded local save ordering and host-owned durable concurrency |
 | `@contextualwisdomlab/cwl-editor/collaboration` | Optional Yjs collaboration surface with host-owned transport and lifecycle |
 | `@contextualwisdomlab/cwl-editor/converter` | Framework-independent base64 and data-URI utilities |
+| `@contextualwisdomlab/cwl-editor/hangul` | `implemented_on_active_pr` — framework-independent HWP/HWPX byte-to-document bridge with a host-injected parser/serializer engine; filesystem, network, persistence, credentials, and publication remain host-owned |
 | `@contextualwisdomlab/cwl-editor/envelope-identity` | Framework-independent identity-only envelope routing for bounded schema identity inspection; migration remains host-owned |
 | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent revision evidence and document-transition evidence for local content equality/lineage claims |
 | `@contextualwisdomlab/cwl-editor/text-position-selector` | `implemented_on_protected_main` — React-free text-position projection core implementing W3C `TextPositionSelector`; interactive capture, revision binding, authorization, persistence, and re-anchoring remain outside this subpath |
@@ -57,12 +58,17 @@ embedded in the npm tarball.
   and collaboration entrypoints. It is declared in Inkspan's package
   dependencies so the consumer's package manager installs and resolves it; it
   is not merely a type-only dependency.
-- The framework-independent autosave, converter, envelope-identity,
+- The framework-independent autosave, converter, Hangul, envelope-identity,
   revision-evidence, text-position-selector, and Markdown entrypoints do not
   require React UI, a mounted editor, naruon, contextual-orchestrator, a
   database, provider credentials, or host transport. Their individual
   package-consumer gates additionally prevent framework dependencies from
   leaking into subpaths whose public contracts exclude them.
+- The Hangul subpath accepts and returns bytes through a host-injected document
+  engine. Inkspan owns the deterministic supported JSON projection, local
+  source/output resource ceilings, and stable failure contract; the host owns
+  file selection, filesystem and network access, engine/WASM initialization,
+  password UX, durable persistence, credentials, and artifact publication.
 - The Markdown subpath exposes `markdownToHtml`, `htmlToMarkdown`,
   `normalizeMarkdown`, `markdownToEmailHtml`, `markdownToPlainText`, and
   `htmlToPlainText` plus their option types. It bundles deterministic conversion
@@ -108,10 +114,10 @@ production library build. The verification chain:
 3. confirms required licenses, declarations, styles, and font assets ship;
 4. rejects internal source, tests, demos, Office files, coverage output, and
    workflow files from the npm tarball;
-5. imports the root, collaboration, converter, autosave, envelope-identity,
-   revision-evidence, text-position-selector, and Markdown surfaces through their
-   dedicated packed-consumer checks, including framework-free isolation where
-   that is part of the public contract;
+5. imports the root, collaboration, converter, Hangul, autosave,
+   envelope-identity, revision-evidence, text-position-selector, and Markdown
+   surfaces through their dedicated packed-consumer checks, including
+   framework-free isolation where that is part of the public contract;
 6. exercises supported ESM/CommonJS entrypoints and compiles strict TypeScript
    consumers against the published declaration surfaces;
 7. resolves public CSS and font subpaths; and
