@@ -1,4 +1,17 @@
-import type { JSONContent } from '@tiptap/core';
+/** Framework-neutral structural document JSON used at the Hangul package boundary. */
+interface HangulDocumentMark {
+  type?: string;
+  attrs?: Record<string, unknown>;
+}
+
+/** Framework-neutral structural document JSON used at the Hangul package boundary. */
+interface HangulDocumentJson {
+  type?: string;
+  attrs?: Record<string, unknown>;
+  content?: HangulDocumentJson[];
+  marks?: HangulDocumentMark[];
+  text?: string;
+}
 
 /** A Hangul document opened by a host-provided parser/serializer. */
 export interface HangulEngineDocument {
@@ -37,7 +50,7 @@ export interface ExportHangulDocumentOptions {
 
 export interface HangulDocumentImportResult {
   sourceFormat: 'hwp' | 'hwpx';
-  documentJson: Readonly<JSONContent>;
+  documentJson: Readonly<HangulDocumentJson>;
   warnings: readonly string[];
   lossy: boolean;
 }
@@ -56,8 +69,8 @@ export class HangulDocumentError extends Error {
   }
 }
 
-function parseInline(parent: ParentNode, marks: JSONContent['marks'] = []): JSONContent[] {
-  const output: JSONContent[] = [];
+function parseInline(parent: ParentNode, marks: HangulDocumentMark[] = []): HangulDocumentJson[] {
+  const output: HangulDocumentJson[] = [];
   for (const child of Array.from(parent.childNodes)) {
     if (child.nodeType === Node.TEXT_NODE) {
       const text = child.textContent ?? '';
@@ -77,7 +90,7 @@ function parseInline(parent: ParentNode, marks: JSONContent['marks'] = []): JSON
   return output;
 }
 
-function htmlToJson(html: string): JSONContent {
+function htmlToJson(html: string): HangulDocumentJson {
   const parsed = new DOMParser().parseFromString(html, 'text/html');
   return {
     type: 'doc',
@@ -95,7 +108,7 @@ function escapeHtml(value: string): string {
   return value.replace(/&/gu, '&amp;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;');
 }
 
-function renderInline(node: JSONContent): string {
+function renderInline(node: HangulDocumentJson): string {
   if (node.type !== 'text') throw new HangulDocumentError('UNSUPPORTED_DOCUMENT_NODE', 'Only text inline nodes are currently exportable.');
   let value = escapeHtml(node.text ?? '');
   for (const mark of node.marks ?? []) {
@@ -107,7 +120,7 @@ function renderInline(node: JSONContent): string {
   return value;
 }
 
-function jsonToHtml(documentJson: JSONContent): string {
+function jsonToHtml(documentJson: HangulDocumentJson): string {
   if (documentJson.type !== 'doc') throw new HangulDocumentError('UNSUPPORTED_DOCUMENT_NODE', 'Hangul export requires a doc root.');
   return (documentJson.content ?? []).map((node) => {
     const body = (node.content ?? []).map(renderInline).join('');
@@ -141,7 +154,7 @@ export async function openHangulDocument(source: Uint8Array, options: OpenHangul
 }
 
 /** Export edited Inkspan JSON as HWPX by default or HWP explicitly. */
-export async function exportHangulDocument(documentJson: JSONContent, options: ExportHangulDocumentOptions): Promise<HangulDocumentExportResult> {
+export async function exportHangulDocument(documentJson: HangulDocumentJson, options: ExportHangulDocumentOptions): Promise<HangulDocumentExportResult> {
   const format = options.format ?? 'hwpx';
   const html = jsonToHtml(documentJson);
   let document: HangulEngineDocument;
