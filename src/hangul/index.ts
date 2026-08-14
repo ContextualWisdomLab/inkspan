@@ -115,7 +115,7 @@ function renderInline(node: HangulDocumentJson): string {
     if (mark.type === 'bold') value = `<strong>${value}</strong>`;
     else if (mark.type === 'italic') value = `<em>${value}</em>`;
     else if (mark.type === 'strike') value = `<s>${value}</s>`;
-    else throw new HangulDocumentError('UNSUPPORTED_DOCUMENT_MARK', `Unsupported mark: ${mark.type ?? '<missing>'}.`);
+    else throw new HangulDocumentError('UNSUPPORTED_DOCUMENT_MARK', 'Hangul export contains an unsupported inline mark.');
   }
   return value;
 }
@@ -130,7 +130,7 @@ function jsonToHtml(documentJson: HangulDocumentJson): string {
       if (!Number.isInteger(level) || level < 1 || level > 6) throw new HangulDocumentError('UNSUPPORTED_DOCUMENT_NODE', 'Invalid heading level.');
       return `<h${level}>${body}</h${level}>`;
     }
-    throw new HangulDocumentError('UNSUPPORTED_DOCUMENT_NODE', `Unsupported block: ${node.type ?? '<missing>'}.`);
+    throw new HangulDocumentError('UNSUPPORTED_DOCUMENT_NODE', 'Hangul export contains an unsupported block node.');
   }).join('');
 }
 
