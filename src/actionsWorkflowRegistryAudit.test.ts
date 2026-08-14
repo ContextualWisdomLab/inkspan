@@ -5,12 +5,17 @@ import { spawnSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 
 const temporaryRoots: string[] = [];
+const REPAIR_HEAD_SHA = '6b54294c360c77916f9956837a41cea3833adcbe';
 
 interface WorkflowFixture {
   readonly defaultBranchSha: string;
   readonly observedAt: string;
   readonly presentWorkflowPaths: readonly string[];
-  readonly ownedActiveRepairPaths?: readonly string[];
+  readonly ownedActiveRepairs?: readonly {
+    readonly path: string;
+    readonly prNumber: number;
+    readonly headSha: string;
+  }[];
   readonly pages: readonly {
     readonly page: number;
     readonly perPage: number;
@@ -49,7 +54,13 @@ function baseFixture(): WorkflowFixture {
       '.github/workflows/ci.yml',
       '.github/workflows/release.yml',
     ],
-    ownedActiveRepairPaths: ['.github/workflows/current-once.yml'],
+    ownedActiveRepairs: [
+      {
+        path: '.github/workflows/current-once.yml',
+        prNumber: 279,
+        headSha: REPAIR_HEAD_SHA,
+      },
+    ],
     pages: [
       {
         page: 1,
@@ -105,6 +116,7 @@ describe('Actions workflow registry audit', () => {
         path: string;
         state: string;
         classification: string;
+        repairOwner?: { prNumber: number; headSha: string };
       }>;
     };
     expect(evidence.defaultBranchSha).toBe(
@@ -139,6 +151,7 @@ describe('Actions workflow registry audit', () => {
         path: '.github/workflows/current-once.yml',
         state: 'active',
         classification: 'owned_active_repair',
+        repairOwner: { prNumber: 279, headSha: REPAIR_HEAD_SHA },
       },
       {
         id: 5,
