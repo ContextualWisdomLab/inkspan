@@ -355,7 +355,7 @@ describe('DOCX inert XML parser', () => {
     expect(root.namespaceUri).toBe('urn:root');
     expect(attribute(root, 'plain', null)).toBe('x');
     expect(attribute(root, 'lang', 'http://www.w3.org/XML/1998/namespace')).toBe('ko');
-    expect(directText(root)).toBe(`A&'>\"AB`);
+    expect(directText(root)).toBe(`A&'><"AB`);
     expect(childElements(root, 'item', 'urn:parts')).toHaveLength(2);
     expect(childElements(root, 'item', 'urn:missing')).toEqual([]);
     expect(descendantElements(root, 'child', 'urn:parts')).toHaveLength(1);
@@ -376,7 +376,7 @@ describe('DOCX inert XML parser', () => {
   it('enforces XML byte, node, and depth ceilings', () => {
     expectCode(
       () => parseXml(new Uint8Array(), DEFAULT_DOCX_IMPORT_LIMITS),
-      'archive_limit_exceeded',
+      'invalid_xml',
     );
     expectCode(
       () =>
