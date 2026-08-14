@@ -376,7 +376,7 @@ describe('DOCX inert XML parser', () => {
   it('enforces XML byte, node, and depth ceilings', () => {
     expectCode(
       () => parseXml(new Uint8Array(), DEFAULT_DOCX_IMPORT_LIMITS),
-      'invalid_xml',
+      'archive_limit_exceeded',
     );
     expectCode(
       () =>
