@@ -179,4 +179,46 @@ describe('DOCX remaining exact coverage boundaries', () => {
       count: 2,
     });
   });
+
+  it('covers missing numbering and empty structural fallbacks without inventing authority', async () => {
+    const result = await importDocx(
+      createDocx({
+        method: 0,
+        body:
+          '<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/></w:numPr></w:pPr><w:r><w:t>Plain</w:t></w:r></w:p>' +
+          '<w:p><w:pPr><w:outlineLvl w:val="1"/></w:pPr></w:p>' +
+          '<w:p/>' +
+          '<w:tbl><w:tr><w:tc><w:p><w:r><w:t>Cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl>',
+      }),
+    );
+
+    expect(result.documentJson.content).toEqual([
+      {
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'Plain' }],
+      },
+      { type: 'heading', attrs: { level: 2 } },
+      { type: 'paragraph' },
+      {
+        type: 'table',
+        content: [
+          {
+            type: 'tableRow',
+            content: [
+              {
+                type: 'tableCell',
+                content: [
+                  {
+                    type: 'paragraph',
+                    content: [{ type: 'text', text: 'Cell' }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+    expect(result.warnings).toEqual([]);
+  });
 });
