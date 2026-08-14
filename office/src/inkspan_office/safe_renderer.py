@@ -95,6 +95,9 @@ def write_office_document(
 ) -> Path:
     """Render and atomically publish an Office file without overwrite races."""
 
+    if type(overwrite) is not bool:
+        raise TypeError("overwrite must be a boolean")
+
     rendered = render_office_document(payload)
     path = Path(output_path)
     if path.suffix.lower() != rendered.extension:
