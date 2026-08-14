@@ -86,6 +86,30 @@ describe('DOCX open/import contract', () => {
     },
   );
 
+  it('uses intrinsic Blob metadata and bytes instead of caller overrides', async () => {
+    const source = new Blob([createDocx()]);
+    const sizeGetter = vi.fn(() => {
+      throw new Error('private size getter');
+    });
+    const arrayBufferGetter = vi.fn(() => {
+      throw new Error('private arrayBuffer getter');
+    });
+    Object.defineProperty(source, 'size', {
+      configurable: true,
+      get: sizeGetter,
+    });
+    Object.defineProperty(source, 'arrayBuffer', {
+      configurable: true,
+      get: arrayBufferGetter,
+    });
+
+    const result = await importDocx(source);
+
+    expect(result.documentJson.type).toBe('doc');
+    expect(sizeGetter).not.toHaveBeenCalled();
+    expect(arrayBufferGetter).not.toHaveBeenCalled();
+  });
+
   it('validates the complete imported document before one atomic editor mutation', async () => {
     const validateDocumentJson = vi.fn(
       (documentJson: DocxJsonContent) => documentJson.type === 'doc',
