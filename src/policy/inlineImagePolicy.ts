@@ -8,12 +8,17 @@ const INLINE_RASTER_SOURCE_PATTERN =
 const PUBLIC_IMAGE_SOURCE_SCHEME_PATTERN =
   /^(?:data|https?|blob|file|javascript)$/i;
 
+/** Maximum untrusted prefix inspected while classifying a diagnostic scheme. */
+const IMAGE_SOURCE_SCHEME_INSPECTION_CODE_UNITS = 64;
+
 /** Return a bounded, payload-free category for an untrusted image source. */
 function redactImageSource(source: unknown): string {
   if (typeof source !== 'string') return `<${typeof source}>`;
   if (source.length === 0) return '<empty>';
   if (source.startsWith('//')) return '//<redacted>';
-  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(source)?.[1];
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(
+    source.slice(0, IMAGE_SOURCE_SCHEME_INSPECTION_CODE_UNITS),
+  )?.[1];
   if (scheme) {
     if (PUBLIC_IMAGE_SOURCE_SCHEME_PATTERN.test(scheme)) {
       return `${scheme.toLowerCase()}:<redacted>`;
