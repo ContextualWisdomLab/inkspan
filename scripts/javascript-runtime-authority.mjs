@@ -84,7 +84,15 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
       staticMemberName(current) === 'require'
     ) {
       const receiver = unwrapParentheses(current.expression);
-      return ts.isIdentifier(receiver) && receiver.text === 'module';
+      if (ts.isIdentifier(receiver) && receiver.text === 'module') {
+        return true;
+      }
+      return (
+        (ts.isPropertyAccessExpression(receiver) ||
+          ts.isElementAccessExpression(receiver)) &&
+        staticMemberName(receiver) === 'main' &&
+        isCommonJsLoaderExpression(receiver.expression)
+      );
     }
     return false;
   }
