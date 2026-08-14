@@ -67,6 +67,30 @@ test('reports statically recognizable indirect CommonJS loader invocations', () 
   );
 });
 
+test('reports CommonJS loader authority reached through require.main', () => {
+  const source = [
+    "const direct = require.main.require('main-package');",
+    "const element = require['main']['require']('element-main-package');",
+    "const called = require.main.require.call(undefined, 'call-main-package');",
+    'const computed = require.main.require(runtimePackageName);',
+    'const object = { main: { require() { return "method-only"; } } };',
+    'const benign = object.main.require("not-the-commonjs-loader");',
+    'void [direct, element, called, computed, benign];',
+  ].join('\n');
+
+  assert.deepEqual(
+    findRuntimeModuleAuthority(source, 'require-main-authority.js').map(
+      ({ kind, specifier }) => ({ kind, specifier }),
+    ),
+    [
+      { kind: 'commonjs-require', specifier: 'main-package' },
+      { kind: 'commonjs-require', specifier: 'element-main-package' },
+      { kind: 'commonjs-require', specifier: 'call-main-package' },
+      { kind: 'commonjs-require', specifier: undefined },
+    ],
+  );
+});
+
 test('reports statically recognizable CommonJS resolver authority', () => {
   const source = [
     "const direct = require.resolve('resolve-package');",
