@@ -141,6 +141,33 @@ test('reports statically recognizable indirect CommonJS resolver invocations', (
   );
 });
 
+test('reports statically recognizable CommonJS apply invocations', () => {
+  const source = [
+    "const required = require.apply(undefined, ['apply-package']);",
+    "const moduleRequired = module['require']['apply'](undefined, ['module-apply-package']);",
+    'const mainRequired = require.main.require.apply(undefined, [runtimePackageName]);',
+    "const resolved = require.resolve.apply(undefined, ['apply-resolve-package']);",
+    'const computedResolved = require[\'resolve\'][\'apply\'](undefined, resolverArguments);',
+    'const object = { require() {}, resolve() {} };',
+    "const benignRequire = object.require.apply(undefined, ['not-commonjs']);",
+    "const benignResolve = object.resolve.apply(undefined, ['not-commonjs-resolve']);",
+    'void [required, moduleRequired, mainRequired, resolved, computedResolved, benignRequire, benignResolve];',
+  ].join('\n');
+
+  assert.deepEqual(
+    findRuntimeModuleAuthority(source, 'apply-authority.js').map(
+      ({ kind, specifier }) => ({ kind, specifier }),
+    ),
+    [
+      { kind: 'commonjs-require', specifier: 'apply-package' },
+      { kind: 'commonjs-require', specifier: 'module-apply-package' },
+      { kind: 'commonjs-require', specifier: undefined },
+      { kind: 'commonjs-resolve', specifier: 'apply-resolve-package' },
+      { kind: 'commonjs-resolve', specifier: undefined },
+    ],
+  );
+});
+
 test('fails closed when emitted JavaScript is syntactically invalid', () => {
   assert.throws(
     () => findRuntimeModuleAuthority('const = ;', 'broken.js'),
