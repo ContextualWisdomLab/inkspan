@@ -89,19 +89,40 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
     return false;
   }
 
+  /** Identify statically recognizable CommonJS resolver values. */
+  function isCommonJsResolverExpression(expression) {
+    const current = unwrapParentheses(expression);
+    if (
+      ts.isBinaryExpression(current) &&
+      current.operatorToken.kind === ts.SyntaxKind.CommaToken
+    ) {
+      return isCommonJsResolverExpression(current.right);
+    }
+    return (
+      (ts.isPropertyAccessExpression(current) ||
+        ts.isElementAccessExpression(current)) &&
+      staticMemberName(current) === 'resolve' &&
+      isCommonJsLoaderExpression(current.expression)
+    );
+  }
+
   /**
    * Return the package argument for one recognizable CommonJS resolver call.
    * Arbitrary object methods named `resolve` remain outside this authority model.
    */
   function commonJsResolverInvocation(node) {
+    if (isCommonJsResolverExpression(node.expression)) {
+      return { argument: node.arguments[0] };
+    }
+
     const callee = unwrapParentheses(node.expression);
     if (
       (ts.isPropertyAccessExpression(callee) ||
         ts.isElementAccessExpression(callee)) &&
-      staticMemberName(callee) === 'resolve' &&
-      isCommonJsLoaderExpression(callee.expression)
+      staticMemberName(callee) === 'call' &&
+      isCommonJsResolverExpression(callee.expression)
     ) {
-      return { argument: node.arguments[0] };
+      return { argument: node.arguments[1] };
     }
     return null;
   }
