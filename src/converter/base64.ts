@@ -27,6 +27,14 @@ export class Base64SizeError extends Error {
   }
 }
 
+/** Error thrown when a string is not valid forgiving-base64 data. */
+export class Base64ParseError extends Error {
+  constructor() {
+    super('String is not valid base64 data.');
+    this.name = 'Base64ParseError';
+  }
+}
+
 /** Error thrown when a string is not a well-formed data URI. */
 export class DataUriParseError extends Error {
   constructor(message: string) {
@@ -61,6 +69,7 @@ export interface ParsedDataUri {
 const DATA_URI_RE = /^data:([^;,]*)?((?:;[^;,]+)*)?,([\s\S]*)$/;
 const CANONICAL_BASE64_RE =
   /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+const FORGIVING_BASE64_ALPHABET_RE = /^[A-Za-z0-9+/]*$/;
 const CANONICAL_PERCENT_ENCODED_ASCII_RE =
   /^(?:[\x00-\x24\x26-\x7f]|%[0-7][0-9a-f])*$/i;
 const INVALID_OPTIONS_MESSAGE = 'converter options are invalid.';
@@ -104,12 +113,38 @@ export function bytesToBase64(bytes: Uint8Array): string {
   ).toString('base64');
 }
 
+/**
+ * Normalize and validate the exact input accepted by WHATWG forgiving-base64.
+ * Validation happens before either environment-specific decoder runs so Node
+ * and browsers expose the same deterministic acceptance boundary.
+ */
+function normalizeForgivingBase64(base64: string): string {
+  let normalized = base64.replace(/[\t\n\f\r ]+/g, '');
+
+  if (normalized.length % 4 === 0) {
+    if (normalized.endsWith('==')) {
+      normalized = normalized.slice(0, -2);
+    } else if (normalized.endsWith('=')) {
+      normalized = normalized.slice(0, -1);
+    }
+  }
+
+  if (
+    normalized.length % 4 === 1 ||
+    !FORGIVING_BASE64_ALPHABET_RE.test(normalized)
+  ) {
+    throw new Base64ParseError();
+  }
+
+  return normalized;
+}
+
 /** Decode a base64 string to raw bytes. Works in Node and the browser. */
 export function base64ToBytes(base64: string): Uint8Array {
   if (typeof base64 !== 'string') {
     throw new TypeError(INVALID_BASE64_INPUT_MESSAGE);
   }
-  const normalized = base64.replace(/\s+/g, '');
+  const normalized = normalizeForgivingBase64(base64);
   /* v8 ignore start -- browser-only fallback: Node and jsdom always provide Buffer */
   if (!hasBuffer) {
     // eslint-disable-next-line no-undef
