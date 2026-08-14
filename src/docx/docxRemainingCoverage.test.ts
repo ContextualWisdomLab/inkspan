@@ -180,22 +180,28 @@ describe('DOCX remaining exact coverage boundaries', () => {
     });
   });
 
-  it('covers missing numbering and empty structural fallbacks without inventing authority', async () => {
+  it('covers marked text and structural fallbacks without inventing authority', async () => {
     const result = await importDocx(
       createDocx({
         method: 0,
         body:
-          '<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/></w:numPr></w:pPr><w:r><w:t>Plain</w:t></w:r></w:p>' +
+          '<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/></w:numPr></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>Plain</w:t></w:r></w:p>' +
           '<w:p><w:pPr><w:outlineLvl w:val="1"/></w:pPr></w:p>' +
           '<w:p/>' +
-          '<w:tbl><w:tr><w:tc><w:p><w:r><w:t>Cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl>',
+          '<w:tbl><w:tr><w:tc><w:p><w:r><w:t>Cell</w:t></w:r></w:p></w:tc><w:tc/></w:tr></w:tbl>',
       }),
     );
 
     expect(result.documentJson.content).toEqual([
       {
         type: 'paragraph',
-        content: [{ type: 'text', text: 'Plain' }],
+        content: [
+          {
+            type: 'text',
+            text: 'Plain',
+            marks: [{ type: 'bold' }],
+          },
+        ],
       },
       { type: 'heading', attrs: { level: 2 } },
       { type: 'paragraph' },
@@ -213,6 +219,10 @@ describe('DOCX remaining exact coverage boundaries', () => {
                     content: [{ type: 'text', text: 'Cell' }],
                   },
                 ],
+              },
+              {
+                type: 'tableCell',
+                content: [{ type: 'paragraph' }],
               },
             ],
           },
