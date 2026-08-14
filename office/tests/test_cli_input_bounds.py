@@ -137,7 +137,7 @@ def test_cli_json_nesting_preflight_ignores_delimiters_inside_strings(
     output = tmp_path / "result.docx"
     payload = {
         "format": "docx",
-        "blocks": [{"type": "paragraph", "text": "[[[[{{{{]]]]}}}}"}],
+        "blocks": [{"type": "paragraph", "text": '"[[[[{{{{]]]]}}}}'}],
     }
     source.write_text(json.dumps(payload), encoding="utf-8")
 
