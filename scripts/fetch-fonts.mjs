@@ -270,7 +270,9 @@ async function download(source, remainingFamilyBytes) {
   const hasConsistentDeclaredLength =
     bytes.byteLength >= WOFF2_HEADER_BYTES &&
     bytes.readUInt32BE(8) === bytes.byteLength;
-  if (!hasWoff2Signature || !hasConsistentDeclaredLength) {
+  const hasDeclaredTables =
+    bytes.byteLength >= WOFF2_HEADER_BYTES && bytes.readUInt16BE(12) > 0;
+  if (!hasWoff2Signature || !hasConsistentDeclaredLength || !hasDeclaredTables) {
     throw new Error('Google Fonts returned a non-WOFF2 font asset');
   }
   return { bytes, budgetBytes };
