@@ -87,7 +87,7 @@ describe('DOCX open/import contract', () => {
   );
 
   it('uses intrinsic Blob metadata and bytes instead of caller overrides', async () => {
-    const source = new Blob([createDocx()]);
+    const source = new Blob([Uint8Array.from(createDocx())]);
     const sizeGetter = vi.fn(() => {
       throw new Error('private size getter');
     });
