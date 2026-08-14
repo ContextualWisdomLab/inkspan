@@ -35,6 +35,7 @@ const UA =
 const TRUSTED_FONT_ASSET_HOST = 'fonts.gstatic.com';
 const MAX_FONT_CSS_BYTES = 1024 * 1024;
 const MAX_FONT_SUBSET_BYTES = 16 * 1024 * 1024;
+const MAX_FONT_FAMILY_DOWNLOAD_BYTES = 64 * 1024 * 1024;
 const MAX_FONT_FACE_BLOCKS_PER_FAMILY = 512;
 const MAX_UNICODE_CODE_POINT = 0x10ffff;
 const WOFF2_HEADER_BYTES = 48;
@@ -207,15 +208,18 @@ function collectBoundedFontFaceBlocks(css) {
   return blocks;
 }
 
-/** Read one response body without allowing an unbounded subset allocation. */
-async function readBoundedFontBody(response) {
+/** Read one response body without allowing per-subset or per-family overrun. */
+async function readBoundedFontBody(response, remainingFamilyBytes) {
   const declaredLength = response.headers.get('content-length');
-  if (
-    declaredLength !== null &&
-    /^\d+$/.test(declaredLength) &&
-    Number(declaredLength) > MAX_FONT_SUBSET_BYTES
-  ) {
+  const declaredBytes =
+    declaredLength !== null && /^\d+$/.test(declaredLength)
+      ? Number(declaredLength)
+      : null;
+  if (declaredBytes !== null && declaredBytes > MAX_FONT_SUBSET_BYTES) {
     throw new Error('Google Fonts returned an oversized font asset');
+  }
+  if (declaredBytes !== null && declaredBytes > remainingFamilyBytes) {
+    throw new Error('Google Fonts exceeded the aggregate font download budget');
   }
 
   if (response.body === null) {
@@ -233,13 +237,21 @@ async function readBoundedFontBody(response) {
       await reader.cancel();
       throw new Error('Google Fonts returned an oversized font asset');
     }
+    if (totalBytes > remainingFamilyBytes) {
+      await reader.cancel();
+      throw new Error('Google Fonts exceeded the aggregate font download budget');
+    }
     chunks.push(Buffer.from(value));
   }
-  return Buffer.concat(chunks, totalBytes);
+  const bytes = Buffer.concat(chunks, totalBytes);
+  return {
+    bytes,
+    budgetBytes: Math.max(declaredBytes ?? 0, totalBytes),
+  };
 }
 
 /** Download and authenticate the minimal file-format boundary for one subset. */
-async function download(source) {
+async function download(source, remainingFamilyBytes) {
   const url = validateFontAssetUrl(source);
   const res = await fetch(url, {
     redirect: 'error',
@@ -248,7 +260,10 @@ async function download(source) {
   if (!res.ok) {
     throw new Error(`Google Fonts font asset fetch failed with status ${res.status}`);
   }
-  const bytes = await readBoundedFontBody(res);
+  const { bytes, budgetBytes } = await readBoundedFontBody(
+    res,
+    remainingFamilyBytes,
+  );
   const hasWoff2Signature =
     bytes.byteLength >= WOFF2_SIGNATURE.byteLength &&
     bytes.subarray(0, WOFF2_SIGNATURE.byteLength).equals(WOFF2_SIGNATURE);
@@ -258,7 +273,7 @@ async function download(source) {
   if (!hasWoff2Signature || !hasConsistentDeclaredLength) {
     throw new Error('Google Fonts returned a non-WOFF2 font asset');
   }
-  return bytes;
+  return { bytes, budgetBytes };
 }
 
 async function processFamily(def, outputFilesDir) {
@@ -360,13 +375,18 @@ async function processFamily(def, outputFilesDir) {
 
   const out = [];
   let totalBytes = 0;
+  let downloadBudgetBytes = 0;
   const counters = {};
   for (const descriptor of descriptors) {
     const { source, weight, range } = descriptor;
     counters[weight] = (counters[weight] ?? 0) + 1;
     const idx = counters[weight];
     const localName = `${def.slug}-${weight}-${idx}.woff2`;
-    const bytes = await download(source);
+    const { bytes, budgetBytes } = await download(
+      source,
+      MAX_FONT_FAMILY_DOWNLOAD_BYTES - downloadBudgetBytes,
+    );
+    downloadBudgetBytes += budgetBytes;
     totalBytes += bytes.byteLength;
     writeFileSync(resolve(outputFilesDir, localName), bytes);
     out.push(
