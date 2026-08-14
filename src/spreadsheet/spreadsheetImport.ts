@@ -20,10 +20,15 @@ const XLS_COMPOUND_FILE_SIGNATURE = [
   0x1a,
   0xe1,
 ] as const;
+const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(Uint8Array.prototype) as object;
 const TYPED_ARRAY_TAG_GETTER = Object.getOwnPropertyDescriptor(
-  Object.getPrototypeOf(Uint8Array.prototype),
+  TYPED_ARRAY_PROTOTYPE,
   Symbol.toStringTag,
-)?.get;
+)!.get!;
+const TYPED_ARRAY_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  'byteLength',
+)!.get!;
 
 /** Binary spreadsheet container family identified before local parsing. */
 export type SpreadsheetBinaryFormat = 'xls' | 'xlsx';
@@ -99,15 +104,20 @@ function unsupportedOrCorruptSource(): never {
 function isUint8ArraySource(source: unknown): source is Uint8Array {
   return (
     ArrayBuffer.isView(source) &&
-    TYPED_ARRAY_TAG_GETTER?.call(source) === 'Uint8Array'
+    TYPED_ARRAY_TAG_GETTER.call(source) === 'Uint8Array'
   );
+}
+
+function byteLengthOfUint8Array(source: Uint8Array): number {
+  return TYPED_ARRAY_BYTE_LENGTH_GETTER.call(source) as number;
 }
 
 function startsWithSignature(
   source: Uint8Array,
+  sourceByteLength: number,
   signature: readonly number[],
 ): boolean {
-  if (source.byteLength < signature.length) return false;
+  if (sourceByteLength < signature.length) return false;
   for (let index = 0; index < signature.length; index += 1) {
     if (source[index] !== signature[index]) return false;
   }
@@ -125,12 +135,19 @@ export function preflightSpreadsheetBinarySource(
   source: Uint8Array,
 ): SpreadsheetBinarySource {
   if (!isUint8ArraySource(source)) unsupportedOrCorruptSource();
-  if (source.byteLength > MAX_SPREADSHEET_SOURCE_BYTES) resourceLimitExceeded();
+  const sourceByteLength = byteLengthOfUint8Array(source);
+  if (sourceByteLength > MAX_SPREADSHEET_SOURCE_BYTES) resourceLimitExceeded();
 
-  if (startsWithSignature(source, XLS_COMPOUND_FILE_SIGNATURE)) {
+  if (
+    startsWithSignature(
+      source,
+      sourceByteLength,
+      XLS_COMPOUND_FILE_SIGNATURE,
+    )
+  ) {
     return { format: 'xls', bytes: source };
   }
-  if (startsWithSignature(source, XLSX_ZIP_SIGNATURE)) {
+  if (startsWithSignature(source, sourceByteLength, XLSX_ZIP_SIGNATURE)) {
     return { format: 'xlsx', bytes: source };
   }
   return unsupportedOrCorruptSource();
