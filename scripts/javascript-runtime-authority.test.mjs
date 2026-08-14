@@ -67,6 +67,28 @@ test('reports statically recognizable indirect CommonJS loader invocations', () 
   );
 });
 
+test('reports statically recognizable CommonJS resolver authority', () => {
+  const source = [
+    "const direct = require.resolve('resolve-package');",
+    "const element = require['resolve']('element-resolve-package');",
+    'const computed = require.resolve(runtimePackageName);',
+    'const object = { resolve() { return "method-only"; } };',
+    'const benign = object.resolve("not-the-commonjs-resolver");',
+    'void [direct, element, computed, benign];',
+  ].join('\n');
+
+  assert.deepEqual(
+    findRuntimeModuleAuthority(source, 'resolver-authority.js').map(
+      ({ kind, specifier }) => ({ kind, specifier }),
+    ),
+    [
+      { kind: 'commonjs-resolve', specifier: 'resolve-package' },
+      { kind: 'commonjs-resolve', specifier: 'element-resolve-package' },
+      { kind: 'commonjs-resolve', specifier: undefined },
+    ],
+  );
+});
+
 test('fails closed when emitted JavaScript is syntactically invalid', () => {
   assert.throws(
     () => findRuntimeModuleAuthority('const = ;', 'broken.js'),
