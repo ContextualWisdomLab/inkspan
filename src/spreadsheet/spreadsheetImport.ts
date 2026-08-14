@@ -109,7 +109,10 @@ export function spreadsheetWorkbookToDocumentJson(
     const nextCellCount = cellCount + worksheetCellCount;
     if (nextCellCount > MAX_WORKBOOK_CELLS) resourceLimitExceeded();
 
-    let worksheetTextCodeUnits = 0;
+    let worksheetTextCodeUnits = worksheet.name.length;
+    if (textCodeUnits + worksheetTextCodeUnits > MAX_WORKBOOK_TEXT_CODE_UNITS) {
+      resourceLimitExceeded();
+    }
     for (const row of worksheet.rows) {
       for (const cellText of row) {
         if (cellText.length > MAX_CELL_TEXT_CODE_UNITS) resourceLimitExceeded();
