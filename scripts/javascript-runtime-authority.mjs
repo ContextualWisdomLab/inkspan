@@ -5,11 +5,11 @@ import ts from 'typescript';
  *
  * Parsing the artifact instead of scanning raw text deliberately ignores comments,
  * string literals, and template text that merely mention `require()` or `import()`.
- * Actual static imports/re-exports, statically recognizable CommonJS loader calls,
- * and dynamic `import()` calls remain fail-closed findings. Literal module
- * specifiers are preserved in diagnostics so a verifier failure identifies the
- * dependency edge that escaped bundling; computed specifiers remain `undefined`
- * and therefore do not acquire an invented interpretation.
+ * Actual static imports/re-exports, statically recognizable CommonJS loader and
+ * resolver calls, and dynamic `import()` calls remain fail-closed findings.
+ * Literal module specifiers are preserved in diagnostics so a verifier failure
+ * identifies the dependency edge that escaped bundling; computed specifiers remain
+ * `undefined` and therefore do not acquire an invented interpretation.
  *
  * @param {string} source JavaScript source emitted into the packed artifact.
  * @param {string} [filename='bundle.js'] Diagnostic filename for parse failures.
@@ -90,6 +90,23 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
   }
 
   /**
+   * Return the package argument for one recognizable CommonJS resolver call.
+   * Arbitrary object methods named `resolve` remain outside this authority model.
+   */
+  function commonJsResolverInvocation(node) {
+    const callee = unwrapParentheses(node.expression);
+    if (
+      (ts.isPropertyAccessExpression(callee) ||
+        ts.isElementAccessExpression(callee)) &&
+      staticMemberName(callee) === 'resolve' &&
+      isCommonJsLoaderExpression(callee.expression)
+    ) {
+      return { argument: node.arguments[0] };
+    }
+    return null;
+  }
+
+  /**
    * Return the package argument for one recognizable CommonJS loader call.
    * A wrapper object distinguishes a computed or missing argument from no match.
    */
@@ -132,13 +149,22 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
           specifier: literalSpecifier(node.arguments[0]),
         });
       } else {
-        const invocation = commonJsInvocation(node);
-        if (invocation) {
+        const resolverInvocation = commonJsResolverInvocation(node);
+        if (resolverInvocation) {
           findings.push({
-            kind: 'commonjs-require',
+            kind: 'commonjs-resolve',
             offset: node.getStart(sourceFile),
-            specifier: literalSpecifier(invocation.argument),
+            specifier: literalSpecifier(resolverInvocation.argument),
           });
+        } else {
+          const invocation = commonJsInvocation(node);
+          if (invocation) {
+            findings.push({
+              kind: 'commonjs-require',
+              offset: node.getStart(sourceFile),
+              specifier: literalSpecifier(invocation.argument),
+            });
+          }
         }
       }
     }
