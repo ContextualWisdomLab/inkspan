@@ -244,7 +244,7 @@ export function createDetachedAutosaveRevisionEvidence(
       !LOWERCASE_SHA256_DIGEST.test(revisionRecord.digestHex) ||
       typeof revisionRecord.strongEntityTag !== 'string' ||
       revisionRecord.strongEntityTag !==
-        `\"sha256-${revisionRecord.digestHex}\"`
+        `"sha256-${revisionRecord.digestHex}"`
     ) {
       return null;
     }
