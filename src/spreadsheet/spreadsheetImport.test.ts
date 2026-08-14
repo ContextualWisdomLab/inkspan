@@ -245,6 +245,59 @@ describe('spreadsheetWorkbookToDocumentJson', () => {
     );
   });
 
+  it('fails closed before materializing more than 10000 rows', () => {
+    const workbook = {
+      worksheets: [
+        {
+          name: 'Too many rows',
+          hidden: false,
+          rows: Array.from({ length: 10_001 }, () => ['kept']),
+        },
+      ],
+    };
+
+    expect(() => spreadsheetWorkbookToDocumentJson(workbook)).toThrowError(
+      'Spreadsheet exceeds the configured resource limits.',
+    );
+  });
+
+  it('fails closed before materializing more than 262144 rectangular cells', () => {
+    const row = Array.from({ length: 256 }, () => '');
+    const workbook = {
+      worksheets: [
+        {
+          name: 'Too many cells',
+          hidden: false,
+          rows: Array.from({ length: 1_025 }, () => row),
+        },
+      ],
+    };
+
+    expect(() => spreadsheetWorkbookToDocumentJson(workbook)).toThrowError(
+      'Spreadsheet exceeds the configured resource limits.',
+    );
+  });
+
+  it('fails closed before materializing more than 8388608 text code units', () => {
+    const maximumCellText = 'x'.repeat(32_768);
+    const workbook = {
+      worksheets: [
+        {
+          name: 'Too much text',
+          hidden: false,
+          rows: [
+            Array.from({ length: 256 }, () => maximumCellText),
+            [maximumCellText],
+          ],
+        },
+      ],
+    };
+
+    expect(() => spreadsheetWorkbookToDocumentJson(workbook)).toThrowError(
+      'Spreadsheet exceeds the configured resource limits.',
+    );
+  });
+
   it('fails closed before materializing oversized cell text', () => {
     const workbook = {
       worksheets: [
