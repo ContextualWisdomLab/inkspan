@@ -71,6 +71,12 @@ function oneStoredEntry(): Uint8Array {
   return buildZip({ 'a.txt': 'abc' }, 0);
 }
 
+function blobPart(bytes: Uint8Array): ArrayBuffer {
+  const copy = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(copy).set(bytes);
+  return copy;
+}
+
 function relationshipXml(entries: string): string {
   return (
     '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
@@ -257,7 +263,7 @@ describe('DOCX ZIP safety coverage', () => {
     );
     await readFailure(localNameMismatch);
 
-    let invalidDataStart = patchUint16(base, local + 28, 0xffff);
+    const invalidDataStart = patchUint16(base, local + 28, 0xffff);
     await readFailure(invalidDataStart);
 
     let tooLongPayload = buildZip(
@@ -273,11 +279,11 @@ describe('DOCX ZIP safety coverage', () => {
     wrongSize = patchUint32(wrongSize, wrongSizeOffsets.central + 24, 4);
     await readFailure(wrongSize);
 
-    let wrongCrc = base.slice();
+    const wrongCrc = base.slice();
     wrongCrc[local + 30 + 'a.txt'.length] ^= 0xff;
     await readFailure(wrongCrc);
 
-    let foreignOffset = patchUint32(base, central + 42, central - 1);
+    const foreignOffset = patchUint32(base, central + 42, central - 1);
     const parsedForeignOffset = ZipArchive.parse(foreignOffset, limits);
     await expectAsyncCode(parsedForeignOffset.read('a.txt'), 'invalid_zip');
 
@@ -299,10 +305,7 @@ describe('DOCX ZIP safety coverage', () => {
       vi.stubGlobal('ReadableStream', undefined);
       await expectAsyncCode(ZipArchive.parse(compressed, limits).read('a.txt'), 'decompression_unavailable');
 
-      vi.stubGlobal(
-        'ReadableStream',
-        originalReadableStream,
-      );
+      vi.stubGlobal('ReadableStream', originalReadableStream);
       vi.stubGlobal(
         'DecompressionStream',
         class {
@@ -331,14 +334,14 @@ describe('DOCX source and editor boundary coverage', () => {
     await expectAsyncCode(importDocx('not-bytes' as never), 'invalid_source');
     await expectAsyncCode(importDocx(new Uint8Array()), 'invalid_source');
     await expectAsyncCode(
-      importDocx(new Blob([createDocx()]), { limits: { maxArchiveBytes: 8 } }),
+      importDocx(new Blob([blobPart(createDocx())]), { limits: { maxArchiveBytes: 8 } }),
       'input_too_large',
     );
   });
 
   it('uses the bounded FileReader fallback without trusting malformed reader results', async () => {
     const bytes = createDocx({ method: 0 });
-    const fallbackBlob = new Blob([bytes]);
+    const fallbackBlob = new Blob([blobPart(bytes)]);
     Object.defineProperty(fallbackBlob, 'arrayBuffer', { value: undefined });
     const originalFileReader = globalThis.FileReader;
 
@@ -348,7 +351,7 @@ describe('DOCX source and editor boundary coverage', () => {
         onload: (() => void) | null = null;
         onerror: (() => void) | null = null;
         readAsArrayBuffer(): void {
-          this.result = Uint8Array.from(bytes).buffer;
+          this.result = blobPart(bytes);
           this.onload?.();
         }
       }
