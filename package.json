@@ -65,6 +65,11 @@
       "import": "./dist/cwl-converter.js",
       "require": "./dist/cwl-converter.cjs"
     },
+    "./docx": {
+      "types": "./dist/docx/index.d.ts",
+      "import": "./dist/cwl-docx.js",
+      "require": "./dist/cwl-docx.cjs"
+    },
     "./envelope-identity": {
       "types": "./dist/envelope-identity/index.d.ts",
       "import": "./dist/cwl-envelope-identity.js",
@@ -99,7 +104,7 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && vite build --config vite.collaboration.config.ts && vite build --config vite.converter.config.ts && vite build --config vite.envelope-identity.config.ts && vite build --config vite.revision-evidence.config.ts && vite build --config vite.autosave.config.ts && vite build --config vite.text-position-selector.config.ts && vite build --config vite.markdown.config.ts && node ./scripts/copy-styles.mjs",
+    "build": "tsc --noEmit && vite build && vite build --config vite.collaboration.config.ts && vite build --config vite.converter.config.ts && vite build --config vite.docx.config.ts && vite build --config vite.envelope-identity.config.ts && vite build --config vite.revision-evidence.config.ts && vite build --config vite.autosave.config.ts && vite build --config vite.text-position-selector.config.ts && vite build --config vite.markdown.config.ts && node ./scripts/copy-styles.mjs",
     "build:demo": "vite build --config vite.demo.config.ts",
     "fonts": "node ./scripts/fetch-fonts.mjs",
     "preview": "vite preview",
@@ -108,7 +113,7 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "test:package-config": "node --test ./scripts/revision-evidence-consumer-config.test.mjs ./scripts/release-metadata.test.mjs ./scripts/javascript-runtime-authority.test.mjs",
-    "verify:package": "pnpm run test:package-config && node ./tests/package/verify-package.mjs && node ./tests/package/verify-editor-placeholder-package.mjs && node ./scripts/verify-canonical-envelope-package.mjs && node ./scripts/verify-revision-evidence-package.mjs && node ./scripts/verify-framework-free-revision-evidence-package.mjs && node ./scripts/verify-framework-free-envelope-identity-package.mjs && node ./tests/package/verify-framework-free-autosave-package.mjs && node ./scripts/verify-text-position-selector-package.mjs && node ./scripts/verify-text-position-selector-subpath-package.mjs && node ./scripts/verify-markdown-subpath-package.mjs"
+    "verify:package": "pnpm run test:package-config && node ./tests/package/verify-package.mjs && node ./tests/package/verify-editor-placeholder-package.mjs && node ./scripts/verify-canonical-envelope-package.mjs && node ./scripts/verify-revision-evidence-package.mjs && node ./scripts/verify-framework-free-revision-evidence-package.mjs && node ./scripts/verify-framework-free-envelope-identity-package.mjs && node ./tests/package/verify-framework-free-autosave-package.mjs && node ./scripts/verify-text-position-selector-package.mjs && node ./scripts/verify-text-position-selector-subpath-package.mjs && node ./scripts/verify-markdown-subpath-package.mjs && node ./scripts/verify-docx-subpath-package.mjs"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
