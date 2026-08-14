@@ -284,14 +284,32 @@ function canonicalizeJson(
   active.add(value);
   try {
     if (Array.isArray(value)) {
-      return value.map((item) => canonicalizeJson(item, depth + 1, active));
+      const keys = Object.keys(value);
+      if (
+        keys.length !== value.length ||
+        keys.some((key, index) => key !== String(index))
+      ) {
+        throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
+      }
+      return keys.map((key) => {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key)!;
+        return canonicalizeJson(descriptor.value, depth + 1, active);
+      });
+    }
+
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
     }
 
     const record = value as Record<string, unknown>;
     return Object.fromEntries(
       Object.keys(record)
         .sort()
-        .map((key) => [key, canonicalizeJson(record[key], depth + 1, active)]),
+        .map((key) => {
+          const descriptor = Object.getOwnPropertyDescriptor(record, key)!;
+          return [key, canonicalizeJson(descriptor.value, depth + 1, active)];
+        }),
     );
   } finally {
     active.delete(value);
