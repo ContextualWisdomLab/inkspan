@@ -13,7 +13,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 const temporaryRoots: string[] = [];
 
-function createIsolatedFontRegenerator(): {
+type Woff2HeaderMutation = 'inconsistent-length' | 'zero-tables';
+
+function createIsolatedFontRegenerator(mutation: Woff2HeaderMutation): {
   root: string;
   scriptPath: string;
   preloadPath: string;
@@ -40,7 +42,8 @@ function createIsolatedFontRegenerator(): {
   );
   writeFileSync(
     preloadPath,
-    `const trustedAsset = 'https://fonts.gstatic.com/s/notosans/header-test.woff2';
+    `const mutation = ${JSON.stringify(mutation)};
+const trustedAsset = 'https://fonts.gstatic.com/s/notosans/header-test.woff2';
 
 function cssForRequest(url) {
   const request = new URL(url).searchParams.get('family');
@@ -53,10 +56,14 @@ function cssForRequest(url) {
   return weights.map((weight) => \`@font-face {\n  font-family: '\${family}';\n  font-style: normal;\n  font-weight: \${weight};\n  src: url(\${trustedAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\`).join('\\n');
 }
 
-function inconsistentWoff2Header() {
+function malformedWoff2Header() {
   const bytes = new Uint8Array(48);
   bytes.set([0x77, 0x4f, 0x46, 0x32], 0);
-  new DataView(bytes.buffer).setUint32(8, 49, false);
+  new DataView(bytes.buffer).setUint32(
+    8,
+    mutation === 'inconsistent-length' ? 49 : bytes.byteLength,
+    false,
+  );
   return bytes;
 }
 
@@ -69,7 +76,7 @@ globalThis.fetch = async (input) => {
     });
   }
   if (url === trustedAsset) {
-    return new Response(inconsistentWoff2Header(), {
+    return new Response(malformedWoff2Header(), {
       status: 200,
       headers: { 'content-type': 'font/woff2' },
     });
@@ -83,6 +90,23 @@ globalThis.fetch = async (input) => {
   return { root, scriptPath, preloadPath };
 }
 
+function expectHeaderRejected(mutation: Woff2HeaderMutation): void {
+  const fixture = createIsolatedFontRegenerator(mutation);
+  const result = spawnSync(
+    process.execPath,
+    ['--import', pathToFileURL(fixture.preloadPath).href, fixture.scriptPath],
+    {
+      cwd: fixture.root,
+      encoding: 'utf8',
+      env: process.env,
+      timeout: 15_000,
+    },
+  );
+
+  expect(result.error).toBeUndefined();
+  expect(result.status).not.toBe(0);
+}
+
 afterEach(() => {
   while (temporaryRoots.length > 0) {
     rmSync(temporaryRoots.pop()!, { recursive: true, force: true });
@@ -91,19 +115,10 @@ afterEach(() => {
 
 describe('font regeneration WOFF2 header policy', () => {
   it('rejects an artifact whose WOFF2 length field disagrees with its body', () => {
-    const fixture = createIsolatedFontRegenerator();
-    const result = spawnSync(
-      process.execPath,
-      ['--import', pathToFileURL(fixture.preloadPath).href, fixture.scriptPath],
-      {
-        cwd: fixture.root,
-        encoding: 'utf8',
-        env: process.env,
-        timeout: 15_000,
-      },
-    );
+    expectHeaderRejected('inconsistent-length');
+  });
 
-    expect(result.error).toBeUndefined();
-    expect(result.status).not.toBe(0);
+  it('rejects a WOFF2 artifact whose header declares zero font tables', () => {
+    expectHeaderRejected('zero-tables');
   });
 });
