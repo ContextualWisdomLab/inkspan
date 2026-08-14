@@ -110,6 +110,20 @@ describe('DOCX open/import contract', () => {
     expect(arrayBufferGetter).not.toHaveBeenCalled();
   });
 
+  it('ignores caller Blob data-function overrides while reading intrinsic bytes', async () => {
+    const source = new Blob([Uint8Array.from(createDocx())]);
+    const arrayBufferOverride = vi.fn(async () => new ArrayBuffer(0));
+    Object.defineProperty(source, 'arrayBuffer', {
+      configurable: true,
+      value: arrayBufferOverride,
+    });
+
+    const result = await importDocx(source);
+
+    expect(result.documentJson.type).toBe('doc');
+    expect(arrayBufferOverride).not.toHaveBeenCalled();
+  });
+
   it('validates the complete imported document before one atomic editor mutation', async () => {
     const validateDocumentJson = vi.fn(
       (documentJson: DocxJsonContent) => documentJson.type === 'doc',
