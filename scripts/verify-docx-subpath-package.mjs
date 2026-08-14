@@ -165,7 +165,7 @@ declare const options: DocxImportOptions;
 declare const target: DocxDocumentTarget;
 const imported: Promise<DocxImportResult> = importDocx(source, options);
 const opened: Promise<DocxImportResult> = openDocx(target, source, options);
-const failure = new DocxImportError('invalid_source', 'redacted');
+const failure = new DocxImportError('invalid_source');
 void [
   imported,
   opened,
