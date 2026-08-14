@@ -4,12 +4,16 @@ import { Base64SizeError } from '../converter/base64.js';
 const INLINE_RASTER_SOURCE_PATTERN =
   /^data:image\/(?:png|jpe?g|gif|webp|avif|apng|bmp|x-icon|vnd\.microsoft\.icon);base64,(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)$/i;
 
+/** Bounded prefix recognizer used before whole-payload grammar validation. */
+const INLINE_RASTER_SOURCE_PREFIX_PATTERN =
+  /^data:image\/(?:png|jpe?g|gif|webp|avif|apng|bmp|x-icon|vnd\.microsoft\.icon);base64,/i;
+
 /** Fixed public categories that reveal no caller-defined scheme label. */
 const PUBLIC_IMAGE_SOURCE_SCHEME_PATTERN =
   /^(?:data|https?|blob|file|javascript)$/i;
 
-/** Maximum untrusted prefix inspected while classifying a diagnostic scheme. */
-const IMAGE_SOURCE_SCHEME_INSPECTION_CODE_UNITS = 64;
+/** Maximum untrusted prefix inspected while classifying source metadata. */
+const IMAGE_SOURCE_PREFIX_INSPECTION_CODE_UNITS = 64;
 
 /** Return a bounded, payload-free category for an untrusted image source. */
 function redactImageSource(source: unknown): string {
@@ -17,7 +21,7 @@ function redactImageSource(source: unknown): string {
   if (source.length === 0) return '<empty>';
   if (source.startsWith('//')) return '//<redacted>';
   const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(
-    source.slice(0, IMAGE_SOURCE_SCHEME_INSPECTION_CODE_UNITS),
+    source.slice(0, IMAGE_SOURCE_PREFIX_INSPECTION_CODE_UNITS),
   )?.[1];
   if (scheme) {
     if (PUBLIC_IMAGE_SOURCE_SCHEME_PATTERN.test(scheme)) {
@@ -28,11 +32,38 @@ function redactImageSource(source: unknown): string {
   return '<unrecognized>';
 }
 
-/** Return decoded bytes for a source that already passed the strict base64 grammar. */
-function inlineRasterByteLength(source: string): number {
-  const payloadLength = source.length - source.indexOf(',') - 1;
+/** Return decoded bytes for a source whose strict base64 shape is known. */
+function inlineRasterByteLength(source: string, payloadOffset: number): number {
+  const payloadLength = source.length - payloadOffset;
   const padding = source.endsWith('==') ? 2 : Number(source.endsWith('='));
   return (payloadLength / 4) * 3 - padding;
+}
+
+/**
+ * Reject an obviously oversized raster candidate before scanning its payload.
+ *
+ * A bounded prefix plus base64 quartet length/padding is sufficient to derive
+ * the exact decoded size for every candidate that could satisfy the strict
+ * grammar. The full grammar remains authoritative for every in-bound source.
+ */
+function preflightInlineRasterByteLength(
+  source: string,
+  maxSizeBytes: number,
+): void {
+  if (maxSizeBytes === 0) return;
+  const prefixMatch = INLINE_RASTER_SOURCE_PREFIX_PATTERN.exec(
+    source.slice(0, IMAGE_SOURCE_PREFIX_INSPECTION_CODE_UNITS),
+  );
+  if (!prefixMatch) return;
+
+  const payloadOffset = prefixMatch[0].length;
+  const payloadLength = source.length - payloadOffset;
+  if (payloadLength < 4 || payloadLength % 4 !== 0) return;
+
+  const bytes = inlineRasterByteLength(source, payloadOffset);
+  if (bytes > maxSizeBytes) {
+    throw new Base64SizeError(bytes, maxSizeBytes);
+  }
 }
 
 /** Reject malformed public byte ceilings without coercion or intent inference. */
@@ -71,16 +102,18 @@ export function validateInlineImageSource(
   maxSizeBytes: number,
 ): string {
   assertValidInlineImageByteLimit(maxSizeBytes);
-  if (
-    typeof source !== 'string' ||
-    source.length === 0 ||
-    !INLINE_RASTER_SOURCE_PATTERN.test(source)
-  ) {
+  if (typeof source !== 'string' || source.length === 0) {
+    throw new Base64ImageSourceError(source);
+  }
+
+  preflightInlineRasterByteLength(source, maxSizeBytes);
+  if (!INLINE_RASTER_SOURCE_PATTERN.test(source)) {
     throw new Base64ImageSourceError(source);
   }
 
   if (maxSizeBytes > 0) {
-    const bytes = inlineRasterByteLength(source);
+    const payloadOffset = source.indexOf(',') + 1;
+    const bytes = inlineRasterByteLength(source, payloadOffset);
     if (bytes > maxSizeBytes) {
       throw new Base64SizeError(bytes, maxSizeBytes);
     }
