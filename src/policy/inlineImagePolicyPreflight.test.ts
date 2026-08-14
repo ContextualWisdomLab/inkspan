@@ -75,6 +75,30 @@ describe('inline image decoded-size preflight', () => {
     }
   });
 
+  it.each([
+    'https://example.invalid/image.png',
+    'data:image/png;base64,',
+    'data:image/png;base64,AAA',
+    'data:image/png;base64,AA*A',
+  ])('defers in-bound malformed candidate %s to the strict source grammar', (source) => {
+    expect(() => validateInlineImageSource(source, 4)).toThrow(
+      Base64ImageSourceError,
+    );
+  });
+
+  it('accounts for a single canonical padding byte in an in-bound valid source', () => {
+    const source = 'data:image/png;base64,QUJDRAA=';
+
+    expect(validateInlineImageSource(source, 5)).toBe(source);
+    expect(() => validateInlineImageSource(source, 4)).toThrowError(
+      expect.objectContaining({
+        name: 'Base64SizeError',
+        bytes: 5,
+        maxBytes: 4,
+      } satisfies Partial<Base64SizeError>),
+    );
+  });
+
   it('does not reflect a caller-controlled custom URI scheme in diagnostics', () => {
     const privateMarker = 'privatetenant42';
     const error = new Base64ImageSourceError(`${privateMarker}:opaque`);
