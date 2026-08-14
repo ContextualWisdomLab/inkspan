@@ -43,6 +43,19 @@ describe('exact-head CI workflow contract', () => {
     expect(workflow.match(/timeout-minutes: 30/g)).toHaveLength(3);
   });
 
+  it('verifies the runtime checkout SHA before any job consumes repository code', () => {
+    const verificationStep = [
+      '- name: Verify exact checkout',
+      '        env:',
+      '          INKSPAN_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}',
+      '        run: |',
+      '          actual_head="$(git rev-parse HEAD)"',
+      '          test "$actual_head" = "$INKSPAN_EXPECTED_HEAD_SHA"',
+    ].join('\n');
+
+    expect(workflow.split(verificationStep)).toHaveLength(4);
+  });
+
   it('keeps the workflow read-only and hash-pins every third-party action', () => {
     expect(workflow).toContain('permissions:\n  contents: read');
     expect(workflow).not.toContain('contents: write');
