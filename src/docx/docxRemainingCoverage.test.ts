@@ -33,8 +33,20 @@ function blobPart(bytes: Uint8Array): ArrayBuffer {
   return copy;
 }
 
+function relationshipXml(entries: string): string {
+  return (
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    entries +
+    '</Relationships>'
+  );
+}
+
+function imageRelationship(id: string, target: string): string {
+  return `<Relationship Id="${id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${target}"/>`;
+}
+
 describe('DOCX remaining exact coverage boundaries', () => {
-  it('bounds primitive ZIP integer reads and rejects non-ASCII legacy entry names', () => {
+  it('bounds primitive ZIP integer reads and exercises both legacy-name outcomes', () => {
     expectCode(() => readUint16(new Uint8Array(2), -1), 'invalid_zip');
     expectCode(() => readUint16(new Uint8Array(1), 0), 'invalid_zip');
     expectCode(() => readUint32(new Uint8Array(4), -1), 'invalid_zip');
@@ -58,11 +70,30 @@ describe('DOCX remaining exact coverage boundaries', () => {
         ),
       'unsupported_archive',
     );
+
+    const legacyAscii = ZipArchive.parse(
+      buildZip(
+        {
+          'a.txt': {
+            data: 'x',
+            flags: 0,
+          },
+        },
+        0,
+      ),
+      limits,
+    );
+    expect(legacyAscii.has('a.txt')).toBe(true);
   });
 
   it('reads the native Blob arrayBuffer path before parsing a valid package', async () => {
     const bytes = createDocx({ method: 0 });
-    const result = await importDocx(new Blob([blobPart(bytes)]));
+    const source = new Blob([]);
+    Object.defineProperty(source, 'arrayBuffer', {
+      configurable: true,
+      value: async () => blobPart(bytes),
+    });
+    const result = await importDocx(source);
     expect(result.documentJson).toMatchObject({ type: 'doc' });
   });
 
@@ -89,12 +120,57 @@ describe('DOCX remaining exact coverage boundaries', () => {
     expect(root.children).toEqual(['\uE000\u{10000}']);
   });
 
+  it('encodes a two-byte base64 remainder and imports an image without document properties', async () => {
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0x00, 0x00]);
+    const result = await importDocx(
+      createDocx({
+        method: 0,
+        relationships: relationshipXml(
+          imageRelationship('jpeg', 'media/jpeg.bin'),
+        ),
+        body:
+          '<w:p><w:r><w:drawing><a:blip r:embed="jpeg"/></w:drawing></w:r></w:p>',
+        media: {
+          'word/media/jpeg.bin': jpeg,
+        },
+      }),
+    );
+    expect(result.documentJson.content?.[0]).toMatchObject({
+      type: 'image',
+      attrs: {
+        alt: '',
+        src: expect.stringMatching(/^data:image\/jpeg;base64,/u),
+      },
+    });
+  });
+
+  it('keeps an image returned from a hyperlink run while warning that hyperlink authority is inert', async () => {
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0x00, 0x00]);
+    const result = await importDocx(
+      createDocx({
+        method: 0,
+        relationships: relationshipXml(
+          imageRelationship('image', 'media/image.bin'),
+        ),
+        body:
+          '<w:p><w:hyperlink><w:r><w:drawing><a:blip r:embed="image"/></w:drawing></w:r></w:hyperlink></w:p>',
+        media: {
+          'word/media/image.bin': jpeg,
+        },
+      }),
+    );
+    expect(result.documentJson.content?.[0]).toMatchObject({ type: 'image' });
+    expect(result.warnings.map((warning) => warning.code)).toContain(
+      'unsafe_hyperlink',
+    );
+  });
+
   it('reports unsupported paragraph children and foreign body namespaces without executing them', async () => {
     const result = await importDocx(
       createDocx({
         method: 0,
         body:
-          '<w:p><w:bookmarkStart w:id="0"/></w:p>' +
+          '<w:p><w:unsupported/></w:p>' +
           '<x:foreign xmlns:x="urn:inkspan:test"/>',
       }),
     );
