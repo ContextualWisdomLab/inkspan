@@ -73,6 +73,12 @@ def _preflight_json_nesting(source: str) -> None:
             depth = max(0, depth - 1)
 
 
+def _reject_nonstandard_json_constant(_value: str) -> None:
+    """Reject numeric constants accepted by Python but forbidden by strict JSON."""
+
+    raise ValueError("non-standard JSON numeric constant")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return a process-style status code."""
 
@@ -94,9 +100,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise OfficeDocumentError("input could not be read") from exc
         _preflight_json_nesting(request_text)
         try:
-            payload = json.loads(request_text)
+            payload = json.loads(
+                request_text,
+                parse_constant=_reject_nonstandard_json_constant,
+            )
         except json.JSONDecodeError as exc:
             raise OfficeDocumentError(f"input must contain valid JSON: {exc.msg}") from exc
+        except ValueError as exc:
+            raise OfficeDocumentError(
+                "input contains a value unsupported by strict JSON parsing"
+            ) from exc
 
         try:
             write_office_document(payload, Path(args.output), overwrite=args.force)
