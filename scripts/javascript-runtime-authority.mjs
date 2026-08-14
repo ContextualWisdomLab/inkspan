@@ -115,6 +115,24 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
   }
 
   /**
+   * Return the first statically written `.apply()` payload argument.
+   * Non-array, computed, missing, and spread argument lists still identify
+   * executable authority but deliberately yield an unknown module specifier.
+   */
+  function commonJsApplyArgument(node) {
+    const argumentList = node.arguments[1];
+    if (!argumentList) {
+      return undefined;
+    }
+    const current = unwrapParentheses(argumentList);
+    if (!ts.isArrayLiteralExpression(current)) {
+      return undefined;
+    }
+    const first = current.elements[0];
+    return first && !ts.isSpreadElement(first) ? first : undefined;
+  }
+
+  /**
    * Return the package argument for one recognizable CommonJS resolver call.
    * Arbitrary object methods named `resolve` remain outside this authority model.
    */
@@ -125,12 +143,21 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
 
     const callee = unwrapParentheses(node.expression);
     if (
-      (ts.isPropertyAccessExpression(callee) ||
-        ts.isElementAccessExpression(callee)) &&
-      staticMemberName(callee) === 'call' &&
-      isCommonJsResolverExpression(callee.expression)
+      ts.isPropertyAccessExpression(callee) ||
+      ts.isElementAccessExpression(callee)
     ) {
-      return { argument: node.arguments[1] };
+      const invocationMethod = staticMemberName(callee);
+      if (
+        (invocationMethod === 'call' || invocationMethod === 'apply') &&
+        isCommonJsResolverExpression(callee.expression)
+      ) {
+        return {
+          argument:
+            invocationMethod === 'call'
+              ? node.arguments[1]
+              : commonJsApplyArgument(node),
+        };
+      }
     }
     return null;
   }
@@ -146,12 +173,21 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
 
     const callee = unwrapParentheses(node.expression);
     if (
-      (ts.isPropertyAccessExpression(callee) ||
-        ts.isElementAccessExpression(callee)) &&
-      staticMemberName(callee) === 'call' &&
-      isCommonJsLoaderExpression(callee.expression)
+      ts.isPropertyAccessExpression(callee) ||
+      ts.isElementAccessExpression(callee)
     ) {
-      return { argument: node.arguments[1] };
+      const invocationMethod = staticMemberName(callee);
+      if (
+        (invocationMethod === 'call' || invocationMethod === 'apply') &&
+        isCommonJsLoaderExpression(callee.expression)
+      ) {
+        return {
+          argument:
+            invocationMethod === 'call'
+              ? node.arguments[1]
+              : commonJsApplyArgument(node),
+        };
+      }
     }
     return null;
   }
