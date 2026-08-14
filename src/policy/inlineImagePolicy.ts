@@ -10,7 +10,7 @@ function redactImageSource(source: unknown): string {
   if (source.length === 0) return '<empty>';
   if (source.startsWith('//')) return '//<redacted>';
   const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(source)?.[1];
-  if (scheme) return `${scheme.toLowerCase()}:<redacted>`;
+  if (scheme) return '<scheme-redacted>';
   return '<unrecognized>';
 }
 
