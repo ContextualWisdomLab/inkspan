@@ -246,8 +246,31 @@ function readCompletePages(value) {
   });
 }
 
+/** Find active canonical repository paths represented by more than one registry id. */
+function findAmbiguousActiveRepositoryPaths(items) {
+  const counts = new Map();
+  for (const item of items) {
+    if (item.state !== 'active' || !isCanonicalRepositoryWorkflowPath(item.path)) {
+      continue;
+    }
+    counts.set(item.path, (counts.get(item.path) ?? 0) + 1);
+  }
+  return new Set(
+    [...counts.entries()]
+      .filter(([, count]) => count > 1)
+      .map(([path]) => path),
+  );
+}
+
 /** Classify one registry record without filename or workflow-name heuristics. */
-function classifyWorkflow(path, state, presentPaths, ownedRepairPaths, foldedPaths) {
+function classifyWorkflow(
+  path,
+  state,
+  presentPaths,
+  ownedRepairPaths,
+  foldedPaths,
+  ambiguousActivePaths,
+) {
   if (state !== 'active') {
     return 'disabled';
   }
@@ -259,6 +282,9 @@ function classifyWorkflow(path, state, presentPaths, ownedRepairPaths, foldedPat
     !isCanonicalRepositoryWorkflowPath(path)
   ) {
     return 'unresolved_path';
+  }
+  if (ambiguousActivePaths.has(path)) {
+    return 'unresolved_identity';
   }
   if (presentPaths.has(path)) {
     return 'present';
@@ -318,6 +344,7 @@ function auditFixture(fixture) {
     ),
   );
   const pages = readCompletePages(fixture.pages);
+  const ambiguousActivePaths = findAmbiguousActiveRepositoryPaths(pages.items);
 
   return Object.freeze({
     defaultBranchSha: fixture.defaultBranchSha,
@@ -334,6 +361,7 @@ function auditFixture(fixture) {
             presentPaths,
             ownedRepairPaths,
             foldedPaths,
+            ambiguousActivePaths,
           ),
         }),
       ),
