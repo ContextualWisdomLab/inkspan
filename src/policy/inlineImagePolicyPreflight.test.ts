@@ -56,6 +56,25 @@ describe('inline image decoded-size preflight', () => {
     }
   });
 
+  it('rejects a provably oversized valid raster source before full-payload regex scanning', () => {
+    const source = `data:image/png;base64,${'QUJD'.repeat(16_384)}`;
+    const regexpTestSpy = vi.spyOn(RegExp.prototype, 'test');
+
+    try {
+      expect(() => validateInlineImageSource(source, 3)).toThrowError(
+        expect.objectContaining({
+          name: 'Base64SizeError',
+          maxBytes: 3,
+        } satisfies Partial<Base64SizeError>),
+      );
+      expect(
+        regexpTestSpy.mock.calls.some((call) => call[0] === source),
+      ).toBe(false);
+    } finally {
+      regexpTestSpy.mockRestore();
+    }
+  });
+
   it('does not reflect a caller-controlled custom URI scheme in diagnostics', () => {
     const privateMarker = 'privatetenant42';
     const error = new Base64ImageSourceError(`${privateMarker}:opaque`);
