@@ -39,6 +39,10 @@ describe('exact-head CI workflow contract', () => {
     expect(workflow).not.toContain('  pull_request:\n    branches: [main]');
   });
 
+  it('bounds every CI job with an explicit 30-minute timeout', () => {
+    expect(workflow.match(/timeout-minutes: 30/g)).toHaveLength(3);
+  });
+
   it('keeps the workflow read-only and hash-pins every third-party action', () => {
     expect(workflow).toContain('permissions:\n  contents: read');
     expect(workflow).not.toContain('contents: write');
