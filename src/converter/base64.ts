@@ -75,6 +75,10 @@ const BLOB_SIZE_GETTER = Object.getOwnPropertyDescriptor(
   Blob.prototype,
   'size',
 )!.get!;
+const BLOB_TYPE_GETTER = Object.getOwnPropertyDescriptor(
+  Blob.prototype,
+  'type',
+)!.get!;
 
 const hasBuffer = typeof globalThis.Buffer !== 'undefined';
 
@@ -133,6 +137,11 @@ function readBlobSize(input: unknown): number {
   } catch {
     throw new TypeError(INVALID_BLOB_INPUT_MESSAGE);
   }
+}
+
+/** Return platform Blob MIME metadata without invoking caller overrides. */
+function readBlobType(input: Blob): string {
+  return BLOB_TYPE_GETTER.call(input) as string;
 }
 
 /** Convert only declared binary inputs to a `Uint8Array` without coercion. */
@@ -381,9 +390,10 @@ export async function blobToDataUri(
   assertSize(readBlobSize(blob), maxBytes);
   const bytes = await readBlobBytes(blob);
   assertSize(bytes.byteLength, maxBytes);
+  const blobType = readBlobType(blob);
   const mime =
     mimeType ||
-    (blob.type && blob.type.length > 0 ? blob.type : undefined) ||
+    (blobType.length > 0 ? blobType : undefined) ||
     sniffMimeType(bytes) ||
     'application/octet-stream';
   return `data:${mime};base64,${bytesToBase64(bytes)}`;
