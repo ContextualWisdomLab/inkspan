@@ -89,6 +89,34 @@ test('reports statically recognizable CommonJS resolver authority', () => {
   );
 });
 
+test('reports statically recognizable indirect CommonJS resolver invocations', () => {
+  const source = [
+    "const comma = (0, require.resolve)('comma-resolve-package');",
+    "const called = require.resolve.call(undefined, 'call-resolve-package');",
+    "const elementCalled = require['resolve']['call'](undefined, 'element-call-resolve-package');",
+    'const computed = require.resolve.call(undefined, runtimePackageName);',
+    'const object = { resolve() { return "method-only"; } };',
+    'const benignComma = (0, object.resolve)("not-the-commonjs-resolver");',
+    'const benignCall = object.resolve.call(undefined, "also-not-the-commonjs-resolver");',
+    'void [comma, called, elementCalled, computed, benignComma, benignCall];',
+  ].join('\n');
+
+  assert.deepEqual(
+    findRuntimeModuleAuthority(source, 'indirect-resolver-authority.js').map(
+      ({ kind, specifier }) => ({ kind, specifier }),
+    ),
+    [
+      { kind: 'commonjs-resolve', specifier: 'comma-resolve-package' },
+      { kind: 'commonjs-resolve', specifier: 'call-resolve-package' },
+      {
+        kind: 'commonjs-resolve',
+        specifier: 'element-call-resolve-package',
+      },
+      { kind: 'commonjs-resolve', specifier: undefined },
+    ],
+  );
+});
+
 test('fails closed when emitted JavaScript is syntactically invalid', () => {
   assert.throws(
     () => findRuntimeModuleAuthority('const = ;', 'broken.js'),
