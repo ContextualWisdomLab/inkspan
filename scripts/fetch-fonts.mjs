@@ -36,6 +36,7 @@ const TRUSTED_FONT_ASSET_HOST = 'fonts.gstatic.com';
 const MAX_FONT_CSS_BYTES = 1024 * 1024;
 const MAX_FONT_SUBSET_BYTES = 16 * 1024 * 1024;
 const MAX_FONT_FAMILY_DOWNLOAD_BYTES = 64 * 1024 * 1024;
+const MAX_FONT_RESPONSE_CHUNKS = 4096;
 const MAX_FONT_FACE_BLOCKS_PER_FAMILY = 512;
 const MAX_UNICODE_CODE_POINT = 0x10ffff;
 const WOFF2_HEADER_BYTES = 48;
@@ -80,13 +81,19 @@ async function readBoundedCssBody(response) {
   const reader = response.body.getReader();
   const chunks = [];
   let totalBytes = 0;
+  let chunkCount = 0;
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
+    chunkCount += 1;
     totalBytes += value.byteLength;
     if (totalBytes > MAX_FONT_CSS_BYTES) {
       await reader.cancel();
       throw new Error('Google Fonts returned an oversized CSS response');
+    }
+    if (chunkCount > MAX_FONT_RESPONSE_CHUNKS) {
+      await reader.cancel();
+      throw new Error('Google Fonts returned an excessively fragmented CSS response');
     }
     chunks.push(Buffer.from(value));
   }
@@ -229,9 +236,11 @@ async function readBoundedFontBody(response, remainingFamilyBytes) {
   const reader = response.body.getReader();
   const chunks = [];
   let totalBytes = 0;
+  let chunkCount = 0;
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
+    chunkCount += 1;
     totalBytes += value.byteLength;
     if (totalBytes > MAX_FONT_SUBSET_BYTES) {
       await reader.cancel();
@@ -240,6 +249,10 @@ async function readBoundedFontBody(response, remainingFamilyBytes) {
     if (totalBytes > remainingFamilyBytes) {
       await reader.cancel();
       throw new Error('Google Fonts exceeded the aggregate font download budget');
+    }
+    if (chunkCount > MAX_FONT_RESPONSE_CHUNKS) {
+      await reader.cancel();
+      throw new Error('Google Fonts returned an excessively fragmented font asset response');
     }
     chunks.push(Buffer.from(value));
   }
