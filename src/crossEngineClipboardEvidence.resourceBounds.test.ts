@@ -63,4 +63,54 @@ describe('cross-engine clipboard consensus resource boundary', () => {
       );
     }
   });
+
+  it('rejects accessor-backed evidence without invoking caller code', () => {
+    let getterCalls = 0;
+    const attrs: Record<string, unknown> = {};
+    Object.defineProperty(attrs, 'privateValue', {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        throw new Error('private getter must not execute');
+      },
+    });
+    const documentJson = { type: 'doc', attrs };
+
+    expect(() => assertCrossEngineClipboardConsensus(allEngines(documentJson))).toThrow(
+      RESOURCE_BOUNDARY_ERROR,
+    );
+    expect(getterCalls).toBe(0);
+  });
+
+  it('rejects exotic and lossy array containers instead of normalizing them', () => {
+    expect(() =>
+      assertCrossEngineClipboardConsensus(
+        allEngines({ type: 'doc', attrs: new Date(0) }),
+      ),
+    ).toThrow(RESOURCE_BOUNDARY_ERROR);
+
+    const sparse: unknown[] = [];
+    sparse.length = 2;
+    sparse[1] = { type: 'paragraph' };
+    expect(() =>
+      assertCrossEngineClipboardConsensus(allEngines({ type: 'doc', content: sparse })),
+    ).toThrow(RESOURCE_BOUNDARY_ERROR);
+
+    const extra = [{ type: 'paragraph' }] as unknown[] & { privateMarker?: string };
+    extra.privateMarker = 'must-not-be-dropped';
+    expect(() =>
+      assertCrossEngineClipboardConsensus(allEngines({ type: 'doc', content: extra })),
+    ).toThrow(RESOURCE_BOUNDARY_ERROR);
+  });
+
+  it('preserves ordinary dense arrays and null-prototype JSON objects', () => {
+    const attrs = Object.create(null) as Record<string, unknown>;
+    attrs.role = 'presentation';
+    const documentJson = {
+      type: 'doc',
+      content: [{ type: 'paragraph', attrs }],
+    };
+
+    expect(() => assertCrossEngineClipboardConsensus(allEngines(documentJson))).not.toThrow();
+  });
 });
