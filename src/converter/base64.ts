@@ -412,6 +412,9 @@ export function fileToDataUri(
  * Throws `DataUriParseError` on malformed input.
  */
 export function parseDataUri(dataUri: string): ParsedDataUri {
+  if (typeof dataUri !== 'string') {
+    throw new DataUriParseError('String is not a valid data URI.');
+  }
   const match = DATA_URI_RE.exec(dataUri.trim());
   if (!match) {
     throw new DataUriParseError('String is not a valid data URI.');
