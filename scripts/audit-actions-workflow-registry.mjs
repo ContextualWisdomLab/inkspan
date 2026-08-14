@@ -66,12 +66,16 @@ function isBoundedPath(value) {
 
 /** Validate one canonical workflow source path from the protected tree. */
 function isCanonicalRepositoryWorkflowPath(value) {
-  return (
-    isBoundedPath(value) &&
-    value.startsWith(REPOSITORY_WORKFLOW_PREFIX) &&
-    !value.includes('%') &&
-    !value.split('/').includes('..')
-  );
+  if (
+    !isBoundedPath(value) ||
+    !value.startsWith(REPOSITORY_WORKFLOW_PREFIX) ||
+    value.includes('%')
+  ) {
+    return false;
+  }
+  return value
+    .split('/')
+    .every((segment) => segment.length > 0 && segment !== '.' && segment !== '..');
 }
 
 /** Parse and strictly validate command-line arguments. */
@@ -250,7 +254,10 @@ function classifyWorkflow(path, state, presentPaths, ownedRepairPaths, foldedPat
   if (path.startsWith(GITHUB_DYNAMIC_PREFIX)) {
     return 'github_dynamic';
   }
-  if (path.includes('%')) {
+  if (
+    path.startsWith(REPOSITORY_WORKFLOW_PREFIX) &&
+    !isCanonicalRepositoryWorkflowPath(path)
+  ) {
     return 'unresolved_path';
   }
   if (presentPaths.has(path)) {
