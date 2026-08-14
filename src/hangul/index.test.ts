@@ -129,6 +129,30 @@ describe('Hangul document bridge', () => {
     expect(source.freed).toBe(true);
   });
 
+  it('rejects unsupported imported blocks without reflecting document content', async () => {
+    const source = new FakeDocument();
+    source.selectionHtml =
+      '<aside data-private="tenant-secret">sensitive body</aside>';
+    let caught: unknown;
+
+    try {
+      await openHangulDocument(new Uint8Array([9]), {
+        engine: createEngine(source),
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toMatchObject({
+      code: 'UNSUPPORTED_DOCUMENT_NODE',
+      message: 'Hangul import contains an unsupported block node.',
+    });
+    expect((caught as Error).message).not.toContain('aside');
+    expect((caught as Error).message).not.toContain('tenant-secret');
+    expect((caught as Error).message).not.toContain('sensitive body');
+    expect(source.freed).toBe(true);
+  });
+
   it('preserves aligned paragraphs, lists, quotes, code blocks, and basic tables', async () => {
     const source = new FakeDocument();
     source.selectionHtml = [
