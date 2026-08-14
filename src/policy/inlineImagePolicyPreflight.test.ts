@@ -75,6 +75,14 @@ describe('inline image decoded-size preflight', () => {
     }
   });
 
+  it('preserves malformed-source precedence even when the candidate is oversized', () => {
+    const source = `data:image/png;base64,${'QUJD'.repeat(16_383)}QU*D`;
+
+    expect(() => validateInlineImageSource(source, 3)).toThrow(
+      Base64ImageSourceError,
+    );
+  });
+
   it.each([
     'https://example.invalid/image.png',
     'data:image/png;base64,',
