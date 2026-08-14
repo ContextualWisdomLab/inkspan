@@ -63,4 +63,23 @@ describe('inline image decoded-size preflight', () => {
     expect(error.sourcePreview).toBe('<scheme-redacted>');
     expect(error.message).not.toContain(privateMarker);
   });
+
+  it('bounds diagnostic scheme inspection before regex work on untrusted source text', () => {
+    const source = 'a'.repeat(65_536);
+    const regexpExecSpy = vi.spyOn(RegExp.prototype, 'exec');
+    let inspectedLengths: number[] = [];
+
+    try {
+      const error = new Base64ImageSourceError(source);
+      inspectedLengths = regexpExecSpy.mock.calls
+        .map((call) => call[0])
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.length);
+      expect(error.sourcePreview).toBe('<unrecognized>');
+    } finally {
+      regexpExecSpy.mockRestore();
+    }
+
+    expect(Math.max(...inspectedLengths)).toBeLessThanOrEqual(64);
+  });
 });
