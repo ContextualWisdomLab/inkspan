@@ -61,8 +61,8 @@ jobs:
           const expectedTag = `v${packageMetadata.version}`;
           const repositoryUrl = 'git+https://github.com/ContextualWisdomLab/inkspan.git';
 
-          if (!/^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/.test(releaseTag)) {
-            throw new Error(`Release tag is not valid semantic version syntax: ${releaseTag}`);
+          if (!/^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(releaseTag)) {
+            throw new Error(`Release tag is not valid stable semantic version syntax: ${releaseTag}`);
           }
           if (releaseTag !== expectedTag) {
             throw new Error(`Release tag ${releaseTag} does not match package version ${expectedTag}`);
@@ -477,7 +477,6 @@ jobs:
           gh release edit "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" \
             --draft=false
-
           release_immutable="$(gh release view "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" \
             --json isImmutable \
