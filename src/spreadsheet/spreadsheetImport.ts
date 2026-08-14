@@ -1,5 +1,6 @@
 import type { JSONContent } from '@tiptap/core';
 
+const MAX_VISIBLE_WORKSHEETS = 64;
 const MAX_WORKSHEET_COLUMNS = 256;
 const MAX_CELL_TEXT_CODE_UNITS = 32_768;
 const RESOURCE_LIMIT_MESSAGE = 'Spreadsheet exceeds the configured resource limits.';
@@ -88,6 +89,7 @@ export function spreadsheetWorkbookToDocumentJson(
       0,
     );
     if (columnCount === 0) continue;
+    if (worksheetCount >= MAX_VISIBLE_WORKSHEETS) resourceLimitExceeded();
     if (columnCount > MAX_WORKSHEET_COLUMNS) resourceLimitExceeded();
 
     for (const row of worksheet.rows) {
