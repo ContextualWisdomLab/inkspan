@@ -94,8 +94,116 @@ function verifyPackedSurface() {
   }
 }
 
+/** Return one little-endian unsigned 16-bit ZIP field. */
+function uint16(value) {
+  const bytes = Buffer.alloc(2);
+  bytes.writeUInt16LE(value);
+  return bytes;
+}
+
+/** Return one little-endian unsigned 32-bit ZIP field. */
+function uint32(value) {
+  const bytes = Buffer.alloc(4);
+  bytes.writeUInt32LE(value >>> 0);
+  return bytes;
+}
+
+/** Compute ZIP CRC-32 for one deterministic packed-consumer fixture. */
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+/** Build the smallest stored-entry ZIP needed for a real DOCX consumer proof. */
+function createStoredZip(entries) {
+  const localRecords = [];
+  const centralRecords = [];
+  let localOffset = 0;
+  for (const [name, source] of Object.entries(entries)) {
+    const nameBytes = Buffer.from(name, 'utf8');
+    const data = Buffer.from(source, 'utf8');
+    const checksum = crc32(data);
+    const local = Buffer.concat([
+      uint32(0x04034b50),
+      uint16(20),
+      uint16(0x0800),
+      uint16(0),
+      uint16(0),
+      uint16(0),
+      uint32(checksum),
+      uint32(data.byteLength),
+      uint32(data.byteLength),
+      uint16(nameBytes.byteLength),
+      uint16(0),
+      nameBytes,
+      data,
+    ]);
+    const central = Buffer.concat([
+      uint32(0x02014b50),
+      uint16(20),
+      uint16(20),
+      uint16(0x0800),
+      uint16(0),
+      uint16(0),
+      uint16(0),
+      uint32(checksum),
+      uint32(data.byteLength),
+      uint32(data.byteLength),
+      uint16(nameBytes.byteLength),
+      uint16(0),
+      uint16(0),
+      uint16(0),
+      uint16(0),
+      uint32(0),
+      uint32(localOffset),
+      nameBytes,
+    ]);
+    localRecords.push(local);
+    centralRecords.push(central);
+    localOffset += local.byteLength;
+  }
+  const centralDirectory = Buffer.concat(centralRecords);
+  const end = Buffer.concat([
+    uint32(0x06054b50),
+    uint16(0),
+    uint16(0),
+    uint16(centralRecords.length),
+    uint16(centralRecords.length),
+    uint32(centralDirectory.byteLength),
+    uint32(localOffset),
+    uint16(0),
+  ]);
+  return Buffer.concat([...localRecords, centralDirectory, end]);
+}
+
+/** Create one valid, local-only DOCX package for the packed runtime consumer. */
+function createMinimalDocxBase64() {
+  return createStoredZip({
+    '[Content_Types].xml':
+      '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',
+    'word/document.xml':
+      '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Packed consumer</w:t></w:r></w:p><w:sectPr/></w:body></w:document>',
+  }).toString('base64');
+}
+
 /** Exercise the exact public ESM and CommonJS subpath from the packed package. */
 function verifyRuntimeConsumers() {
+  const validDocxBase64 = createMinimalDocxBase64();
+  const expectedDocument = JSON.stringify({
+    type: 'doc',
+    content: [
+      {
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'Packed consumer' }],
+      },
+    ],
+  });
   const esmPath = join(consumerDirectory, 'consumer.mjs');
   writeFileSync(
     esmPath,
@@ -110,6 +218,11 @@ assert.equal(typeof DEFAULT_DOCX_IMPORT_LIMITS.maxArchiveBytes, 'number');
 assert.equal(typeof DocxImportError, 'function');
 assert.equal(typeof importDocx, 'function');
 assert.equal(typeof openDocx, 'function');
+const imported = await importDocx(Uint8Array.from(Buffer.from('${validDocxBase64}', 'base64')));
+assert.deepEqual(imported.documentJson, ${expectedDocument});
+assert.deepEqual(imported.warnings, []);
+assert.equal(Object.isFrozen(imported), true);
+assert.equal(Object.isFrozen(imported.documentJson), true);
 await assert.rejects(
   importDocx(new Uint8Array()),
   (error) => error instanceof DocxImportError && error.code === 'invalid_source',
@@ -128,6 +241,11 @@ assert.equal(typeof docx.DocxImportError, 'function');
 assert.equal(typeof docx.importDocx, 'function');
 assert.equal(typeof docx.openDocx, 'function');
 (async () => {
+  const imported = await docx.importDocx(Uint8Array.from(Buffer.from('${validDocxBase64}', 'base64')));
+  assert.deepEqual(imported.documentJson, ${expectedDocument});
+  assert.deepEqual(imported.warnings, []);
+  assert.equal(Object.isFrozen(imported), true);
+  assert.equal(Object.isFrozen(imported.documentJson), true);
   await assert.rejects(
     docx.importDocx(new Uint8Array()),
     (error) => error instanceof docx.DocxImportError && error.code === 'invalid_source',
