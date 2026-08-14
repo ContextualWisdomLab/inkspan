@@ -178,3 +178,53 @@ def test_invalid_output_path_uses_stable_redacted_publication_error(
 
     assert private_marker not in str(error.value)
     assert list(tmp_path.glob(".inkspan-office-*.tmp")) == []
+
+
+@pytest.mark.parametrize("invalid_overwrite", ["false", 1])
+def test_non_boolean_overwrite_cannot_replace_existing_output(
+    tmp_path: Path,
+    invalid_overwrite: object,
+) -> None:
+    output = tmp_path / "customer-private-output.docx"
+    existing = b"existing-private-document"
+    output.write_bytes(existing)
+
+    try:
+        write_office_document(
+            _docx_payload(),
+            output,
+            overwrite=invalid_overwrite,  # type: ignore[arg-type]
+        )
+    except TypeError as exc:
+        assert str(exc) == "overwrite must be a boolean"
+    else:
+        assert output.read_bytes() == existing, (
+            "a truthy non-boolean overwrite control replaced the existing output"
+        )
+        pytest.fail("a non-boolean overwrite control was accepted")
+
+    assert output.read_bytes() == existing
+    assert list(tmp_path.glob(".inkspan-office-*.tmp")) == []
+
+
+def test_non_boolean_overwrite_is_rejected_before_rendering(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    render_called = False
+
+    def unexpected_render(_payload: object) -> object:
+        nonlocal render_called
+        render_called = True
+        pytest.fail("rendering started before overwrite validation")
+
+    monkeypatch.setattr(safe_renderer, "render_office_document", unexpected_render)
+
+    with pytest.raises(TypeError, match=r"^overwrite must be a boolean$"):
+        write_office_document(
+            _docx_payload(),
+            tmp_path / "output.docx",
+            overwrite="false",  # type: ignore[arg-type]
+        )
+
+    assert not render_called
