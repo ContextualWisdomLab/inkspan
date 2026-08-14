@@ -105,6 +105,48 @@ def test_cli_rejects_invalid_utf8_without_echoing_request_bytes(
     assert "private" not in error
 
 
+def test_cli_rejects_excessive_json_nesting_before_materialization(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    source = tmp_path / "request.json"
+    output = tmp_path / "result.docx"
+    source.write_text("[[[[[0]]]]]", encoding="utf-8")
+
+    monkeypatch.setattr(cli_module, "_MAX_CLI_JSON_NESTING_DEPTH", 4, raising=False)
+
+    def reject_json_materialization(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("CLI materialized JSON beyond the nesting ceiling")
+
+    monkeypatch.setattr(cli_module.json, "loads", reject_json_materialization)
+
+    with pytest.raises(SystemExit) as exc:
+        main([str(source), str(output)])
+
+    assert exc.value.code == 2
+    error = capsys.readouterr().err
+    assert "JSON nesting depth" in error
+
+
+def test_cli_json_nesting_preflight_ignores_delimiters_inside_strings(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "request.json"
+    output = tmp_path / "result.docx"
+    payload = {
+        "format": "docx",
+        "blocks": [{"type": "paragraph", "text": "[[[[{{{{]]]]}}}}"}],
+    }
+    source.write_text(json.dumps(payload), encoding="utf-8")
+
+    monkeypatch.setattr(cli_module, "_MAX_CLI_JSON_NESTING_DEPTH", 3, raising=False)
+
+    assert main([str(source), str(output)]) == 0
+    assert output.read_bytes().startswith(b"PK")
+
+
 def test_cli_redacts_missing_input_path(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
