@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
@@ -29,6 +30,10 @@ interface PackageLicenseManifest {
   readonly license?: string;
 }
 
+interface NpmPackDryRunEntry {
+  readonly files?: readonly { readonly path?: string }[];
+}
+
 describe('software and bundled-font license evidence', () => {
   it('keeps the root software license as exact canonical MIT text', () => {
     expect(readFileSync('LICENSE', 'utf8')).toBe(CANONICAL_MIT_LICENSE);
@@ -43,7 +48,7 @@ describe('software and bundled-font license evidence', () => {
     );
   });
 
-  it('keeps both software and bundled-font license evidence in the npm package', () => {
+  it('keeps both software and bundled-font license evidence in the npm package manifest', () => {
     const packageManifest = JSON.parse(
       readFileSync('package.json', 'utf8'),
     ) as PackageLicenseManifest;
@@ -51,6 +56,28 @@ describe('software and bundled-font license evidence', () => {
     expect(packageManifest.license).toBe('MIT');
     expect(packageManifest.files).toEqual(
       expect.arrayContaining(['LICENSE', 'src/fonts']),
+    );
+  });
+
+  it('retains both license families in the actual npm packlist', () => {
+    const packMetadata = JSON.parse(
+      execFileSync(
+        'npm',
+        ['pack', '--dry-run', '--json', '--ignore-scripts'],
+        { encoding: 'utf8' },
+      ),
+    ) as readonly NpmPackDryRunEntry[];
+
+    expect(packMetadata).toHaveLength(1);
+    const packedPaths = packMetadata[0]?.files?.flatMap(({ path }) =>
+      path === undefined ? [] : [path],
+    ) ?? [];
+    expect(packedPaths).toEqual(
+      expect.arrayContaining([
+        'LICENSE',
+        'src/fonts/NOTICE',
+        'src/fonts/OFL.txt',
+      ]),
     );
   });
 });
