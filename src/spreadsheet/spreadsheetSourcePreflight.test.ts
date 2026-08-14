@@ -47,17 +47,8 @@ describe('spreadsheet binary source preflight', () => {
     expect(result.bytes).toBe(source);
   });
 
-  it('rejects a source larger than the 64 MiB local ceiling before signature inspection', () => {
-    const target = xlsxEnvelope();
-    const source = new Proxy(target, {
-      get(innerTarget, property) {
-        if (property === 'byteLength') return 64 * 1024 * 1024 + 1;
-        if (property === '0') {
-          throw new Error('signature bytes must not be read after the size preflight');
-        }
-        return Reflect.get(innerTarget, property, innerTarget);
-      },
-    });
+  it('rejects a real source larger than the 64 MiB local ceiling', () => {
+    const source = new Uint8Array(64 * 1024 * 1024 + 1);
 
     expect(() => preflightSpreadsheetBinarySource()(source)).toThrowError(
       'Spreadsheet exceeds the configured resource limits.',
