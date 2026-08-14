@@ -137,19 +137,10 @@ export function isDeeplyFrozenDocumentJson(rootValue: unknown): boolean {
 
       const childDepth = currentEntry.depth + 1;
       if (Array.isArray(currentValue)) {
-        const lengthDescriptor = Object.getOwnPropertyDescriptor(
+        const length = Object.getOwnPropertyDescriptor(
           currentValue,
           'length',
-        );
-        if (
-          lengthDescriptor === undefined ||
-          lengthDescriptor.enumerable ||
-          !Object.prototype.hasOwnProperty.call(lengthDescriptor, 'value') ||
-          typeof lengthDescriptor.value !== 'number'
-        ) {
-          return false;
-        }
-        const length = lengthDescriptor.value;
+        )!.value as number;
         const remainingValueCapacity =
           MAX_AUTOSAVE_EVIDENCE_JSON_VALUES - inspectedValueCount;
         if (length > remainingValueCapacity) return false;
@@ -253,7 +244,7 @@ export function createDetachedAutosaveRevisionEvidence(
       !LOWERCASE_SHA256_DIGEST.test(revisionRecord.digestHex) ||
       typeof revisionRecord.strongEntityTag !== 'string' ||
       revisionRecord.strongEntityTag !==
-        `"sha256-${revisionRecord.digestHex}"`
+        `\"sha256-${revisionRecord.digestHex}\"`
     ) {
       return null;
     }
