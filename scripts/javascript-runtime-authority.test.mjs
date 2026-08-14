@@ -168,6 +168,33 @@ test('reports statically recognizable CommonJS apply invocations', () => {
   );
 });
 
+test('reports CommonJS authority invoked through Reflect.apply', () => {
+  const source = [
+    "const required = Reflect.apply(require, undefined, ['reflect-package']);",
+    "const moduleRequired = Reflect['apply'](module.require, module, ['reflect-module-package']);",
+    'const mainRequired = Reflect.apply(require.main.require, require.main, [runtimePackageName]);',
+    "const resolved = Reflect.apply(require.resolve, require, ['reflect-resolve-package']);",
+    'const computedResolved = Reflect.apply(require[\'resolve\'], require, resolverArguments);',
+    'const object = { require() {}, resolve() {} };',
+    "const benignRequire = Reflect.apply(object.require, object, ['not-commonjs']);",
+    "const benignResolve = Reflect.apply(object.resolve, object, ['not-commonjs-resolve']);",
+    'void [required, moduleRequired, mainRequired, resolved, computedResolved, benignRequire, benignResolve];',
+  ].join('\n');
+
+  assert.deepEqual(
+    findRuntimeModuleAuthority(source, 'reflect-apply-authority.js').map(
+      ({ kind, specifier }) => ({ kind, specifier }),
+    ),
+    [
+      { kind: 'commonjs-require', specifier: 'reflect-package' },
+      { kind: 'commonjs-require', specifier: 'reflect-module-package' },
+      { kind: 'commonjs-require', specifier: undefined },
+      { kind: 'commonjs-resolve', specifier: 'reflect-resolve-package' },
+      { kind: 'commonjs-resolve', specifier: undefined },
+    ],
+  );
+});
+
 test('fails closed when emitted JavaScript is syntactically invalid', () => {
   assert.throws(
     () => findRuntimeModuleAuthority('const = ;', 'broken.js'),
