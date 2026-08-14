@@ -9,6 +9,12 @@ import type {
 } from './types.js';
 import { ZipArchive } from './zip.js';
 
+/** Read Blob size through the platform prototype without invoking caller overrides. */
+function readBlobSize(blob: Blob): number {
+  const getter = Object.getOwnPropertyDescriptor(Blob.prototype, 'size')!.get!;
+  return getter.call(blob) as number;
+}
+
 /** Read one proven Blob without requiring Blob.arrayBuffer() in older DOMs. */
 async function readBlobBytes(blob: Blob): Promise<Uint8Array> {
   if (typeof blob.arrayBuffer === 'function') {
@@ -43,7 +49,7 @@ async function snapshotSource(
     } else if (ArrayBuffer.isView(source) && source.buffer instanceof ArrayBuffer) {
       view = new Uint8Array(source.buffer, source.byteOffset, source.byteLength);
     } else if (typeof Blob !== 'undefined' && source instanceof Blob) {
-      if (source.size > maxArchiveBytes) {
+      if (readBlobSize(source) > maxArchiveBytes) {
         throw new DocxImportError('input_too_large');
       }
       view = await readBlobBytes(source);
