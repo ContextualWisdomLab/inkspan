@@ -231,6 +231,20 @@ describe('spreadsheetWorkbookToDocumentJson', () => {
     );
   });
 
+  it('fails closed after 64 visible non-empty worksheets', () => {
+    const workbook = {
+      worksheets: Array.from({ length: 65 }, (_, index) => ({
+        name: `Sheet ${index + 1}`,
+        hidden: false,
+        rows: [['kept']],
+      })),
+    };
+
+    expect(() => spreadsheetWorkbookToDocumentJson(workbook)).toThrowError(
+      'Spreadsheet exceeds the configured resource limits.',
+    );
+  });
+
   it('fails closed before materializing oversized cell text', () => {
     const workbook = {
       worksheets: [
