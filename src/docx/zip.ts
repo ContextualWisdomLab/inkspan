@@ -120,9 +120,9 @@ async function inflateRaw(
   } catch {
     throw new DocxImportError('decompression_unavailable');
   }
-  const input = new ReadableStream<Uint8Array>({
+  const input = new ReadableStream<BufferSource>({
     start(controller) {
-      controller.enqueue(compressed);
+      controller.enqueue(Uint8Array.from(compressed));
       controller.close();
     },
   });
