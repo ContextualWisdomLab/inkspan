@@ -1,8 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { Lexer } from 'marked';
 import { markdownToEmailHtml } from './resourceBoundMarkdown.js';
 
 const INVALID_FULL_DOCUMENT_MESSAGE =
   'Email document fullDocument must be a boolean when provided.';
+const INVALID_TEXT_DIRECTION_MESSAGE =
+  'Email document direction must be ltr, rtl, or auto.';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('email full-document runtime contract', () => {
   it.each([
@@ -15,6 +22,18 @@ describe('email full-document runtime contract', () => {
         fullDocument: value as unknown as boolean,
       }),
     ).toThrowError(new RangeError(INVALID_FULL_DOCUMENT_MESSAGE));
+  });
+
+  it('rejects invalid text direction before Markdown parser materialization', () => {
+    const lex = vi.spyOn(Lexer, 'lex');
+
+    expect(() =>
+      markdownToEmailHtml('Hello', {
+        fullDocument: true,
+        textDirection: 'sideways' as never,
+      }),
+    ).toThrowError(new RangeError(INVALID_TEXT_DIRECTION_MESSAGE));
+    expect(lex).not.toHaveBeenCalled();
   });
 
   it('preserves omitted, fragment, and full-document boolean modes', () => {
