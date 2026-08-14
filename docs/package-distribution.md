@@ -14,6 +14,7 @@ integrations.
 | `@contextualwisdomlab/cwl-editor/autosave` | Framework-independent autosave queue/session APIs for bounded local save ordering and host-owned durable concurrency |
 | `@contextualwisdomlab/cwl-editor/collaboration` | Optional Yjs collaboration surface with host-owned transport and lifecycle |
 | `@contextualwisdomlab/cwl-editor/converter` | Framework-independent base64 and data-URI utilities |
+| `@contextualwisdomlab/cwl-editor/docx` | `implemented_on_active_pr` — framework-independent bounded DOCX/WordprocessingML import into inert Inkspan document data; no transport, credentials, macros, external relationships, or model authority |
 | `@contextualwisdomlab/cwl-editor/envelope-identity` | Framework-independent identity-only envelope routing for bounded schema identity inspection; migration remains host-owned |
 | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent revision evidence and document-transition evidence for local content equality/lineage claims |
 | `@contextualwisdomlab/cwl-editor/text-position-selector` | `implemented_on_protected_main` — React-free text-position projection core implementing W3C `TextPositionSelector`; interactive capture, revision binding, authorization, persistence, and re-anchoring remain outside this subpath |
@@ -57,12 +58,19 @@ embedded in the npm tarball.
   and collaboration entrypoints. It is declared in Inkspan's package
   dependencies so the consumer's package manager installs and resolves it; it
   is not merely a type-only dependency.
-- The framework-independent autosave, converter, envelope-identity,
+- The framework-independent autosave, converter, DOCX, envelope-identity,
   revision-evidence, text-position-selector, and Markdown entrypoints do not
   require React UI, a mounted editor, naruon, contextual-orchestrator, a
   database, provider credentials, or host transport. Their individual
   package-consumer gates additionally prevent framework dependencies from
   leaking into subpaths whose public contracts exclude them.
+- The DOCX subpath accepts bounded local ZIP/Office Open XML bytes and converts
+  supported WordprocessingML structure into inert Inkspan document data. It
+  validates OPC content types/relationships, rejects active/external authority,
+  and performs no network fetch, macro execution, credential lookup, model call,
+  durable persistence, or host authorization. Unsupported document semantics
+  fail as bounded import errors rather than being executed or silently granted
+  authority.
 - The Markdown subpath exposes `markdownToHtml`, `htmlToMarkdown`,
   `normalizeMarkdown`, `markdownToEmailHtml`, `markdownToPlainText`, and
   `htmlToPlainText` plus their option types. It bundles deterministic conversion
@@ -92,9 +100,9 @@ embedded in the npm tarball.
   import it, and bundlers can retain the separate dependency boundary.
 - Importing any JavaScript entrypoint in Node.js must not require a browser DOM.
   Browser-only work begins when a host mounts the editor or calls APIs that
-  explicitly consume browser objects such as `File` or `Blob`. The Markdown
-  conversion surface remains Node-importable; HTML-to-Markdown uses its bounded
-  non-fetching parser fallback when no browser `document` exists.
+  explicitly consume browser objects such as `File` or `Blob`. The Markdown and
+  DOCX conversion surfaces remain Node-importable; HTML-to-Markdown uses its
+  bounded non-fetching parser fallback when no browser `document` exists.
 - CSS and font entrypoints resolve as files and are not executable JavaScript.
 
 ## Release verification
@@ -108,7 +116,7 @@ production library build. The verification chain:
 3. confirms required licenses, declarations, styles, and font assets ship;
 4. rejects internal source, tests, demos, Office files, coverage output, and
    workflow files from the npm tarball;
-5. imports the root, collaboration, converter, autosave, envelope-identity,
+5. imports the root, collaboration, converter, autosave, DOCX, envelope-identity,
    revision-evidence, text-position-selector, and Markdown surfaces through their
    dedicated packed-consumer checks, including framework-free isolation where
    that is part of the public contract;
