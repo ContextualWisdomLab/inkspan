@@ -82,6 +82,25 @@ describe('cross-engine clipboard consensus resource boundary', () => {
     expect(getterCalls).toBe(0);
   });
 
+  it('rejects array accessors without invoking caller code', () => {
+    let getterCalls = 0;
+    const content: unknown[] = [];
+    Object.defineProperty(content, '0', {
+      enumerable: true,
+      configurable: true,
+      get() {
+        getterCalls += 1;
+        throw new Error('private array getter must not execute');
+      },
+    });
+    content.length = 1;
+
+    expect(() =>
+      assertCrossEngineClipboardConsensus(allEngines({ type: 'doc', content })),
+    ).toThrow(RESOURCE_BOUNDARY_ERROR);
+    expect(getterCalls).toBe(0);
+  });
+
   it('rejects exotic and lossy array containers instead of normalizing them', () => {
     expect(() =>
       assertCrossEngineClipboardConsensus(
@@ -100,6 +119,16 @@ describe('cross-engine clipboard consensus resource boundary', () => {
     extra.privateMarker = 'must-not-be-dropped';
     expect(() =>
       assertCrossEngineClipboardConsensus(allEngines({ type: 'doc', content: extra })),
+    ).toThrow(RESOURCE_BOUNDARY_ERROR);
+
+    const disguisedSparse = [] as unknown[] & { privateMarker?: string };
+    disguisedSparse.length = 2;
+    disguisedSparse[1] = { type: 'paragraph' };
+    disguisedSparse.privateMarker = 'must-not-substitute-for-index-zero';
+    expect(() =>
+      assertCrossEngineClipboardConsensus(
+        allEngines({ type: 'doc', content: disguisedSparse }),
+      ),
     ).toThrow(RESOURCE_BOUNDARY_ERROR);
   });
 
