@@ -20,6 +20,10 @@ const XLS_COMPOUND_FILE_SIGNATURE = [
   0x1a,
   0xe1,
 ] as const;
+const TYPED_ARRAY_TAG_GETTER = Object.getOwnPropertyDescriptor(
+  Object.getPrototypeOf(Uint8Array.prototype),
+  Symbol.toStringTag,
+)?.get;
 
 /** Binary spreadsheet container family identified before local parsing. */
 export type SpreadsheetBinaryFormat = 'xls' | 'xlsx';
@@ -92,6 +96,13 @@ function unsupportedOrCorruptSource(): never {
   );
 }
 
+function isUint8ArraySource(source: unknown): source is Uint8Array {
+  return (
+    ArrayBuffer.isView(source) &&
+    TYPED_ARRAY_TAG_GETTER?.call(source) === 'Uint8Array'
+  );
+}
+
 function startsWithSignature(
   source: Uint8Array,
   signature: readonly number[],
@@ -113,6 +124,7 @@ function startsWithSignature(
 export function preflightSpreadsheetBinarySource(
   source: Uint8Array,
 ): SpreadsheetBinarySource {
+  if (!isUint8ArraySource(source)) unsupportedOrCorruptSource();
   if (source.byteLength > MAX_SPREADSHEET_SOURCE_BYTES) resourceLimitExceeded();
 
   if (startsWithSignature(source, XLS_COMPOUND_FILE_SIGNATURE)) {
