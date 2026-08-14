@@ -88,11 +88,7 @@ describe('DOCX remaining exact coverage boundaries', () => {
 
   it('reads the native Blob arrayBuffer path before parsing a valid package', async () => {
     const bytes = createDocx({ method: 0 });
-    const source = new Blob([]);
-    Object.defineProperty(source, 'arrayBuffer', {
-      configurable: true,
-      value: async () => blobPart(bytes),
-    });
+    const source = new Blob([blobPart(bytes)]);
     const result = await importDocx(source);
     expect(result.documentJson).toMatchObject({ type: 'doc' });
   });
