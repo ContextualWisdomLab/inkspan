@@ -4,13 +4,22 @@ import { Base64SizeError } from '../converter/base64.js';
 const INLINE_RASTER_SOURCE_PATTERN =
   /^data:image\/(?:png|jpe?g|gif|webp|avif|apng|bmp|x-icon|vnd\.microsoft\.icon);base64,(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)$/i;
 
+/** Fixed public categories that reveal no caller-defined scheme label. */
+const PUBLIC_IMAGE_SOURCE_SCHEME_PATTERN =
+  /^(?:data|https?|blob|file|javascript)$/i;
+
 /** Return a bounded, payload-free category for an untrusted image source. */
 function redactImageSource(source: unknown): string {
   if (typeof source !== 'string') return `<${typeof source}>`;
   if (source.length === 0) return '<empty>';
   if (source.startsWith('//')) return '//<redacted>';
   const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(source)?.[1];
-  if (scheme) return '<scheme-redacted>';
+  if (scheme) {
+    if (PUBLIC_IMAGE_SOURCE_SCHEME_PATTERN.test(scheme)) {
+      return `${scheme.toLowerCase()}:<redacted>`;
+    }
+    return '<scheme-redacted>';
+  }
   return '<unrecognized>';
 }
 
