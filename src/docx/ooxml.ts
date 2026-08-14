@@ -32,7 +32,6 @@ import type {
   DocxJsonMark,
 } from './types.js';
 import {
-  attribute,
   childElements,
   directText,
   parseXml,
@@ -501,7 +500,7 @@ export async function parseDocxPackage(
             items: [],
           };
         }
-        pendingList.items.push(paragraph.blocks[0]!);
+        pendingList!.items.push(paragraph.blocks[0]!);
       } else {
         flushList(pendingList, blocks);
         pendingList = undefined;
