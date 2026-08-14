@@ -54,4 +54,23 @@ describe('preflightSpreadsheetBinarySource runtime boundary', () => {
     expect(byteLengthRead).toBe(false);
     expect(indexRead).toBe(false);
   });
+
+  it('accepts genuine byte-array subclasses without invoking overridden byteLength accessors', () => {
+    let byteLengthRead = false;
+
+    class HostileByteSource extends Uint8Array {
+      override get byteLength(): number {
+        byteLengthRead = true;
+        throw new Error('private-byte-length-sentinel');
+      }
+    }
+
+    const source = new HostileByteSource([0x50, 0x4b, 0x03, 0x04]);
+
+    expect(preflightSpreadsheetBinarySource(source)).toEqual({
+      format: 'xlsx',
+      bytes: source,
+    });
+    expect(byteLengthRead).toBe(false);
+  });
 });
