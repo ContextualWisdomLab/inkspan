@@ -94,6 +94,9 @@ export function spreadsheetWorkbookToDocumentJson(
   for (const worksheet of workbook.worksheets) {
     if (worksheet.hidden) continue;
 
+    const nextRowCount = rowCount + worksheet.rows.length;
+    if (nextRowCount > MAX_WORKBOOK_ROWS) resourceLimitExceeded();
+
     const columnCount = worksheet.rows.reduce(
       (maxColumns, row) => Math.max(maxColumns, row.length),
       0,
@@ -101,9 +104,6 @@ export function spreadsheetWorkbookToDocumentJson(
     if (columnCount === 0) continue;
     if (worksheetCount >= MAX_VISIBLE_WORKSHEETS) resourceLimitExceeded();
     if (columnCount > MAX_WORKSHEET_COLUMNS) resourceLimitExceeded();
-
-    const nextRowCount = rowCount + worksheet.rows.length;
-    if (nextRowCount > MAX_WORKBOOK_ROWS) resourceLimitExceeded();
 
     const worksheetCellCount = worksheet.rows.length * columnCount;
     const nextCellCount = cellCount + worksheetCellCount;
