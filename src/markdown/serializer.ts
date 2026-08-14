@@ -357,11 +357,11 @@ export function markdownToEmailHtml(
   markdown: string,
   options: MarkdownToEmailHtmlOptions = {},
 ): string {
-  const body = markdownToHtml(markdown).trim();
-  if (!options.fullDocument) return body;
+  if (!options.fullDocument) return markdownToHtml(markdown).trim();
   const title = escapeHtml(options.title ?? 'Message');
   const languageTag = canonicalizeEmailLanguageTag(options.languageTag);
   const textDirection = validateEmailTextDirection(options.textDirection);
+  const body = markdownToHtml(markdown).trim();
   const languageAttribute = languageTag
     ? ` lang="${escapeHtml(languageTag)}"`
     : '';
