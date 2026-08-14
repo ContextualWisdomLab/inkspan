@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { DataUriParseError, dataUriToBytes, parseDataUri } from './base64.js';
+import {
+  DataUriParseError,
+  dataUriToBytes,
+  isDataUri,
+  parseDataUri,
+} from './base64.js';
 
 describe('data URI runtime input authority', () => {
   it('rejects non-string parse input without evaluating caller trim behavior', () => {
@@ -29,6 +34,32 @@ describe('data URI runtime input authority', () => {
     expect(() => dataUriToBytes(hostile as unknown as string)).toThrow(
       DataUriParseError,
     );
+    expect(trimCalled).toBe(false);
+  });
+
+  it('returns false for non-string predicate input without evaluating caller trim behavior', () => {
+    let trimRead = false;
+    const hostile = Object.defineProperty({}, 'trim', {
+      get() {
+        trimRead = true;
+        throw new Error('private trim getter');
+      },
+    });
+
+    expect(isDataUri(hostile as unknown as string)).toBe(false);
+    expect(trimRead).toBe(false);
+  });
+
+  it('does not accept a non-string predicate input with a forged trim result', () => {
+    let trimCalled = false;
+    const hostile = {
+      trim() {
+        trimCalled = true;
+        return 'data:text/plain,forged';
+      },
+    };
+
+    expect(isDataUri(hostile as unknown as string)).toBe(false);
     expect(trimCalled).toBe(false);
   });
 });
