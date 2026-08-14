@@ -9,6 +9,28 @@ import type {
 } from './types.js';
 import { ZipArchive } from './zip.js';
 
+/** Read one proven Blob without requiring Blob.arrayBuffer() in older DOMs. */
+async function readBlobBytes(blob: Blob): Promise<Uint8Array> {
+  if (typeof blob.arrayBuffer === 'function') {
+    return new Uint8Array(await blob.arrayBuffer());
+  }
+  if (typeof FileReader === 'undefined') {
+    throw new DocxImportError('invalid_source');
+  }
+  return new Promise<Uint8Array>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (!(reader.result instanceof ArrayBuffer)) {
+        reject(new DocxImportError('invalid_source'));
+        return;
+      }
+      resolve(new Uint8Array(reader.result));
+    };
+    reader.onerror = () => reject(new DocxImportError('invalid_source'));
+    reader.readAsArrayBuffer(blob);
+  });
+}
+
 /** Copy one accepted binary source into an immutable import snapshot. */
 async function snapshotSource(
   source: DocxSource,
@@ -21,12 +43,10 @@ async function snapshotSource(
     } else if (ArrayBuffer.isView(source) && source.buffer instanceof ArrayBuffer) {
       view = new Uint8Array(source.buffer, source.byteOffset, source.byteLength);
     } else if (typeof Blob !== 'undefined' && source instanceof Blob) {
-      if (source.size > maxArchiveBytes || typeof source.arrayBuffer !== 'function') {
-        throw new DocxImportError(
-          source.size > maxArchiveBytes ? 'input_too_large' : 'invalid_source',
-        );
+      if (source.size > maxArchiveBytes) {
+        throw new DocxImportError('input_too_large');
       }
-      view = new Uint8Array(await source.arrayBuffer());
+      view = await readBlobBytes(source);
     } else {
       throw new DocxImportError('invalid_source');
     }
