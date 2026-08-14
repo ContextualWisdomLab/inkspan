@@ -105,6 +105,34 @@ def test_cli_rejects_invalid_utf8_without_echoing_request_bytes(
     assert "private" not in error
 
 
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_cli_rejects_nonstandard_json_numeric_constants_before_render(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    constant: str,
+) -> None:
+    source = tmp_path / "request.json"
+    output = tmp_path / "result.docx"
+    source.write_text(
+        f'{{"format":"xlsx","sheets":[{{"name":"Sheet1","rows":[[{constant}]]}}]}}',
+        encoding="utf-8",
+    )
+
+    def reject_renderer_call(*_args: object, **_kwargs: object) -> Path:
+        raise AssertionError("CLI passed non-standard JSON to the Office renderer")
+
+    monkeypatch.setattr(cli_module, "write_office_document", reject_renderer_call)
+
+    with pytest.raises(SystemExit) as exc:
+        main([str(source), str(output)])
+
+    assert exc.value.code == 2
+    error = capsys.readouterr().err
+    assert "strict JSON" in error
+    assert constant not in error
+
+
 def test_cli_rejects_excessive_json_nesting_before_materialization(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
