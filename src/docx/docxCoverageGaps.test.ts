@@ -390,7 +390,7 @@ describe('DOCX source and editor boundary coverage', () => {
         throw new Error('private failure');
       }
     }
-    await expectAsyncCode(importDocx(new ThrowingBlob(['x'])), 'invalid_source');
+    await expectAsyncCode(importDocx(new ThrowingBlob(['x'])), 'invalid_zip');
 
     const source = createDocx({ method: 0 });
     for (const target of [
