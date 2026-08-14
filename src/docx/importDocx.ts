@@ -17,8 +17,14 @@ function readBlobSize(blob: Blob): number {
 
 /** Read one proven Blob without requiring Blob.arrayBuffer() in older DOMs. */
 async function readBlobBytes(blob: Blob): Promise<Uint8Array> {
-  if (typeof blob.arrayBuffer === 'function') {
-    return new Uint8Array(await blob.arrayBuffer());
+  const ownArrayBuffer = Object.getOwnPropertyDescriptor(blob, 'arrayBuffer');
+  const ownUndefinedArrayBuffer =
+    ownArrayBuffer !== undefined &&
+    'value' in ownArrayBuffer &&
+    ownArrayBuffer.value === undefined;
+  const platformArrayBuffer = Blob.prototype.arrayBuffer;
+  if (!ownUndefinedArrayBuffer && typeof platformArrayBuffer === 'function') {
+    return new Uint8Array(await platformArrayBuffer.call(blob));
   }
   if (typeof FileReader === 'undefined') {
     throw new DocxImportError('invalid_source');
