@@ -48,15 +48,14 @@ describe('spreadsheet binary source preflight', () => {
   });
 
   it('rejects a source larger than the 64 MiB local ceiling before signature inspection', () => {
-    const source = xlsxEnvelope();
-    Object.defineProperty(source, 'byteLength', {
-      configurable: true,
-      value: 64 * 1024 * 1024 + 1,
-    });
-    Object.defineProperty(source, '0', {
-      configurable: true,
-      get() {
-        throw new Error('signature bytes must not be read after the size preflight');
+    const target = xlsxEnvelope();
+    const source = new Proxy(target, {
+      get(innerTarget, property) {
+        if (property === 'byteLength') return 64 * 1024 * 1024 + 1;
+        if (property === '0') {
+          throw new Error('signature bytes must not be read after the size preflight');
+        }
+        return Reflect.get(innerTarget, property, innerTarget);
       },
     });
 
@@ -68,7 +67,10 @@ describe('spreadsheet binary source preflight', () => {
   it('rejects empty and unknown binary envelopes with a payload-redacted category', () => {
     const preflight = preflightSpreadsheetBinarySource();
 
-    for (const source of [new Uint8Array(0), Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8])]) {
+    for (const source of [
+      new Uint8Array(0),
+      Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8]),
+    ]) {
       try {
         preflight(source);
         throw new Error('expected spreadsheet preflight to reject unsupported input');
