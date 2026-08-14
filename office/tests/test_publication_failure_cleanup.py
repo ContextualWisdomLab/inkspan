@@ -180,6 +180,27 @@ def test_invalid_output_path_uses_stable_redacted_publication_error(
     assert list(tmp_path.glob(".inkspan-office-*.tmp")) == []
 
 
+def test_output_existence_probe_failure_is_redacted(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "customer-private-output.docx"
+    real_exists = Path.exists
+
+    def fail_output_exists(self: Path) -> bool:
+        if self == output:
+            raise OSError("private output existence probe detail")
+        return real_exists(self)
+
+    monkeypatch.setattr(Path, "exists", fail_output_exists)
+
+    with pytest.raises(OSError, match=r"^output could not be written$") as error:
+        write_office_document(_docx_payload(), output)
+
+    assert "private output existence probe detail" not in str(error.value)
+    assert list(tmp_path.glob(".inkspan-office-*.tmp")) == []
+
+
 @pytest.mark.parametrize("invalid_overwrite", ["false", 1])
 def test_non_boolean_overwrite_cannot_replace_existing_output(
     tmp_path: Path,
