@@ -1,5 +1,6 @@
 import type { JSONContent } from '@tiptap/core';
 
+const MAX_SPREADSHEET_SOURCE_BYTES = 64 * 1024 * 1024;
 const MAX_VISIBLE_WORKSHEETS = 64;
 const MAX_WORKBOOK_ROWS = 10_000;
 const MAX_WORKSHEET_COLUMNS = 256;
@@ -7,6 +8,29 @@ const MAX_WORKBOOK_CELLS = 262_144;
 const MAX_CELL_TEXT_CODE_UNITS = 32_768;
 const MAX_WORKBOOK_TEXT_CODE_UNITS = 8_388_608;
 const RESOURCE_LIMIT_MESSAGE = 'Spreadsheet exceeds the configured resource limits.';
+const UNSUPPORTED_SOURCE_MESSAGE = 'Spreadsheet source is unsupported or corrupt.';
+const XLSX_ZIP_SIGNATURE = [0x50, 0x4b, 0x03, 0x04] as const;
+const XLS_COMPOUND_FILE_SIGNATURE = [
+  0xd0,
+  0xcf,
+  0x11,
+  0xe0,
+  0xa1,
+  0xb1,
+  0x1a,
+  0xe1,
+] as const;
+
+/** Binary spreadsheet container family identified before local parsing. */
+export type SpreadsheetBinaryFormat = 'xls' | 'xlsx';
+
+/** Bounded spreadsheet bytes paired with their detected container family. */
+export interface SpreadsheetBinarySource {
+  /** Container family selected only from the source signature. */
+  readonly format: SpreadsheetBinaryFormat;
+  /** Original local bytes retained without an additional proportional copy. */
+  readonly bytes: Uint8Array;
+}
 
 /** One parser-neutral worksheet supplied to the bounded spreadsheet converter. */
 export interface SpreadsheetWorksheetData {
@@ -59,6 +83,45 @@ function resourceLimitExceeded(): never {
     'RESOURCE_LIMIT_EXCEEDED',
     RESOURCE_LIMIT_MESSAGE,
   );
+}
+
+function unsupportedOrCorruptSource(): never {
+  throw new SpreadsheetImportError(
+    'UNSUPPORTED_OR_CORRUPT',
+    UNSUPPORTED_SOURCE_MESSAGE,
+  );
+}
+
+function startsWithSignature(
+  source: Uint8Array,
+  signature: readonly number[],
+): boolean {
+  if (source.byteLength < signature.length) return false;
+  for (let index = 0; index < signature.length; index += 1) {
+    if (source[index] !== signature[index]) return false;
+  }
+  return true;
+}
+
+/**
+ * Bound and classify local XLS/XLSX bytes before any workbook parser is loaded.
+ *
+ * This is deliberately only a source-envelope preflight. A matching ZIP or OLE
+ * signature does not assert that the remainder is a valid workbook; the later
+ * parser boundary must still fail closed on malformed package structure.
+ */
+export function preflightSpreadsheetBinarySource(
+  source: Uint8Array,
+): SpreadsheetBinarySource {
+  if (source.byteLength > MAX_SPREADSHEET_SOURCE_BYTES) resourceLimitExceeded();
+
+  if (startsWithSignature(source, XLS_COMPOUND_FILE_SIGNATURE)) {
+    return { format: 'xls', bytes: source };
+  }
+  if (startsWithSignature(source, XLSX_ZIP_SIGNATURE)) {
+    return { format: 'xlsx', bytes: source };
+  }
+  return unsupportedOrCorruptSource();
 }
 
 function paragraphWithText(text: string): JSONContent {
