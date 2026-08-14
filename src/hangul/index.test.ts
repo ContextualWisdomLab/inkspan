@@ -10,6 +10,7 @@ class FakeDocument implements HangulEngineDocument {
   freed = false;
   readonly calls: string[] = [];
   sourceFormat = 'hwpx';
+  selectionHtml = '<h1>Title</h1><p><strong>Body</strong></p>';
 
   getSourceFormat(): string {
     return this.sourceFormat;
@@ -28,7 +29,7 @@ class FakeDocument implements HangulEngineDocument {
   }
 
   exportSelectionHtml(): string {
-    return '<h1>Title</h1><p><strong>Body</strong></p>';
+    return this.selectionHtml;
   }
 
   getValidationWarnings(): string {
@@ -126,6 +127,129 @@ describe('Hangul document bridge', () => {
     });
     expect(result.lossy).toBe(false);
     expect(source.freed).toBe(true);
+  });
+
+  it('preserves aligned paragraphs, lists, quotes, code blocks, and basic tables', async () => {
+    const source = new FakeDocument();
+    source.selectionHtml = [
+      '<p style="text-align: center">Centered</p>',
+      '<ul><li><p>Bullet</p></li></ul>',
+      '<ol><li><p><em>Numbered</em></p></li></ol>',
+      '<blockquote><p>Quote</p></blockquote>',
+      '<pre><code>let x = 1 &lt; 2;</code></pre>',
+      '<table><thead><tr><th>Head</th></tr></thead><tbody><tr><td>Cell</td></tr></tbody></table>',
+    ].join('');
+
+    const result = await openHangulDocument(new Uint8Array([9]), {
+      engine: createEngine(source),
+    });
+
+    const expected: JSONContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          attrs: { textAlign: 'center' },
+          content: [{ type: 'text', text: 'Centered' }],
+        },
+        {
+          type: 'bulletList',
+          content: [
+            {
+              type: 'listItem',
+              content: [
+                {
+                  type: 'paragraph',
+                  content: [{ type: 'text', text: 'Bullet' }],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          type: 'orderedList',
+          content: [
+            {
+              type: 'listItem',
+              content: [
+                {
+                  type: 'paragraph',
+                  content: [
+                    {
+                      type: 'text',
+                      text: 'Numbered',
+                      marks: [{ type: 'italic' }],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          type: 'blockquote',
+          content: [
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Quote' }],
+            },
+          ],
+        },
+        {
+          type: 'codeBlock',
+          content: [{ type: 'text', text: 'let x = 1 < 2;' }],
+        },
+        {
+          type: 'table',
+          content: [
+            {
+              type: 'tableRow',
+              content: [
+                {
+                  type: 'tableHeader',
+                  content: [
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'Head' }],
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              type: 'tableRow',
+              content: [
+                {
+                  type: 'tableCell',
+                  content: [
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'Cell' }],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(result.documentJson).toEqual(expected);
+
+    const target = new FakeDocument();
+    await exportHangulDocument(expected, {
+      engine: createEngine(source, target),
+    });
+    const pasted = target.calls.find((call) => call.startsWith('pasteHtml:'));
+    expect(pasted).toContain('<p style="text-align: center">Centered</p>');
+    expect(pasted).toContain('<ul><li><p>Bullet</p></li></ul>');
+    expect(pasted).toContain('<ol><li><p><em>Numbered</em></p></li></ol>');
+    expect(pasted).toContain('<blockquote><p>Quote</p></blockquote>');
+    expect(pasted).toContain('<pre><code>let x = 1 &lt; 2;</code></pre>');
+    expect(pasted).toContain(
+      '<table><tr><th><p>Head</p></th></tr><tr><td><p>Cell</p></td></tr></table>',
+    );
   });
 
   it('exports edited JSON as HWPX by default', async () => {
