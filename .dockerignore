@@ -13,6 +13,8 @@ coverage
 **/.npmrc
 **/.pnpmrc
 **/.yarnrc*
+**/.pypirc
+**/pip.conf
 **/.netrc
 **/*.pem
 **/*.key
