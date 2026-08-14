@@ -69,6 +69,8 @@ export class HangulDocumentError extends Error {
   }
 }
 
+const TEXT_ALIGNMENTS = new Set(['left', 'center', 'right', 'justify']);
+
 function parseInline(parent: ParentNode, marks: HangulDocumentMark[] = []): HangulDocumentJson[] {
   const output: HangulDocumentJson[] = [];
   for (const child of Array.from(parent.childNodes)) {
@@ -90,17 +92,71 @@ function parseInline(parent: ParentNode, marks: HangulDocumentMark[] = []): Hang
   return output;
 }
 
+function readTextAlignment(element: Element): string | undefined {
+  const style = Reflect.get(element, 'style') as { textAlign?: unknown } | undefined;
+  const textAlign = style?.textAlign;
+  return typeof textAlign === 'string' && TEXT_ALIGNMENTS.has(textAlign)
+    ? textAlign
+    : undefined;
+}
+
+function parseParagraph(element: Element): HangulDocumentJson {
+  const textAlign = readTextAlignment(element);
+  const content = parseInline(element);
+  return textAlign === undefined
+    ? { type: 'paragraph', content }
+    : { type: 'paragraph', attrs: { textAlign }, content };
+}
+
+function parseList(element: Element, type: 'bulletList' | 'orderedList'): HangulDocumentJson {
+  return {
+    type,
+    content: Array.from(element.children).map((item) => ({
+      type: 'listItem',
+      content: Array.from(item.children).map(parseBlock),
+    })),
+  };
+}
+
+function parseTable(element: Element): HangulDocumentJson {
+  return {
+    type: 'table',
+    content: Array.from((element as HTMLTableElement).rows).map((row) => ({
+      type: 'tableRow',
+      content: Array.from(row.cells).map((cell) => ({
+        type: cell.tagName.toLowerCase() === 'th' ? 'tableHeader' : 'tableCell',
+        content: [{ type: 'paragraph', content: parseInline(cell) }],
+      })),
+    })),
+  };
+}
+
+function parseBlock(element: Element): HangulDocumentJson {
+  const tag = element.tagName.toLowerCase();
+  if (/^h[1-6]$/u.test(tag)) {
+    return {
+      type: 'heading',
+      attrs: { level: Number(tag.slice(1)) },
+      content: parseInline(element),
+    };
+  }
+  if (tag === 'ul') return parseList(element, 'bulletList');
+  if (tag === 'ol') return parseList(element, 'orderedList');
+  if (tag === 'blockquote') {
+    return { type: 'blockquote', content: Array.from(element.children).map(parseBlock) };
+  }
+  if (tag === 'pre') {
+    return { type: 'codeBlock', content: [{ type: 'text', text: element.textContent as string }] };
+  }
+  if (tag === 'table') return parseTable(element);
+  return parseParagraph(element);
+}
+
 function htmlToJson(html: string): HangulDocumentJson {
   const parsed = new DOMParser().parseFromString(html, 'text/html');
   return {
     type: 'doc',
-    content: Array.from(parsed.body.children).map((element) => {
-      const tag = element.tagName.toLowerCase();
-      const content = parseInline(element);
-      return /^h[1-6]$/u.test(tag)
-        ? { type: 'heading', attrs: { level: Number(tag.slice(1)) }, content }
-        : { type: 'paragraph', content };
-    }),
+    content: Array.from(parsed.body.children).map(parseBlock),
   };
 }
 
@@ -120,18 +176,57 @@ function renderInline(node: HangulDocumentJson): string {
   return value;
 }
 
+function contentOf(node: HangulDocumentJson): HangulDocumentJson[] {
+  return node.content ?? [];
+}
+
+function paragraphStyle(node: HangulDocumentJson): string {
+  const textAlign = node.attrs?.textAlign;
+  return typeof textAlign === 'string' && TEXT_ALIGNMENTS.has(textAlign)
+    ? ` style="text-align: ${textAlign}"`
+    : '';
+}
+
+function renderBlock(node: HangulDocumentJson): string {
+  if (node.type === 'paragraph') {
+    return `<p${paragraphStyle(node)}>${contentOf(node).map(renderInline).join('')}</p>`;
+  }
+  if (node.type === 'heading') {
+    const level = Number(node.attrs?.level);
+    if (!Number.isInteger(level) || level < 1 || level > 6) throw new HangulDocumentError('UNSUPPORTED_DOCUMENT_NODE', 'Invalid heading level.');
+    return `<h${level}>${contentOf(node).map(renderInline).join('')}</h${level}>`;
+  }
+  if (node.type === 'bulletList' || node.type === 'orderedList') {
+    const tag = node.type === 'bulletList' ? 'ul' : 'ol';
+    return `<${tag}>${contentOf(node).map(renderBlock).join('')}</${tag}>`;
+  }
+  if (node.type === 'listItem') {
+    return `<li>${contentOf(node).map(renderBlock).join('')}</li>`;
+  }
+  if (node.type === 'blockquote') {
+    return `<blockquote>${contentOf(node).map(renderBlock).join('')}</blockquote>`;
+  }
+  if (node.type === 'codeBlock') {
+    return `<pre><code>${contentOf(node).map(renderInline).join('')}</code></pre>`;
+  }
+  if (node.type === 'table') {
+    return `<table>${contentOf(node).map(renderBlock).join('')}</table>`;
+  }
+  if (node.type === 'tableRow') {
+    return `<tr>${contentOf(node).map(renderBlock).join('')}</tr>`;
+  }
+  if (node.type === 'tableHeader') {
+    return `<th>${contentOf(node).map(renderBlock).join('')}</th>`;
+  }
+  if (node.type === 'tableCell') {
+    return `<td>${contentOf(node).map(renderBlock).join('')}</td>`;
+  }
+  throw new HangulDocumentError('UNSUPPORTED_DOCUMENT_NODE', 'Hangul export contains an unsupported block node.');
+}
+
 function jsonToHtml(documentJson: HangulDocumentJson): string {
   if (documentJson.type !== 'doc') throw new HangulDocumentError('UNSUPPORTED_DOCUMENT_NODE', 'Hangul export requires a doc root.');
-  return (documentJson.content ?? []).map((node) => {
-    const body = (node.content ?? []).map(renderInline).join('');
-    if (node.type === 'paragraph') return `<p>${body}</p>`;
-    if (node.type === 'heading') {
-      const level = Number(node.attrs?.level);
-      if (!Number.isInteger(level) || level < 1 || level > 6) throw new HangulDocumentError('UNSUPPORTED_DOCUMENT_NODE', 'Invalid heading level.');
-      return `<h${level}>${body}</h${level}>`;
-    }
-    throw new HangulDocumentError('UNSUPPORTED_DOCUMENT_NODE', 'Hangul export contains an unsupported block node.');
-  }).join('');
+  return contentOf(documentJson).map(renderBlock).join('');
 }
 
 /** Project HWP/HWPX bytes into the editor's JSON model. */
