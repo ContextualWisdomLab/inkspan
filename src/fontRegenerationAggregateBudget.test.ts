@@ -60,7 +60,9 @@ function cssFor(url) {
 function validWoff2Fixture() {
   const bytes = new Uint8Array(48);
   bytes.set([0x77, 0x4f, 0x46, 0x32]);
-  new DataView(bytes.buffer).setUint32(8, bytes.byteLength, false);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(8, bytes.byteLength, false);
+  view.setUint16(12, 1, false);
   return bytes;
 }
 globalThis.fetch = async (input) => {
