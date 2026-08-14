@@ -138,7 +138,7 @@ function readFixture(inputPath) {
     !hasExactKeys(
       value,
       ['defaultBranchSha', 'observedAt', 'presentWorkflowPaths', 'pages'],
-      ['defaultBranchShaAfter', 'ownedActiveRepairPaths'],
+      ['defaultBranchShaAfter', 'ownedActiveRepairs'],
     )
   ) {
     throw new Error('input has an invalid top-level contract');
@@ -162,6 +162,42 @@ function readPathList(value, label, canonicalOnly) {
     }
     seen.add(path);
     result.push(path);
+  }
+  return Object.freeze(result);
+}
+
+/** Validate exact owner evidence for active repair workflow exemptions. */
+function readOwnedActiveRepairs(value) {
+  if (value === undefined) {
+    return Object.freeze([]);
+  }
+  if (!Array.isArray(value) || value.length > MAX_WORKFLOWS) {
+    throw new Error('owned active repair evidence is invalid');
+  }
+
+  const result = [];
+  const seenPaths = new Set();
+  for (const repair of value) {
+    if (
+      !isRecord(repair) ||
+      !hasExactKeys(repair, ['path', 'prNumber', 'headSha']) ||
+      !isCanonicalRepositoryWorkflowPath(repair.path) ||
+      !Number.isSafeInteger(repair.prNumber) ||
+      repair.prNumber <= 0 ||
+      typeof repair.headSha !== 'string' ||
+      !SHA_1.test(repair.headSha) ||
+      seenPaths.has(repair.path)
+    ) {
+      throw new Error('owned active repair evidence is invalid');
+    }
+    seenPaths.add(repair.path);
+    result.push(
+      Object.freeze({
+        path: repair.path,
+        prNumber: repair.prNumber,
+        headSha: repair.headSha,
+      }),
+    );
   }
   return Object.freeze(result);
 }
@@ -267,7 +303,7 @@ function classifyWorkflow(
   path,
   state,
   presentPaths,
-  ownedRepairPaths,
+  ownedRepairsByPath,
   foldedPaths,
   ambiguousActivePaths,
 ) {
@@ -289,7 +325,7 @@ function classifyWorkflow(
   if (presentPaths.has(path)) {
     return 'present';
   }
-  if (ownedRepairPaths.has(path)) {
+  if (ownedRepairsByPath.has(path)) {
     return 'owned_active_repair';
   }
   if (foldedPaths.has(path.toLocaleLowerCase('en-US'))) {
@@ -331,15 +367,16 @@ function auditFixture(fixture) {
     'present workflow paths',
     true,
   );
-  const ownedRepairList = readPathList(
-    fixture.ownedActiveRepairPaths ?? [],
-    'owned active repair paths',
-    true,
-  );
+  const ownedRepairs = readOwnedActiveRepairs(fixture.ownedActiveRepairs);
   const presentPaths = new Set(presentList);
-  const ownedRepairPaths = new Set(ownedRepairList);
+  const ownedRepairsByPath = new Map(
+    ownedRepairs.map((repair) => [
+      repair.path,
+      Object.freeze({ prNumber: repair.prNumber, headSha: repair.headSha }),
+    ]),
+  );
   const foldedPaths = new Set(
-    [...presentList, ...ownedRepairList].map((path) =>
+    [...presentList, ...ownedRepairs.map((repair) => repair.path)].map((path) =>
       path.toLocaleLowerCase('en-US'),
     ),
   );
@@ -352,19 +389,24 @@ function auditFixture(fixture) {
     complete: true,
     paginationReceipts: pages.receipts,
     workflows: Object.freeze(
-      pages.items.map((item) =>
-        Object.freeze({
+      pages.items.map((item) => {
+        const classification = classifyWorkflow(
+          item.path,
+          item.state,
+          presentPaths,
+          ownedRepairsByPath,
+          foldedPaths,
+          ambiguousActivePaths,
+        );
+        const repairOwner = ownedRepairsByPath.get(item.path);
+        return Object.freeze({
           ...item,
-          classification: classifyWorkflow(
-            item.path,
-            item.state,
-            presentPaths,
-            ownedRepairPaths,
-            foldedPaths,
-            ambiguousActivePaths,
-          ),
-        }),
-      ),
+          classification,
+          ...(classification === 'owned_active_repair' && repairOwner !== undefined
+            ? { repairOwner }
+            : {}),
+        });
+      }),
     ),
   });
 }
