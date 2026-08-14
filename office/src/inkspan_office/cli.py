@@ -10,6 +10,7 @@ from pathlib import Path
 from .safe_renderer import OfficeDocumentError, load_schema, write_office_document
 
 _MAX_CLI_REQUEST_BYTES = 64 * 1024 * 1024
+_MAX_CLI_JSON_NESTING_DEPTH = 128
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -47,6 +48,31 @@ def _read_request_text(source: Path) -> str:
         raise OfficeDocumentError("input must contain valid UTF-8") from exc
 
 
+def _preflight_json_nesting(source: str) -> None:
+    """Reject excessive JSON container nesting before native materialization."""
+
+    depth = 0
+    in_string = False
+    escaped = False
+    for character in source:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == '"':
+                in_string = False
+            continue
+        if character == '"':
+            in_string = True
+        elif character in "[{":
+            depth += 1
+            if depth > _MAX_CLI_JSON_NESTING_DEPTH:
+                raise OfficeDocumentError("input exceeds the supported JSON nesting depth")
+        elif character in "]}":
+            depth = max(0, depth - 1)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return a process-style status code."""
 
@@ -66,6 +92,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise
         except (OSError, ValueError) as exc:
             raise OfficeDocumentError("input could not be read") from exc
+        _preflight_json_nesting(request_text)
         try:
             payload = json.loads(request_text)
         except json.JSONDecodeError as exc:
