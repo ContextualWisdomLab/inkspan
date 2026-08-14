@@ -66,19 +66,29 @@ function validWoff2Fixture(size = 48) {
 }
 function fragmentedResponse(bytes, headers) {
   let offset = 0;
-  return new Response(
-    new ReadableStream({
-      pull(controller) {
-        if (offset >= bytes.byteLength) {
-          controller.close();
-          return;
-        }
-        controller.enqueue(bytes.subarray(offset, offset + 1));
-        offset += 1;
-      },
-    }),
-    { status: 200, headers },
-  );
+  let emitEmptyChunk = true;
+  const body = new ReadableStream({
+    pull(controller) {
+      if (offset >= bytes.byteLength) {
+        controller.close();
+        return;
+      }
+      if (emitEmptyChunk) {
+        controller.enqueue(new Uint8Array(0));
+        emitEmptyChunk = false;
+        return;
+      }
+      controller.enqueue(bytes.subarray(offset, offset + 1));
+      offset += 1;
+      emitEmptyChunk = true;
+    },
+  });
+  return {
+    ok: true,
+    status: 200,
+    headers: new Headers(headers),
+    body,
+  };
 }
 globalThis.fetch = async (input) => {
   const url = String(input);
@@ -86,7 +96,9 @@ globalThis.fetch = async (input) => {
     cssRequestCount += 1;
     const css = cssFor(url);
     if (process.env.INKSPAN_FRAGMENT_MODE === 'css' && cssRequestCount === 1) {
-      const bytes = new TextEncoder().encode(css + ' '.repeat(4097));
+      // Non-empty chunks alone stay below the 4,096-chunk local ceiling. The
+      // alternating zero-length chunks are therefore necessary to cross it.
+      const bytes = new TextEncoder().encode(css + ' '.repeat(2049));
       return fragmentedResponse(bytes, {
         'content-type': 'text/css; charset=utf-8',
         'content-length': String(bytes.byteLength),
@@ -100,7 +112,9 @@ globalThis.fetch = async (input) => {
   if (url === trustedAsset) {
     fontRequestCount += 1;
     if (process.env.INKSPAN_FRAGMENT_MODE === 'font' && fontRequestCount === 1) {
-      const bytes = validWoff2Fixture(4097);
+      // 2,049 one-byte chunks are under the ceiling; alternating empty chunks
+      // make this a >4,096-chunk stream without approaching the byte ceiling.
+      const bytes = validWoff2Fixture(2049);
       return fragmentedResponse(bytes, {
         'content-type': 'font/woff2',
         'content-length': String(bytes.byteLength),
