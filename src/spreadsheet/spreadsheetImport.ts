@@ -1,8 +1,11 @@
 import type { JSONContent } from '@tiptap/core';
 
 const MAX_VISIBLE_WORKSHEETS = 64;
+const MAX_WORKBOOK_ROWS = 10_000;
 const MAX_WORKSHEET_COLUMNS = 256;
+const MAX_WORKBOOK_CELLS = 262_144;
 const MAX_CELL_TEXT_CODE_UNITS = 32_768;
+const MAX_WORKBOOK_TEXT_CODE_UNITS = 8_388_608;
 const RESOURCE_LIMIT_MESSAGE = 'Spreadsheet exceeds the configured resource limits.';
 
 /** One parser-neutral worksheet supplied to the bounded spreadsheet converter. */
@@ -72,15 +75,22 @@ function paragraphWithText(text: string): JSONContent {
     : { type: 'paragraph' };
 }
 
+interface PreparedWorksheet {
+  readonly worksheet: SpreadsheetWorksheetData;
+  readonly columnCount: number;
+}
+
 /** Convert parser-neutral displayed worksheet text into editable TipTap blocks. */
 export function spreadsheetWorkbookToDocumentJson(
   workbook: SpreadsheetWorkbookData,
 ): SpreadsheetImportResult {
-  const content: JSONContent[] = [];
+  const preparedWorksheets: PreparedWorksheet[] = [];
   let worksheetCount = 0;
   let rowCount = 0;
   let cellCount = 0;
+  let textCodeUnits = 0;
 
+  // Preflight the complete workbook before allocating proportional TipTap nodes.
   for (const worksheet of workbook.worksheets) {
     if (worksheet.hidden) continue;
 
@@ -92,12 +102,33 @@ export function spreadsheetWorkbookToDocumentJson(
     if (worksheetCount >= MAX_VISIBLE_WORKSHEETS) resourceLimitExceeded();
     if (columnCount > MAX_WORKSHEET_COLUMNS) resourceLimitExceeded();
 
+    const nextRowCount = rowCount + worksheet.rows.length;
+    if (nextRowCount > MAX_WORKBOOK_ROWS) resourceLimitExceeded();
+
+    const worksheetCellCount = worksheet.rows.length * columnCount;
+    const nextCellCount = cellCount + worksheetCellCount;
+    if (nextCellCount > MAX_WORKBOOK_CELLS) resourceLimitExceeded();
+
+    let worksheetTextCodeUnits = 0;
     for (const row of worksheet.rows) {
       for (const cellText of row) {
         if (cellText.length > MAX_CELL_TEXT_CODE_UNITS) resourceLimitExceeded();
+        worksheetTextCodeUnits += cellText.length;
+        if (textCodeUnits + worksheetTextCodeUnits > MAX_WORKBOOK_TEXT_CODE_UNITS) {
+          resourceLimitExceeded();
+        }
       }
     }
 
+    preparedWorksheets.push({ worksheet, columnCount });
+    worksheetCount += 1;
+    rowCount = nextRowCount;
+    cellCount = nextCellCount;
+    textCodeUnits += worksheetTextCodeUnits;
+  }
+
+  const content: JSONContent[] = [];
+  for (const { worksheet, columnCount } of preparedWorksheets) {
     content.push({
       type: 'heading',
       attrs: { level: 3 },
@@ -114,10 +145,6 @@ export function spreadsheetWorkbookToDocumentJson(
       })),
     });
     content.push({ type: 'paragraph' });
-
-    worksheetCount += 1;
-    rowCount += worksheet.rows.length;
-    cellCount += worksheet.rows.length * columnCount;
   }
 
   return { content, worksheetCount, rowCount, cellCount };
