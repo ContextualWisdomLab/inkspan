@@ -43,4 +43,22 @@ describe('release artifact checkout authority', () => {
     expect(buildJob).toContain('actual_head="$(git rev-parse HEAD)"');
     expect(buildJob).toContain('test "$actual_head" = "$INKSPAN_EXPECTED_HEAD_SHA"');
   });
+
+  it('fails closed on prerelease tags instead of allowing a registry-skipping release path', () => {
+    const workflow = repositoryFile('.github/workflows/release.yml');
+    const buildJob = workflowJob(
+      workflow,
+      'build-release-artifacts',
+      'browser-release-evidence',
+    );
+
+    expect(buildJob).toContain(
+      "if (!/^v(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$/.test(releaseTag))",
+    );
+    expect(buildJob).toContain(
+      'Release tag is not valid stable semantic version syntax',
+    );
+    expect(buildJob).not.toContain('(?:-[0-9A-Za-z.-]+)?');
+    expect(workflow).toContain("!contains(github.ref_name, '-')");
+  });
 });
