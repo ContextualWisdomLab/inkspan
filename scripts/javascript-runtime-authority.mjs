@@ -114,13 +114,30 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
     );
   }
 
+  /** Identify the built-in `Reflect.apply` without resolving aliases or receivers. */
+  function isReflectApplyExpression(expression) {
+    const current = unwrapParentheses(expression);
+    if (
+      !ts.isPropertyAccessExpression(current) &&
+      !ts.isElementAccessExpression(current)
+    ) {
+      return false;
+    }
+    const receiver = unwrapParentheses(current.expression);
+    return (
+      staticMemberName(current) === 'apply' &&
+      ts.isIdentifier(receiver) &&
+      receiver.text === 'Reflect'
+    );
+  }
+
   /**
-   * Return the first statically written `.apply()` payload argument.
+   * Return the first statically written apply payload argument.
    * Non-array, computed, missing, and spread argument lists still identify
    * executable authority but deliberately yield an unknown module specifier.
    */
-  function commonJsApplyArgument(node) {
-    const argumentList = node.arguments[1];
+  function commonJsApplyArgument(node, argumentListIndex = 1) {
+    const argumentList = node.arguments[argumentListIndex];
     if (!argumentList) {
       return undefined;
     }
@@ -139,6 +156,13 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
   function commonJsResolverInvocation(node) {
     if (isCommonJsResolverExpression(node.expression)) {
       return { argument: node.arguments[0] };
+    }
+
+    if (isReflectApplyExpression(node.expression)) {
+      const target = node.arguments[0];
+      if (target && isCommonJsResolverExpression(target)) {
+        return { argument: commonJsApplyArgument(node, 2) };
+      }
     }
 
     const callee = unwrapParentheses(node.expression);
@@ -169,6 +193,13 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
   function commonJsInvocation(node) {
     if (isCommonJsLoaderExpression(node.expression)) {
       return { argument: node.arguments[0] };
+    }
+
+    if (isReflectApplyExpression(node.expression)) {
+      const target = node.arguments[0];
+      if (target && isCommonJsLoaderExpression(target)) {
+        return { argument: commonJsApplyArgument(node, 2) };
+      }
     }
 
     const callee = unwrapParentheses(node.expression);
