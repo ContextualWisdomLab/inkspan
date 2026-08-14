@@ -150,12 +150,48 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
   }
 
   /**
+   * Recognize an immediately invoked statically written `.bind` call whose
+   * receiver is already known module authority. The bound receiver is never
+   * evaluated. A package argument bound after `thisArg` takes precedence over
+   * the first argument supplied to the resulting function.
+   */
+  function commonJsBoundInvocation(node, authorityPredicate) {
+    const bindCall = unwrapParentheses(node.expression);
+    if (!ts.isCallExpression(bindCall)) {
+      return null;
+    }
+    const bindCallee = unwrapParentheses(bindCall.expression);
+    if (
+      (!ts.isPropertyAccessExpression(bindCallee) &&
+        !ts.isElementAccessExpression(bindCallee)) ||
+      staticMemberName(bindCallee) !== 'bind' ||
+      !authorityPredicate(bindCallee.expression)
+    ) {
+      return null;
+    }
+    return {
+      argument:
+        bindCall.arguments.length > 1
+          ? bindCall.arguments[1]
+          : node.arguments[0],
+    };
+  }
+
+  /**
    * Return the package argument for one recognizable CommonJS resolver call.
    * Arbitrary object methods named `resolve` remain outside this authority model.
    */
   function commonJsResolverInvocation(node) {
     if (isCommonJsResolverExpression(node.expression)) {
       return { argument: node.arguments[0] };
+    }
+
+    const boundInvocation = commonJsBoundInvocation(
+      node,
+      isCommonJsResolverExpression,
+    );
+    if (boundInvocation) {
+      return boundInvocation;
     }
 
     if (isReflectApplyExpression(node.expression)) {
@@ -193,6 +229,14 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
   function commonJsInvocation(node) {
     if (isCommonJsLoaderExpression(node.expression)) {
       return { argument: node.arguments[0] };
+    }
+
+    const boundInvocation = commonJsBoundInvocation(
+      node,
+      isCommonJsLoaderExpression,
+    );
+    if (boundInvocation) {
+      return boundInvocation;
     }
 
     if (isReflectApplyExpression(node.expression)) {
