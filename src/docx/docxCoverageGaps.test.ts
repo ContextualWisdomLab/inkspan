@@ -107,7 +107,7 @@ describe('DOCX ZIP safety coverage', () => {
     const first = parsed.read('a.txt');
     const second = parsed.read('a.txt');
     expect(second).toBe(first);
-    await expect(first).resolves.toEqual(new TextEncoder().encode('abc'));
+    await expect(first.then((bytes) => Array.from(bytes))).resolves.toEqual([97, 98, 99]);
     await expectAsyncCode(parsed.read('missing'), 'invalid_docx');
   });
 
@@ -230,9 +230,9 @@ describe('DOCX ZIP safety coverage', () => {
       limits,
     );
     expect(withDirectory.has('folder/')).toBe(false);
-    await expect(withDirectory.read('folder/a.txt')).resolves.toEqual(
-      new TextEncoder().encode('ok'),
-    );
+    await expect(
+      withDirectory.read('folder/a.txt').then((bytes) => Array.from(bytes)),
+    ).resolves.toEqual([111, 107]);
 
     const base = oneStoredEntry();
     const { eocd } = zipOffsets(base);
@@ -450,7 +450,7 @@ describe('DOCX OOXML remaining safety and fidelity branches', () => {
       createDocx({
         method: 0,
         numbering,
-        body: '<w:p><w:pPr><w:numPr><w:numId w:val="2"/></w:numPr></w:p>',
+        body: '<w:p><w:pPr><w:numPr><w:numId w:val="2"/></w:numPr></w:pPr></w:p>',
       }),
     );
     expect(result.documentJson.content?.[0]).toMatchObject({ type: 'bulletList' });
@@ -479,11 +479,11 @@ describe('DOCX OOXML remaining safety and fidelity branches', () => {
         method: 0,
         relationships,
         body,
-        media: {
-          'word/media/jpeg.bin': jpeg,
-          'word/media/gif.bin': gif,
-          'word/media/webp.bin': webp,
-          'word/media/bad.bin': unsupported,
+        extraEntries: {
+          'word/media/jpeg.bin': { data: jpeg },
+          'word/media/gif.bin': { data: gif },
+          'word/media/webp.bin': { data: webp },
+          'word/media/bad.bin': { data: unsupported },
         },
       }),
     );
