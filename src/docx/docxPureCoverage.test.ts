@@ -40,13 +40,14 @@ import {
 const encode = (value: string): Uint8Array => new TextEncoder().encode(value);
 
 function expectCode(operation: () => unknown, code: DocxImportErrorCode): void {
+  let thrown: unknown;
   try {
     operation();
-    throw new Error(`Expected ${code}`);
   } catch (error) {
-    expect(error).toBeInstanceOf(DocxImportError);
-    expect(error).toMatchObject({ name: 'DocxImportError', code });
+    thrown = error;
   }
+  expect(thrown).toBeInstanceOf(DocxImportError);
+  expect(thrown).toMatchObject({ name: 'DocxImportError', code });
 }
 
 function xml(
@@ -396,7 +397,7 @@ describe('DOCX inert XML parser', () => {
     );
     expectCode(
       () =>
-        xml('<r><a/></r>', {
+        xml('<r><a></a></r>', {
           ...DEFAULT_DOCX_IMPORT_LIMITS,
           maxXmlDepth: 1,
         }),
