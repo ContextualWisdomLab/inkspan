@@ -1,12 +1,11 @@
 import { Base64SizeError } from '../converter/base64.js';
 
-/** Strict raster-only data-URI form accepted by Inkspan document surfaces. */
-const INLINE_RASTER_SOURCE_PATTERN =
-  /^data:image\/(?:png|jpe?g|gif|webp|avif|apng|bmp|x-icon|vnd\.microsoft\.icon);base64,(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)$/i;
-
-/** Bounded prefix recognizer used before whole-payload grammar validation. */
+/** Bounded raster data-URI prefix recognized before payload validation. */
 const INLINE_RASTER_SOURCE_PREFIX_PATTERN =
   /^data:image\/(?:png|jpe?g|gif|webp|avif|apng|bmp|x-icon|vnd\.microsoft\.icon);base64,/i;
+
+/** One canonical base64 payload code unit; padding is handled separately. */
+const BASE64_PAYLOAD_CODE_UNIT_PATTERN = /^[A-Za-z0-9+/]$/;
 
 /** Fixed public categories that reveal no caller-defined scheme label. */
 const PUBLIC_IMAGE_SOURCE_SCHEME_PATTERN =
@@ -40,30 +39,31 @@ function inlineRasterByteLength(source: string, payloadOffset: number): number {
 }
 
 /**
- * Reject an obviously oversized raster candidate before scanning its payload.
+ * Validate the strict raster/base64 grammar without decoding or whole-source regex work.
  *
- * A bounded prefix plus base64 quartet length/padding is sufficient to derive
- * the exact decoded size for every candidate that could satisfy the strict
- * grammar. The full grammar remains authoritative for every in-bound source.
+ * The MIME/prefix regex sees only a bounded prefix. Payload code units are then
+ * inspected incrementally so malformed-source precedence remains authoritative
+ * even for oversized candidates. Canonical padding is inferred only from the
+ * final one or two code units; any earlier `=` is rejected by the payload scan.
  */
-function preflightInlineRasterByteLength(
-  source: string,
-  maxSizeBytes: number,
-): void {
-  if (maxSizeBytes === 0) return;
+function strictInlineRasterPayloadOffset(source: string): number | null {
   const prefixMatch = INLINE_RASTER_SOURCE_PREFIX_PATTERN.exec(
     source.slice(0, IMAGE_SOURCE_PREFIX_INSPECTION_CODE_UNITS),
   );
-  if (!prefixMatch) return;
+  if (!prefixMatch) return null;
 
   const payloadOffset = prefixMatch[0].length;
   const payloadLength = source.length - payloadOffset;
-  if (payloadLength < 4 || payloadLength % 4 !== 0) return;
+  if (payloadLength < 4 || payloadLength % 4 !== 0) return null;
 
-  const bytes = inlineRasterByteLength(source, payloadOffset);
-  if (bytes > maxSizeBytes) {
-    throw new Base64SizeError(bytes, maxSizeBytes);
+  const padding = source.endsWith('==') ? 2 : Number(source.endsWith('='));
+  const payloadDataEnd = source.length - padding;
+  for (let index = payloadOffset; index < payloadDataEnd; index += 1) {
+    if (!BASE64_PAYLOAD_CODE_UNIT_PATTERN.test(source.charAt(index))) {
+      return null;
+    }
   }
+  return payloadOffset;
 }
 
 /** Reject malformed public byte ceilings without coercion or intent inference. */
@@ -106,13 +106,12 @@ export function validateInlineImageSource(
     throw new Base64ImageSourceError(source);
   }
 
-  preflightInlineRasterByteLength(source, maxSizeBytes);
-  if (!INLINE_RASTER_SOURCE_PATTERN.test(source)) {
+  const payloadOffset = strictInlineRasterPayloadOffset(source);
+  if (payloadOffset === null) {
     throw new Base64ImageSourceError(source);
   }
 
   if (maxSizeBytes > 0) {
-    const payloadOffset = source.indexOf(',') + 1;
     const bytes = inlineRasterByteLength(source, payloadOffset);
     if (bytes > maxSizeBytes) {
       throw new Base64SizeError(bytes, maxSizeBytes);
