@@ -66,6 +66,7 @@ const CANONICAL_PERCENT_ENCODED_ASCII_RE =
 const INVALID_OPTIONS_MESSAGE = 'converter options are invalid.';
 const INVALID_BINARY_INPUT_MESSAGE = 'converter binary input is invalid.';
 const INVALID_BLOB_INPUT_MESSAGE = 'converter Blob input is invalid.';
+const INVALID_BASE64_INPUT_MESSAGE = 'base64 input must be a string.';
 const MAX_MIME_TYPE_CODE_UNITS = 1_024;
 const ARRAY_BUFFER_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
   ArrayBuffer.prototype,
@@ -105,6 +106,9 @@ export function bytesToBase64(bytes: Uint8Array): string {
 
 /** Decode a base64 string to raw bytes. Works in Node and the browser. */
 export function base64ToBytes(base64: string): Uint8Array {
+  if (typeof base64 !== 'string') {
+    throw new TypeError(INVALID_BASE64_INPUT_MESSAGE);
+  }
   const normalized = base64.replace(/\s+/g, '');
   /* v8 ignore start -- browser-only fallback: Node and jsdom always provide Buffer */
   if (!hasBuffer) {
