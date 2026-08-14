@@ -430,7 +430,7 @@ export function parseDataUri(dataUri: string): ParsedDataUri {
 
 /** `true` when the string is a syntactically valid data URI. */
 export function isDataUri(value: string): boolean {
-  return DATA_URI_RE.test(value.trim());
+  return typeof value === 'string' && DATA_URI_RE.test(value.trim());
 }
 
 export interface DecodedDataUri {
