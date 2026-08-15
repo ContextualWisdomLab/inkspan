@@ -377,15 +377,31 @@ try {
   runConsumerSmokeTest(
     'consumer-esm.mjs',
     `import assert from 'node:assert/strict';
+import { realpathSync } from 'node:fs';
+import { isAbsolute, join, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import * as editor from '${packageName}';
 import * as autosave from '${packageName}/autosave';
 import * as collaboration from '${packageName}/collaboration';
 import * as converter from '${packageName}/converter';
 
-const packagePathFragment = '/node_modules/@contextualwisdomlab/cwl-editor/';
+const packedPackageRoot = realpathSync(
+  join(process.cwd(), 'node_modules', ...'${packageName}'.split('/')),
+);
+function assertResolvedInsidePackedPackage(resolved, message) {
+  const resolvedPath = realpathSync(fileURLToPath(resolved));
+  const relativePath = relative(packedPackageRoot, resolvedPath);
+  assert.ok(
+    relativePath !== '' &&
+      relativePath !== '..' &&
+      !relativePath.startsWith('..' + sep) &&
+      !isAbsolute(relativePath),
+    message,
+  );
+}
 const rootEntrypoint = import.meta.resolve('${packageName}');
-assert.ok(
-  rootEntrypoint.includes(packagePathFragment),
+assertResolvedInsidePackedPackage(
+  rootEntrypoint,
   'ESM root package must resolve from isolated consumer node_modules',
 );
 assert.equal(typeof editor.markdownToHtml, 'function');
@@ -402,8 +418,8 @@ assert.equal(typeof converter.bytesToDataUri, 'function');
 for (const subpath of ['styles.css', 'fonts.css', 'fonts-latin.css']) {
   const resolved = import.meta.resolve('${packageName}/' + subpath);
   assert.ok(resolved.startsWith('file:'));
-  assert.ok(
-    resolved.includes(packagePathFragment),
+  assertResolvedInsidePackedPackage(
+    resolved,
     'ESM subpath must resolve from isolated consumer node_modules',
   );
 }
@@ -413,15 +429,30 @@ for (const subpath of ['styles.css', 'fonts.css', 'fonts-latin.css']) {
   runConsumerSmokeTest(
     'consumer-commonjs.cjs',
     `const assert = require('node:assert/strict');
+const { realpathSync } = require('node:fs');
+const { isAbsolute, join, relative, sep } = require('node:path');
 const editor = require('${packageName}');
 const autosave = require('${packageName}/autosave');
 const collaboration = require('${packageName}/collaboration');
 const converter = require('${packageName}/converter');
 
-const packagePathFragment = '/node_modules/@contextualwisdomlab/cwl-editor/';
-const rootEntrypoint = require.resolve('${packageName}').replaceAll('\\\\', '/');
-assert.ok(
-  rootEntrypoint.includes(packagePathFragment),
+const packedPackageRoot = realpathSync(
+  join(process.cwd(), 'node_modules', ...'${packageName}'.split('/')),
+);
+function assertResolvedInsidePackedPackage(resolved, message) {
+  const resolvedPath = realpathSync(resolved);
+  const relativePath = relative(packedPackageRoot, resolvedPath);
+  assert.ok(
+    relativePath !== '' &&
+      relativePath !== '..' &&
+      !relativePath.startsWith('..' + sep) &&
+      !isAbsolute(relativePath),
+    message,
+  );
+}
+const rootEntrypoint = require.resolve('${packageName}');
+assertResolvedInsidePackedPackage(
+  rootEntrypoint,
   'CommonJS root package must resolve from isolated consumer node_modules',
 );
 assert.equal(typeof editor.markdownToHtml, 'function');
@@ -436,8 +467,11 @@ assert.equal(typeof collaboration.assertCollaborationConfiguration, 'function');
 assert.ok(collaboration.CollaborativeCwlEditor);
 assert.equal(typeof converter.bytesToDataUri, 'function');
 for (const subpath of ['styles.css', 'fonts.css', 'fonts-latin.css']) {
-  const resolved = require.resolve('${packageName}/' + subpath).replaceAll('\\\\', '/');
-  assert.ok(resolved.includes(packagePathFragment));
+  const resolved = require.resolve('${packageName}/' + subpath);
+  assertResolvedInsidePackedPackage(
+    resolved,
+    'CommonJS subpath must resolve from isolated consumer node_modules',
+  );
 }
 `,
   );
