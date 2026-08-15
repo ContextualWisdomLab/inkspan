@@ -29,6 +29,25 @@ class _TripwireUnknownMapping(Mapping[str, object]):
         return len(self._known) + 2
 
 
+class _RepeatedKeyMapping(Mapping[str, object]):
+    """Repeat one allowed key, then fail if validation keeps scanning."""
+
+    def __init__(self, known: dict[str, object]) -> None:
+        self._known = known
+
+    def __getitem__(self, key: str) -> object:
+        return self._known[key]
+
+    def __iter__(self) -> Iterator[str]:
+        first = next(iter(self._known))
+        yield first
+        yield first
+        raise AssertionError("page-layout validation scanned beyond a repeated key")
+
+    def __len__(self) -> int:
+        return 2
+
+
 def _valid_layout_payload() -> dict[str, object]:
     """Return one valid DOCX request for page-layout diagnostic tests."""
 
@@ -83,3 +102,17 @@ def test_page_layout_stops_scanning_after_two_unknown_fields(nested: bool) -> No
 
     assert str(captured.value) == expected
     assert _PRIVATE_MARKER not in str(captured.value)
+
+
+def test_page_layout_rejects_repeated_iterator_keys_before_scanning_further() -> None:
+    """Bound exotic mappings that evade progress by repeating allowed keys."""
+
+    payload = deepcopy(_valid_layout_payload())
+    layout = payload["page_layout"]
+    assert isinstance(layout, dict)
+    payload["page_layout"] = _RepeatedKeyMapping(layout)
+
+    with pytest.raises(OfficeDocumentError) as captured:
+        render_office_document(payload)
+
+    assert str(captured.value) == "page_layout has unexpected fields"
