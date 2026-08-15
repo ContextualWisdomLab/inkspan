@@ -54,6 +54,21 @@ describe('spreadsheetWorkbookToDocumentJson runtime containers', () => {
     expect(iteratorRead).toBe(false);
   });
 
+  it.each([null, undefined])(
+    'rejects nullish worksheet entries with the stable domain error',
+    (invalidWorksheet) => {
+      expectUnsupportedSource(() =>
+        spreadsheetWorkbookToDocumentJson({
+          worksheets: [
+            invalidWorksheet as unknown as Parameters<
+              typeof spreadsheetWorkbookToDocumentJson
+            >[0]['worksheets'][number],
+          ],
+        }),
+      );
+    },
+  );
+
   it('rejects a non-array row collection before reading its length', () => {
     let lengthRead = false;
     const hostileRows = Object.create(null) as Record<PropertyKey, unknown>;
