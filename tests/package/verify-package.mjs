@@ -6,6 +6,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -317,6 +318,12 @@ void [
 }
 
 try {
+  symlinkSync(
+    join(repositoryRoot, 'node_modules'),
+    join(verificationDirectory, 'node_modules'),
+    'dir',
+  );
+
   const packOutput = run('npm', [
     'pack',
     '--json',
