@@ -307,6 +307,33 @@ describe('Hangul bridge failure boundaries', () => {
     }
   });
 
+  it('contains hostile engine throw values without prototype inspection', async () => {
+    const target = new BoundaryDocument();
+    let prototypeReads = 0;
+    const hostile = new Proxy(Object.create(null) as object, {
+      getPrototypeOf() {
+        prototypeReads += 1;
+        throw new Error('private-hangul-prototype-sentinel');
+      },
+    });
+    vi.spyOn(target, 'pasteHtml').mockImplementation(() => {
+      throw hostile;
+    });
+
+    await expect(
+      exportHangulDocument(
+        { type: 'doc', content: [{ type: 'paragraph' }] },
+        { engine: engineFor(new BoundaryDocument(), target) },
+      ),
+    ).rejects.toMatchObject({
+      name: 'HangulDocumentError',
+      code: 'ENGINE_OPERATION_FAILED',
+      message: 'The Hangul engine failed during export.',
+    });
+    expect(prototypeReads).toBe(0);
+    expect(target.freed).toBe(true);
+  });
+
   it('normalizes engine write failures and output-bound violations', async () => {
     const writeTarget = new BoundaryDocument();
     writeTarget.failPaste = true;
