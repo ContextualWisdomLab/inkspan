@@ -101,12 +101,10 @@ def _paper_dimensions(paper_size: str) -> tuple[int, int]:
 
 
 def _mapping(value: Any, path: str) -> Mapping[str, Any]:
-    """Validate a string-keyed mapping used by the page-layout contract."""
+    """Validate a mapping container used by the page-layout contract."""
 
     if not isinstance(value, Mapping):
         raise OfficeDocumentError(f"{path} must be an object")
-    if any(not isinstance(key, str) for key in value):
-        raise OfficeDocumentError(f"{path} object keys must be strings")
     return value
 
 
@@ -119,12 +117,22 @@ def _require(mapping: Mapping[str, Any], key: str, path: str) -> Any:
 
 
 def _reject_unknown(mapping: Mapping[str, Any], allowed: set[str], path: str) -> None:
-    """Reject undeclared page-layout fields without reflecting caller-owned names."""
+    """Bound key scanning while rejecting undeclared page-layout fields."""
 
-    unexpected = set(mapping) - allowed
-    if unexpected:
-        label = "field" if len(unexpected) == 1 else "fields"
-        raise OfficeDocumentError(f"{path} has unexpected {label}")
+    unexpected_count = 0
+    seen: set[str] = set()
+    for key in mapping:
+        if not isinstance(key, str):
+            raise OfficeDocumentError(f"{path} object keys must be strings")
+        if key in seen:
+            raise OfficeDocumentError(f"{path} has unexpected fields")
+        seen.add(key)
+        if key not in allowed:
+            unexpected_count += 1
+            if unexpected_count == 2:
+                raise OfficeDocumentError(f"{path} has unexpected fields")
+    if unexpected_count == 1:
+        raise OfficeDocumentError(f"{path} has unexpected field")
 
 
 def _enum_string(value: Any, path: str, allowed: set[str]) -> str:
