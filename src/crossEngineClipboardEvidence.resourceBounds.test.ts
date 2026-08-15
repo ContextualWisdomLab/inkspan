@@ -7,6 +7,8 @@ import {
 
 const RESOURCE_BOUNDARY_ERROR =
   'Cross-engine clipboard document evidence exceeds the supported structure boundary.';
+const ENGINE_COUNT_ERROR =
+  'Cross-engine clipboard evidence requires exactly one observation from chromium, firefox, and webkit.';
 
 function observation(
   engine: CrossEngineClipboardEngine,
@@ -30,6 +32,29 @@ function allEngines(documentJson: unknown): readonly CrossEngineClipboardObserva
 }
 
 describe('cross-engine clipboard consensus resource boundary', () => {
+  it('rejects invalid observation counts before reading caller-controlled entries', () => {
+    let extraObservationReads = 0;
+    const observations = [
+      observation('chromium', { type: 'doc' }),
+      observation('firefox', { type: 'doc' }),
+      observation('webkit', { type: 'doc' }),
+      observation('chromium', { type: 'doc' }),
+    ];
+    Object.defineProperty(observations, '3', {
+      enumerable: true,
+      configurable: true,
+      get() {
+        extraObservationReads += 1;
+        throw new Error('extra observation must not be read');
+      },
+    });
+
+    expect(() => assertCrossEngineClipboardConsensus(observations)).toThrow(
+      ENGINE_COUNT_ERROR,
+    );
+    expect(extraObservationReads).toBe(0);
+  });
+
   it('fails closed with a stable redacted error for cyclic document evidence', () => {
     const cyclic: Record<string, unknown> = { type: 'doc' };
     cyclic.self = cyclic;
