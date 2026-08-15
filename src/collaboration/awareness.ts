@@ -25,14 +25,20 @@ const FALLBACK_CURSOR_COLOR = '#475569';
 const MAX_CURSOR_LABEL_LENGTH = 80;
 const MAX_PUBLIC_IDENTIFIER_LENGTH = 80;
 const MAX_REMOTE_IDENTIFIER_SOURCE_LENGTH = 1_024;
+const MAX_LOCAL_FIELD_SOURCE_LENGTH = 1_024;
 
-/** Reject malformed local awareness identity fields before string operations. */
+/** Reject malformed or oversized local identity fields before normalization. */
 function assertCollaborationUserStringField(
   field: 'userId' | 'displayName' | 'cursorColor',
   value: unknown,
 ): asserts value is string {
   if (typeof value !== 'string') {
     throw new Error(`collaboration ${field} must be a string`);
+  }
+  if (value.length > MAX_LOCAL_FIELD_SOURCE_LENGTH) {
+    throw new Error(
+      `collaboration ${field} must be at most ${MAX_LOCAL_FIELD_SOURCE_LENGTH} UTF-16 code units before normalization`,
+    );
   }
 }
 
