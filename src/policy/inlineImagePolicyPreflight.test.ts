@@ -84,6 +84,15 @@ describe('inline image decoded-size preflight', () => {
   });
 
   it.each([
+    'data:image/png;base64,AR==',
+    'data:image/png;base64,AQJ=',
+  ])('rejects non-canonical base64 padding bits in %s', (source) => {
+    expect(() => validateInlineImageSource(source, 0)).toThrow(
+      Base64ImageSourceError,
+    );
+  });
+
+  it.each([
     'https://example.invalid/image.png',
     'data:image/png;base64,',
     'data:image/png;base64,AAA',
