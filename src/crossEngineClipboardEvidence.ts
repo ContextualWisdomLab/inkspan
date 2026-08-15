@@ -206,9 +206,14 @@ const DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR =
 export function assertCrossEngineClipboardConsensus(
   observations: readonly CrossEngineClipboardObservation[],
 ): void {
+  if (observations.length !== REQUIRED_ENGINES.length) {
+    throw new Error(
+      'Cross-engine clipboard evidence requires exactly one observation from chromium, firefox, and webkit.',
+    );
+  }
+
   const engines = observations.map((item) => item.engine);
   if (
-    observations.length !== REQUIRED_ENGINES.length ||
     REQUIRED_ENGINES.some(
       (engine) => engines.filter((candidate) => candidate === engine).length !== 1,
     )
