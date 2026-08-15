@@ -187,8 +187,8 @@ function readBlobType(input: Blob): string {
 export function toUint8Array(
   input: ArrayBuffer | ArrayBufferView | Uint8Array,
 ): Uint8Array {
-  if (input instanceof Uint8Array) return input;
   if (ArrayBuffer.isView(input)) {
+    if (input instanceof Uint8Array) return input;
     return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
   }
   if (isArrayBuffer(input)) return new Uint8Array(input);
