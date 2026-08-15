@@ -14,6 +14,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 const temporaryRoots: string[] = [];
 
+type CssPolicyMode = 'comments' | 'string';
+
 function createIsolatedFontRegenerator(): {
   root: string;
   scriptPath: string;
@@ -54,21 +56,28 @@ function requestedFamily(url) {
   const request = new URL(url).searchParams.get('family') ?? '';
   return familyDefinitions.find(([family]) => request.startsWith(\`${'${family}'}:wght@\`));
 }
+function liveFontFace(family, weight) {
+  return \`@font-face { font-family: '\${family}'; font-style: normal; font-weight: \${weight}; src: url(\${trustedAsset}) format('woff2'); unicode-range: U+0000-00FF; }\`;
+}
 function cssFor(url) {
   const definition = requestedFamily(url);
   if (!definition) throw new Error('unexpected family request');
   const [family, weights] = definition;
-  return weights.map((weight) => {
-    if (family === 'Noto Sans') {
-      return \`@font-face {\n  /* font-family: '\${family}'; */\n  /* font-style: normal; */\n  /* font-weight: \${weight}; */\n  src: url(\${trustedAsset}) format('woff2');\n  /* unicode-range: U+0000-00FF; */\n}\`;
+  if (family === 'Noto Sans') {
+    if (process.env.INKSPAN_CSS_POLICY_MODE === 'string') {
+      const disguisedFaces = weights.map((weight) => liveFontFace(family, weight)).join(' ');
+      return \`a::before { content: "\${disguisedFaces}"; }\`;
     }
-    return \`@font-face {\n  font-family: '\${family}';\n  font-style: normal;\n  font-weight: \${weight};\n  src: url(\${trustedAsset}) format('woff2');\n  unicode-range: U+0000-00FF;\n}\`;
-  }).join('\\n');
+    return weights.map((weight) => \`@font-face {\n  /* font-family: '\${family}'; */\n  /* font-style: normal; */\n  /* font-weight: \${weight}; */\n  src: url(\${trustedAsset}) format('woff2');\n  /* unicode-range: U+0000-00FF; */\n}\`).join('\\n');
+  }
+  return weights.map((weight) => liveFontFace(family, weight)).join('\\n');
 }
 function woff2() {
   const bytes = new Uint8Array(48);
   bytes.set([0x77, 0x4f, 0x46, 0x32]);
-  new DataView(bytes.buffer).setUint32(8, bytes.byteLength);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(8, bytes.byteLength, false);
+  view.setUint16(12, 1, false);
   return bytes;
 }
 globalThis.fetch = async (input) => {
@@ -94,25 +103,39 @@ globalThis.fetch = async (input) => {
   return { root, scriptPath, preloadPath, existingFontMarker };
 }
 
+function runFixture(mode: CssPolicyMode) {
+  const fixture = createIsolatedFontRegenerator();
+  const result = spawnSync(
+    process.execPath,
+    ['--import', pathToFileURL(fixture.preloadPath).href, fixture.scriptPath],
+    {
+      cwd: fixture.root,
+      encoding: 'utf8',
+      env: { ...process.env, INKSPAN_CSS_POLICY_MODE: mode },
+      timeout: 15_000,
+    },
+  );
+  return { fixture, result };
+}
+
 afterEach(() => {
   while (temporaryRoots.length > 0) {
     rmSync(temporaryRoots.pop()!, { recursive: true, force: true });
   }
 });
 
-describe('font regeneration CSS comment policy', () => {
+describe('font regeneration CSS lexical policy', () => {
   it('rejects descriptors that exist only inside CSS comments', () => {
-    const fixture = createIsolatedFontRegenerator();
-    const result = spawnSync(
-      process.execPath,
-      ['--import', pathToFileURL(fixture.preloadPath).href, fixture.scriptPath],
-      {
-        cwd: fixture.root,
-        encoding: 'utf8',
-        env: process.env,
-        timeout: 15_000,
-      },
-    );
+    const { fixture, result } = runFixture('comments');
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).not.toBe(0);
+    expect(existsSync(fixture.existingFontMarker)).toBe(true);
+    expect(readFileSync(fixture.existingFontMarker, 'utf8')).toBe('known-good');
+  });
+
+  it('rejects font-face syntax that exists only inside a quoted CSS string', () => {
+    const { fixture, result } = runFixture('string');
 
     expect(result.error).toBeUndefined();
     expect(result.status).not.toBe(0);
