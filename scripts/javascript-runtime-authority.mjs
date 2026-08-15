@@ -150,13 +150,11 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
   }
 
   /**
-   * Recognize an immediately invoked statically written `.bind` call whose
-   * receiver is already known module authority. The bound receiver is never
-   * evaluated. A package argument bound after `thisArg` takes precedence over
-   * the first argument supplied to the resulting function.
+   * Recognize a statically written `.bind` expression whose receiver is already
+   * known module authority. The bound receiver and arguments are never evaluated.
    */
-  function commonJsBoundInvocation(node, authorityPredicate) {
-    const bindCall = unwrapParentheses(node.expression);
+  function commonJsBoundExpression(expression, authorityPredicate) {
+    const bindCall = unwrapParentheses(expression);
     if (!ts.isCallExpression(bindCall)) {
       return null;
     }
@@ -170,11 +168,36 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
       return null;
     }
     return {
-      argument:
-        bindCall.arguments.length > 1
-          ? bindCall.arguments[1]
-          : node.arguments[0],
+      hasArgument: bindCall.arguments.length > 1,
+      argument: bindCall.arguments[1],
     };
+  }
+
+  /** Preserve an explicitly bound package argument even when it is computed. */
+  function commonJsBoundArgument(boundExpression, fallbackArgument) {
+    return boundExpression.hasArgument
+      ? boundExpression.argument
+      : fallbackArgument;
+  }
+
+  /**
+   * Recognize an immediately invoked statically written `.bind` call whose
+   * receiver is already known module authority. A package argument bound after
+   * `thisArg` takes precedence over the first invocation argument.
+   */
+  function commonJsBoundInvocation(node, authorityPredicate) {
+    const boundExpression = commonJsBoundExpression(
+      node.expression,
+      authorityPredicate,
+    );
+    return boundExpression
+      ? {
+          argument: commonJsBoundArgument(
+            boundExpression,
+            node.arguments[0],
+          ),
+        }
+      : null;
   }
 
   /**
@@ -199,6 +222,20 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
       if (target && isCommonJsResolverExpression(target)) {
         return { argument: commonJsApplyArgument(node, 2) };
       }
+      if (target) {
+        const boundTarget = commonJsBoundExpression(
+          target,
+          isCommonJsResolverExpression,
+        );
+        if (boundTarget) {
+          return {
+            argument: commonJsBoundArgument(
+              boundTarget,
+              commonJsApplyArgument(node, 2),
+            ),
+          };
+        }
+      }
     }
 
     const callee = unwrapParentheses(node.expression);
@@ -207,16 +244,26 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
       ts.isElementAccessExpression(callee)
     ) {
       const invocationMethod = staticMemberName(callee);
-      if (
-        (invocationMethod === 'call' || invocationMethod === 'apply') &&
-        isCommonJsResolverExpression(callee.expression)
-      ) {
-        return {
-          argument:
-            invocationMethod === 'call'
-              ? node.arguments[1]
-              : commonJsApplyArgument(node),
-        };
+      if (invocationMethod === 'call' || invocationMethod === 'apply') {
+        const fallbackArgument =
+          invocationMethod === 'call'
+            ? node.arguments[1]
+            : commonJsApplyArgument(node);
+        if (isCommonJsResolverExpression(callee.expression)) {
+          return { argument: fallbackArgument };
+        }
+        const boundReceiver = commonJsBoundExpression(
+          callee.expression,
+          isCommonJsResolverExpression,
+        );
+        if (boundReceiver) {
+          return {
+            argument: commonJsBoundArgument(
+              boundReceiver,
+              fallbackArgument,
+            ),
+          };
+        }
       }
     }
     return null;
@@ -244,6 +291,20 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
       if (target && isCommonJsLoaderExpression(target)) {
         return { argument: commonJsApplyArgument(node, 2) };
       }
+      if (target) {
+        const boundTarget = commonJsBoundExpression(
+          target,
+          isCommonJsLoaderExpression,
+        );
+        if (boundTarget) {
+          return {
+            argument: commonJsBoundArgument(
+              boundTarget,
+              commonJsApplyArgument(node, 2),
+            ),
+          };
+        }
+      }
     }
 
     const callee = unwrapParentheses(node.expression);
@@ -252,16 +313,26 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
       ts.isElementAccessExpression(callee)
     ) {
       const invocationMethod = staticMemberName(callee);
-      if (
-        (invocationMethod === 'call' || invocationMethod === 'apply') &&
-        isCommonJsLoaderExpression(callee.expression)
-      ) {
-        return {
-          argument:
-            invocationMethod === 'call'
-              ? node.arguments[1]
-              : commonJsApplyArgument(node),
-        };
+      if (invocationMethod === 'call' || invocationMethod === 'apply') {
+        const fallbackArgument =
+          invocationMethod === 'call'
+            ? node.arguments[1]
+            : commonJsApplyArgument(node);
+        if (isCommonJsLoaderExpression(callee.expression)) {
+          return { argument: fallbackArgument };
+        }
+        const boundReceiver = commonJsBoundExpression(
+          callee.expression,
+          isCommonJsLoaderExpression,
+        );
+        if (boundReceiver) {
+          return {
+            argument: commonJsBoundArgument(
+              boundReceiver,
+              fallbackArgument,
+            ),
+          };
+        }
       }
     }
     return null;
