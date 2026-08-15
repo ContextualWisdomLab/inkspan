@@ -2,6 +2,7 @@ import type { JSONContent } from '@tiptap/core';
 
 const MAX_SPREADSHEET_SOURCE_BYTES = 64 * 1024 * 1024;
 const MAX_VISIBLE_WORKSHEETS = 64;
+const MAX_WORKSHEET_NAME_CODE_UNITS = 1_024;
 const MAX_WORKBOOK_ROWS = 10_000;
 const MAX_WORKSHEET_COLUMNS = 256;
 const MAX_WORKBOOK_CELLS = 262_144;
@@ -199,6 +200,9 @@ export function spreadsheetWorkbookToDocumentJson(
       unsupportedOrCorruptSource();
     }
     if (worksheet.hidden) continue;
+    if (worksheet.name.length > MAX_WORKSHEET_NAME_CODE_UNITS) {
+      resourceLimitExceeded();
+    }
 
     const nextRowCount = rowCount + worksheet.rows.length;
     if (nextRowCount > MAX_WORKBOOK_ROWS) resourceLimitExceeded();
