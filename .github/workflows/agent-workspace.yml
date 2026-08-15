@@ -33,11 +33,12 @@ jobs:
           cache: pnpm
       - name: Install the immutable workspace
         run: pnpm install --frozen-lockfile
-      - name: Stage the exact spreadsheet parser without lifecycle scripts
+      - name: Stage the exact official spreadsheet parser without lifecycle scripts
         run: |
           set -euo pipefail
-          pnpm add --save-exact --ignore-scripts @lokalise/xlsx@0.20.3
-          grep -F 'sha512-9+Wn7Hq2fHoaWJqhWXZXhUF6wNLk6Y5SL/QLLFuv6ChWWYi0lND7EwKeR6Hg8dXgyIc7Pkc0CaDXM+5z2zzi6Q==' pnpm-lock.yaml
+          pnpm add --save-exact --ignore-scripts https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
+          node --input-type=module -e "const XLSX=await import('xlsx'); if (XLSX.version !== '0.20.3') throw new Error('Unexpected SheetJS runtime version: '+XLSX.version);"
+          grep -F 'cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz' pnpm-lock.yaml
       - name: Archive the exact source and installed dependency graph
         run: |
           set -euo pipefail
