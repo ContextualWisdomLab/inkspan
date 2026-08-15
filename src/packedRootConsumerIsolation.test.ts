@@ -45,4 +45,12 @@ describe('packed root consumer release evidence', () => {
       "join(verificationDirectory, 'node_modules')",
     );
   });
+
+  it('proves resolved entrypoints are canonically contained by the extracted package', () => {
+    expect(verifierSource).toContain('realpathSync');
+    expect(verifierSource).toContain('relative(');
+    expect(verifierSource).toContain('isAbsolute(');
+    expect(verifierSource).toContain('assertResolvedInsidePackedPackage');
+    expect(verifierSource).not.toContain('includes(packagePathFragment)');
+  });
 });
