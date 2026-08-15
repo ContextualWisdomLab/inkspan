@@ -176,6 +176,8 @@ interface PreparedWorksheet {
 export function spreadsheetWorkbookToDocumentJson(
   workbook: SpreadsheetWorkbookData,
 ): SpreadsheetImportResult {
+  if (!Array.isArray(workbook.worksheets)) unsupportedOrCorruptSource();
+
   const preparedWorksheets: PreparedWorksheet[] = [];
   let worksheetCount = 0;
   let rowCount = 0;
@@ -186,7 +188,8 @@ export function spreadsheetWorkbookToDocumentJson(
   for (const worksheet of workbook.worksheets) {
     if (
       typeof worksheet.hidden !== 'boolean' ||
-      typeof worksheet.name !== 'string'
+      typeof worksheet.name !== 'string' ||
+      !Array.isArray(worksheet.rows)
     ) {
       unsupportedOrCorruptSource();
     }
@@ -195,10 +198,11 @@ export function spreadsheetWorkbookToDocumentJson(
     const nextRowCount = rowCount + worksheet.rows.length;
     if (nextRowCount > MAX_WORKBOOK_ROWS) resourceLimitExceeded();
 
-    const columnCount = worksheet.rows.reduce(
-      (maxColumns, row) => Math.max(maxColumns, row.length),
-      0,
-    );
+    let columnCount = 0;
+    for (const row of worksheet.rows) {
+      if (!Array.isArray(row)) unsupportedOrCorruptSource();
+      columnCount = Math.max(columnCount, row.length);
+    }
     if (columnCount === 0) continue;
     if (worksheetCount >= MAX_VISIBLE_WORKSHEETS) resourceLimitExceeded();
     if (columnCount > MAX_WORKSHEET_COLUMNS) resourceLimitExceeded();
