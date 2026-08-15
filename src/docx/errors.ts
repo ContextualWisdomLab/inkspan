@@ -37,6 +37,8 @@ const ERROR_MESSAGES: Readonly<Record<DocxImportErrorCode, string>> =
       'The DOCX package uses an unsupported ZIP archive feature.',
   });
 
+const DOCX_IMPORT_ERROR_BRAND = new WeakSet<object>();
+
 /** Payload-redacted error thrown by every public DOCX import failure. */
 export class DocxImportError extends Error {
   /** Stable failure category safe for host telemetry. */
@@ -47,6 +49,7 @@ export class DocxImportError extends Error {
     super(ERROR_MESSAGES[code]);
     this.name = 'DocxImportError';
     this.code = code;
+    DOCX_IMPORT_ERROR_BRAND.add(this);
   }
 }
 
@@ -55,7 +58,7 @@ export function normalizeDocxImportError(
   error: unknown,
   fallback: DocxImportErrorCode,
 ): DocxImportError {
-  return error instanceof DocxImportError
-    ? error
+  return DOCX_IMPORT_ERROR_BRAND.has(error as object)
+    ? (error as DocxImportError)
     : new DocxImportError(fallback);
 }
