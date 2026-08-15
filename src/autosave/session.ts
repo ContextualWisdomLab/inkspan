@@ -265,21 +265,21 @@ function readDurableSaveResult(
 ): DocumentAutosaveDurableSaveResult | null {
   try {
     if (typeof value !== 'object' || value === null) return null;
-    const keys = Reflect.ownKeys(value);
     const statusDescriptor = Object.getOwnPropertyDescriptor(value, 'status');
     if (
       statusDescriptor === undefined ||
-      !Object.prototype.hasOwnProperty.call(statusDescriptor, 'value')
+      !Object.prototype.hasOwnProperty.call(statusDescriptor, 'value') ||
+      (statusDescriptor.value !== 'conflict' && statusDescriptor.value !== 'saved')
     ) {
       return null;
     }
+    const keys = Reflect.ownKeys(value);
     if (statusDescriptor.value === 'conflict') {
       return keys.length === 1 && keys[0] === 'status'
         ? Object.freeze({ status: 'conflict' })
         : null;
     }
     if (
-      statusDescriptor.value !== 'saved' ||
       keys.length !== 2 ||
       !keys.includes('status') ||
       !keys.includes('nextStrongEntityTag')
