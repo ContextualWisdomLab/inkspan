@@ -32,16 +32,21 @@ export async function validateContentTypes(
   ) {
     throw new DocxImportError('invalid_docx');
   }
-  const accepted = childElements(
+  const documentOverrides = childElements(
     root,
     'Override',
     CONTENT_TYPES_NAMESPACE,
-  ).some(
+  ).filter(
     (entry) =>
-      packageAttribute(entry, 'PartName') === `/${DOCUMENT_PATH}` &&
-      packageAttribute(entry, 'ContentType') === MAIN_DOCUMENT_CONTENT_TYPE,
+      packageAttribute(entry, 'PartName') === `/${DOCUMENT_PATH}`,
   );
-  if (!accepted) throw new DocxImportError('invalid_docx');
+  if (
+    documentOverrides.length !== 1 ||
+    packageAttribute(documentOverrides[0]!, 'ContentType') !==
+      MAIN_DOCUMENT_CONTENT_TYPE
+  ) {
+    throw new DocxImportError('invalid_docx');
+  }
 }
 
 /** Parse document relationships without following any target. */
