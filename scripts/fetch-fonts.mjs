@@ -53,12 +53,10 @@ const FAMILIES = [
   { css: 'Noto Sans TC', slug: 'noto-sans-tc', family: 'Noto Sans TC', weights: [400] },
 ];
 
-const SRC_URL_RE = /url\((https:\/\/[^)]+\.woff2)\)/g;
-const FAMILY_RE = /font-family:\s*(?:"([^"]+)"|'([^']+)')\s*;/g;
-const STYLE_RE = /font-style:\s*([a-z-]+)\s*;/gi;
-const STRETCH_RE = /font-stretch:\s*([^;]*);/gi;
-const RANGE_RE = /unicode-range:\s*([^;]+);/g;
-const WEIGHT_RE = /font-weight:\s*(\d+)\s*;/g;
+const SOURCE_VALUE_RE = /^url\((https:\/\/[^)]+\.woff2)\)\s+format\((?:"woff2"|'woff2')\)$/i;
+const FAMILY_VALUE_RE = /^(?:"([^"]+)"|'([^']+)')$/;
+const STYLE_VALUE_RE = /^[a-z-]+$/i;
+const WEIGHT_VALUE_RE = /^\d+$/;
 const UNICODE_RANGE_HEX_RE = /^[0-9a-f]{1,6}$/i;
 const UNICODE_RANGE_WILDCARD_RE = /^[0-9a-f]*\?+$/i;
 
@@ -313,6 +311,58 @@ function collectBoundedFontFaceBlocks(css) {
   return blocks;
 }
 
+/**
+ * Split one accepted font-face body into declaration values without treating
+ * semicolons or descriptor-looking text inside strings/functions as metadata.
+ */
+function collectFontFaceDeclarations(block) {
+  const declarations = new Map();
+  let cursor = 0;
+  let declarationStart = 0;
+  let parenthesisDepth = 0;
+
+  while (cursor < block.length) {
+    if (block[cursor] === '"' || block[cursor] === "'") {
+      cursor = skipCssString(block, cursor);
+      continue;
+    }
+    if (block[cursor] === '(') {
+      parenthesisDepth += 1;
+      cursor += 1;
+      continue;
+    }
+    if (block[cursor] === ')') {
+      if (parenthesisDepth === 0) invalidCssLexicalStructure();
+      parenthesisDepth -= 1;
+      cursor += 1;
+      continue;
+    }
+    if (block[cursor] !== ';' || parenthesisDepth !== 0) {
+      cursor += 1;
+      continue;
+    }
+
+    const declaration = block.slice(declarationStart, cursor).trim();
+    declarationStart = cursor + 1;
+    cursor += 1;
+    if (!declaration) continue;
+
+    const colonIndex = declaration.indexOf(':');
+    if (colonIndex <= 0) invalidCssLexicalStructure();
+    const name = declaration.slice(0, colonIndex).trim().toLowerCase();
+    const value = declaration.slice(colonIndex + 1).trim();
+    if (!/^[a-z-]+$/.test(name) || !value) invalidCssLexicalStructure();
+    const values = declarations.get(name) ?? [];
+    values.push(value);
+    declarations.set(name, values);
+  }
+
+  if (parenthesisDepth !== 0 || block.slice(declarationStart).trim() !== '') {
+    invalidCssLexicalStructure();
+  }
+  return declarations;
+}
+
 /** Read one response body without allowing per-subset or per-family overrun. */
 async function readBoundedFontBody(response, remainingFamilyBytes) {
   const declaredLength = response.headers.get('content-length');
@@ -397,67 +447,76 @@ async function processFamily(def, outputFilesDir) {
   const requestedWeightCounts = {};
 
   for (const block of blocks) {
-    const urlMatches = [...block.matchAll(SRC_URL_RE)];
-    if (urlMatches.length === 0) continue;
-    if (urlMatches.length !== 1) {
+    const declarations = collectFontFaceDeclarations(block);
+    const sourceValues = declarations.get('src') ?? [];
+    if (sourceValues.length === 0) continue;
+    if (sourceValues.length !== 1) {
+      throw new Error('Google Fonts returned ambiguous font source metadata');
+    }
+    const sourceMatch = SOURCE_VALUE_RE.exec(sourceValues[0]);
+    if (sourceMatch === null) {
       throw new Error('Google Fonts returned ambiguous font source metadata');
     }
 
-    const familyMatches = [...block.matchAll(FAMILY_RE)];
-    if (familyMatches.length !== 1) {
+    const familyValues = declarations.get('font-family') ?? [];
+    if (familyValues.length !== 1) {
       throw new Error('Google Fonts returned ambiguous font family metadata');
     }
-    const family = familyMatches[0][1] ?? familyMatches[0][2];
+    const familyMatch = FAMILY_VALUE_RE.exec(familyValues[0]);
+    if (familyMatch === null) {
+      throw new Error('Google Fonts returned ambiguous font family metadata');
+    }
+    const family = familyMatch[1] ?? familyMatch[2];
     if (family !== def.family) {
       throw new Error('Google Fonts returned unexpected font family metadata');
     }
 
-    const styleMatches = [...block.matchAll(STYLE_RE)];
-    if (styleMatches.length !== 1) {
+    const styleValues = declarations.get('font-style') ?? [];
+    if (styleValues.length !== 1 || !STYLE_VALUE_RE.test(styleValues[0])) {
       throw new Error('Google Fonts returned ambiguous font style metadata');
     }
-    const style = styleMatches[0][1].toLowerCase();
+    const style = styleValues[0].toLowerCase();
     if (style !== 'normal') {
       throw new Error('Google Fonts returned unexpected font style metadata');
     }
 
-    const stretchMatches = [...block.matchAll(STRETCH_RE)];
-    if (stretchMatches.length > 1) {
+    const stretchValues = declarations.get('font-stretch') ?? [];
+    if (stretchValues.length > 1) {
       throw new Error('Google Fonts returned ambiguous font stretch metadata');
     }
     const stretch =
-      stretchMatches.length === 0
+      stretchValues.length === 0
         ? 'normal'
-        : stretchMatches[0][1].trim().toLowerCase();
+        : stretchValues[0].trim().toLowerCase();
     if (stretch !== 'normal') {
       throw new Error('Google Fonts returned unexpected font stretch metadata');
     }
 
-    const weightMatches = [...block.matchAll(WEIGHT_RE)];
-    if (weightMatches.length === 0) {
+    const weightValues = declarations.get('font-weight') ?? [];
+    if (weightValues.length === 0) {
       throw new Error('Google Fonts returned unexpected font weight metadata');
     }
-    if (weightMatches.length !== 1) {
+    if (weightValues.length !== 1 || !WEIGHT_VALUE_RE.test(weightValues[0])) {
       throw new Error('Google Fonts returned ambiguous font weight metadata');
     }
-    const weight = weightMatches[0][1];
+    const weight = weightValues[0];
     if (!def.weights.includes(Number(weight))) {
       throw new Error('Google Fonts returned unexpected font weight metadata');
     }
 
-    const rangeMatches = [...block.matchAll(RANGE_RE)];
-    if (rangeMatches.length === 0) {
+    const rangeValues = declarations.get('unicode-range') ?? [];
+    if (rangeValues.length === 0) {
       throw new Error('Google Fonts returned invalid unicode-range metadata');
     }
-    if (rangeMatches.length !== 1) {
+    if (rangeValues.length !== 1) {
       throw new Error('Google Fonts returned ambiguous unicode-range metadata');
     }
-    const range = rangeMatches[0][1].trim();
+    const range = rangeValues[0].trim();
     if (!range || !isValidUnicodeRangeDescriptor(range)) {
       throw new Error('Google Fonts returned invalid unicode-range metadata');
     }
 
-    const source = validateFontAssetUrl(urlMatches[0][1]);
+    const source = validateFontAssetUrl(sourceMatch[1]);
     const normalizedRange = range
       .split(',')
       .map((term) => term.trim().toLowerCase())
