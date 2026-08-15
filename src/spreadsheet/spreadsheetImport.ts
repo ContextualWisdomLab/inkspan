@@ -190,6 +190,8 @@ export function spreadsheetWorkbookToDocumentJson(
   // Preflight the complete workbook before allocating proportional TipTap nodes.
   for (const worksheet of workbook.worksheets) {
     if (
+      typeof worksheet !== 'object' ||
+      worksheet === null ||
       typeof worksheet.hidden !== 'boolean' ||
       typeof worksheet.name !== 'string' ||
       !Array.isArray(worksheet.rows)
