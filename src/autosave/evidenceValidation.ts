@@ -174,7 +174,14 @@ export function isDeeplyFrozenDocumentJson(rootValue: unknown): boolean {
 
       const prototype = Object.getPrototypeOf(currentValue);
       if (prototype !== Object.prototype && prototype !== null) return false;
-      for (const key of Reflect.ownKeys(currentValue)) {
+      const ownKeys = Reflect.ownKeys(currentValue);
+      if (
+        ownKeys.length > 0 &&
+        childDepth > MAX_AUTOSAVE_EVIDENCE_NESTING_DEPTH
+      ) {
+        return false;
+      }
+      for (const key of ownKeys) {
         if (typeof key !== 'string') return false;
         const descriptor = Object.getOwnPropertyDescriptor(currentValue, key);
         if (
