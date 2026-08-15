@@ -17,6 +17,15 @@ function workflowJob(source: string, jobName: string, nextJobName: string): stri
   return source.slice(start, end);
 }
 
+/** Extract one named workflow step so unrelated steps cannot satisfy its contract. */
+function workflowStep(source: string, stepName: string, nextStepName: string): string {
+  const start = source.indexOf(`      - name: ${stepName}`);
+  const end = source.indexOf(`      - name: ${nextStepName}`, start + 1);
+  expect(start).toBeGreaterThan(-1);
+  expect(end).toBeGreaterThan(start);
+  return source.slice(start, end);
+}
+
 describe('release artifact checkout authority', () => {
   it('binds the artifact build to the exact tag SHA without persisted credentials before setup', () => {
     const workflow = repositoryFile('.github/workflows/release.yml');
@@ -25,40 +34,59 @@ describe('release artifact checkout authority', () => {
       'build-release-artifacts',
       'browser-release-evidence',
     );
+    const checkoutStep = workflowStep(
+      buildJob,
+      'Check out the tagged source',
+      'Verify exact checkout',
+    );
+    const verifyStep = workflowStep(
+      buildJob,
+      'Verify exact checkout',
+      'Set up pnpm',
+    );
 
-    const checkoutIndex = buildJob.indexOf('name: Check out the tagged source');
-    const verifyIndex = buildJob.indexOf('name: Verify exact checkout');
-    const pnpmIndex = buildJob.indexOf('name: Set up pnpm');
-    const nodeIndex = buildJob.indexOf('name: Set up Node.js');
-    const pythonIndex = buildJob.indexOf('name: Set up Python');
+    expect(checkoutStep).toContain('uses: actions/checkout@');
+    expect(checkoutStep).toContain('with:');
+    expect(checkoutStep).toContain('ref: ${{ github.sha }}');
+    expect(checkoutStep).toContain('fetch-depth: 0');
+    expect(checkoutStep).toContain('persist-credentials: false');
+    expect(verifyStep).toContain('INKSPAN_EXPECTED_HEAD_SHA: ${{ github.sha }}');
+    expect(verifyStep).toContain('actual_head="$(git rev-parse HEAD)"');
+    expect(verifyStep).toContain(
+      'test "$actual_head" = "$INKSPAN_EXPECTED_HEAD_SHA"',
+    );
 
-    expect(checkoutIndex).toBeGreaterThan(-1);
-    expect(buildJob).toContain('ref: ${{ github.sha }}');
-    expect(buildJob).toContain('persist-credentials: false');
-    expect(verifyIndex).toBeGreaterThan(checkoutIndex);
-    expect(verifyIndex).toBeLessThan(pnpmIndex);
-    expect(verifyIndex).toBeLessThan(nodeIndex);
-    expect(verifyIndex).toBeLessThan(pythonIndex);
-    expect(buildJob).toContain('INKSPAN_EXPECTED_HEAD_SHA: ${{ github.sha }}');
-    expect(buildJob).toContain('actual_head="$(git rev-parse HEAD)"');
-    expect(buildJob).toContain('test "$actual_head" = "$INKSPAN_EXPECTED_HEAD_SHA"');
+    expect(buildJob.indexOf('name: Verify exact checkout')).toBeLessThan(
+      buildJob.indexOf('name: Set up pnpm'),
+    );
+    expect(buildJob.indexOf('name: Verify exact checkout')).toBeLessThan(
+      buildJob.indexOf('name: Set up Node.js'),
+    );
+    expect(buildJob.indexOf('name: Verify exact checkout')).toBeLessThan(
+      buildJob.indexOf('name: Set up Python'),
+    );
   });
 
-  it('fails closed on prerelease tags instead of allowing a registry-skipping release path', () => {
+  it('preserves the established prerelease tag semantics while npm publication remains gated', () => {
     const workflow = repositoryFile('.github/workflows/release.yml');
     const buildJob = workflowJob(
       workflow,
       'build-release-artifacts',
       'browser-release-evidence',
     );
+    const identityStep = workflowStep(
+      buildJob,
+      'Verify release identity and current main tip',
+      'Install JavaScript dependencies',
+    );
 
-    expect(buildJob).toContain(
-      "if (!/^v(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$/.test(releaseTag))",
+    expect(identityStep).toContain(
+      "if (!/^v(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?$/.test(releaseTag))",
     );
-    expect(buildJob).toContain(
-      'Release tag is not valid stable semantic version syntax',
+    expect(identityStep).toContain('Release tag is not valid semantic version syntax');
+    expect(identityStep).not.toContain('valid stable semantic version syntax');
+    expect(workflow).toContain(
+      "github.repository == 'ContextualWisdomLab/inkspan' && !contains(github.ref_name, '-')",
     );
-    expect(buildJob).not.toContain('(?:-[0-9A-Za-z.-]+)?');
-    expect(workflow).toContain("!contains(github.ref_name, '-')");
   });
 });
