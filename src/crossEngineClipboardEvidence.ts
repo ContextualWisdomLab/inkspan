@@ -252,6 +252,18 @@ function canonicalJson(value: unknown): string {
   return JSON.stringify(canonicalizeJson(value, 0, new WeakSet<object>()));
 }
 
+/** Read one ordinary enumerable JSON data property without invoking its value. */
+function readEnumerableJsonDataProperty(
+  container: object,
+  key: string,
+): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(container, key)!;
+  if (!descriptor.enumerable || !('value' in descriptor)) {
+    throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
+  }
+  return descriptor.value;
+}
+
 /** Preserve array order and values while normalizing unordered JSON object members. */
 function canonicalizeJson(
   value: unknown,
@@ -284,17 +296,23 @@ function canonicalizeJson(
   active.add(value);
   try {
     if (Array.isArray(value)) {
-      const keys = Object.keys(value);
+      const ownKeys = Reflect.ownKeys(value);
       if (
-        keys.length !== value.length ||
-        keys.some((key, index) => key !== String(index))
+        ownKeys.length !== value.length + 1 ||
+        ownKeys.some((key, index) =>
+          index < value.length ? key !== String(index) : key !== 'length',
+        )
       ) {
         throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
       }
-      return keys.map((key) => {
-        const descriptor = Object.getOwnPropertyDescriptor(value, key)!;
-        return canonicalizeJson(descriptor.value, depth + 1, active);
-      });
+      const keys = ownKeys.slice(0, -1) as string[];
+      return keys.map((key) =>
+        canonicalizeJson(
+          readEnumerableJsonDataProperty(value, key),
+          depth + 1,
+          active,
+        ),
+      );
     }
 
     const prototype = Object.getPrototypeOf(value);
@@ -303,13 +321,22 @@ function canonicalizeJson(
     }
 
     const record = value as Record<string, unknown>;
+    const ownKeys = Reflect.ownKeys(record);
+    if (ownKeys.some((key) => typeof key !== 'string')) {
+      throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
+    }
+    const keys = ownKeys as string[];
     return Object.fromEntries(
-      Object.keys(record)
+      keys
         .sort()
-        .map((key) => {
-          const descriptor = Object.getOwnPropertyDescriptor(record, key)!;
-          return [key, canonicalizeJson(descriptor.value, depth + 1, active)];
-        }),
+        .map((key) => [
+          key,
+          canonicalizeJson(
+            readEnumerableJsonDataProperty(record, key),
+            depth + 1,
+            active,
+          ),
+        ]),
     );
   } finally {
     active.delete(value);
