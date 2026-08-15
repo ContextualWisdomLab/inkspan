@@ -463,8 +463,9 @@ export async function parseDocxPackage(
   if (root.localName !== 'document' || !hasNamespace(root, WORD_NAMESPACES)) {
     throw new DocxImportError('invalid_docx');
   }
-  const body = wordChildren(root, 'body')[0];
-  if (!body) throw new DocxImportError('invalid_docx');
+  const bodies = wordChildren(root, 'body');
+  if (bodies.length !== 1) throw new DocxImportError('invalid_docx');
+  const body = bodies[0]!;
 
   const warnings = new WarningCollector();
   const context: ParsingContext = {
