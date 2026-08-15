@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { bytesToBase64 } from './index.js';
+import { bytesToBase64, bytesToDataUri } from './index.js';
 
 const INVALID_BINARY_INPUT_MESSAGE = 'converter binary input is invalid.';
 
@@ -56,6 +56,27 @@ describe('bytesToBase64 runtime byte input', () => {
     expect(bytesToBase64(bytes)).toBe('Zm9v');
     expect(bufferReads).toBe(0);
     expect(byteOffsetReads).toBe(0);
+    expect(byteLengthReads).toBe(0);
+  });
+
+  it('does not re-enter shadowed byte-length metadata in data-URI encoding', () => {
+    const bytes = new Uint8Array([0x66, 0x6f, 0x6f]);
+    let byteLengthReads = 0;
+
+    Object.defineProperty(bytes, 'byteLength', {
+      configurable: true,
+      get() {
+        byteLengthReads += 1;
+        throw new Error('private-byte-length-sentinel');
+      },
+    });
+
+    expect(
+      bytesToDataUri(bytes, {
+        mimeType: 'application/octet-stream',
+        maxBytes: 3,
+      }),
+    ).toBe('data:application/octet-stream;base64,Zm9v');
     expect(byteLengthReads).toBe(0);
   });
 });
