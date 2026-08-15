@@ -25,10 +25,15 @@ export async function parseHeadingStyles(
     throw new DocxImportError('invalid_docx');
   }
   const styles = new Map<string, number>();
+  const paragraphStyleIds = new Set<string>();
   for (const style of wordChildren(root, 'style')) {
     if (wordAttribute(style, 'type') !== 'paragraph') continue;
     const styleId = wordAttribute(style, 'styleId');
     if (!styleId) continue;
+    if (paragraphStyleIds.has(styleId)) {
+      throw new DocxImportError('invalid_docx');
+    }
+    paragraphStyleIds.add(styleId);
     const nameNode = firstWordChild(style, 'name');
     const name = nameNode ? wordAttribute(nameNode, 'val') : undefined;
     const paragraphProperties = firstWordChild(style, 'pPr');
