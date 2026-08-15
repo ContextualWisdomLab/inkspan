@@ -268,6 +268,7 @@ function readDurableSaveResult(
     const statusDescriptor = Object.getOwnPropertyDescriptor(value, 'status');
     if (
       statusDescriptor === undefined ||
+      !statusDescriptor.enumerable ||
       !Object.prototype.hasOwnProperty.call(statusDescriptor, 'value') ||
       (statusDescriptor.value !== 'conflict' && statusDescriptor.value !== 'saved')
     ) {
@@ -292,6 +293,7 @@ function readDurableSaveResult(
     );
     if (
       nextDescriptor === undefined ||
+      !nextDescriptor.enumerable ||
       !Object.prototype.hasOwnProperty.call(nextDescriptor, 'value') ||
       !isStrongHttpEntityTag(nextDescriptor.value)
     ) {
