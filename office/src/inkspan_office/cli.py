@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import stat
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -39,12 +41,27 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _open_regular_request_descriptor(path: str, flags: int) -> int:
+    """Open one request without FIFO blocking and return only regular files."""
+
+    descriptor = os.open(path, flags | getattr(os, "O_NONBLOCK", 0))
+    is_regular = False
+    try:
+        is_regular = stat.S_ISREG(os.fstat(descriptor).st_mode)
+        if not is_regular:
+            raise OfficeDocumentError("input could not be read")
+        return descriptor
+    finally:
+        if not is_regular:
+            os.close(descriptor)
+
+
 def _read_request_text(source: Path) -> str:
     """Read one bounded strict UTF-8 CLI request without unbounded allocation."""
 
     if source.exists() and not source.is_file():
         raise OfficeDocumentError("input could not be read")
-    with source.open("rb") as stream:
+    with open(source, "rb", opener=_open_regular_request_descriptor) as stream:
         raw = stream.read(_MAX_CLI_REQUEST_BYTES + 1)
     if len(raw) > _MAX_CLI_REQUEST_BYTES:
         raise OfficeDocumentError("input exceeds the supported CLI request size")
