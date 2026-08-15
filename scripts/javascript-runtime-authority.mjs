@@ -131,6 +131,23 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
     );
   }
 
+  /** Identify the built-in `Reflect.construct` without resolving aliases. */
+  function isReflectConstructExpression(expression) {
+    const current = unwrapParentheses(expression);
+    if (
+      !ts.isPropertyAccessExpression(current) &&
+      !ts.isElementAccessExpression(current)
+    ) {
+      return false;
+    }
+    const receiver = unwrapParentheses(current.expression);
+    return (
+      staticMemberName(current) === 'construct' &&
+      ts.isIdentifier(receiver) &&
+      receiver.text === 'Reflect'
+    );
+  }
+
   /**
    * Return the first statically written apply payload argument.
    * Non-array, computed, missing, and spread argument lists still identify
@@ -224,6 +241,32 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
   }
 
   /**
+   * Recognize a `Reflect.construct` call whose constructor target is already
+   * known module authority. The argument-list array is inspected statically only.
+   */
+  function commonJsReflectConstructInvocation(node, authorityPredicate) {
+    if (!isReflectConstructExpression(node.expression)) {
+      return null;
+    }
+    const target = node.arguments[0];
+    if (target && authorityPredicate(target)) {
+      return { argument: commonJsApplyArgument(node, 1) };
+    }
+    if (!target) {
+      return null;
+    }
+    const boundTarget = commonJsBoundExpression(target, authorityPredicate);
+    return boundTarget
+      ? {
+          argument: commonJsBoundArgument(
+            boundTarget,
+            commonJsApplyArgument(node, 1),
+          ),
+        }
+      : null;
+  }
+
+  /**
    * Return the package argument for one recognizable CommonJS resolver call.
    * Arbitrary object methods named `resolve` remain outside this authority model.
    */
@@ -238,6 +281,14 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
     );
     if (boundInvocation) {
       return boundInvocation;
+    }
+
+    const reflectConstructInvocation = commonJsReflectConstructInvocation(
+      node,
+      isCommonJsResolverExpression,
+    );
+    if (reflectConstructInvocation) {
+      return reflectConstructInvocation;
     }
 
     if (isReflectApplyExpression(node.expression)) {
@@ -307,6 +358,14 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
     );
     if (boundInvocation) {
       return boundInvocation;
+    }
+
+    const reflectConstructInvocation = commonJsReflectConstructInvocation(
+      node,
+      isCommonJsLoaderExpression,
+    );
+    if (reflectConstructInvocation) {
+      return reflectConstructInvocation;
     }
 
     if (isReflectApplyExpression(node.expression)) {
