@@ -176,6 +176,9 @@ interface PreparedWorksheet {
 export function spreadsheetWorkbookToDocumentJson(
   workbook: SpreadsheetWorkbookData,
 ): SpreadsheetImportResult {
+  if (typeof workbook !== 'object' || workbook === null) {
+    unsupportedOrCorruptSource();
+  }
   if (!Array.isArray(workbook.worksheets)) unsupportedOrCorruptSource();
 
   const preparedWorksheets: PreparedWorksheet[] = [];
