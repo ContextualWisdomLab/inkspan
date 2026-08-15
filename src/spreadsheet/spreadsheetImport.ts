@@ -184,6 +184,12 @@ export function spreadsheetWorkbookToDocumentJson(
 
   // Preflight the complete workbook before allocating proportional TipTap nodes.
   for (const worksheet of workbook.worksheets) {
+    if (
+      typeof worksheet.hidden !== 'boolean' ||
+      typeof worksheet.name !== 'string'
+    ) {
+      unsupportedOrCorruptSource();
+    }
     if (worksheet.hidden) continue;
 
     const nextRowCount = rowCount + worksheet.rows.length;
@@ -207,6 +213,7 @@ export function spreadsheetWorkbookToDocumentJson(
     }
     for (const row of worksheet.rows) {
       for (const cellText of row) {
+        if (typeof cellText !== 'string') unsupportedOrCorruptSource();
         if (cellText.length > MAX_CELL_TEXT_CODE_UNITS) resourceLimitExceeded();
         worksheetTextCodeUnits += cellText.length;
         if (textCodeUnits + worksheetTextCodeUnits > MAX_WORKBOOK_TEXT_CODE_UNITS) {
