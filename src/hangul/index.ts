@@ -149,7 +149,11 @@ function parseBlock(element: Element): HangulDocumentJson {
     return { type: 'codeBlock', content: [{ type: 'text', text: element.textContent as string }] };
   }
   if (tag === 'table') return parseTable(element);
-  return parseParagraph(element);
+  if (tag === 'p') return parseParagraph(element);
+  throw new HangulDocumentError(
+    'UNSUPPORTED_DOCUMENT_NODE',
+    'Hangul import contains an unsupported block node.',
+  );
 }
 
 function htmlToJson(html: string): HangulDocumentJson {
