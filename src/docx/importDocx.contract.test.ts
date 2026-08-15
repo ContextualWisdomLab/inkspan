@@ -170,6 +170,38 @@ describe('DOCX open/import contract', () => {
     expect(arrayBufferOverride).not.toHaveBeenCalled();
   });
 
+  it('uses intrinsic view byte-range metadata instead of caller overrides', async () => {
+    const source = Uint8Array.from(createDocx());
+    const bufferGetter = vi.fn(() => {
+      throw new Error('private buffer getter');
+    });
+    const byteOffsetGetter = vi.fn(() => {
+      throw new Error('private byteOffset getter');
+    });
+    const byteLengthGetter = vi.fn(() => {
+      throw new Error('private byteLength getter');
+    });
+    Object.defineProperty(source, 'buffer', {
+      configurable: true,
+      get: bufferGetter,
+    });
+    Object.defineProperty(source, 'byteOffset', {
+      configurable: true,
+      get: byteOffsetGetter,
+    });
+    Object.defineProperty(source, 'byteLength', {
+      configurable: true,
+      get: byteLengthGetter,
+    });
+
+    const result = await importDocx(source);
+
+    expect(result.documentJson.type).toBe('doc');
+    expect(bufferGetter).not.toHaveBeenCalled();
+    expect(byteOffsetGetter).not.toHaveBeenCalled();
+    expect(byteLengthGetter).not.toHaveBeenCalled();
+  });
+
   it('rejects ambiguous documents with multiple Word bodies', async () => {
     const document =
       `<w:document ${WORD_NAMESPACES}>` +
