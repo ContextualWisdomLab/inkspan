@@ -422,7 +422,8 @@ export function bytesToDataUri(
 ): string {
   const { mimeType, maxBytes } = resolveEncodeOptions(options);
   const bytes = toUint8Array(input);
-  assertSize(bytes.byteLength, maxBytes);
+  const { byteLength } = readUint8ArraySlots(bytes);
+  assertSize(byteLength, maxBytes);
   const mime = mimeType ?? sniffMimeType(bytes) ?? 'application/octet-stream';
   return `data:${mime};base64,${bytesToBase64(bytes)}`;
 }
