@@ -230,6 +230,35 @@ function skipCssComment(css, start) {
 }
 
 /**
+ * Remove actual CSS comments without rewriting quoted string data. A comment
+ * becomes one whitespace byte so removal cannot concatenate surrounding CSS
+ * tokens into a different descriptor name or value.
+ */
+function normalizeCssComments(css) {
+  const chunks = [];
+  let cursor = 0;
+  let segmentStart = 0;
+
+  while (cursor < css.length) {
+    if (css[cursor] === '"' || css[cursor] === "'") {
+      cursor = skipCssString(css, cursor);
+      continue;
+    }
+    if (!css.startsWith('/*', cursor)) {
+      cursor += 1;
+      continue;
+    }
+
+    chunks.push(css.slice(segmentStart, cursor), ' ');
+    cursor = skipCssComment(css, cursor);
+    segmentStart = cursor;
+  }
+
+  chunks.push(css.slice(segmentStart));
+  return chunks.join('');
+}
+
+/**
  * Parse live font-face blocks in one bounded lexical pass. At-rule-looking text
  * inside CSS strings or comments is never promoted to packageable metadata.
  */
@@ -299,11 +328,7 @@ function collectBoundedFontFaceBlocks(css) {
     if (blocks.length >= MAX_FONT_FACE_BLOCKS_PER_FAMILY) {
       throw new Error('Google Fonts returned excessive font-face metadata');
     }
-    blocks.push(
-      css
-        .slice(bodyStart, blockCursor)
-        .replace(/\/\*[\s\S]*?\*\//g, ''),
-    );
+    blocks.push(normalizeCssComments(css.slice(bodyStart, blockCursor)));
     cursor = blockCursor + 1;
   }
 
