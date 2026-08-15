@@ -13,6 +13,10 @@ _MAX_CLI_REQUEST_BYTES = 64 * 1024 * 1024
 _MAX_CLI_JSON_NESTING_DEPTH = 128
 
 
+class _DuplicateJsonObjectNameError(ValueError):
+    """Signal an ambiguous repeated object member without retaining its name."""
+
+
 def _parser() -> argparse.ArgumentParser:
     """Build the argument parser shared by the console script and tests."""
 
@@ -79,6 +83,19 @@ def _reject_nonstandard_json_constant(_value: str) -> None:
     raise ValueError("non-standard JSON numeric constant")
 
 
+def _reject_duplicate_json_object_names(
+    pairs: list[tuple[str, object]],
+) -> dict[str, object]:
+    """Build one JSON object while rejecting repeated decoded member names."""
+
+    result: dict[str, object] = {}
+    for name, value in pairs:
+        if name in result:
+            raise _DuplicateJsonObjectNameError("duplicate JSON object name")
+        result[name] = value
+    return result
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return a process-style status code."""
 
@@ -103,9 +120,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             payload = json.loads(
                 request_text,
                 parse_constant=_reject_nonstandard_json_constant,
+                object_pairs_hook=_reject_duplicate_json_object_names,
             )
         except json.JSONDecodeError as exc:
             raise OfficeDocumentError(f"input must contain valid JSON: {exc.msg}") from exc
+        except _DuplicateJsonObjectNameError as exc:
+            raise OfficeDocumentError("input must not contain duplicate object names") from exc
         except ValueError as exc:
             raise OfficeDocumentError(
                 "input contains a value unsupported by strict JSON parsing"
