@@ -115,7 +115,7 @@ function freezeJson(node: DocxJsonContent): DocxJsonContent {
   const content = node.content?.map((child) => freezeJson(child));
   const marks = node.marks?.map((mark) => Object.freeze({ type: mark.type }));
   return Object.freeze({
-    ...(node.type ? { type: node.type } : {}),
+    type: node.type!,
     ...(node.attrs ? { attrs: Object.freeze({ ...node.attrs }) } : {}),
     ...(content ? { content: Object.freeze(content) } : {}),
     ...(marks ? { marks: Object.freeze(marks) } : {}),
