@@ -101,6 +101,43 @@ describe('cross-engine clipboard consensus resource boundary', () => {
     expect(getterCalls).toBe(0);
   });
 
+  it('rejects hidden and symbol own properties instead of dropping them', () => {
+    const hiddenObject: Record<string, unknown> = { type: 'doc' };
+    Object.defineProperty(hiddenObject, 'privateHidden', {
+      enumerable: false,
+      value: 'must-not-be-dropped',
+    });
+
+    const symbolObject: Record<string, unknown> = { type: 'doc' };
+    Object.defineProperty(symbolObject, Symbol('privateObject'), {
+      enumerable: true,
+      value: 'must-not-be-dropped',
+    });
+
+    const hiddenArray: unknown[] = [{ type: 'paragraph' }];
+    Object.defineProperty(hiddenArray, 'privateHidden', {
+      enumerable: false,
+      value: 'must-not-be-dropped',
+    });
+
+    const symbolArray: unknown[] = [{ type: 'paragraph' }];
+    Object.defineProperty(symbolArray, Symbol('privateArray'), {
+      enumerable: true,
+      value: 'must-not-be-dropped',
+    });
+
+    for (const documentJson of [
+      hiddenObject,
+      symbolObject,
+      { type: 'doc', content: hiddenArray },
+      { type: 'doc', content: symbolArray },
+    ]) {
+      expect(() => assertCrossEngineClipboardConsensus(allEngines(documentJson))).toThrow(
+        RESOURCE_BOUNDARY_ERROR,
+      );
+    }
+  });
+
   it('rejects exotic and lossy array containers instead of normalizing them', () => {
     expect(() =>
       assertCrossEngineClipboardConsensus(
