@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import builtins
 import io
 import json
 import os
@@ -69,16 +70,17 @@ def test_cli_rejects_oversized_request_after_only_one_boundary_byte(
             return super().read(size)
 
     def bounded_source_open(
-        _path: Path,
+        _path: object,
         mode: str = "r",
         *_args: object,
-        **_kwargs: object,
+        **kwargs: object,
     ) -> ObservedBytesIO:
         assert mode == "rb"
+        assert kwargs.get("opener") is cli_module._open_regular_request_descriptor
         return ObservedBytesIO(b'{"private":"do-not-echo"}')
 
     monkeypatch.setattr(cli_module, "_MAX_CLI_REQUEST_BYTES", 4)
-    monkeypatch.setattr(Path, "open", bounded_source_open)
+    monkeypatch.setattr(builtins, "open", bounded_source_open)
 
     with pytest.raises(SystemExit) as exc:
         main([str(source), str(output)])
