@@ -75,4 +75,14 @@ describe('autosave detached evidence array resource preflight', () => {
       getOwnPropertyDescriptor.mockRestore();
     }
   });
+
+  it('accepts an empty object exactly at the maximum nesting depth', () => {
+    const deepestObject = Object.freeze({});
+    let root: Readonly<Record<string, unknown>> = deepestObject;
+    for (let depth = 0; depth < 128; depth += 1) {
+      root = Object.freeze({ child: root });
+    }
+
+    expect(isDeeplyFrozenDocumentJson(root)).toBe(true);
+  });
 });
