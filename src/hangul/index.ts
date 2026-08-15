@@ -79,6 +79,10 @@ function parseInline(parent: ParentNode, marks: HangulDocumentMark[] = []): Hang
       if (text) output.push({ type: 'text', text, ...(marks.length ? { marks } : {}) });
     } else if (child instanceof Element) {
       const tag = child.tagName.toLowerCase();
+      if (tag === 'span') {
+        output.push(...parseInline(child, marks));
+        continue;
+      }
       let mark: HangulDocumentMark;
       if (tag === 'strong' || tag === 'b') mark = { type: 'bold' };
       else if (tag === 'em' || tag === 'i') mark = { type: 'italic' };
