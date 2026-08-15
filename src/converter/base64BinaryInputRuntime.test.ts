@@ -24,6 +24,23 @@ function hostileArrayLike(): {
   return { value, wasLengthRead: () => lengthRead };
 }
 
+function prototypeSpoofedUint8Array(): {
+  value: object;
+  wasByteLengthRead: () => boolean;
+} {
+  let byteLengthRead = false;
+  const value = Object.create(Uint8Array.prototype) as Record<string, unknown>;
+  Object.defineProperty(value, 'byteLength', {
+    enumerable: false,
+    configurable: true,
+    get() {
+      byteLengthRead = true;
+      return 0;
+    },
+  });
+  return { value, wasByteLengthRead: () => byteLengthRead };
+}
+
 function captureFailure(run: () => unknown): unknown {
   try {
     run();
@@ -51,6 +68,26 @@ describe('converter binary input runtime boundary', () => {
     );
 
     expect(hostile.wasLengthRead()).toBe(false);
+    expect(failure).toMatchObject(INVALID_BINARY_INPUT);
+  });
+
+  it('rejects prototype-spoofed Uint8Array values instead of accepting instanceof alone', () => {
+    const hostile = prototypeSpoofedUint8Array();
+
+    const failure = captureFailure(() => toUint8Array(hostile.value as never));
+
+    expect(hostile.wasByteLengthRead()).toBe(false);
+    expect(failure).toMatchObject(INVALID_BINARY_INPUT);
+  });
+
+  it('rejects prototype-spoofed Uint8Array values before caller-member access', () => {
+    const hostile = prototypeSpoofedUint8Array();
+
+    const failure = captureFailure(() =>
+      bytesToDataUri(hostile.value as never),
+    );
+
+    expect(hostile.wasByteLengthRead()).toBe(false);
     expect(failure).toMatchObject(INVALID_BINARY_INPUT);
   });
 });
