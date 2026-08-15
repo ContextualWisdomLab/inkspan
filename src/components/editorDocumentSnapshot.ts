@@ -12,6 +12,7 @@ interface FreezeDocumentJsonFrame {
   exiting: boolean;
 }
 
+const INVALID_EDITOR_MODE_MESSAGE = 'Editor mode must be markdown or html.';
 const INVALID_DOCUMENT_JSON_CONTAINER_MESSAGE =
   'Editor document JSON must contain plain objects and arrays only.';
 const INVALID_DOCUMENT_JSON_PROPERTY_MESSAGE =
@@ -21,6 +22,12 @@ const INVALID_DOCUMENT_JSON_VALUE_MESSAGE =
 const INVALID_DOCUMENT_JSON_ARRAY_MESSAGE =
   'Editor document JSON arrays must contain dense elements only.';
 const JSON_SCALAR_TYPES = new Set(['string', 'boolean']);
+
+function assertEditorMode(mode: EditorMode): void {
+  if (mode !== 'markdown' && mode !== 'html') {
+    throw new RangeError(INVALID_EDITOR_MODE_MESSAGE);
+  }
+}
 
 function isJsonArray(value: object): boolean {
   try {
@@ -180,6 +187,7 @@ export function createEditorDocumentSnapshot(
   editor: Editor | null,
   mode: EditorMode,
 ): CwlEditorDocumentSnapshot {
+  assertEditorMode(mode);
   if (!editor) {
     return Object.freeze({
       mode,
