@@ -201,6 +201,29 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
   }
 
   /**
+   * Recognize statically written constructor use of known CommonJS authority.
+   * The constructor target and package argument are inspected syntactically only;
+   * aliases, arbitrary receivers, and computed property names remain unresolved.
+   */
+  function commonJsConstructorInvocation(node, authorityPredicate) {
+    if (authorityPredicate(node.expression)) {
+      return { argument: node.arguments?.[0] };
+    }
+    const boundExpression = commonJsBoundExpression(
+      node.expression,
+      authorityPredicate,
+    );
+    return boundExpression
+      ? {
+          argument: commonJsBoundArgument(
+            boundExpression,
+            node.arguments?.[0],
+          ),
+        }
+      : null;
+  }
+
+  /**
    * Return the package argument for one recognizable CommonJS resolver call.
    * Arbitrary object methods named `resolve` remain outside this authority model.
    */
@@ -352,6 +375,30 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
         offset: node.getStart(sourceFile),
         specifier: literalSpecifier(node.moduleSpecifier),
       });
+    } else if (ts.isNewExpression(node)) {
+      const resolverInvocation = commonJsConstructorInvocation(
+        node,
+        isCommonJsResolverExpression,
+      );
+      if (resolverInvocation) {
+        findings.push({
+          kind: 'commonjs-resolve',
+          offset: node.getStart(sourceFile),
+          specifier: literalSpecifier(resolverInvocation.argument),
+        });
+      } else {
+        const invocation = commonJsConstructorInvocation(
+          node,
+          isCommonJsLoaderExpression,
+        );
+        if (invocation) {
+          findings.push({
+            kind: 'commonjs-require',
+            offset: node.getStart(sourceFile),
+            specifier: literalSpecifier(invocation.argument),
+          });
+        }
+      }
     } else if (ts.isCallExpression(node)) {
       if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
         findings.push({
