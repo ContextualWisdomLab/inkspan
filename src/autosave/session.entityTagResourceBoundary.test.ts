@@ -156,4 +156,36 @@ describe('durable autosave entity-tag resource boundary', () => {
     expect((capturedError as Error).message).not.toContain(PRIVATE_ETAG_MARKER);
     expect(ownKeysCalls).toBe(0);
   });
+
+  it('rejects non-enumerable durable result fields as non-contract objects', async () => {
+    const hiddenConflict = Object.defineProperty({}, 'status', {
+      value: 'conflict',
+      enumerable: false,
+    });
+    const hiddenValidator = Object.defineProperties(
+      {},
+      {
+        status: { value: 'saved', enumerable: true },
+        nextStrongEntityTag: { value: '"server-two"', enumerable: false },
+      },
+    );
+
+    for (const invalidResult of [hiddenConflict, hiddenValidator]) {
+      const session = createDocumentAutosaveSession({
+        initialStrongEntityTag: '"server-one"',
+        save: () => invalidResult as never,
+      });
+
+      const capturedError = await session.enqueue(createEvidence()).then(
+        () => null,
+        (error: unknown) => error,
+      );
+
+      expect(capturedError).toMatchObject({ code: 'invalid_save_result' });
+      expect(session.getSnapshot()).toMatchObject({
+        state: 'blocked',
+        durableStrongEntityTag: '"server-one"',
+      });
+    }
+  });
 });
