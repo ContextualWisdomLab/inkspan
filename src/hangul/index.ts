@@ -79,14 +79,17 @@ function parseInline(parent: ParentNode, marks: HangulDocumentMark[] = []): Hang
       if (text) output.push({ type: 'text', text, ...(marks.length ? { marks } : {}) });
     } else if (child instanceof Element) {
       const tag = child.tagName.toLowerCase();
-      const next = tag === 'strong' || tag === 'b'
-        ? [...marks, { type: 'bold' }]
-        : tag === 'em' || tag === 'i'
-          ? [...marks, { type: 'italic' }]
-          : tag === 's' || tag === 'strike'
-            ? [...marks, { type: 'strike' }]
-            : marks;
-      output.push(...parseInline(child, next));
+      let mark: HangulDocumentMark;
+      if (tag === 'strong' || tag === 'b') mark = { type: 'bold' };
+      else if (tag === 'em' || tag === 'i') mark = { type: 'italic' };
+      else if (tag === 's' || tag === 'strike') mark = { type: 'strike' };
+      else {
+        throw new HangulDocumentError(
+          'UNSUPPORTED_DOCUMENT_MARK',
+          'Hangul import contains an unsupported inline mark.',
+        );
+      }
+      output.push(...parseInline(child, [...marks, mark]));
     }
   }
   return output;
