@@ -29,4 +29,27 @@ describe('autosave detached evidence array resource preflight', () => {
     expect(isDeeplyFrozenDocumentJson(proxiedArray)).toBe(true);
     expect(lengthRead).toBe(false);
   });
+
+  it('rejects over-depth array children before reading their descriptors', () => {
+    const deepestArray: readonly unknown[] = Object.freeze([null]);
+    let root: readonly unknown[] = deepestArray;
+    for (let depth = 0; depth < 128; depth += 1) {
+      root = Object.freeze([root]);
+    }
+
+    const getOwnPropertyDescriptor = vi.spyOn(
+      Object,
+      'getOwnPropertyDescriptor',
+    );
+    try {
+      expect(isDeeplyFrozenDocumentJson(root)).toBe(false);
+      expect(
+        getOwnPropertyDescriptor.mock.calls.some(
+          ([value, property]) => value === deepestArray && property === '0',
+        ),
+      ).toBe(false);
+    } finally {
+      getOwnPropertyDescriptor.mockRestore();
+    }
+  });
 });
