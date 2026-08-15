@@ -1,13 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 describe('spreadsheet package subpath contract', () => {
   it('declares an independently built framework-neutral spreadsheet surface', () => {
-    const packageJsonPath = fileURLToPath(
-      new URL('../../package.json', import.meta.url),
-    );
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as {
+    const repositoryRoot = process.cwd();
+    const packageJson = JSON.parse(
+      readFileSync(resolve(repositoryRoot, 'package.json'), 'utf8'),
+    ) as {
       exports?: Record<string, unknown>;
       scripts?: Record<string, string>;
     };
@@ -23,14 +23,12 @@ describe('spreadsheet package subpath contract', () => {
     );
 
     const requiredFiles = [
-      './index.ts',
-      '../../vite.spreadsheet.config.ts',
-      '../../scripts/verify-spreadsheet-subpath-package.mjs',
+      'src/spreadsheet/index.ts',
+      'vite.spreadsheet.config.ts',
+      'scripts/verify-spreadsheet-subpath-package.mjs',
     ];
     for (const relativePath of requiredFiles) {
-      expect(
-        existsSync(fileURLToPath(new URL(relativePath, import.meta.url))),
-      ).toBe(true);
+      expect(existsSync(resolve(repositoryRoot, relativePath))).toBe(true);
     }
   });
 });
