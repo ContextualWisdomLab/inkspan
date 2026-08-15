@@ -42,6 +42,8 @@ def _parser() -> argparse.ArgumentParser:
 def _read_request_text(source: Path) -> str:
     """Read one bounded strict UTF-8 CLI request without unbounded allocation."""
 
+    if source.exists() and not source.is_file():
+        raise OfficeDocumentError("input could not be read")
     with source.open("rb") as stream:
         raw = stream.read(_MAX_CLI_REQUEST_BYTES + 1)
     if len(raw) > _MAX_CLI_REQUEST_BYTES:
