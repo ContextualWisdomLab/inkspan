@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createDocx, PNG_BYTES } from '../../test/docxFixture.js';
+import {
+  createDocx,
+  PNG_BYTES,
+  WORD_NAMESPACES,
+} from '../../test/docxFixture.js';
 import {
   DocxImportError,
   importDocx,
@@ -164,6 +168,19 @@ describe('DOCX open/import contract', () => {
 
     expect(result.documentJson.type).toBe('doc');
     expect(arrayBufferOverride).not.toHaveBeenCalled();
+  });
+
+  it('rejects ambiguous documents with multiple Word bodies', async () => {
+    const document =
+      `<w:document ${WORD_NAMESPACES}>` +
+      '<w:body><w:p><w:r><w:t>first</w:t></w:r></w:p></w:body>' +
+      '<w:body><w:p><w:r><w:t>second</w:t></w:r></w:p></w:body>' +
+      '</w:document>';
+
+    await expect(importDocx(createDocx({ document }))).rejects.toMatchObject({
+      name: 'DocxImportError',
+      code: 'invalid_docx',
+    });
   });
 
   it('validates the complete imported document before one atomic editor mutation', async () => {
