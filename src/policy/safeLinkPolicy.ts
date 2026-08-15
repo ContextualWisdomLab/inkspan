@@ -4,11 +4,13 @@
  * The policy permits HTTPS/HTTP, mailto, tel, document-relative, query-only,
  * and fragment links while rejecting protocol-relative targets, executable or
  * local schemes, embedded credentials, backslashes, literal whitespace/control
- * characters, malformed absolute URLs, and unknown schemes.
+ * characters, bidirectional formatting controls, malformed absolute URLs, and
+ * unknown schemes.
  */
 const SAFE_ABSOLUTE_SCHEMES = new Set(['http', 'https', 'mailto', 'tel']);
 const URI_SCHEME_PATTERN = /^([a-z][a-z0-9+.-]*):/i;
-const FORBIDDEN_LINK_CHARACTER_PATTERN = /[\u0000-\u0020\u007f-\u009f\\]/u;
+const FORBIDDEN_LINK_CHARACTER_PATTERN =
+  /[\u0000-\u0020\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069\\]/u;
 
 /** Return a bounded, secret-free category for an untrusted hyperlink target. */
 function redactLinkHref(href: unknown): string {
@@ -52,8 +54,9 @@ function validateWebHref(href: string): void {
  *
  * Allowed targets are absolute HTTP(S), non-empty mailto/tel, and ordinary
  * document-relative/query/fragment references. Literal whitespace, control
- * characters, and backslashes are rejected rather than canonicalized so an
- * obfuscated executable scheme cannot acquire a different browser meaning.
+ * characters, bidirectional formatting controls, and backslashes are rejected
+ * rather than canonicalized so an obfuscated or deceptively rendered target
+ * cannot acquire a different browser or reviewer-visible meaning.
  */
 export function validateSafeLinkHref(href: unknown): string {
   if (
