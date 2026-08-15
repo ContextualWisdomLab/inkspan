@@ -130,4 +130,30 @@ describe('durable autosave entity-tag resource boundary', () => {
     ).toBe(true);
     expect(JSON.stringify(observedSnapshots)).not.toContain(PRIVATE_ETAG_MARKER);
   });
+
+  it('rejects malformed save status before enumerating caller-owned keys', async () => {
+    let ownKeysCalls = 0;
+    const invalidResult = new Proxy(
+      { status: 'invalid' },
+      {
+        ownKeys() {
+          ownKeysCalls += 1;
+          throw new Error(PRIVATE_ETAG_MARKER);
+        },
+      },
+    );
+    const session = createDocumentAutosaveSession({
+      initialStrongEntityTag: '"server-one"',
+      save: () => invalidResult as never,
+    });
+
+    const capturedError = await session.enqueue(createEvidence()).then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+    expect(capturedError).toMatchObject({ code: 'invalid_save_result' });
+    expect((capturedError as Error).message).not.toContain(PRIVATE_ETAG_MARKER);
+    expect(ownKeysCalls).toBe(0);
+  });
 });
