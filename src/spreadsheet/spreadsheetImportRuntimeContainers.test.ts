@@ -23,6 +23,19 @@ function expectUnsupportedSource(action: () => unknown): void {
 }
 
 describe('spreadsheetWorkbookToDocumentJson runtime containers', () => {
+  it.each([null, undefined, 0, 'workbook']) (
+    'rejects non-object workbook containers with the stable domain error',
+    (invalidWorkbook) => {
+      expectUnsupportedSource(() =>
+        spreadsheetWorkbookToDocumentJson(
+          invalidWorkbook as unknown as Parameters<
+            typeof spreadsheetWorkbookToDocumentJson
+          >[0],
+        ),
+      );
+    },
+  );
+
   it('rejects a non-array worksheet collection before reading its iterator', () => {
     let iteratorRead = false;
     const hostileWorksheets = Object.create(null) as Record<PropertyKey, unknown>;
