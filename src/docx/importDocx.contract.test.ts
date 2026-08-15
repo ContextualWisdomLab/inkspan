@@ -18,6 +18,13 @@ const SOURCE_CASES: readonly [
 ][] = [
   ['ArrayBuffer', (bytes) => Uint8Array.from(bytes).buffer],
   ['Uint8Array', (bytes) => bytes],
+  [
+    'DataView',
+    (bytes) => {
+      const copied = Uint8Array.from(bytes);
+      return new DataView(copied.buffer);
+    },
+  ],
   ['Blob', (bytes) => new Blob([Uint8Array.from(bytes)])],
 ];
 
@@ -200,6 +207,17 @@ describe('DOCX open/import contract', () => {
     expect(bufferGetter).not.toHaveBeenCalled();
     expect(byteOffsetGetter).not.toHaveBeenCalled();
     expect(byteLengthGetter).not.toHaveBeenCalled();
+  });
+
+  it('fails closed for SharedArrayBuffer-backed views', async () => {
+    const bytes = createDocx();
+    const source = new Uint8Array(new SharedArrayBuffer(bytes.byteLength));
+    source.set(bytes);
+
+    await expect(importDocx(source)).rejects.toMatchObject({
+      name: 'DocxImportError',
+      code: 'invalid_source',
+    });
   });
 
   it('rejects ambiguous documents with multiple Word bodies', async () => {
