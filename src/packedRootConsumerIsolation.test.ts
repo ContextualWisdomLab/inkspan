@@ -35,4 +35,14 @@ describe('packed root consumer release evidence', () => {
       "join(repositoryRoot, '.package-verification-')",
     );
   });
+
+  it('reuses only the frozen dependency substrate outside the packed package tree', () => {
+    expect(verifierSource).toContain('symlinkSync(');
+    expect(verifierSource).toContain(
+      "join(repositoryRoot, 'node_modules')",
+    );
+    expect(verifierSource).toContain(
+      "join(verificationDirectory, 'node_modules')",
+    );
+  });
 });
