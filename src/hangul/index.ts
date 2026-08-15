@@ -61,12 +61,21 @@ export interface HangulDocumentExportResult {
   warnings: readonly string[];
 }
 
+/** Module-owned identity brand that never reflects over untrusted thrown values. */
+const HANGUL_DOCUMENT_ERRORS = new WeakSet<object>();
+
 /** Stable error type for unsupported or unsafe conversion states. */
 export class HangulDocumentError extends Error {
   constructor(readonly code: string, message: string) {
     super(message);
     this.name = 'HangulDocumentError';
+    HANGUL_DOCUMENT_ERRORS.add(this);
   }
+}
+
+/** Return whether a thrown value was created by this module without prototype traversal. */
+function isHangulDocumentError(error: unknown): error is HangulDocumentError {
+  return HANGUL_DOCUMENT_ERRORS.has(error as object);
 }
 
 const TEXT_ALIGNMENTS = new Set(['left', 'center', 'right', 'justify']);
@@ -277,7 +286,7 @@ export async function exportHangulDocument(documentJson: HangulDocumentJson, opt
       if (bytes.byteLength > (options.maxOutputBytes ?? 64 * 1024 * 1024)) throw new HangulDocumentError('OUTPUT_LIMIT_EXCEEDED', 'Hangul export exceeds the configured limit.');
       return { format, bytes, warnings: Object.freeze([]) };
     } catch (error) {
-      if (error instanceof HangulDocumentError) throw error;
+      if (isHangulDocumentError(error)) throw error;
       throw new HangulDocumentError('ENGINE_OPERATION_FAILED', 'The Hangul engine failed during export.');
     }
   } finally { document.free?.(); }
