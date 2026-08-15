@@ -5,17 +5,14 @@
  *
  * Inkspan permits HTTPS/HTTP, mailto, tel, document-relative, query-only, and
  * fragment links. Protocol-relative URLs, executable/local schemes, embedded
- * credentials, backslashes, literal whitespace/control characters, malformed
- * absolute URLs, and unknown schemes are rejected.
+ * credentials, backslashes, literal whitespace/control characters,
+ * bidirectional formatting controls, malformed absolute URLs, and unknown
+ * schemes are rejected.
  */
 import Link from '@tiptap/extension-link';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
-import {
-  SafeLinkHrefError,
-  isSafeLinkHref,
-  validateSafeLinkHref,
-} from '../policy/safeLinkPolicy.js';
+import { isSafeLinkHref } from '../policy/safeLinkPolicy.js';
 
 export {
   SafeLinkHrefError,
@@ -61,10 +58,5 @@ export const SafeLink = Link.extend({
     ];
   },
 });
-
-// Keep the named error reachable from this long-standing extension module for
-// source-compatible consumers while the implementation lives in the pure policy.
-void SafeLinkHrefError;
-void validateSafeLinkHref;
 
 export default SafeLink;
