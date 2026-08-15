@@ -274,35 +274,36 @@ function readDurableSaveResult(
     ) {
       return null;
     }
+    if (statusDescriptor.value === 'saved') {
+      const nextDescriptor = Object.getOwnPropertyDescriptor(
+        value,
+        'nextStrongEntityTag',
+      );
+      if (
+        nextDescriptor === undefined ||
+        !nextDescriptor.enumerable ||
+        !Object.prototype.hasOwnProperty.call(nextDescriptor, 'value') ||
+        !isStrongHttpEntityTag(nextDescriptor.value)
+      ) {
+        return null;
+      }
+      const keys = Reflect.ownKeys(value);
+      if (
+        keys.length !== 2 ||
+        !keys.includes('status') ||
+        !keys.includes('nextStrongEntityTag')
+      ) {
+        return null;
+      }
+      return Object.freeze({
+        status: 'saved',
+        nextStrongEntityTag: nextDescriptor.value,
+      });
+    }
     const keys = Reflect.ownKeys(value);
-    if (statusDescriptor.value === 'conflict') {
-      return keys.length === 1 && keys[0] === 'status'
-        ? Object.freeze({ status: 'conflict' })
-        : null;
-    }
-    if (
-      keys.length !== 2 ||
-      !keys.includes('status') ||
-      !keys.includes('nextStrongEntityTag')
-    ) {
-      return null;
-    }
-    const nextDescriptor = Object.getOwnPropertyDescriptor(
-      value,
-      'nextStrongEntityTag',
-    );
-    if (
-      nextDescriptor === undefined ||
-      !nextDescriptor.enumerable ||
-      !Object.prototype.hasOwnProperty.call(nextDescriptor, 'value') ||
-      !isStrongHttpEntityTag(nextDescriptor.value)
-    ) {
-      return null;
-    }
-    return Object.freeze({
-      status: 'saved',
-      nextStrongEntityTag: nextDescriptor.value,
-    });
+    return keys.length === 1 && keys[0] === 'status'
+      ? Object.freeze({ status: 'conflict' })
+      : null;
   } catch {
     return null;
   }
