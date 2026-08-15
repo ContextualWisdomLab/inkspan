@@ -53,7 +53,6 @@ const FAMILIES = [
   { css: 'Noto Sans TC', slug: 'noto-sans-tc', family: 'Noto Sans TC', weights: [400] },
 ];
 
-const FONT_FACE_RE = /@font-face\s*{([^}]*)}/g;
 const SRC_URL_RE = /url\((https:\/\/[^)]+\.woff2)\)/g;
 const FAMILY_RE = /font-family:\s*(?:"([^"]+)"|'([^']+)')\s*;/g;
 const STYLE_RE = /font-style:\s*([a-z-]+)\s*;/gi;
@@ -198,20 +197,119 @@ function isValidUnicodeRangeDescriptor(value) {
   );
 }
 
+/** Fail closed when a bounded CSS response cannot be lexed deterministically. */
+function invalidCssLexicalStructure() {
+  throw new Error('Google Fonts returned invalid CSS lexical structure');
+}
+
+/** Skip one quoted CSS string without interpreting its contents. */
+function skipCssString(css, start) {
+  const quote = css[start];
+  let cursor = start + 1;
+  while (cursor < css.length) {
+    const char = css[cursor];
+    if (char === quote) return cursor + 1;
+    if (char === '\\') {
+      cursor += 1;
+      if (cursor >= css.length) invalidCssLexicalStructure();
+      if (css[cursor] === '\r' && css[cursor + 1] === '\n') cursor += 1;
+      cursor += 1;
+      continue;
+    }
+    if (char === '\n' || char === '\r' || char === '\f') {
+      invalidCssLexicalStructure();
+    }
+    cursor += 1;
+  }
+  invalidCssLexicalStructure();
+}
+
+/** Skip one CSS comment, rejecting an unterminated input instead of recovering it. */
+function skipCssComment(css, start) {
+  const end = css.indexOf('*/', start + 2);
+  if (end < 0) invalidCssLexicalStructure();
+  return end + 2;
+}
+
 /**
- * Parse font-face blocks without materializing an unbounded attacker-controlled
- * expansion. CSS comments are removed first so descriptor-like text inside a
- * comment can never be mistaken for live font metadata.
+ * Parse live font-face blocks in one bounded lexical pass. At-rule-looking text
+ * inside CSS strings or comments is never promoted to packageable metadata.
  */
 function collectBoundedFontFaceBlocks(css) {
-  const commentFreeCss = css.replace(/\/\*[\s\S]*?(?:\*\/|$)/g, '');
   const blocks = [];
-  for (const match of commentFreeCss.matchAll(FONT_FACE_RE)) {
+  let cursor = 0;
+  let braceDepth = 0;
+
+  while (cursor < css.length) {
+    if (css.startsWith('/*', cursor)) {
+      cursor = skipCssComment(css, cursor);
+      continue;
+    }
+    if (css[cursor] === '"' || css[cursor] === "'") {
+      cursor = skipCssString(css, cursor);
+      continue;
+    }
+    if (css[cursor] === '{') {
+      braceDepth += 1;
+      cursor += 1;
+      continue;
+    }
+    if (css[cursor] === '}') {
+      if (braceDepth === 0) invalidCssLexicalStructure();
+      braceDepth -= 1;
+      cursor += 1;
+      continue;
+    }
+    if (braceDepth !== 0 || !css.startsWith('@font-face', cursor)) {
+      cursor += 1;
+      continue;
+    }
+
+    let blockCursor = cursor + '@font-face'.length;
+    while (blockCursor < css.length) {
+      if (/\s/.test(css[blockCursor])) {
+        blockCursor += 1;
+        continue;
+      }
+      if (css.startsWith('/*', blockCursor)) {
+        blockCursor = skipCssComment(css, blockCursor);
+        continue;
+      }
+      break;
+    }
+    if (css[blockCursor] !== '{') {
+      cursor += 1;
+      continue;
+    }
+
+    const bodyStart = blockCursor + 1;
+    blockCursor = bodyStart;
+    while (blockCursor < css.length) {
+      if (css.startsWith('/*', blockCursor)) {
+        blockCursor = skipCssComment(css, blockCursor);
+        continue;
+      }
+      if (css[blockCursor] === '"' || css[blockCursor] === "'") {
+        blockCursor = skipCssString(css, blockCursor);
+        continue;
+      }
+      if (css[blockCursor] === '{') invalidCssLexicalStructure();
+      if (css[blockCursor] === '}') break;
+      blockCursor += 1;
+    }
+    if (blockCursor >= css.length) invalidCssLexicalStructure();
     if (blocks.length >= MAX_FONT_FACE_BLOCKS_PER_FAMILY) {
       throw new Error('Google Fonts returned excessive font-face metadata');
     }
-    blocks.push(match[1]);
+    blocks.push(
+      css
+        .slice(bodyStart, blockCursor)
+        .replace(/\/\*[\s\S]*?\*\//g, ''),
+    );
+    cursor = blockCursor + 1;
   }
+
+  if (braceDepth !== 0) invalidCssLexicalStructure();
   return blocks;
 }
 
