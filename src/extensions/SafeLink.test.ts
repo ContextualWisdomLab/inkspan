@@ -68,6 +68,8 @@ describe('validateSafeLinkHref', () => {
     'https://',
     'https://user:secret@example.com/path',
     'http://user@example.com/path',
+    'docs/visible\u202Ehidden',
+    'https://example.com/visible\u2066hidden',
   ])('rejects unsafe link target %s', (href) => {
     expect(() => validateSafeLinkHref(href)).toThrow(SafeLinkHrefError);
     expect(isSafeLinkHref(href)).toBe(false);
