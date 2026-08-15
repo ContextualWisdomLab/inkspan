@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 const temporaryRoots: string[] = [];
 
-type CssPolicyMode = 'comments' | 'string';
+type CssPolicyMode = 'comments' | 'string' | 'descriptor-string';
 
 function createIsolatedFontRegenerator(): {
   root: string;
@@ -59,6 +59,9 @@ function requestedFamily(url) {
 function liveFontFace(family, weight) {
   return \`@font-face { font-family: '\${family}'; font-style: normal; font-weight: \${weight}; src: url(\${trustedAsset}) format('woff2'); unicode-range: U+0000-00FF; }\`;
 }
+function quotedDescriptorFontFace(family, weight) {
+  return \`@font-face { content: "font-family: '\${family}'; font-style: normal; font-weight: \${weight}; src: url(\${trustedAsset}) format('woff2'); unicode-range: U+0000-00FF;"; }\`;
+}
 function cssFor(url) {
   const definition = requestedFamily(url);
   if (!definition) throw new Error('unexpected family request');
@@ -67,6 +70,9 @@ function cssFor(url) {
     if (process.env.INKSPAN_CSS_POLICY_MODE === 'string') {
       const disguisedFaces = weights.map((weight) => liveFontFace(family, weight)).join(' ');
       return \`a::before { content: "\${disguisedFaces}"; }\`;
+    }
+    if (process.env.INKSPAN_CSS_POLICY_MODE === 'descriptor-string') {
+      return weights.map((weight) => quotedDescriptorFontFace(family, weight)).join('\\n');
     }
     return weights.map((weight) => \`@font-face {\n  /* font-family: '\${family}'; */\n  /* font-style: normal; */\n  /* font-weight: \${weight}; */\n  src: url(\${trustedAsset}) format('woff2');\n  /* unicode-range: U+0000-00FF; */\n}\`).join('\\n');
   }
@@ -136,6 +142,15 @@ describe('font regeneration CSS lexical policy', () => {
 
   it('rejects font-face syntax that exists only inside a quoted CSS string', () => {
     const { fixture, result } = runFixture('string');
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).not.toBe(0);
+    expect(existsSync(fixture.existingFontMarker)).toBe(true);
+    expect(readFileSync(fixture.existingFontMarker, 'utf8')).toBe('known-good');
+  });
+
+  it('rejects font-face descriptors that exist only inside a quoted CSS string', () => {
+    const { fixture, result } = runFixture('descriptor-string');
 
     expect(result.error).toBeUndefined();
     expect(result.status).not.toBe(0);
