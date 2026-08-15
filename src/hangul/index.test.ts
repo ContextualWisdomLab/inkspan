@@ -153,6 +153,29 @@ describe('Hangul document bridge', () => {
     expect(source.freed).toBe(true);
   });
 
+  it('rejects unsupported imported inline marks instead of silently losing them', async () => {
+    const source = new FakeDocument();
+    source.selectionHtml =
+      '<p>before<a href="https://tenant-secret.invalid/path">sensitive link</a>after</p>';
+    let caught: unknown;
+
+    try {
+      await openHangulDocument(new Uint8Array([9]), {
+        engine: createEngine(source),
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toMatchObject({
+      code: 'UNSUPPORTED_DOCUMENT_MARK',
+      message: 'Hangul import contains an unsupported inline mark.',
+    });
+    expect((caught as Error).message).not.toContain('tenant-secret');
+    expect((caught as Error).message).not.toContain('sensitive link');
+    expect(source.freed).toBe(true);
+  });
+
   it('preserves aligned paragraphs, lists, quotes, code blocks, and basic tables', async () => {
     const source = new FakeDocument();
     source.selectionHtml = [
