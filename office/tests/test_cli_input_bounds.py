@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import threading
 from pathlib import Path
 
 import pytest
@@ -86,6 +88,55 @@ def test_cli_rejects_oversized_request_after_only_one_boundary_byte(
     error = capsys.readouterr().err
     assert "supported CLI request size" in error
     assert "do-not-echo" not in error
+
+
+def test_cli_rejects_fifo_request_before_read(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    if not hasattr(os, "mkfifo"):
+        pytest.skip("POSIX FIFO support is unavailable")
+
+    source = tmp_path / "request.fifo"
+    output = tmp_path / "result.docx"
+    os.mkfifo(source)
+    request = json.dumps(
+        {
+            "format": "docx",
+            "blocks": [{"type": "paragraph", "text": "bounded FIFO"}],
+        }
+    ).encode("utf-8")
+    writer_errors: list[BaseException] = []
+
+    def write_valid_request() -> None:
+        try:
+            with source.open("wb", buffering=0) as stream:
+                stream.write(request)
+        except BaseException as exc:  # pragma: no cover - surfaced below
+            writer_errors.append(exc)
+
+    writer = threading.Thread(target=write_valid_request, daemon=True)
+    writer.start()
+    try:
+        with pytest.raises(SystemExit) as exc:
+            main([str(source), str(output)])
+
+        assert exc.value.code == 2
+        error = capsys.readouterr().err
+        assert "input could not be read" in error
+        assert not output.exists()
+    finally:
+        if writer.is_alive():
+            rescue_fd = os.open(source, os.O_RDONLY | os.O_NONBLOCK)
+            try:
+                writer.join(timeout=2)
+            finally:
+                os.close(rescue_fd)
+        else:
+            writer.join(timeout=2)
+
+    assert not writer.is_alive()
+    assert writer_errors == []
 
 
 def test_cli_rejects_invalid_utf8_without_echoing_request_bytes(
