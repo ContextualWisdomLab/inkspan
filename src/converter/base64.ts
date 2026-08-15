@@ -81,6 +81,23 @@ const ARRAY_BUFFER_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
   ArrayBuffer.prototype,
   'byteLength',
 )!.get!;
+const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(Uint8Array.prototype) as object;
+const TYPED_ARRAY_BUFFER_GETTER = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  'buffer',
+)!.get!;
+const TYPED_ARRAY_BYTE_OFFSET_GETTER = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  'byteOffset',
+)!.get!;
+const TYPED_ARRAY_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  'byteLength',
+)!.get!;
+const TYPED_ARRAY_TAG_GETTER = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  Symbol.toStringTag,
+)!.get!;
 const BLOB_SIZE_GETTER = Object.getOwnPropertyDescriptor(
   Blob.prototype,
   'size',
@@ -92,25 +109,45 @@ const BLOB_TYPE_GETTER = Object.getOwnPropertyDescriptor(
 
 const hasBuffer = typeof globalThis.Buffer !== 'undefined';
 
+interface Uint8ArraySlots {
+  buffer: ArrayBufferLike;
+  byteOffset: number;
+  byteLength: number;
+}
+
+/** Read genuine Uint8Array slots without evaluating caller-owned properties. */
+function readUint8ArraySlots(input: unknown): Uint8ArraySlots {
+  try {
+    if (TYPED_ARRAY_TAG_GETTER.call(input) !== 'Uint8Array') {
+      throw new TypeError(INVALID_BINARY_INPUT_MESSAGE);
+    }
+    return {
+      buffer: TYPED_ARRAY_BUFFER_GETTER.call(input) as ArrayBufferLike,
+      byteOffset: TYPED_ARRAY_BYTE_OFFSET_GETTER.call(input) as number,
+      byteLength: TYPED_ARRAY_BYTE_LENGTH_GETTER.call(input) as number,
+    };
+  } catch {
+    throw new TypeError(INVALID_BINARY_INPUT_MESSAGE);
+  }
+}
+
 /** Encode raw bytes to a base64 string. Works in Node and the browser. */
 export function bytesToBase64(bytes: Uint8Array): string {
+  const { buffer, byteOffset, byteLength } = readUint8ArraySlots(bytes);
+  const view = new Uint8Array(buffer, byteOffset, byteLength);
   /* v8 ignore start -- browser-only fallback: Node and jsdom always provide Buffer */
   if (!hasBuffer) {
     let binary = '';
     const chunkSize = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      const chunk = bytes.subarray(i, i + chunkSize);
+    for (let i = 0; i < view.length; i += chunkSize) {
+      const chunk = view.subarray(i, i + chunkSize);
       binary += String.fromCharCode(...chunk);
     }
     // eslint-disable-next-line no-undef
     return btoa(binary);
   }
   /* v8 ignore stop */
-  return globalThis.Buffer.from(
-    bytes.buffer,
-    bytes.byteOffset,
-    bytes.byteLength,
-  ).toString('base64');
+  return globalThis.Buffer.from(buffer, byteOffset, byteLength).toString('base64');
 }
 
 /**
