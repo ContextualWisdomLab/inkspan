@@ -7,6 +7,12 @@ const INLINE_RASTER_SOURCE_PREFIX_PATTERN =
 /** One canonical base64 payload code unit; padding is handled separately. */
 const BASE64_PAYLOAD_CODE_UNIT_PATTERN = /^[A-Za-z0-9+/]$/;
 
+/** Valid final sextets before `==`; their four unused low bits are zero. */
+const BASE64_DOUBLE_PADDING_FINAL_CODE_UNIT_PATTERN = /^[AQgw]$/;
+
+/** Valid final sextets before `=`; their two unused low bits are zero. */
+const BASE64_SINGLE_PADDING_FINAL_CODE_UNIT_PATTERN = /^[AEIMQUYcgkosw048]$/;
+
 /** Fixed public categories that reveal no caller-defined scheme label. */
 const PUBLIC_IMAGE_SOURCE_SCHEME_PATTERN =
   /^(?:data|https?|blob|file|javascript)$/i;
@@ -44,7 +50,8 @@ function inlineRasterByteLength(source: string, payloadOffset: number): number {
  * The MIME/prefix regex sees only a bounded prefix. Payload code units are then
  * inspected incrementally so malformed-source precedence remains authoritative
  * even for oversized candidates. Canonical padding is inferred only from the
- * final one or two code units; any earlier `=` is rejected by the payload scan.
+ * final one or two code units; any earlier `=` is rejected by the payload scan,
+ * and unused bits in the final data sextet must be zero.
  */
 function strictInlineRasterPayloadOffset(source: string): number | null {
   const prefixMatch = INLINE_RASTER_SOURCE_PREFIX_PATTERN.exec(
@@ -62,6 +69,20 @@ function strictInlineRasterPayloadOffset(source: string): number | null {
     if (!BASE64_PAYLOAD_CODE_UNIT_PATTERN.test(source.charAt(index))) {
       return null;
     }
+  }
+
+  const finalDataCodeUnit = source.charAt(payloadDataEnd - 1);
+  if (
+    padding === 2 &&
+    !BASE64_DOUBLE_PADDING_FINAL_CODE_UNIT_PATTERN.test(finalDataCodeUnit)
+  ) {
+    return null;
+  }
+  if (
+    padding === 1 &&
+    !BASE64_SINGLE_PADDING_FINAL_CODE_UNIT_PATTERN.test(finalDataCodeUnit)
+  ) {
+    return null;
   }
   return payloadOffset;
 }
