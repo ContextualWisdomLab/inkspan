@@ -8,6 +8,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -21,7 +22,7 @@ const packageJson = JSON.parse(
 );
 const packageName = packageJson.name;
 const verificationDirectory = mkdtempSync(
-  join(repositoryRoot, '.package-verification-'),
+  join(tmpdir(), 'inkspan-package-verification-'),
 );
 const consumerDirectory = join(verificationDirectory, 'consumer');
 const packedPackageDirectory = join(
