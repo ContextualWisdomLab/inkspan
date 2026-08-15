@@ -9,6 +9,40 @@ import type {
 } from './types.js';
 import { ZipArchive } from './zip.js';
 
+const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(
+  Uint8Array.prototype,
+) as object;
+const TYPED_ARRAY_BUFFER_GETTER = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  'buffer',
+)!.get!;
+const TYPED_ARRAY_BYTE_OFFSET_GETTER = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  'byteOffset',
+)!.get!;
+const TYPED_ARRAY_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  'byteLength',
+)!.get!;
+const DATA_VIEW_BUFFER_GETTER = Object.getOwnPropertyDescriptor(
+  DataView.prototype,
+  'buffer',
+)!.get!;
+const DATA_VIEW_BYTE_OFFSET_GETTER = Object.getOwnPropertyDescriptor(
+  DataView.prototype,
+  'byteOffset',
+)!.get!;
+const DATA_VIEW_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
+  DataView.prototype,
+  'byteLength',
+)!.get!;
+
+interface ArrayBufferViewRange {
+  readonly buffer: ArrayBufferLike;
+  readonly byteOffset: number;
+  readonly byteLength: number;
+}
+
 /** Read Blob size through the platform prototype without invoking caller overrides. */
 function readBlobSize(blob: Blob): number {
   const getter = Object.getOwnPropertyDescriptor(Blob.prototype, 'size')!.get!;
@@ -43,6 +77,23 @@ async function readBlobBytes(blob: Blob): Promise<Uint8Array> {
   });
 }
 
+/** Read one genuine ArrayBuffer view range without invoking caller overrides. */
+function readArrayBufferViewRange(source: ArrayBufferView): ArrayBufferViewRange {
+  try {
+    return {
+      buffer: TYPED_ARRAY_BUFFER_GETTER.call(source) as ArrayBufferLike,
+      byteOffset: TYPED_ARRAY_BYTE_OFFSET_GETTER.call(source) as number,
+      byteLength: TYPED_ARRAY_BYTE_LENGTH_GETTER.call(source) as number,
+    };
+  } catch {
+    return {
+      buffer: DATA_VIEW_BUFFER_GETTER.call(source) as ArrayBufferLike,
+      byteOffset: DATA_VIEW_BYTE_OFFSET_GETTER.call(source) as number,
+      byteLength: DATA_VIEW_BYTE_LENGTH_GETTER.call(source) as number,
+    };
+  }
+}
+
 /** Copy one accepted binary source into an immutable import snapshot. */
 async function snapshotSource(
   source: DocxSource,
@@ -52,8 +103,12 @@ async function snapshotSource(
     let view: Uint8Array;
     if (source instanceof ArrayBuffer) {
       view = new Uint8Array(source);
-    } else if (ArrayBuffer.isView(source) && source.buffer instanceof ArrayBuffer) {
-      view = new Uint8Array(source.buffer, source.byteOffset, source.byteLength);
+    } else if (ArrayBuffer.isView(source)) {
+      const { buffer, byteOffset, byteLength } = readArrayBufferViewRange(source);
+      if (!(buffer instanceof ArrayBuffer)) {
+        throw new DocxImportError('invalid_source');
+      }
+      view = new Uint8Array(buffer, byteOffset, byteLength);
     } else if (typeof Blob !== 'undefined' && source instanceof Blob) {
       if (readBlobSize(source) > maxArchiveBytes) {
         throw new DocxImportError('input_too_large');
