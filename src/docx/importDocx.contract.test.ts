@@ -110,6 +110,48 @@ describe('DOCX open/import contract', () => {
     expect(arrayBufferGetter).not.toHaveBeenCalled();
   });
 
+  it('uses a callable platform Blob byte reader without caller method lookup', async () => {
+    const bytes = createDocx();
+    const source = new Blob([Uint8Array.from(bytes)]);
+    const originalDescriptor = Object.getOwnPropertyDescriptor(
+      Blob.prototype,
+      'arrayBuffer',
+    );
+    const platformArrayBuffer = vi.fn(async function (this: Blob) {
+      expect(this).toBe(source);
+      return Uint8Array.from(bytes).buffer;
+    });
+    const callerOverride = vi.fn(async () => new ArrayBuffer(0));
+
+    Object.defineProperty(Blob.prototype, 'arrayBuffer', {
+      configurable: true,
+      value: platformArrayBuffer,
+      writable: true,
+    });
+    Object.defineProperty(source, 'arrayBuffer', {
+      configurable: true,
+      value: callerOverride,
+    });
+
+    try {
+      const result = await importDocx(source);
+
+      expect(result.documentJson.type).toBe('doc');
+      expect(platformArrayBuffer).toHaveBeenCalledTimes(1);
+      expect(callerOverride).not.toHaveBeenCalled();
+    } finally {
+      if (originalDescriptor === undefined) {
+        Reflect.deleteProperty(Blob.prototype, 'arrayBuffer');
+      } else {
+        Object.defineProperty(
+          Blob.prototype,
+          'arrayBuffer',
+          originalDescriptor,
+        );
+      }
+    }
+  });
+
   it('ignores caller Blob data-function overrides while reading intrinsic bytes', async () => {
     const source = new Blob([Uint8Array.from(createDocx())]);
     const arrayBufferOverride = vi.fn(async () => new ArrayBuffer(0));
