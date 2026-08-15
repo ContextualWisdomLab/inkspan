@@ -195,6 +195,33 @@ test('reports CommonJS authority invoked through Reflect.apply', () => {
   );
 });
 
+test('reports bound CommonJS authority composed through call, apply, and Reflect.apply', () => {
+  const source = [
+    "const called = require.bind(undefined, 'bound-call-package').call(undefined);",
+    "const applied = module.require.bind(module).apply(module, ['bound-apply-package']);",
+    "const reflected = Reflect.apply(require.main.require.bind(require.main, 'reflect-bound-package'), require.main, []);",
+    "const resolved = require.resolve.bind(require, 'bound-resolve-package').call(undefined);",
+    "const reflectedResolved = Reflect.apply(require['resolve'].bind(require), require, [runtimePackageName]);",
+    'const object = { require() {}, resolve() {} };',
+    "const benignCalled = object.require.bind(object, 'not-commonjs').call(object);",
+    "const benignReflected = Reflect.apply(object.resolve.bind(object, 'not-commonjs-resolve'), object, []);",
+    'void [called, applied, reflected, resolved, reflectedResolved, benignCalled, benignReflected];',
+  ].join('\n');
+
+  assert.deepEqual(
+    findRuntimeModuleAuthority(source, 'bound-composition-authority.js').map(
+      ({ kind, specifier }) => ({ kind, specifier }),
+    ),
+    [
+      { kind: 'commonjs-require', specifier: 'bound-call-package' },
+      { kind: 'commonjs-require', specifier: 'bound-apply-package' },
+      { kind: 'commonjs-require', specifier: 'reflect-bound-package' },
+      { kind: 'commonjs-resolve', specifier: 'bound-resolve-package' },
+      { kind: 'commonjs-resolve', specifier: undefined },
+    ],
+  );
+});
+
 test('fails closed when emitted JavaScript is syntactically invalid', () => {
   assert.throws(
     () => findRuntimeModuleAuthority('const = ;', 'broken.js'),
