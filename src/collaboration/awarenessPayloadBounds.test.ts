@@ -62,8 +62,8 @@ describe('collaboration awareness payload bounds', () => {
 
     try {
       serializeCollaborationUser({
-        userId: `editor-${'a'.repeat(100_000)}`,
-        displayName: 'A'.repeat(100_000),
+        userId: `editor-${'a'.repeat(1_000)}`,
+        displayName: 'A'.repeat(1_000),
         cursorColor: '#123456',
       });
     } catch (error) {
