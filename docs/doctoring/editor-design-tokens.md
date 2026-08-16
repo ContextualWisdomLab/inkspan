@@ -9,34 +9,39 @@
 
 Hosts embed Inkspan and need to match brand color, radius, and font without forking `src/styles.css`. The stylesheet already used `--cwl-*` custom properties, but buyers had no typed catalog, no interchange snapshot, and no Storybook inventory of the repeating toolbar button and editor chrome. Theme work therefore required reading CSS internals.
 
+The same inventory exposed an Inkspan-owned default-theme defect rather than a host-only customization problem: dark `.cwl-tb-btn.is-active` rendered `--cwl-accent` text on `--cwl-accent-soft` at about 4.13:1, below the WCAG 2.2 4.5:1 threshold for normal text. Inkspan now ships dark `--cwl-accent: #58a6ff` against unchanged `--cwl-accent-soft: #163356`, producing about 5.06:1 for the active toolbar pair. Host overrides must still re-check their own resulting pairs.
+
 If contrast fails after a re-theme, override only the named tokens on `.cwl-editor` and re-check WCAG 2.2 text contrast for `--cwl-fg` on `--cwl-bg` and `--cwl-accent` on `--cwl-accent-soft`. Do not disable forced-colors overrides.
 
 ## Decision
 
 1. Keep `src/styles.css` as runtime presentation authority.
 2. Publish `listEditorThemeTokens()` / `getEditorThemeToken()` / `getEditorThemeTokenContrast()` / `toDesignTokenFormatGroup()` as a host-facing catalog of the nine shipped chrome tokens.
-3. Reject unknown token names with a stable payload-redacted `EditorThemeTokenError`.
-4. Preview repeating `.cwl-tb-btn` states, the shipped Toolbar, and token swatches in Storybook.
-5. Add no network, persistence, credential, model, tenant, Figma, or design-tool sync authority.
+3. Keep the shipped light/dark/print catalog values synchronized with the stylesheet and require the inventoried active-toolbar text pair to meet the WCAG 2.2 4.5:1 threshold in Inkspan's own default themes.
+4. Reject unknown token names with a stable payload-redacted `EditorThemeTokenError`.
+5. Preview repeating `.cwl-tb-btn` states, the shipped Toolbar, and token swatches in Storybook.
+6. Add no network, persistence, credential, model, tenant, Figma, or design-tool sync authority.
 
 ## Standards rationale
 
 The Design Tokens Format Module 2025.10 defines a vendor-neutral JSON interchange for token groups, `$type`, and `$value` (Design Tokens Community Group, 2025). Inkspan emits a snapshot of its CSS custom properties in that shape. The report is a W3C Community Final Specification, not a W3C Standard, so this record does not claim W3C standardization or complete DTCG conformance.
 
-WCAG 2.2 requires sufficient contrast for text and user-interface components (World Wide Web Consortium, 2024). Host overrides remain the host's contrast responsibility. Storybook's React/Vite preview is the inventory surface for repeating chrome (Storybook, n.d.).
+WCAG 2.2 requires at least 4.5:1 contrast for normal text under Success Criterion 1.4.3 and at least 3:1 for meaningful user-interface component boundaries/states under Success Criterion 1.4.11 (World Wide Web Consortium, 2024). Inkspan therefore fixes a failing shipped default at its own presentation boundary; host overrides remain the host's contrast responsibility. Storybook's React/Vite preview is the inventory surface for repeating chrome (Storybook, n.d.).
 
 ## Test-first evidence
 
-- RED: `src/designTokens.test.ts` failed because `./designTokens.js` did not exist.
-- GREEN: the catalog lists the nine shipped tokens, aligns light/dark/print color values with the matching `src/styles.css` media blocks, reports WCAG 2.2 contrast for shipped color pairs including the inventoried `--cwl-accent` / `--cwl-accent-soft` active chrome, rejects unknown names without reflecting caller input, and emits a DTCG 2025.10 group.
+- Original RED: `src/designTokens.test.ts` failed because `./designTokens.js` did not exist.
+- Initial GREEN: the catalog lists the nine shipped tokens, aligns light/dark/print color values with the matching `src/styles.css` media blocks, reports WCAG 2.2 contrast for shipped color pairs, rejects unknown names without reflecting caller input, and emits a DTCG 2025.10 group.
+- Accessibility RED: exact test-only head `a831359d1509811ab8777e7356f6ebd5f251b5cf` changed the active-chrome contract to require the shipped dark `--cwl-accent` / `--cwl-accent-soft` pair to meet 4.5:1. The predecessor production values remained `#4493f8` on `#163356` (about 4.13:1), so the new expectation could not pass without a real default-theme change.
+- Accessibility GREEN: dark `--cwl-accent` is `#58a6ff` in both the typed catalog and runtime stylesheet; against unchanged `#163356` it measures about 5.06:1 and `meetsTextContrast` is true. The host override helper remains available for custom themes.
 
 ## Residual risk
 
-Print media still remaps the color tokens after a host override. Forced-colors mode only restyles the toolbar focus outline to `CanvasText`; it does not assign `--cwl-*` values. The shipped dark `.cwl-tb-btn.is-active` pair (`--cwl-accent` on `--cwl-accent-soft`) is below the WCAG 2.2 4.5:1 text threshold and still meets the 3:1 non-text threshold. Hosts must call `getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'dark')` and override those tokens before treating dark active chrome as text-contrast-safe. The font token snapshot splits a CSS font-family list and does not execute CSS. Storybook success is not Chromium/Firefox/WebKit release evidence.
+Print media still remaps the color tokens after a host override. Forced-colors mode only restyles the toolbar focus outline to `CanvasText`; it does not assign `--cwl-*` values. The shipped dark `.cwl-tb-btn.is-active` pair (`--cwl-accent` on `--cwl-accent-soft`) now meets the WCAG 2.2 4.5:1 normal-text threshold and also exceeds the 3:1 non-text threshold; hosts must still call `getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'dark')` after overriding either token because custom values can reintroduce a contrast failure. The font token snapshot splits a CSS font-family list and does not execute CSS. Storybook success is not Chromium/Firefox/WebKit release evidence.
 
 ## Rollback
 
-Rollback must remove the catalog export, this record, the operator guide, the Storybook inventory/config/stories, ADR 0031, the changelog entry, and the documentation-index rows together.
+Rollback must remove the catalog export, this record, the operator guide, the Storybook inventory/config/stories, ADR 0031, the changelog entry, and the documentation-index rows together. Reverting the dark accent value without also reverting the active-pair contrast contract would deliberately recreate a known accessibility defect and is not a valid partial rollback.
 
 ## References (APA 7th edition)
 
