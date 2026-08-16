@@ -28,6 +28,7 @@ export interface SheetJsParserModule {
       readonly cellHTML: false;
       readonly cellNF: false;
       readonly bookVBA: false;
+      readonly sheetRows: number;
     },
   ) => unknown;
   readonly utils: {
@@ -204,8 +205,10 @@ function readDisplayedRows(
 /**
  * Project locally parsed SheetJS workbook data into Inkspan's parser-neutral
  * workbook contract without granting formulas, macros, links, or parser output
- * any editor authority. Decoded worksheet ranges are bounded before row arrays
- * are materialized by `sheet_to_json`.
+ * any editor authority. Parsing is capped one row beyond the accepted aggregate
+ * row ceiling so an oversized source can be rejected without unbounded worksheet
+ * materialization; decoded ranges are then checked against the exact workbook
+ * limits before displayed row arrays are materialized by `sheet_to_json`.
  */
 export function sheetJsBytesToWorkbookData(
   source: Uint8Array,
@@ -220,6 +223,7 @@ export function sheetJsBytesToWorkbookData(
       cellHTML: false,
       cellNF: false,
       bookVBA: false,
+      sheetRows: MAX_WORKBOOK_ROWS + 1,
     });
   } catch {
     unsupportedOrCorruptSource();
