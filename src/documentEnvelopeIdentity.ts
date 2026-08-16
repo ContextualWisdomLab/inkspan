@@ -1,7 +1,7 @@
 import { inspectJsonText } from './jsonObjectNameScanner.js';
 import {
   DEFAULT_DOCUMENT_ENVELOPE_LIMITS,
-  DocumentEnvelopeError,
+  DocumentEnvelopeError as BaseDocumentEnvelopeError,
 } from './documentEnvelope.js';
 import type { DocumentEnvelopeLimits } from './documentEnvelopeLimits.js';
 
@@ -28,6 +28,14 @@ const TYPED_ARRAY_TAG_GETTER = Object.getOwnPropertyDescriptor(
 )!.get!;
 const REDACTED_INSPECTION_ERROR =
   'Document envelope identity could not be inspected safely';
+const IDENTITY_DOCUMENT_ENVELOPE_ERRORS = new WeakSet<object>();
+
+class DocumentEnvelopeError extends BaseDocumentEnvelopeError {
+  constructor(message: string) {
+    super(message);
+    IDENTITY_DOCUMENT_ENVELOPE_ERRORS.add(this);
+  }
+}
 
 /**
  * Routing metadata extracted from a complete versioned document envelope.
@@ -450,7 +458,7 @@ function withRedactedIdentityErrors<T>(operation: () => T): T {
   try {
     return operation();
   } catch (error) {
-    if (error instanceof DocumentEnvelopeError) throw error;
+    if (IDENTITY_DOCUMENT_ENVELOPE_ERRORS.has(error as object)) throw error;
     throw new DocumentEnvelopeError(REDACTED_INSPECTION_ERROR);
   }
 }
