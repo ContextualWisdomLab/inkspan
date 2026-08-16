@@ -4,7 +4,7 @@ import {
   type HangulEngineDocument,
 } from './index.js';
 
-const DOCUMENT = { type: 'doc', content: [{ type: 'paragraph' }] } as const;
+const DOCUMENT = { type: 'doc', content: [{ type: 'paragraph' }] };
 
 function documentWithOutput(output: Uint8Array): HangulEngineDocument {
   return {
