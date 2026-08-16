@@ -127,28 +127,24 @@ interface Uint8ArraySlots {
   byteLength: number;
 }
 
-/** Read genuine Uint8Array slots without evaluating caller-owned properties. */
+/** Read genuine live Uint8Array slots without evaluating caller-owned properties. */
 function readUint8ArraySlots(input: unknown): Uint8ArraySlots {
   try {
     if (TYPED_ARRAY_TAG_GETTER.call(input) !== 'Uint8Array') {
       throw new TypeError(INVALID_BINARY_INPUT_MESSAGE);
     }
-    return {
+    const slots = {
       buffer: TYPED_ARRAY_BUFFER_GETTER.call(input) as ArrayBufferLike,
       byteOffset: TYPED_ARRAY_BYTE_OFFSET_GETTER.call(input) as number,
       byteLength: TYPED_ARRAY_BYTE_LENGTH_GETTER.call(input) as number,
     };
-  } catch {
-    throw new TypeError(INVALID_BINARY_INPUT_MESSAGE);
-  }
-}
-
-/** Reject detached Uint8Array storage before exposing it to later consumers. */
-function assertUsableUint8Array(input: Uint8Array): void {
-  const { buffer, byteOffset, byteLength } = readUint8ArraySlots(input);
-  try {
-    const probe = new Uint8Array(buffer, byteOffset, byteLength);
+    const probe = new Uint8Array(
+      slots.buffer,
+      slots.byteOffset,
+      slots.byteLength,
+    );
     void probe;
+    return slots;
   } catch {
     throw new TypeError(INVALID_BINARY_INPUT_MESSAGE);
   }
@@ -265,7 +261,7 @@ export function toUint8Array(
 ): Uint8Array {
   if (ArrayBuffer.isView(input)) {
     if (input instanceof Uint8Array) {
-      assertUsableUint8Array(input);
+      readUint8ArraySlots(input);
       return input;
     }
     const { buffer, byteOffset, byteLength } = readArrayBufferViewSlots(input);
