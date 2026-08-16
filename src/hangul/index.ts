@@ -352,16 +352,21 @@ export async function openHangulDocument(source: Uint8Array, options: OpenHangul
   let document: HangulEngineDocument;
   try { document = await options.engine.open(sourceSnapshot); } catch { throw new HangulDocumentError('ENGINE_OPEN_FAILED', 'The Hangul engine could not open the document.'); }
   try {
-    const sourceFormat = document.getSourceFormat().toLowerCase();
-    if (sourceFormat !== 'hwp' && sourceFormat !== 'hwpx') throw new HangulDocumentError('UNSUPPORTED_SOURCE_FORMAT', 'Unsupported Hangul source format.');
-    const html: string[] = [];
-    for (let section = 0; section < document.getSectionCount(); section += 1) {
-      const count = document.getParagraphCount(section);
-      if (count > 0) html.push(document.exportSelectionHtml(section, 0, 0, count - 1, document.getParagraphLength(section, count - 1)));
+    try {
+      const sourceFormat = document.getSourceFormat().toLowerCase();
+      if (sourceFormat !== 'hwp' && sourceFormat !== 'hwpx') throw new HangulDocumentError('UNSUPPORTED_SOURCE_FORMAT', 'Unsupported Hangul source format.');
+      const html: string[] = [];
+      for (let section = 0; section < document.getSectionCount(); section += 1) {
+        const count = document.getParagraphCount(section);
+        if (count > 0) html.push(document.exportSelectionHtml(section, 0, 0, count - 1, document.getParagraphLength(section, count - 1)));
+      }
+      const documentJson = htmlToJson(html.join(''));
+      Object.freeze(documentJson);
+      return { sourceFormat, documentJson, warnings: Object.freeze([]), lossy: false };
+    } catch (error) {
+      if (isHangulDocumentError(error)) throw error;
+      throw new HangulDocumentError('ENGINE_OPERATION_FAILED', 'The Hangul engine failed during import.');
     }
-    const documentJson = htmlToJson(html.join(''));
-    Object.freeze(documentJson);
-    return { sourceFormat, documentJson, warnings: Object.freeze([]), lossy: false };
   } finally { document.free?.(); }
 }
 
