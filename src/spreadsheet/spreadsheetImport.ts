@@ -2,6 +2,7 @@ import type { JSONContent } from '@tiptap/core';
 
 const MAX_SPREADSHEET_SOURCE_BYTES = 64 * 1024 * 1024;
 const MAX_VISIBLE_WORKSHEETS = 64;
+const MAX_WORKBOOK_WORKSHEETS = 256;
 const MAX_WORKSHEET_NAME_CODE_UNITS = 1_024;
 const MAX_WORKBOOK_ROWS = 10_000;
 const MAX_WORKSHEET_COLUMNS = 256;
@@ -206,6 +207,7 @@ export function spreadsheetWorkbookToDocumentJson(
   const worksheets = readOwnDataProperty(workbook, 'worksheets');
   if (!Array.isArray(worksheets)) unsupportedOrCorruptSource();
   const worksheetsLength = readArrayLength(worksheets);
+  if (worksheetsLength > MAX_WORKBOOK_WORKSHEETS) resourceLimitExceeded();
 
   const preparedWorksheets: PreparedWorksheet[] = [];
   let worksheetCount = 0;
