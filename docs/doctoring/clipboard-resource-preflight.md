@@ -62,8 +62,8 @@ The cited Working Draft is work in progress and is not a conformance claim.
   `TextEncoder.prototype.encode`, and a three-child fragment under
   `maxNodes: 2` performed three `NodeList.item()` reads before
   `node_limit_exceeded`.
-- GREEN on this branch rejects both cases at the preflight boundary without
-  changing codes or messages.
+- GREEN `71654a8e59eecd72f2a23ebec173e4e537c927d9` rejects both cases at the
+  preflight boundary without changing codes or messages.
 
 Predecessor Draft #164 remains historical. It is not current-main
 implementation authority.
