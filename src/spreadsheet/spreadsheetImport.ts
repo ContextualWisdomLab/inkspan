@@ -124,6 +124,14 @@ function readArrayLength(source: readonly unknown[]): number {
   return readOwnDataProperty(source, 'length') as number;
 }
 
+function isArraySource(source: unknown): source is readonly unknown[] {
+  try {
+    return Array.isArray(source);
+  } catch {
+    return false;
+  }
+}
+
 function isUint8ArraySource(source: unknown): source is Uint8Array {
   return (
     ArrayBuffer.isView(source) &&
@@ -205,7 +213,7 @@ export function spreadsheetWorkbookToDocumentJson(
   }
 
   const worksheets = readOwnDataProperty(workbook, 'worksheets');
-  if (!Array.isArray(worksheets)) unsupportedOrCorruptSource();
+  if (!isArraySource(worksheets)) unsupportedOrCorruptSource();
   const worksheetsLength = readArrayLength(worksheets);
   if (worksheetsLength > MAX_WORKBOOK_WORKSHEETS) resourceLimitExceeded();
 
@@ -231,7 +239,7 @@ export function spreadsheetWorkbookToDocumentJson(
     if (
       typeof hidden !== 'boolean' ||
       typeof name !== 'string' ||
-      !Array.isArray(rows)
+      !isArraySource(rows)
     ) {
       unsupportedOrCorruptSource();
     }
@@ -250,7 +258,7 @@ export function spreadsheetWorkbookToDocumentJson(
     let columnCount = 0;
     for (let rowIndex = 0; rowIndex < rowsLength; rowIndex += 1) {
       const rowSource = readOwnDataProperty(rows, String(rowIndex));
-      if (!Array.isArray(rowSource)) unsupportedOrCorruptSource();
+      if (!isArraySource(rowSource)) unsupportedOrCorruptSource();
       const rowLength = readArrayLength(rowSource);
       columnCount = Math.max(columnCount, rowLength);
       rowSources.push(rowSource);
