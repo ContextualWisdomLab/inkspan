@@ -34,4 +34,24 @@ describe('blobToDataUri runtime Blob boundary', () => {
     expect(sizeReads).toBe(0);
     expect(typeReads).toBe(0);
   });
+
+  it('does not evaluate a genuine Blob instance arrayBuffer override', async () => {
+    let arrayBufferReads = 0;
+    const blob = new Blob([new Uint8Array([1, 2, 3])], {
+      type: 'application/octet-stream',
+    });
+
+    Object.defineProperty(blob, 'arrayBuffer', {
+      configurable: true,
+      get() {
+        arrayBufferReads += 1;
+        throw new Error('private Blob byte-reader sentinel');
+      },
+    });
+
+    await expect(blobToDataUri(blob)).resolves.toBe(
+      'data:application/octet-stream;base64,AQID',
+    );
+    expect(arrayBufferReads).toBe(0);
+  });
 });
