@@ -482,13 +482,21 @@ export function bytesToDataUri(
 export const arrayBufferToDataUri = bytesToDataUri;
 
 /**
- * Read a Blob's bytes across environments. Prefers the standard
- * `Blob.arrayBuffer()`, falling back to `FileReader` (jsdom / older DOMs that
- * do not implement `arrayBuffer`) and finally to the `Response` wrapper.
+ * Read a Blob's bytes across environments without consulting caller-owned
+ * instance members. Prefer the platform `Blob.prototype.arrayBuffer` method,
+ * falling back to `FileReader` and then `Response` when that platform
+ * capability is unavailable.
  */
 async function readBlobBytes(blob: Blob): Promise<Uint8Array> {
-  if (typeof blob.arrayBuffer === 'function') {
-    return new Uint8Array(await blob.arrayBuffer());
+  const platformArrayBuffer = Object.getOwnPropertyDescriptor(
+    Blob.prototype,
+    'arrayBuffer',
+  )?.value as unknown;
+  if (typeof platformArrayBuffer === 'function') {
+    const buffer = await (platformArrayBuffer as (
+      this: Blob,
+    ) => Promise<ArrayBuffer>).call(blob);
+    return new Uint8Array(buffer);
   }
   if (typeof FileReader !== 'undefined') {
     return new Promise<Uint8Array>((resolve, reject) => {
