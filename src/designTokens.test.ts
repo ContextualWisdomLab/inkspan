@@ -96,8 +96,38 @@ describe('editor theme token catalog', () => {
     expect(print.ratio).toBeCloseTo(21, 8);
     expect(muted.ratio).toBeCloseTo(6.114136455475549, 8);
     expect(light.ratio).toBeGreaterThanOrEqual(4.5);
+    expect(light.meetsTextContrast).toBe(true);
+    expect(light.meetsNonTextContrast).toBe(true);
     expect(light.hostAction).toContain('Override --cwl-fg and --cwl-bg on .cwl-editor');
     expect(light.hostAction).toContain('WCAG 2.2');
+  });
+
+  it('reports inventoried active-chrome contrast including the dark pair below 4.5:1', () => {
+    const lightActive = getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'light');
+    const darkActive = getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'dark');
+    const printActive = getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'print');
+    const accentOnBackground = getEditorThemeTokenContrast('cwl-accent', 'cwl-bg', 'light');
+
+    expect(lightActive.ratio).toBeCloseTo(4.563748387142551, 8);
+    expect(lightActive.meetsTextContrast).toBe(true);
+    expect(darkActive.ratio).toBeCloseTo(4.125850234317593, 8);
+    expect(darkActive.meetsTextContrast).toBe(false);
+    expect(darkActive.meetsNonTextContrast).toBe(true);
+    expect(darkActive.hostAction).toContain('--cwl-accent');
+    expect(darkActive.hostAction).toContain('--cwl-accent-soft');
+    expect(darkActive.hostAction).toContain('below 4.5:1');
+    expect(printActive.meetsTextContrast).toBe(true);
+    expect(accentOnBackground.meetsTextContrast).toBe(true);
+  });
+
+  it('points accent token host actions at the inventoried active pair', () => {
+    const accent = getEditorThemeToken('cwl-accent');
+    const accentSoft = getEditorThemeToken('cwl-accent-soft');
+    const foreground = getEditorThemeToken('cwl-fg');
+
+    expect(accent.hostAction).toContain('--cwl-accent-soft');
+    expect(accentSoft.hostAction).toContain('--cwl-accent');
+    expect(foreground.hostAction).toContain('--cwl-bg');
   });
 
   it('rejects contrast lookups that are not shipped color tokens without reflecting caller input', () => {

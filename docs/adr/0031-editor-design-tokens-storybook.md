@@ -15,7 +15,7 @@ Inkspan ships repeating toolbar buttons, groups, and editor chrome styled throug
 
 ## Decision
 
-Inkspan publishes a host-facing theme-token catalog for the nine shipped chrome tokens, a Design Tokens Format Module 2025.10 interchange snapshot, and a Storybook inventory of repeating toolbar/editor objects. Hosts override `--cwl-*` on `.cwl-editor` after checking WCAG 2.2 contrast. Unknown token names fail closed. No Figma, network, persistence, credential, or model authority is added.
+Inkspan publishes a host-facing theme-token catalog for the nine shipped chrome tokens, a Design Tokens Format Module 2025.10 interchange snapshot, and a Storybook inventory of repeating toolbar/editor objects. Hosts override `--cwl-*` on `.cwl-editor` after checking WCAG 2.2 contrast for body text and inventoried active toolbar text (`--cwl-accent` on `--cwl-accent-soft`). Unknown token names fail closed. No Figma, network, persistence, credential, or model authority is added.
 
 ## Consequences and ownership trade-offs
 

@@ -54,6 +54,8 @@ describe('package entry point', () => {
     expect(typeof api.getEditorThemeToken).toBe('function');
     expect(typeof api.getEditorThemeTokenContrast).toBe('function');
     expect(typeof api.contrastRatioFromHex).toBe('function');
+    expect(api.WCAG_TEXT_CONTRAST_RATIO).toBe(4.5);
+    expect(api.WCAG_NON_TEXT_CONTRAST_RATIO).toBe(3);
     expect(typeof api.toDesignTokenFormatGroup).toBe('function');
     expect(typeof api.EditorThemeTokenError).toBe('function');
     expect(typeof api.EditorThemeTokenContrastError).toBe('function');

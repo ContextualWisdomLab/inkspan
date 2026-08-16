@@ -62,6 +62,9 @@ export const ToolbarButtonStates: Story = {
           <button type="button" className="cwl-tb-btn is-active" aria-pressed="true">
             I
           </button>
+          <button type="button" className="cwl-tb-btn" autoFocus aria-label="Focus-visible sample">
+            F
+          </button>
           <button type="button" className="cwl-tb-btn" disabled>
             U
           </button>
@@ -70,8 +73,10 @@ export const ToolbarButtonStates: Story = {
       <div className="cwl-collaboration-status">Idle</div>
       <div className="cwl-editor__surface">
         <div className="cwl-editor__content">
-          Preview the same `.cwl-*` classes buyers ship. This is a class-level
-          chrome sample, not a mounted Toolbar or CwlEditor.
+          Preview the same `.cwl-*` classes buyers ship, including
+          `:focus-visible`. Forced-colors restyles that outline to CanvasText
+          and does not assign `--cwl-*`. This is a class-level chrome sample,
+          not a mounted Toolbar or CwlEditor.
         </div>
       </div>
     </div>

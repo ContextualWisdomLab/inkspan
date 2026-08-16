@@ -152,7 +152,7 @@ Rollback must preserve readable canonical documents and must not require silentl
 | autosave | local ordering/state, callback contract, validator validation | transport, durable CAS, retry/offline policy, persistence |
 | collaboration | provider-neutral editor/Yjs binding | provider lifecycle, rooms, identity, authorization, persistence, awareness privacy |
 | Office rendering | deterministic bounded JSON→artifact conversion | file destination policy, downstream distribution, tenant authorization |
-| editor chrome theming (Active PR / Proposed) | named `--cwl-*` tokens, DTCG interchange snapshot, Storybook inventory | host brand CSS, contrast certification, Figma Variables, design-tool sync |
+| editor chrome theming (Active PR / Proposed) | named `--cwl-*` tokens, DTCG interchange snapshot, Storybook inventory, inventoried pair contrast including `--cwl-accent` on `--cwl-accent-soft` | host brand CSS, contrast certification, Figma Variables, design-tool sync |
 | naruon composition | stable local package/module boundary | authenticated compose transport, tenancy, provider/model policy |
 | model assistance | deterministic proposal acceptance boundary | provider, prompt/data policy, credentials, human approval |
 | release evidence | exact three-file draft inventory, package/artifact/digest verification and repository evidence | downstream deployment and operational rollout |

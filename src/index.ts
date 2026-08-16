@@ -170,6 +170,8 @@ export type { PlainTextOptions } from './markdown/plainText.js';
 export {
   EditorThemeTokenContrastError,
   EditorThemeTokenError,
+  WCAG_NON_TEXT_CONTRAST_RATIO,
+  WCAG_TEXT_CONTRAST_RATIO,
   contrastRatioFromHex,
   getEditorThemeToken,
   getEditorThemeTokenContrast,

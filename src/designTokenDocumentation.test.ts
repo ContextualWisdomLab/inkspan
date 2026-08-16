@@ -33,12 +33,17 @@ describe('editor design-token documentation contract', () => {
     expect(doctoring).not.toContain('ADR 0027');
     expect(operatorGuide).toContain('Override the named custom properties on `.cwl-editor`');
     expect(operatorGuide).toContain('getEditorThemeTokenContrast');
+    expect(operatorGuide).toContain("getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'dark')");
+    expect(operatorGuide).toContain('meetsTextContrast');
     expect(operatorGuide).toContain('contrastRatioFromHex');
     expect(operatorGuide).toContain('Do not edit Inkspan internals');
     expect(inventory).toContain('Editor Chrome / Toolbar Button States');
     expect(inventory).toContain('Editor Chrome / Live Toolbar');
     expect(inventory).toContain('shipped Toolbar');
+    expect(inventory).toContain(':focus-visible');
     expect(inventory).toContain('Override `--cwl-accent`');
+    expect(doctoring).toContain('cwl-accent-soft');
+    expect(doctoring).toContain('below the WCAG 2.2 4.5:1');
     expect(doctoring).toContain('Design Tokens Format Module 2025.10');
     expect(doctoring).toContain(
       'https://www.w3.org/community/reports/design-tokens/CG-FINAL-format-20251028/',
@@ -48,6 +53,7 @@ describe('editor design-token documentation contract', () => {
     expect(changelog).toContain('Named the repeating editor chrome as a host-facing theme-token catalog');
     expect(repositoryFile('.storybook/main.ts')).toContain("@storybook/react-vite");
     expect(repositoryFile('stories/EditorChrome.stories.tsx')).toContain('cwl-tb-btn');
+    expect(repositoryFile('stories/EditorChrome.stories.tsx')).toContain('autoFocus');
     expect(repositoryFile('stories/EditorChrome.stories.tsx')).toContain('disabled');
     expect(repositoryFile('stories/EditorChrome.stories.tsx')).toContain('cwl-editor__surface');
     expect(repositoryFile('stories/EditorChrome.stories.tsx')).toContain(

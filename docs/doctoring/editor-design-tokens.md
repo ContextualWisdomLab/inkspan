@@ -9,7 +9,7 @@
 
 Hosts embed Inkspan and need to match brand color, radius, and font without forking `src/styles.css`. The stylesheet already used `--cwl-*` custom properties, but buyers had no typed catalog, no interchange snapshot, and no Storybook inventory of the repeating toolbar button and editor chrome. Theme work therefore required reading CSS internals.
 
-If contrast fails after a re-theme, override only the named tokens on `.cwl-editor` and re-check WCAG 2.2 contrast against `--cwl-bg`. Do not disable forced-colors overrides.
+If contrast fails after a re-theme, override only the named tokens on `.cwl-editor` and re-check WCAG 2.2 text contrast for `--cwl-fg` on `--cwl-bg` and `--cwl-accent` on `--cwl-accent-soft`. Do not disable forced-colors overrides.
 
 ## Decision
 
@@ -28,11 +28,11 @@ WCAG 2.2 requires sufficient contrast for text and user-interface components (Wo
 ## Test-first evidence
 
 - RED: `src/designTokens.test.ts` failed because `./designTokens.js` did not exist.
-- GREEN: the catalog lists the nine shipped tokens, aligns light/dark/print color values with the matching `src/styles.css` media blocks, reports WCAG 2.2 contrast for shipped color pairs, rejects unknown names without reflecting caller input, and emits a DTCG 2025.10 group.
+- GREEN: the catalog lists the nine shipped tokens, aligns light/dark/print color values with the matching `src/styles.css` media blocks, reports WCAG 2.2 contrast for shipped color pairs including the inventoried `--cwl-accent` / `--cwl-accent-soft` active chrome, rejects unknown names without reflecting caller input, and emits a DTCG 2025.10 group.
 
 ## Residual risk
 
-Print media still remaps the color tokens after a host override. Forced-colors mode only restyles the toolbar focus outline to `CanvasText`; it does not assign `--cwl-*` values. The font token snapshot splits a CSS font-family list and does not execute CSS. Storybook success is not Chromium/Firefox/WebKit release evidence.
+Print media still remaps the color tokens after a host override. Forced-colors mode only restyles the toolbar focus outline to `CanvasText`; it does not assign `--cwl-*` values. The shipped dark `.cwl-tb-btn.is-active` pair (`--cwl-accent` on `--cwl-accent-soft`) is below the WCAG 2.2 4.5:1 text threshold and still meets the 3:1 non-text threshold. Hosts must call `getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'dark')` and override those tokens before treating dark active chrome as text-contrast-safe. The font token snapshot splits a CSS font-family list and does not execute CSS. Storybook success is not Chromium/Firefox/WebKit release evidence.
 
 ## Rollback
 

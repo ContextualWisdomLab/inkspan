@@ -2,7 +2,7 @@
 
 Status: Active PR / Proposed
 
-Use this catalog when you need to re-theme Inkspan's repeating toolbar and editor chrome. Override the named custom properties on `.cwl-editor` after checking WCAG 2.2 contrast. Do not edit Inkspan internals.
+Use this catalog when you need to re-theme Inkspan's repeating toolbar and editor chrome. Override the named custom properties on `.cwl-editor` after checking WCAG 2.2 contrast for both body text (`--cwl-fg` on `--cwl-bg`) and active toolbar text (`--cwl-accent` on `--cwl-accent-soft`). Do not edit Inkspan internals.
 
 ```css
 .cwl-editor {
@@ -21,10 +21,11 @@ import {
 
 const tokens = listEditorThemeTokens();
 const dtcgGroup = toDesignTokenFormatGroup();
-const contrast = getEditorThemeTokenContrast('cwl-fg', 'cwl-bg', 'light');
-const overrideRatio = contrastRatioFromHex('#0b6e4f', '#ffffff');
-if (contrast.ratio < 4.5 || overrideRatio < 4.5) {
-  throw new Error(contrast.hostAction);
+const body = getEditorThemeTokenContrast('cwl-fg', 'cwl-bg', 'light');
+const activeDark = getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'dark');
+const overrideRatio = contrastRatioFromHex('#0b6e4f', '#d8f3e8');
+if (!body.meetsTextContrast || !activeDark.meetsTextContrast || overrideRatio < 4.5) {
+  throw new Error(activeDark.hostAction);
 }
 void tokens;
 void dtcgGroup;

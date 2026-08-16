@@ -38,7 +38,7 @@ flowchart LR
 
 The host owns transport, authentication, authorization, tenant isolation, persistence, credentials, provider lifecycle, retention, deployment, durable audit, and model-use policy. Inkspan owns deterministic local editor/conversion/evidence behavior only.
 
-A named editor-chrome theme-token catalog and Storybook inventory are Active PR / Proposed. Hosts override `--cwl-*` on `.cwl-editor` after checking WCAG 2.2 contrast. CSS remains runtime presentation authority. Storybook previews a class-level chrome sample and a live shipped Toolbar. It does not mount `CwlEditor`. Print-media remaps live in `@media print`; forced-colors mode does not assign those custom properties. Figma Variables, brand certification, and design-tool sync remain host-owned.
+A named editor-chrome theme-token catalog and Storybook inventory are Active PR / Proposed. Hosts override `--cwl-*` on `.cwl-editor` after checking WCAG 2.2 contrast for body text and active toolbar text (`--cwl-accent` on `--cwl-accent-soft`). CSS remains runtime presentation authority. Storybook previews a class-level chrome sample (including `:focus-visible`) and a live shipped Toolbar. It does not mount `CwlEditor`. Print-media remaps live in `@media print`; forced-colors mode does not assign those custom properties. Figma Variables, brand certification, and design-tool sync remain host-owned.
 
 ## Rich paste sequence
 
