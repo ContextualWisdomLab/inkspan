@@ -137,7 +137,7 @@ const EDITOR_THEME_TOKENS: readonly EditorThemeToken[] = Object.freeze([
   themeToken('cwl-border', 'color', '#d1d9e0', '#3d444d', '#999999'),
   themeToken('cwl-bg', 'color', '#ffffff', '#0d1117', '#ffffff'),
   themeToken('cwl-surface', 'color', '#f6f8fa', '#161b22', '#ffffff'),
-  themeToken('cwl-accent', 'color', '#0969da', '#4493f8', '#000000'),
+  themeToken('cwl-accent', 'color', '#0969da', '#58a6ff', '#000000'),
   themeToken('cwl-accent-soft', 'color', '#ddf4ff', '#163356', '#ffffff'),
   themeToken('cwl-radius', 'dimension', '8px'),
   themeToken(
