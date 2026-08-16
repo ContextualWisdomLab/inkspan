@@ -1,4 +1,4 @@
-# ADR 0027: Hangul document authoring boundary
+# ADR 0030: Hangul document authoring boundary
 
 - Status: Proposed
 - Date: 2026-08-14
