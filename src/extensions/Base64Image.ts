@@ -87,6 +87,22 @@ function normalizeUntrustedImageIngressError(error: unknown): Error {
 }
 
 /**
+ * Notify the host about an image rejection without granting observer failures
+ * authority over parser, transaction-filter, or asynchronous ingress results.
+ */
+function reportImageError(
+  observer: Base64ImageOptions['onError'],
+  error: Error,
+): void {
+  if (!observer) return;
+  try {
+    observer(error);
+  } catch {
+    // Host presentation/telemetry is best-effort and cannot change rejection.
+  }
+}
+
+/**
  * Validate a generated source and privately brand any deterministic policy
  * failure so the async ingress boundary may preserve its safe diagnostic.
  */
@@ -230,7 +246,7 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
               title: element.getAttribute('title'),
             };
           } catch (error) {
-            this.options.onError?.(normalizeImageError(error));
+            reportImageError(this.options.onError, normalizeImageError(error));
             return false;
           }
         },
@@ -294,7 +310,10 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
             }
             editor.view.dispatch(transaction);
           } catch (error) {
-            options.onError?.(normalizeUntrustedImageIngressError(error));
+            reportImageError(
+              options.onError,
+              normalizeUntrustedImageIngressError(error),
+            );
           }
         }
       };
@@ -324,7 +343,7 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
             }
           });
           if (!rejection) return true;
-          options.onError?.(rejection);
+          reportImageError(options.onError, rejection);
           return false;
         },
         props: {
