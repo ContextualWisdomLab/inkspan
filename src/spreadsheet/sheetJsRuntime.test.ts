@@ -24,7 +24,6 @@ function workbookBytes(bookType: 'xlsx' | 'biff8'): Uint8Array {
   const written = XLSX.write(workbook, {
     bookType,
     type: 'array',
-    cellFormula: true,
   });
   return new Uint8Array(written);
 }
