@@ -108,6 +108,18 @@ function resolveHangulByteLimit(limit: number | undefined): number {
   return resolved;
 }
 
+/** Validate the runtime export selector before the host engine receives authority. */
+function resolveHangulExportFormat(format: unknown): 'hwp' | 'hwpx' {
+  const resolved = format === undefined ? 'hwpx' : format;
+  if (resolved !== 'hwp' && resolved !== 'hwpx') {
+    throw new HangulDocumentError(
+      'INVALID_CONFIGURATION',
+      'Hangul export format is invalid.',
+    );
+  }
+  return resolved;
+}
+
 /** Copy one genuine Uint8Array into an Inkspan-owned immutable import snapshot. */
 function snapshotHangulSource(source: Uint8Array, maxSourceBytes: number): Uint8Array {
   let buffer: ArrayBufferLike;
@@ -373,7 +385,7 @@ export async function openHangulDocument(source: Uint8Array, options: OpenHangul
 /** Export edited Inkspan JSON as HWPX by default or HWP explicitly. */
 export async function exportHangulDocument(documentJson: HangulDocumentJson, options: ExportHangulDocumentOptions): Promise<HangulDocumentExportResult> {
   const maxOutputBytes = resolveHangulByteLimit(options.maxOutputBytes);
-  const format = options.format ?? 'hwpx';
+  const format = resolveHangulExportFormat(options.format);
   const html = jsonToHtml(documentJson);
   let document: HangulEngineDocument;
   try { document = await options.engine.create(); } catch { throw new HangulDocumentError('ENGINE_CREATE_FAILED', 'The Hangul engine could not create a document.'); }
