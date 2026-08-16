@@ -143,6 +143,17 @@ function readUint8ArraySlots(input: unknown): Uint8ArraySlots {
   }
 }
 
+/** Reject detached Uint8Array storage before exposing it to later consumers. */
+function assertUsableUint8Array(input: Uint8Array): void {
+  const { buffer, byteOffset, byteLength } = readUint8ArraySlots(input);
+  try {
+    const probe = new Uint8Array(buffer, byteOffset, byteLength);
+    void probe;
+  } catch {
+    throw new TypeError(INVALID_BINARY_INPUT_MESSAGE);
+  }
+}
+
 /** Read a genuine ArrayBuffer view's byte range without caller-owned accessors. */
 function readArrayBufferViewSlots(input: ArrayBufferView): Uint8ArraySlots {
   if (TYPED_ARRAY_TAG_GETTER.call(input) !== undefined) {
@@ -253,7 +264,10 @@ export function toUint8Array(
   input: ArrayBuffer | ArrayBufferView | Uint8Array,
 ): Uint8Array {
   if (ArrayBuffer.isView(input)) {
-    if (input instanceof Uint8Array) return input;
+    if (input instanceof Uint8Array) {
+      assertUsableUint8Array(input);
+      return input;
+    }
     const { buffer, byteOffset, byteLength } = readArrayBufferViewSlots(input);
     return new Uint8Array(buffer, byteOffset, byteLength);
   }
