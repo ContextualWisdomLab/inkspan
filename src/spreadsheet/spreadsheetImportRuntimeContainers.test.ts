@@ -22,6 +22,12 @@ function expectUnsupportedSource(action: () => unknown): void {
   });
 }
 
+function revokedArrayProxy(): readonly unknown[] {
+  const { proxy, revoke } = Proxy.revocable([], {});
+  revoke();
+  return proxy;
+}
+
 describe('spreadsheetWorkbookToDocumentJson runtime containers', () => {
   it.each([null, undefined, 0, 'workbook']) (
     'rejects non-object workbook containers with the stable domain error',
@@ -52,6 +58,14 @@ describe('spreadsheetWorkbookToDocumentJson runtime containers', () => {
       }),
     );
     expect(iteratorRead).toBe(false);
+  });
+
+  it('normalizes a revoked worksheet-array proxy to the stable domain error', () => {
+    expectUnsupportedSource(() =>
+      spreadsheetWorkbookToDocumentJson({
+        worksheets: revokedArrayProxy() as unknown as readonly [],
+      }),
+    );
   });
 
   it.each([null, undefined])(
@@ -93,6 +107,20 @@ describe('spreadsheetWorkbookToDocumentJson runtime containers', () => {
     expect(lengthRead).toBe(false);
   });
 
+  it('normalizes a revoked rows-array proxy to the stable domain error', () => {
+    expectUnsupportedSource(() =>
+      spreadsheetWorkbookToDocumentJson({
+        worksheets: [
+          {
+            name: 'Data',
+            hidden: false,
+            rows: revokedArrayProxy() as unknown as readonly (readonly string[])[],
+          },
+        ],
+      }),
+    );
+  });
+
   it('rejects a non-array row before reading its length', () => {
     let lengthRead = false;
     const hostileRow = Object.create(null) as Record<PropertyKey, unknown>;
@@ -115,5 +143,19 @@ describe('spreadsheetWorkbookToDocumentJson runtime containers', () => {
       }),
     );
     expect(lengthRead).toBe(false);
+  });
+
+  it('normalizes a revoked row-array proxy to the stable domain error', () => {
+    expectUnsupportedSource(() =>
+      spreadsheetWorkbookToDocumentJson({
+        worksheets: [
+          {
+            name: 'Data',
+            hidden: false,
+            rows: [revokedArrayProxy() as unknown as readonly string[]],
+          },
+        ],
+      }),
+    );
   });
 });
