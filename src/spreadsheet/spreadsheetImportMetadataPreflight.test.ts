@@ -75,9 +75,12 @@ describe('spreadsheet workbook metadata preflight', () => {
       },
     });
 
-    expectUnsupportedSource(() =>
-      spreadsheetWorkbookToDocumentJson({ worksheets }),
-    );
+    const result = spreadsheetWorkbookToDocumentJson({ worksheets });
+    expect(result).toMatchObject({
+      worksheetCount: 1,
+      rowCount: 1,
+      cellCount: 1,
+    });
     expect(iteratorRead).toBe(false);
   });
 
@@ -93,11 +96,14 @@ describe('spreadsheet workbook metadata preflight', () => {
       },
     });
 
-    expectUnsupportedSource(() =>
-      spreadsheetWorkbookToDocumentJson({
-        worksheets: [{ name: 'Data', hidden: false, rows }],
-      }),
-    );
+    const result = spreadsheetWorkbookToDocumentJson({
+      worksheets: [{ name: 'Data', hidden: false, rows }],
+    });
+    expect(result).toMatchObject({
+      worksheetCount: 1,
+      rowCount: 1,
+      cellCount: 1,
+    });
     expect(lengthRead).toBe(false);
   });
 
@@ -113,11 +119,14 @@ describe('spreadsheet workbook metadata preflight', () => {
       },
     });
 
-    expectUnsupportedSource(() =>
-      spreadsheetWorkbookToDocumentJson({
-        worksheets: [{ name: 'Data', hidden: false, rows: [row] }],
-      }),
-    );
+    const result = spreadsheetWorkbookToDocumentJson({
+      worksheets: [{ name: 'Data', hidden: false, rows: [row] }],
+    });
+    expect(result).toMatchObject({
+      worksheetCount: 1,
+      rowCount: 1,
+      cellCount: 1,
+    });
     expect(indexRead).toBe(false);
   });
 
