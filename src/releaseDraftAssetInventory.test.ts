@@ -215,7 +215,7 @@ describe('release draft asset inventory contract', () => {
     expect(inventoryStep).toContain("asset_name='.assets[].name'");
   });
 
-  it('documents fail-closed stale-draft handling and provenance scope', () => {
+  it('documents fail-closed stale-draft handling and four-file provenance scope', () => {
     const releaseSecurity = repositoryFile('docs/release-security.md');
     const changelog = repositoryFile('CHANGELOG.md');
 
@@ -224,6 +224,9 @@ describe('release draft asset inventory contract', () => {
     expect(releaseSecurity).toContain('before the draft is published');
     expect(releaseSecurity).toContain('sha256:');
     expect(releaseSecurity).toContain('List releases');
+    expect(releaseSecurity).toContain('exactly four files');
+    expect(releaseSecurity).toContain('inkspan.spdx.json');
+    expect(releaseSecurity).toContain('SHA256SUMS');
     expect(changelog).toContain('draft release asset inventory');
   });
 });
