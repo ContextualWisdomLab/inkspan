@@ -41,6 +41,18 @@ function intrinsicBlobSize(blob: Blob): number {
   return Reflect.apply(sizeGetter, blob, []) as number;
 }
 
+/** Report an image failure without allowing host observer code to alter toolbar control flow. */
+function reportImageError(
+  onImageError: ((error: unknown) => void) | undefined,
+  error: unknown,
+): void {
+  try {
+    onImageError?.(error);
+  } catch {
+    // Host presentation or telemetry observers are best-effort only.
+  }
+}
+
 /** Return every toolbar button in visual and DOM navigation order. */
 function getToolbarButtons(toolbar: HTMLDivElement): HTMLButtonElement[] {
   return Array.from(
@@ -218,7 +230,10 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
       const maxSizeBytes = image?.maxSizeBytes ?? 10 * 1024 * 1024;
       const sourceBytes = intrinsicBlobSize(file);
       if (maxSizeBytes > 0 && sourceBytes > maxSizeBytes) {
-        onImageError?.(new Base64SizeError(sourceBytes, maxSizeBytes));
+        reportImageError(
+          onImageError,
+          new Base64SizeError(sourceBytes, maxSizeBytes),
+        );
         return;
       }
 
@@ -230,7 +245,7 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
           quality: image?.quality ?? 0.85,
         });
       } catch {
-        onImageError?.(new Error('Image processing failed.'));
+        reportImageError(onImageError, new Error('Image processing failed.'));
         return;
       }
 
