@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createTextPositionSelector } from './textPositionSelectorEvidence.js';
+import {
+  createTextPositionSelector,
+  TextPositionSelectorEvidenceError,
+} from './textPositionSelectorEvidence.js';
 
 type SelectorDocument = Parameters<typeof createTextPositionSelector>[0];
 type SelectorSelection = Parameters<typeof createTextPositionSelector>[1];
@@ -77,6 +80,36 @@ describe('text-position selector allocation bounds', () => {
       expect(constructedSegmenters).toBe(1);
       expect(segmentCalls).toBe(1);
       expect(yieldedSegments).toBe(3);
+    } finally {
+      if (descriptor) {
+        Object.defineProperty(Intl, 'Segmenter', descriptor);
+      } else {
+        Reflect.deleteProperty(Intl, 'Segmenter');
+      }
+    }
+  });
+
+  it('rejects missing grapheme segmentation before projecting document text', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(Intl, 'Segmenter');
+    let projectionCalls = 0;
+    const documentNode = {
+      content: { size: 0 },
+      textBetween: () => {
+        projectionCalls += 1;
+        return '';
+      },
+    } as unknown as SelectorDocument;
+
+    Object.defineProperty(Intl, 'Segmenter', {
+      configurable: true,
+      value: undefined,
+    });
+
+    try {
+      expect(() => createTextPositionSelector(documentNode, structuralSelection(0, 0))).toThrow(
+        new TextPositionSelectorEvidenceError('segmenter_unavailable'),
+      );
+      expect(projectionCalls).toBe(0);
     } finally {
       if (descriptor) {
         Object.defineProperty(Intl, 'Segmenter', descriptor);
