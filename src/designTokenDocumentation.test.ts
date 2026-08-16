@@ -18,7 +18,7 @@ describe('editor design-token documentation contract', () => {
     const adrIndex = repositoryFile('docs/adr/README.md');
 
     expect(index).toContain('[`design-tokens.md`](design-tokens.md)');
-    expect(adrIndex).toContain('[0027](0027-editor-design-tokens-storybook.md) | Proposed');
+    expect(adrIndex).toContain('[0031](0031-editor-design-tokens-storybook.md) | Proposed');
     expect(operatorGuide).toContain('Override the named custom properties on `.cwl-editor`');
     expect(operatorGuide).toContain('Do not edit Inkspan internals');
     expect(inventory).toContain('Editor Chrome / Toolbar Button States');
