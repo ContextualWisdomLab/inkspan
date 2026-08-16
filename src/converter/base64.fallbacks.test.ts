@@ -50,10 +50,48 @@ describe('readBlobBytes environment fallbacks', () => {
     }
   };
 
-  it('uses the platform Blob.arrayBuffer capability when available', async () => {
-    const blob = new Blob([BYTES], { type: 'application/octet-stream' });
-    const uri = await blobToDataUri(blob);
-    expect(uri).toBe('data:application/octet-stream;base64,AQIDBA==');
+  const withPlatformArrayBuffer = async (
+    action: () => Promise<void>,
+  ): Promise<void> => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      Blob.prototype,
+      'arrayBuffer',
+    );
+    Object.defineProperty(Blob.prototype, 'arrayBuffer', {
+      configurable: true,
+      writable: true,
+      value(this: Blob): Promise<ArrayBuffer> {
+        void this;
+        return Promise.resolve(BYTES.buffer.slice(0));
+      },
+    });
+    try {
+      await action();
+    } finally {
+      if (descriptor === undefined) {
+        Reflect.deleteProperty(Blob.prototype, 'arrayBuffer');
+      } else {
+        Object.defineProperty(Blob.prototype, 'arrayBuffer', descriptor);
+      }
+    }
+  };
+
+  it('uses the platform Blob.arrayBuffer capability without consulting the instance', async () => {
+    await withPlatformArrayBuffer(async () => {
+      let instanceReads = 0;
+      const blob = new Blob([BYTES], { type: 'application/octet-stream' });
+      Object.defineProperty(blob, 'arrayBuffer', {
+        configurable: true,
+        get() {
+          instanceReads += 1;
+          throw new Error('caller Blob arrayBuffer getter executed');
+        },
+      });
+
+      const uri = await blobToDataUri(blob);
+      expect(uri).toBe('data:application/octet-stream;base64,AQIDBA==');
+      expect(instanceReads).toBe(0);
+    });
   });
 
   it('falls back to application/octet-stream for a typeless, unsniffable blob', async () => {
