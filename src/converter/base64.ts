@@ -98,6 +98,18 @@ const TYPED_ARRAY_TAG_GETTER = Object.getOwnPropertyDescriptor(
   TYPED_ARRAY_PROTOTYPE,
   Symbol.toStringTag,
 )!.get!;
+const DATA_VIEW_BUFFER_GETTER = Object.getOwnPropertyDescriptor(
+  DataView.prototype,
+  'buffer',
+)!.get!;
+const DATA_VIEW_BYTE_OFFSET_GETTER = Object.getOwnPropertyDescriptor(
+  DataView.prototype,
+  'byteOffset',
+)!.get!;
+const DATA_VIEW_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
+  DataView.prototype,
+  'byteLength',
+)!.get!;
 const BLOB_SIZE_GETTER = Object.getOwnPropertyDescriptor(
   Blob.prototype,
   'size',
@@ -129,6 +141,22 @@ function readUint8ArraySlots(input: unknown): Uint8ArraySlots {
   } catch {
     throw new TypeError(INVALID_BINARY_INPUT_MESSAGE);
   }
+}
+
+/** Read a genuine ArrayBuffer view's byte range without caller-owned accessors. */
+function readArrayBufferViewSlots(input: ArrayBufferView): Uint8ArraySlots {
+  if (TYPED_ARRAY_TAG_GETTER.call(input) !== undefined) {
+    return {
+      buffer: TYPED_ARRAY_BUFFER_GETTER.call(input) as ArrayBufferLike,
+      byteOffset: TYPED_ARRAY_BYTE_OFFSET_GETTER.call(input) as number,
+      byteLength: TYPED_ARRAY_BYTE_LENGTH_GETTER.call(input) as number,
+    };
+  }
+  return {
+    buffer: DATA_VIEW_BUFFER_GETTER.call(input) as ArrayBufferLike,
+    byteOffset: DATA_VIEW_BYTE_OFFSET_GETTER.call(input) as number,
+    byteLength: DATA_VIEW_BYTE_LENGTH_GETTER.call(input) as number,
+  };
 }
 
 /** Encode raw bytes to a base64 string. Works in Node and the browser. */
@@ -226,7 +254,8 @@ export function toUint8Array(
 ): Uint8Array {
   if (ArrayBuffer.isView(input)) {
     if (input instanceof Uint8Array) return input;
-    return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+    const { buffer, byteOffset, byteLength } = readArrayBufferViewSlots(input);
+    return new Uint8Array(buffer, byteOffset, byteLength);
   }
   if (isArrayBuffer(input)) return new Uint8Array(input);
   throw new TypeError(INVALID_BINARY_INPUT_MESSAGE);
