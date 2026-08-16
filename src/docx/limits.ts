@@ -1,4 +1,4 @@
-import { DocxImportError } from './errors.js';
+import { DocxImportError, normalizeDocxImportError } from './errors.js';
 import type { DocxImportLimits, DocxImportOptions } from './types.js';
 
 /** Default resource profile for one untrusted DOCX package. */
@@ -83,7 +83,6 @@ export function resolveDocxImportLimits(
     for (const key of LIMIT_KEYS) resolved[key] = resolveLimit(key, limitRecord[key]);
     return Object.freeze(resolved);
   } catch (error) {
-    if (error instanceof DocxImportError) throw error;
-    rejectConfiguration();
+    throw normalizeDocxImportError(error, 'invalid_configuration');
   }
 }
