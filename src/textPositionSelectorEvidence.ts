@@ -89,6 +89,18 @@ function codePointLength(value: string): number {
   return length;
 }
 
+/** Resolve one grapheme segmenter before any caller-supplied document projection work. */
+function createGraphemeSegmenter(): GraphemeSegmenter {
+  const Segmenter = (
+    Intl as unknown as { Segmenter?: GraphemeSegmenterConstructor }
+  ).Segmenter;
+  if (typeof Segmenter !== 'function') {
+    throw new TextPositionSelectorEvidenceError('segmenter_unavailable');
+  }
+
+  return new Segmenter(undefined, { granularity: 'grapheme' });
+}
+
 /** Advance one shared segmentation iterator until the requested boundary is proven. */
 function assertGraphemeBoundary(
   segments: Iterator<GraphemeSegment>,
@@ -107,20 +119,12 @@ function assertGraphemeBoundary(
 
 /** Require both positions to coincide with Unicode grapheme-cluster boundaries. */
 function assertGraphemeBoundaries(
+  segmenter: GraphemeSegmenter,
   text: string,
   startCodeUnitOffset: number,
   endCodeUnitOffset: number,
 ): void {
-  const Segmenter = (
-    Intl as unknown as { Segmenter?: GraphemeSegmenterConstructor }
-  ).Segmenter;
-  if (typeof Segmenter !== 'function') {
-    throw new TextPositionSelectorEvidenceError('segmenter_unavailable');
-  }
-
-  const segments = new Segmenter(undefined, { granularity: 'grapheme' })
-    .segment(text)
-    [Symbol.iterator]();
+  const segments = segmenter.segment(text)[Symbol.iterator]();
   assertGraphemeBoundary(segments, text.length, startCodeUnitOffset);
   if (endCodeUnitOffset !== startCodeUnitOffset) {
     assertGraphemeBoundary(segments, text.length, endCodeUnitOffset);
@@ -134,9 +138,9 @@ function assertGraphemeBoundaries(
  * blocks, and U+FFFC OBJECT REPLACEMENT CHARACTER for non-text leaf nodes. The
  * returned offsets count Unicode code points. Selection boundaries must also be
  * Unicode grapheme-cluster boundaries; runtimes without `Intl.Segmenter` fail
- * closed instead of publishing ambiguous evidence. The caller must bind the
- * result to the same immutable document revision; this helper contains no
- * selected text.
+ * closed before document projection instead of publishing ambiguous evidence.
+ * The caller must bind the result to the same immutable document revision; this
+ * helper contains no selected text.
  */
 export function createTextPositionSelector(
   documentNode: ProseMirrorNode,
@@ -145,11 +149,12 @@ export function createTextPositionSelector(
   selector: CwlEditorTextPositionSelector;
   textProjection: CwlEditorTextProjectionIdentity;
 }> {
+  const segmenter = createGraphemeSegmenter();
   const fullText = projectDocumentPrefix(documentNode, documentNode.content.size);
   const startPrefix = projectDocumentPrefix(documentNode, selection.from);
   const endPrefix = projectDocumentPrefix(documentNode, selection.to);
 
-  assertGraphemeBoundaries(fullText, startPrefix.length, endPrefix.length);
+  assertGraphemeBoundaries(segmenter, fullText, startPrefix.length, endPrefix.length);
 
   const selector = Object.freeze({
     type: 'TextPositionSelector' as const,
