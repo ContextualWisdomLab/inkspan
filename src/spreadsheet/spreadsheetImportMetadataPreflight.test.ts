@@ -23,6 +23,12 @@ function expectUnsupportedSource(action: () => unknown): void {
 }
 
 describe('spreadsheet workbook metadata preflight', () => {
+  it('rejects a missing worksheets data property', () => {
+    expectUnsupportedSource(() =>
+      spreadsheetWorkbookToDocumentJson(Object.create(null) as never),
+    );
+  });
+
   it('rejects an accessor-backed worksheets field without invoking it', () => {
     let accessed = false;
     const workbook = Object.create(null) as Record<PropertyKey, unknown>;
