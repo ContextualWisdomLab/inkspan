@@ -46,7 +46,9 @@ describe('editor design-token documentation contract', () => {
     expect(inventory).toContain('If re-theming, override `--cwl-accent`');
     expect(doctoring).toContain('cwl-accent-soft');
     expect(doctoring).toContain('meets the WCAG 2.2 4.5:1');
-    expect(doctoring).not.toContain('below the WCAG 2.2 4.5:1');
+    expect(doctoring).toContain('Inkspan now ships dark `--cwl-accent: #58a6ff`');
+    expect(doctoring).toContain('producing about 5.06:1');
+    expect(doctoring).toContain('Host overrides must still re-check their own resulting pairs');
     expect(doctoring).toContain('Design Tokens Format Module 2025.10');
     expect(doctoring).toContain(
       'https://www.w3.org/community/reports/design-tokens/CG-FINAL-format-20251028/',
