@@ -1,7 +1,43 @@
+import { useEffect, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
+import { Editor } from '@tiptap/react';
 
+import { Toolbar } from '../src/components/Toolbar.js';
 import { listEditorThemeTokens } from '../src/designTokens.js';
+import { buildExtensions } from '../src/extensions/kit.js';
 import '../src/styles.css';
+
+function LiveToolbarPreview() {
+  const [editor, setEditor] = useState<Editor | null>(null);
+
+  useEffect(() => {
+    const instance = new Editor({
+      extensions: buildExtensions({ image: { maxDimension: 0 } }),
+      content:
+        '<p>Override tokens on .cwl-editor after checking WCAG 2.2 contrast.</p>',
+    });
+    setEditor(instance);
+    return () => {
+      instance.destroy();
+    };
+  }, []);
+
+  if (!editor) {
+    return <p>Preparing the shipped toolbar.</p>;
+  }
+
+  return (
+    <div className="cwl-editor" style={{ width: 640 }}>
+      <Toolbar editor={editor} image={{ maxDimension: 0 }} />
+      <div className="cwl-editor__surface">
+        <div className="cwl-editor__content">
+          This story mounts the shipped Toolbar. Override `--cwl-*` on
+          `.cwl-editor`. It does not mount CwlEditor.
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const meta = {
   title: 'Editor Chrome',
@@ -40,6 +76,11 @@ export const ToolbarButtonStates: Story = {
       </div>
     </div>
   ),
+};
+
+export const LiveToolbar: Story = {
+  name: 'Live Toolbar',
+  render: () => <LiveToolbarPreview />,
 };
 
 export const ThemeTokens: Story = {

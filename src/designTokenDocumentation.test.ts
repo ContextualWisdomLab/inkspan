@@ -34,6 +34,8 @@ describe('editor design-token documentation contract', () => {
     expect(operatorGuide).toContain('Override the named custom properties on `.cwl-editor`');
     expect(operatorGuide).toContain('Do not edit Inkspan internals');
     expect(inventory).toContain('Editor Chrome / Toolbar Button States');
+    expect(inventory).toContain('Editor Chrome / Live Toolbar');
+    expect(inventory).toContain('shipped Toolbar');
     expect(inventory).toContain('Override `--cwl-accent`');
     expect(doctoring).toContain('Design Tokens Format Module 2025.10');
     expect(doctoring).toContain(
@@ -48,6 +50,9 @@ describe('editor design-token documentation contract', () => {
     expect(repositoryFile('stories/EditorChrome.stories.tsx')).toContain('cwl-editor__surface');
     expect(repositoryFile('stories/EditorChrome.stories.tsx')).toContain(
       'cwl-collaboration-status',
+    );
+    expect(repositoryFile('stories/EditorChrome.stories.tsx')).toContain(
+      "from '../src/components/Toolbar.js'",
     );
     expect(inventory).toContain('class-level chrome sample');
   });

@@ -16,7 +16,7 @@ If contrast fails after a re-theme, override only the named tokens on `.cwl-edit
 1. Keep `src/styles.css` as runtime presentation authority.
 2. Publish `listEditorThemeTokens()` / `getEditorThemeToken()` / `toDesignTokenFormatGroup()` as a host-facing catalog of the nine shipped chrome tokens.
 3. Reject unknown token names with a stable payload-redacted `EditorThemeTokenError`.
-4. Preview repeating `.cwl-tb-btn` and token swatches in Storybook.
+4. Preview repeating `.cwl-tb-btn` states, the shipped Toolbar, and token swatches in Storybook.
 5. Add no network, persistence, credential, model, tenant, Figma, or design-tool sync authority.
 
 ## Standards rationale
