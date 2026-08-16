@@ -57,17 +57,24 @@ const ERROR_MESSAGES: Readonly<Record<ClipboardSanitizationErrorCode, string>> =
     invalid_configuration: 'Rich clipboard configuration is invalid.',
     invalid_html: 'Rich clipboard HTML could not be sanitized.',
   });
+const clipboardSanitizationErrorInstances = new WeakSet<object>();
 
 /** Error whose stable code and message never disclose clipboard content. */
 export class ClipboardSanitizationError extends Error {
   /** Machine-readable rejection category safe for host telemetry. */
   readonly code: ClipboardSanitizationErrorCode;
 
+  /** Recognize only errors constructed by this module without touching candidates. */
+  static [Symbol.hasInstance](candidate: unknown): boolean {
+    return clipboardSanitizationErrorInstances.has(candidate as object);
+  }
+
   /** Create one redacted sanitizer error from a stable category. */
   constructor(code: ClipboardSanitizationErrorCode) {
     super(ERROR_MESSAGES[code]);
     this.name = 'ClipboardSanitizationError';
     this.code = code;
+    clipboardSanitizationErrorInstances.add(this);
   }
 }
 
