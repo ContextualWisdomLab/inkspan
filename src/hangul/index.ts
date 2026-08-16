@@ -142,6 +142,40 @@ function snapshotHangulSource(source: Uint8Array, maxSourceBytes: number): Uint8
   return snapshot;
 }
 
+/** Copy genuine host-engine bytes into an Inkspan-owned immutable export snapshot. */
+function snapshotHangulOutput(source: Uint8Array, maxOutputBytes: number): Uint8Array {
+  let buffer: ArrayBufferLike;
+  let byteOffset: number;
+  let byteLength: number;
+  try {
+    buffer = TYPED_ARRAY_BUFFER_GETTER.call(source) as ArrayBufferLike;
+    byteOffset = TYPED_ARRAY_BYTE_OFFSET_GETTER.call(source) as number;
+    byteLength = TYPED_ARRAY_BYTE_LENGTH_GETTER.call(source) as number;
+  } catch {
+    throw new HangulDocumentError(
+      'ENGINE_OPERATION_FAILED',
+      'The Hangul engine failed during export.',
+    );
+  }
+
+  if (!(buffer instanceof ArrayBuffer)) {
+    throw new HangulDocumentError(
+      'ENGINE_OPERATION_FAILED',
+      'The Hangul engine failed during export.',
+    );
+  }
+  if (byteLength > maxOutputBytes) {
+    throw new HangulDocumentError(
+      'OUTPUT_LIMIT_EXCEEDED',
+      'Hangul export exceeds the configured limit.',
+    );
+  }
+
+  const snapshot = new Uint8Array(byteLength);
+  snapshot.set(new Uint8Array(buffer, byteOffset, byteLength));
+  return snapshot;
+}
+
 function parseInline(parent: ParentNode, marks: HangulDocumentMark[] = []): HangulDocumentJson[] {
   const output: HangulDocumentJson[] = [];
   for (const child of Array.from(parent.childNodes)) {
@@ -346,8 +380,8 @@ export async function exportHangulDocument(documentJson: HangulDocumentJson, opt
       if (length > 0) document.deleteText(0, 0, 0, length);
       document.pasteHtml(0, 0, 0, html);
       document.endBatch?.();
-      const bytes = format === 'hwp' ? document.exportHwp() : document.exportHwpx();
-      if (bytes.byteLength > maxOutputBytes) throw new HangulDocumentError('OUTPUT_LIMIT_EXCEEDED', 'Hangul export exceeds the configured limit.');
+      const engineBytes = format === 'hwp' ? document.exportHwp() : document.exportHwpx();
+      const bytes = snapshotHangulOutput(engineBytes, maxOutputBytes);
       return { format, bytes, warnings: Object.freeze([]) };
     } catch (error) {
       if (isHangulDocumentError(error)) throw error;
