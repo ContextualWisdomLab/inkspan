@@ -240,9 +240,11 @@ function createInvalidQueueOptionsError(): InternalDocumentAutosaveQueueError {
 /**
  * Read exact queue option values without invoking accessors or retaining extras.
  *
- * The optional observer must be an enumerable data property when present.
- * Unknown keys, symbols, accessors, non-enumerable fields, and reflection
- * failures are rejected before any host callback can execute.
+ * The required save callback is validated before global key enumeration so an
+ * already-invalid capability cannot trigger unrelated caller-controlled Proxy
+ * key reflection. The optional observer must be an enumerable data property
+ * when present. Unknown keys, symbols, accessors, non-enumerable fields, and
+ * reflection failures are rejected before any host callback can execute.
  */
 function readDocumentAutosaveQueueOptions(
   options: DocumentAutosaveQueueOptions,
@@ -252,6 +254,15 @@ function readDocumentAutosaveQueueOptions(
 }> {
   try {
     if (typeof options !== 'object' || options === null) {
+      throw createInvalidQueueOptionsError();
+    }
+    const saveDescriptor = Object.getOwnPropertyDescriptor(options, 'save');
+    if (
+      saveDescriptor === undefined ||
+      !saveDescriptor.enumerable ||
+      !Object.prototype.hasOwnProperty.call(saveDescriptor, 'value') ||
+      typeof saveDescriptor.value !== 'function'
+    ) {
       throw createInvalidQueueOptionsError();
     }
     const optionKeys = Reflect.ownKeys(options);
@@ -268,20 +279,15 @@ function readDocumentAutosaveQueueOptions(
     ) {
       throw createInvalidQueueOptionsError();
     }
-    const saveDescriptor = Object.getOwnPropertyDescriptor(options, 'save');
     const observerDescriptor = Object.getOwnPropertyDescriptor(
       options,
       'onSnapshotChange',
     );
     if (
-      saveDescriptor === undefined ||
-      !saveDescriptor.enumerable ||
-      !Object.prototype.hasOwnProperty.call(saveDescriptor, 'value') ||
-      typeof saveDescriptor.value !== 'function' ||
-      (observerDescriptor !== undefined &&
-        (!observerDescriptor.enumerable ||
-          !Object.prototype.hasOwnProperty.call(observerDescriptor, 'value') ||
-          typeof observerDescriptor.value !== 'function'))
+      observerDescriptor !== undefined &&
+      (!observerDescriptor.enumerable ||
+        !Object.prototype.hasOwnProperty.call(observerDescriptor, 'value') ||
+        typeof observerDescriptor.value !== 'function')
     ) {
       throw createInvalidQueueOptionsError();
     }
