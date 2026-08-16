@@ -56,6 +56,10 @@ function runLocalReleaseInventory(
     mkdirSync(releaseDirectory);
     writeFileSync(join(releaseDirectory, 'inkspan.tgz'), 'npm-package');
     writeFileSync(join(releaseDirectory, 'inkspan_office.whl'), 'office-wheel');
+    writeFileSync(
+      join(releaseDirectory, 'inkspan.spdx.json'),
+      '{"spdxVersion":"SPDX-2.3","packages":[]}',
+    );
     writeFileSync(join(releaseDirectory, 'SHA256SUMS'), 'checksums');
     mutate?.(releaseDirectory);
 
@@ -74,7 +78,7 @@ function runLocalReleaseInventory(
 }
 
 describe('local release artifact entry-type boundary', () => {
-  it('accepts exactly the three expected regular release files', () => {
+  it('accepts exactly the four expected regular release files', () => {
     if (process.platform !== 'linux') return;
 
     const result = runLocalReleaseInventory();
