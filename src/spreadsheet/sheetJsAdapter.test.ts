@@ -151,14 +151,32 @@ describe('sheetJsBytesToWorkbookData', () => {
         },
       ],
     });
-    expect(read).toHaveBeenCalledTimes(1);
-    expect(read).toHaveBeenCalledWith(XLSX_SOURCE, {
+    expect(read).toHaveBeenCalledTimes(3);
+    expect(read).toHaveBeenNthCalledWith(1, XLSX_SOURCE, {
       type: 'array',
       cellFormula: false,
       cellHTML: false,
       cellNF: false,
       bookVBA: false,
+      bookSheets: true,
+    });
+    expect(read).toHaveBeenNthCalledWith(2, XLSX_SOURCE, {
+      type: 'array',
+      cellFormula: false,
+      cellHTML: false,
+      cellNF: false,
+      bookVBA: false,
+      sheets: 'Summary',
       sheetRows: 10_001,
+    });
+    expect(read).toHaveBeenNthCalledWith(3, XLSX_SOURCE, {
+      type: 'array',
+      cellFormula: false,
+      cellHTML: false,
+      cellNF: false,
+      bookVBA: false,
+      sheets: 'Private',
+      sheetRows: 9_999,
     });
     expect(decodeRange).toHaveBeenCalledTimes(1);
     expect(decodeRange).toHaveBeenCalledWith('A1:B2');
@@ -232,7 +250,7 @@ describe('sheetJsBytesToWorkbookData', () => {
 
     for (const workbook of [
       { SheetNames: {}, Sheets: {} },
-      { SheetNames: [], Sheets: null },
+      { SheetNames: ['Summary'], Sheets: null },
       { SheetNames: proxy, Sheets: {} },
     ]) {
       const { parser } = parserFixture(workbook);
@@ -522,7 +540,7 @@ describe('sheetJsBytesToWorkbookData', () => {
       () => sheetJsBytesToWorkbookData(XLSX_SOURCE, rows.parser),
       'RESOURCE_LIMIT_EXCEEDED',
     );
-    expect(rows.sheetToJson).not.toHaveBeenCalled();
+    expect(rows.sheetToJson).toHaveBeenCalledTimes(1);
 
     const cells = parserFixture(
       sheetWorkbook({ '!ref': 'cells' }),
