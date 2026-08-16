@@ -1,8 +1,24 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import * as spreadsheet from './index.js';
+import {
+  preflightSpreadsheetBinarySource,
+  spreadsheetWorkbookToDocumentJson,
+  SpreadsheetImportError,
+} from './spreadsheetImport.js';
 
 describe('spreadsheet package subpath contract', () => {
+  it('re-exports the framework-neutral spreadsheet runtime through the public source barrel', () => {
+    expect(spreadsheet.preflightSpreadsheetBinarySource).toBe(
+      preflightSpreadsheetBinarySource,
+    );
+    expect(spreadsheet.spreadsheetWorkbookToDocumentJson).toBe(
+      spreadsheetWorkbookToDocumentJson,
+    );
+    expect(spreadsheet.SpreadsheetImportError).toBe(SpreadsheetImportError);
+  });
+
   it('declares an independently built framework-neutral spreadsheet surface', () => {
     const repositoryRoot = process.cwd();
     const packageJson = JSON.parse(
