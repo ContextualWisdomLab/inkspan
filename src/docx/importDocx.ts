@@ -90,11 +90,12 @@ async function readBlobBytes(blob: Blob): Promise<Uint8Array> {
   return new Promise<Uint8Array>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
-      if (!(reader.result instanceof ArrayBuffer)) {
+      const result = reader.result;
+      if (!isIntrinsicArrayBuffer(result)) {
         reject(new DocxImportError('invalid_source'));
         return;
       }
-      resolve(new Uint8Array(reader.result));
+      resolve(new Uint8Array(result));
     };
     reader.onerror = () => reject(new DocxImportError('invalid_source'));
     reader.readAsArrayBuffer(blob);
