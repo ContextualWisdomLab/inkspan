@@ -9,6 +9,9 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 ### Added
 - Named the repeating editor chrome as a host-facing theme-token catalog and Storybook inventory so hosts can override `--cwl-*` custom properties on `.cwl-editor` after checking WCAG 2.2 contrast, without editing Inkspan internals. Color catalog values now distinguish light, dark, and `@media print` remaps; forced-colors mode is not treated as a token assignment. Hosts can call `getEditorThemeTokenContrast()` to compare inventoried pairs, including `--cwl-accent` on `--cwl-accent-soft`, against the 4.5:1 text threshold via `meetsTextContrast`.
 
+### Accessibility
+- Raised the shipped dark active-toolbar accent from `#4493f8` to `#58a6ff`, increasing `--cwl-accent` text on `--cwl-accent-soft: #163356` from about 4.13:1 to about 5.06:1 so Inkspan's default 13px active-button text meets the WCAG 2.2 4.5:1 normal-text threshold while host overrides remain explicitly re-checkable through `getEditorThemeTokenContrast()`.
+
 ## [0.6.0] — 2026-08-10
 
 ### Release
