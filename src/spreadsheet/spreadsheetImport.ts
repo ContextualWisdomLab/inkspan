@@ -8,8 +8,10 @@ const MAX_WORKSHEET_COLUMNS = 256;
 const MAX_WORKBOOK_CELLS = 262_144;
 const MAX_CELL_TEXT_CODE_UNITS = 32_768;
 const MAX_WORKBOOK_TEXT_CODE_UNITS = 8_388_608;
-const RESOURCE_LIMIT_MESSAGE = 'Spreadsheet exceeds the configured resource limits.';
-const UNSUPPORTED_SOURCE_MESSAGE = 'Spreadsheet source is unsupported or corrupt.';
+const RESOURCE_LIMIT_MESSAGE =
+  'Spreadsheet exceeds the configured resource limits.';
+const UNSUPPORTED_SOURCE_MESSAGE =
+  'Spreadsheet source is unsupported or corrupt.';
 const XLSX_ZIP_SIGNATURE = [0x50, 0x4b, 0x03, 0x04] as const;
 const XLS_COMPOUND_FILE_SIGNATURE = [
   0xd0,
@@ -21,7 +23,9 @@ const XLS_COMPOUND_FILE_SIGNATURE = [
   0x1a,
   0xe1,
 ] as const;
-const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(Uint8Array.prototype) as object;
+const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(
+  Uint8Array.prototype,
+) as object;
 const TYPED_ARRAY_TAG_GETTER = Object.getOwnPropertyDescriptor(
   TYPED_ARRAY_PROTOTYPE,
   Symbol.toStringTag,
@@ -102,6 +106,19 @@ function unsupportedOrCorruptSource(): never {
   );
 }
 
+function readOwnDataProperty(source: object, key: string): unknown {
+  let descriptor: PropertyDescriptor | undefined;
+  try {
+    descriptor = Object.getOwnPropertyDescriptor(source, key);
+  } catch {
+    unsupportedOrCorruptSource();
+  }
+
+  if (descriptor === undefined) unsupportedOrCorruptSource();
+  if (!('value' in descriptor)) unsupportedOrCorruptSource();
+  return descriptor.value;
+}
+
 function isUint8ArraySource(source: unknown): source is Uint8Array {
   return (
     ArrayBuffer.isView(source) &&
@@ -180,7 +197,9 @@ export function spreadsheetWorkbookToDocumentJson(
   if (typeof workbook !== 'object' || workbook === null) {
     unsupportedOrCorruptSource();
   }
-  if (!Array.isArray(workbook.worksheets)) unsupportedOrCorruptSource();
+
+  const worksheets = readOwnDataProperty(workbook, 'worksheets');
+  if (!Array.isArray(worksheets)) unsupportedOrCorruptSource();
 
   const preparedWorksheets: PreparedWorksheet[] = [];
   let worksheetCount = 0;
@@ -189,16 +208,23 @@ export function spreadsheetWorkbookToDocumentJson(
   let textCodeUnits = 0;
 
   // Preflight the complete workbook before allocating proportional TipTap nodes.
-  for (const worksheet of workbook.worksheets) {
+  for (const worksheetSource of worksheets) {
+    if (typeof worksheetSource !== 'object' || worksheetSource === null) {
+      unsupportedOrCorruptSource();
+    }
+
+    const hidden = readOwnDataProperty(worksheetSource, 'hidden');
+    const name = readOwnDataProperty(worksheetSource, 'name');
+    const rows = readOwnDataProperty(worksheetSource, 'rows');
     if (
-      typeof worksheet !== 'object' ||
-      worksheet === null ||
-      typeof worksheet.hidden !== 'boolean' ||
-      typeof worksheet.name !== 'string' ||
-      !Array.isArray(worksheet.rows)
+      typeof hidden !== 'boolean' ||
+      typeof name !== 'string' ||
+      !Array.isArray(rows)
     ) {
       unsupportedOrCorruptSource();
     }
+
+    const worksheet: SpreadsheetWorksheetData = { hidden, name, rows };
     if (worksheet.hidden) continue;
     if (worksheet.name.length > MAX_WORKSHEET_NAME_CODE_UNITS) {
       resourceLimitExceeded();
