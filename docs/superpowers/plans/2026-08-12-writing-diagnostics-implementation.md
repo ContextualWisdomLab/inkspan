@@ -132,7 +132,7 @@ data-cwl-diagnostic-id="opaque-id"
 
 ## Task 10: canonical documentation and traceability
 
-**Files:** README, Architecture, PRD, TRD, API contract, threat model, operability, traceability, ADR 0027/0028/index, design, this plan, CHANGELOG, documentation-contract tests.
+**Files:** README, Architecture, PRD, TRD, API contract, threat model, operability, traceability, ADR 0028/0029/index, design, this plan, CHANGELOG, documentation-contract tests.
 
 - [ ] Document host semantic authority versus Inkspan deterministic integrity.
 - [ ] Synchronize public type examples, strict invalidation, semantic-neutral decorations, collapsed selectors, single-action application, standalone/collaboration parity, SSR, degraded operation, privacy, and rollback.
