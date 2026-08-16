@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bytesToDataUri, toUint8Array } from './index.js';
+import { bytesToBase64, bytesToDataUri, toUint8Array } from './index.js';
 
 const INVALID_BINARY_INPUT = {
   name: 'TypeError',
@@ -106,6 +106,12 @@ describe('converter binary input runtime boundary', () => {
 
   it('normalizes detached Uint8Array failures before data-URI encoding', () => {
     const failure = captureFailure(() => bytesToDataUri(detachedUint8Array()));
+
+    expect(failure).toMatchObject(INVALID_BINARY_INPUT);
+  });
+
+  it('normalizes detached Uint8Array failures before direct base64 encoding', () => {
+    const failure = captureFailure(() => bytesToBase64(detachedUint8Array()));
 
     expect(failure).toMatchObject(INVALID_BINARY_INPUT);
   });
