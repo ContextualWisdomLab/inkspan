@@ -19,12 +19,15 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function makeEditor(onError: (error: Error) => void): Editor {
+function makeEditor(
+  onError: (error: Error) => void,
+  content = '<p>hello</p>',
+): Editor {
   const element = document.createElement('div');
   document.body.appendChild(element);
   const editor = new Editor({
     element,
-    content: '<p>hello</p>',
+    content,
     extensions: [
       StarterKit,
       Base64Image.configure({
@@ -79,5 +82,25 @@ describe('Base64Image hostile conversion failure containment', () => {
     expect(onError.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(onError.mock.calls[0][0].message).toBe('Image processing failed.');
     expect(editor.getHTML()).not.toContain('data:image');
+  });
+
+  it('contains host error-observer failures while rejecting unsafe parsed images', () => {
+    const privateSentinel = new Error('private image observer sentinel');
+    const onError = vi.fn<(error: Error) => void>(() => {
+      throw privateSentinel;
+    });
+
+    let editor: Editor | undefined;
+    expect(() => {
+      editor = makeEditor(
+        onError,
+        '<p>before</p><img src="https://example.invalid/private.png"><p>after</p>',
+      );
+    }).not.toThrow();
+
+    expect(onError).toHaveBeenCalledOnce();
+    expect(editor?.getHTML()).not.toContain('<img');
+    expect(editor?.getText()).toContain('before');
+    expect(editor?.getText()).toContain('after');
   });
 });
