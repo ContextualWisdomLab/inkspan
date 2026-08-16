@@ -184,8 +184,8 @@ describe('sheetJsBytesToWorkbookData', () => {
   });
 
   it.each([
-    ['parser exception', { read: () => { throw new Error('private'); } }],
-    ['non-object parser result', { read: () => null }],
+    ['parser exception', { read: (): never => { throw new Error('private'); } }],
+    ['non-object parser result', { read: (): null => null }],
   ] as const)('normalizes %s as an unsupported source', (_label, overrides) => {
     const { parser } = parserFixture(undefined, overrides);
     expectSpreadsheetError(
