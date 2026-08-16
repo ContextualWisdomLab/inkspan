@@ -31,7 +31,8 @@ describe('editor design-token documentation contract', () => {
     expect(repositoryFile('docs/TRACEABILITY.md')).not.toContain('ADR 0027');
     expect(doctoring).toContain('ADR 0031');
     expect(doctoring).not.toContain('ADR 0027');
-    expect(operatorGuide).toContain('Override the named custom properties on `.cwl-editor`');
+    expect(operatorGuide).toContain('When a host overrides any color token');
+    expect(operatorGuide).toContain('shipped dark active-toolbar pair now uses');
     expect(operatorGuide).toContain('getEditorThemeTokenContrast');
     expect(operatorGuide).toContain("getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'dark')");
     expect(operatorGuide).toContain('meetsTextContrast');
@@ -42,7 +43,7 @@ describe('editor design-token documentation contract', () => {
     expect(inventory).toContain('shipped Toolbar');
     expect(inventory).toContain(':focus-visible');
     expect(inventory).toContain('Shipped defaults require no host override');
-    expect(inventory).toContain('Override `--cwl-accent`');
+    expect(inventory).toContain('If re-theming, override `--cwl-accent`');
     expect(doctoring).toContain('cwl-accent-soft');
     expect(doctoring).toContain('meets the WCAG 2.2 4.5:1');
     expect(doctoring).not.toContain('below the WCAG 2.2 4.5:1');
