@@ -119,6 +119,10 @@ function readOwnDataProperty(source: object, key: string): unknown {
   return descriptor.value;
 }
 
+function readArrayLength(source: readonly unknown[]): number {
+  return readOwnDataProperty(source, 'length') as number;
+}
+
 function isUint8ArraySource(source: unknown): source is Uint8Array {
   return (
     ArrayBuffer.isView(source) &&
@@ -186,7 +190,8 @@ function paragraphWithText(text: string): JSONContent {
 }
 
 interface PreparedWorksheet {
-  readonly worksheet: SpreadsheetWorksheetData;
+  readonly name: string;
+  readonly rows: readonly (readonly string[])[];
   readonly columnCount: number;
 }
 
@@ -200,6 +205,7 @@ export function spreadsheetWorkbookToDocumentJson(
 
   const worksheets = readOwnDataProperty(workbook, 'worksheets');
   if (!Array.isArray(worksheets)) unsupportedOrCorruptSource();
+  const worksheetsLength = readArrayLength(worksheets);
 
   const preparedWorksheets: PreparedWorksheet[] = [];
   let worksheetCount = 0;
@@ -208,7 +214,11 @@ export function spreadsheetWorkbookToDocumentJson(
   let textCodeUnits = 0;
 
   // Preflight the complete workbook before allocating proportional TipTap nodes.
-  for (const worksheetSource of worksheets) {
+  for (let worksheetIndex = 0; worksheetIndex < worksheetsLength; worksheetIndex += 1) {
+    const worksheetSource = readOwnDataProperty(
+      worksheets,
+      String(worksheetIndex),
+    );
     if (typeof worksheetSource !== 'object' || worksheetSource === null) {
       unsupportedOrCorruptSource();
     }
@@ -224,41 +234,54 @@ export function spreadsheetWorkbookToDocumentJson(
       unsupportedOrCorruptSource();
     }
 
-    const worksheet: SpreadsheetWorksheetData = { hidden, name, rows };
-    if (worksheet.hidden) continue;
-    if (worksheet.name.length > MAX_WORKSHEET_NAME_CODE_UNITS) {
+    if (hidden) continue;
+    if (name.length > MAX_WORKSHEET_NAME_CODE_UNITS) {
       resourceLimitExceeded();
     }
 
-    const nextRowCount = rowCount + worksheet.rows.length;
+    const rowsLength = readArrayLength(rows);
+    const nextRowCount = rowCount + rowsLength;
     if (nextRowCount > MAX_WORKBOOK_ROWS) resourceLimitExceeded();
 
+    const rowSources: (readonly unknown[])[] = [];
+    const rowLengths: number[] = [];
     let columnCount = 0;
-    for (const row of worksheet.rows) {
-      if (!Array.isArray(row)) unsupportedOrCorruptSource();
-      columnCount = Math.max(columnCount, row.length);
+    for (let rowIndex = 0; rowIndex < rowsLength; rowIndex += 1) {
+      const rowSource = readOwnDataProperty(rows, String(rowIndex));
+      if (!Array.isArray(rowSource)) unsupportedOrCorruptSource();
+      const rowLength = readArrayLength(rowSource);
+      columnCount = Math.max(columnCount, rowLength);
+      rowSources.push(rowSource);
+      rowLengths.push(rowLength);
     }
     if (columnCount === 0) continue;
     if (worksheetCount >= MAX_VISIBLE_WORKSHEETS) resourceLimitExceeded();
     if (columnCount > MAX_WORKSHEET_COLUMNS) resourceLimitExceeded();
 
-    const worksheetCellCount = worksheet.rows.length * columnCount;
+    const worksheetCellCount = rowsLength * columnCount;
     const nextCellCount = cellCount + worksheetCellCount;
     if (nextCellCount > MAX_WORKBOOK_CELLS) resourceLimitExceeded();
 
-    let worksheetTextCodeUnits = worksheet.name.length;
-    for (const row of worksheet.rows) {
-      for (const cellText of row) {
+    let worksheetTextCodeUnits = name.length;
+    const preparedRows: string[][] = [];
+    for (let rowIndex = 0; rowIndex < rowSources.length; rowIndex += 1) {
+      const rowSource = rowSources[rowIndex]!;
+      const rowLength = rowLengths[rowIndex]!;
+      const preparedRow: string[] = [];
+      for (let columnIndex = 0; columnIndex < rowLength; columnIndex += 1) {
+        const cellText = readOwnDataProperty(rowSource, String(columnIndex));
         if (typeof cellText !== 'string') unsupportedOrCorruptSource();
         if (cellText.length > MAX_CELL_TEXT_CODE_UNITS) resourceLimitExceeded();
         worksheetTextCodeUnits += cellText.length;
         if (textCodeUnits + worksheetTextCodeUnits > MAX_WORKBOOK_TEXT_CODE_UNITS) {
           resourceLimitExceeded();
         }
+        preparedRow.push(cellText);
       }
+      preparedRows.push(preparedRow);
     }
 
-    preparedWorksheets.push({ worksheet, columnCount });
+    preparedWorksheets.push({ name, rows: preparedRows, columnCount });
     worksheetCount += 1;
     rowCount = nextRowCount;
     cellCount = nextCellCount;
@@ -266,15 +289,15 @@ export function spreadsheetWorkbookToDocumentJson(
   }
 
   const content: JSONContent[] = [];
-  for (const { worksheet, columnCount } of preparedWorksheets) {
+  for (const { name, rows, columnCount } of preparedWorksheets) {
     content.push({
       type: 'heading',
       attrs: { level: 3 },
-      content: [{ type: 'text', text: worksheet.name }],
+      content: [{ type: 'text', text: name }],
     });
     content.push({
       type: 'table',
-      content: worksheet.rows.map((row) => ({
+      content: rows.map((row) => ({
         type: 'tableRow',
         content: Array.from({ length: columnCount }, (_, columnIndex) => ({
           type: 'tableCell',
