@@ -16,7 +16,7 @@ describe('DOCX binary source branding', () => {
     ).rejects.toMatchObject({
       name: 'DocxImportError',
       code: 'invalid_source',
-      message: 'The DOCX source is invalid.',
+      message: 'DOCX input must be a supported binary source.',
     });
     expect(getPrototypeOf).not.toHaveBeenCalled();
   });
