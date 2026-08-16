@@ -50,4 +50,21 @@ describe('ADR quality documentation contract', () => {
       }
     }
   });
+
+  it('indexes every detailed ADR exactly once under its filename identity', () => {
+    const adrIndex = repositoryFile('docs/adr/README.md');
+    const adrFiles = detailedAdrFiles();
+    const identifiers = adrFiles.map((name) => name.slice(0, 4));
+
+    expect(new Set(identifiers).size).toBe(identifiers.length);
+
+    for (const adrFile of adrFiles) {
+      const identifier = adrFile.slice(0, 4);
+      const link = `[${identifier}](${adrFile})`;
+      expect(
+        adrIndex.split(link).length - 1,
+        `${adrFile} must have exactly one canonical index row`,
+      ).toBe(1);
+    }
+  });
 });
