@@ -51,6 +51,22 @@ const blobSizeGetter = Object.getOwnPropertyDescriptor(
   'size',
 )!.get!;
 const safeImageIngressErrors = new WeakSet<object>();
+const INVALID_IMAGE_PROCESSING_OPTIONS_MESSAGE =
+  'Image processing options must use bounded numeric values.';
+
+/** Reject a malformed runtime byte or pixel limit before consuming input. */
+function assertNonNegativeSafeInteger(value: number): void {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new RangeError(INVALID_IMAGE_PROCESSING_OPTIONS_MESSAGE);
+  }
+}
+
+/** Reject a malformed runtime image quality before browser image processing. */
+function assertImageQuality(value: number): void {
+  if (!Number.isFinite(value) || value < 0 || value > 1) {
+    throw new RangeError(INVALID_IMAGE_PROCESSING_OPTIONS_MESSAGE);
+  }
+}
 
 /** Read Blob byte length from its platform internal slot, ignoring own accessors. */
 function intrinsicBlobSize(blob: Blob): number {
@@ -98,10 +114,12 @@ export async function downscaleDataUri(
   maxDimension: number,
   quality: number,
 ): Promise<string> {
+  assertNonNegativeSafeInteger(maxDimension);
+  assertImageQuality(quality);
   if (
     typeof document === 'undefined' ||
     typeof globalThis.Image === 'undefined' ||
-    maxDimension <= 0
+    maxDimension === 0
   ) {
     return dataUri;
   }
@@ -142,6 +160,12 @@ export async function imageFileToInlineDataUri(
   file: Blob,
   options: Pick<Base64ImageOptions, 'maxSizeBytes' | 'maxDimension' | 'quality'>,
 ): Promise<string> {
+  assertNonNegativeSafeInteger(options.maxSizeBytes);
+  if (options.maxDimension !== undefined) {
+    assertNonNegativeSafeInteger(options.maxDimension);
+  }
+  assertImageQuality(options.quality);
+
   if (options.maxSizeBytes > 0) {
     const sourceBytes = intrinsicBlobSize(file);
     if (sourceBytes > options.maxSizeBytes) {
@@ -155,7 +179,7 @@ export async function imageFileToInlineDataUri(
     maxBytes: options.maxSizeBytes > 0 ? options.maxSizeBytes : undefined,
   });
   validateGeneratedInlineImageSource(dataUri, options.maxSizeBytes);
-  if (options.maxDimension && options.maxDimension > 0) {
+  if (options.maxDimension !== undefined && options.maxDimension > 0) {
     const scaled = await downscaleDataUri(
       dataUri,
       options.maxDimension,
