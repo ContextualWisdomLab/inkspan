@@ -267,7 +267,8 @@ export function toUint8Array(
  * their own fallback.
  */
 export function sniffMimeType(bytes: Uint8Array): string | undefined {
-  const b = bytes;
+  const { buffer, byteOffset, byteLength } = readUint8ArraySlots(bytes);
+  const b = new Uint8Array(buffer, byteOffset, byteLength);
   if (b.length >= 8) {
     // PNG: 89 50 4E 47 0D 0A 1A 0A
     if (
