@@ -14,12 +14,12 @@ function workbookBytes(bookType: 'xlsx' | 'biff8'): Uint8Array {
 
   const hidden = XLSX.utils.aoa_to_sheet([['secret']]);
   XLSX.utils.book_append_sheet(workbook, hidden, 'Hidden');
-  if (workbook.Workbook?.Sheets !== undefined) {
-    workbook.Workbook.Sheets[1] = {
-      ...workbook.Workbook.Sheets[1],
-      Hidden: 1,
-    };
-  }
+  workbook.Workbook ??= {};
+  workbook.Workbook.Sheets ??= [];
+  workbook.Workbook.Sheets[1] = {
+    ...workbook.Workbook.Sheets[1],
+    Hidden: 1,
+  };
 
   const written = XLSX.write(workbook, {
     bookType,
