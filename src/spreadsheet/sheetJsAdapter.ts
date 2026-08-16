@@ -169,6 +169,8 @@ function decodeRangeDimensions(
 function readDisplayedRows(
   parser: SheetJsParserModule,
   sheet: object,
+  expectedRows: number,
+  expectedColumns: number,
 ): readonly (readonly string[])[] {
   let rawRows: unknown;
   try {
@@ -183,11 +185,13 @@ function readDisplayedRows(
   }
   if (!isArray(rawRows)) unsupportedOrCorruptSource();
   const rowCount = readArrayLength(rawRows);
+  if (rowCount > expectedRows) resourceLimitExceeded();
   const rows: string[][] = [];
   for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
     const rawRow = readOwnDataProperty(rawRows, String(rowIndex));
     if (!isArray(rawRow)) unsupportedOrCorruptSource();
     const columnCount = readArrayLength(rawRow);
+    if (columnCount > expectedColumns) resourceLimitExceeded();
     const row: string[] = [];
     for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
       const cell = readOwnDataProperty(rawRow, String(columnIndex));
@@ -307,7 +311,12 @@ export function sheetJsBytesToWorkbookData(
     worksheets.push({
       name,
       hidden: false,
-      rows: readDisplayedRows(parser, sheet),
+      rows: readDisplayedRows(
+        parser,
+        sheet,
+        dimensions.rows,
+        dimensions.columns,
+      ),
     });
   }
 
