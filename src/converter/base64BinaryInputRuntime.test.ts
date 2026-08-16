@@ -41,6 +41,13 @@ function prototypeSpoofedUint8Array(): {
   return { value, wasByteLengthRead: () => byteLengthRead };
 }
 
+function detachedUint8Array(): Uint8Array {
+  const buffer = new ArrayBuffer(4);
+  const view = new Uint8Array(buffer);
+  structuredClone(buffer, { transfer: [buffer] });
+  return view;
+}
+
 function captureFailure(run: () => unknown): unknown {
   try {
     run();
@@ -88,6 +95,18 @@ describe('converter binary input runtime boundary', () => {
     );
 
     expect(hostile.wasByteLengthRead()).toBe(false);
+    expect(failure).toMatchObject(INVALID_BINARY_INPUT);
+  });
+
+  it('rejects detached Uint8Array values at the conversion boundary', () => {
+    const failure = captureFailure(() => toUint8Array(detachedUint8Array()));
+
+    expect(failure).toMatchObject(INVALID_BINARY_INPUT);
+  });
+
+  it('normalizes detached Uint8Array failures before data-URI encoding', () => {
+    const failure = captureFailure(() => bytesToDataUri(detachedUint8Array()));
+
     expect(failure).toMatchObject(INVALID_BINARY_INPUT);
   });
 });
