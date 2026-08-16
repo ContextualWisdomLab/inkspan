@@ -43,7 +43,8 @@ describe('editor design-token documentation contract', () => {
     expect(inventory).toContain(':focus-visible');
     expect(inventory).toContain('Override `--cwl-accent`');
     expect(doctoring).toContain('cwl-accent-soft');
-    expect(doctoring).toContain('below the WCAG 2.2 4.5:1');
+    expect(doctoring).toContain('meets the WCAG 2.2 4.5:1');
+    expect(doctoring).not.toContain('below the WCAG 2.2 4.5:1');
     expect(doctoring).toContain('Design Tokens Format Module 2025.10');
     expect(doctoring).toContain(
       'https://www.w3.org/community/reports/design-tokens/CG-FINAL-format-20251028/',
@@ -51,6 +52,7 @@ describe('editor design-token documentation contract', () => {
     expect(doctoring).toContain('https://www.w3.org/TR/WCAG22/');
     expect(doctoring).toContain('https://storybook.js.org/docs/get-started/frameworks/react-vite');
     expect(changelog).toContain('Named the repeating editor chrome as a host-facing theme-token catalog');
+    expect(changelog).toContain('Raised the shipped dark active-toolbar accent');
     expect(repositoryFile('.storybook/main.ts')).toContain("@storybook/react-vite");
     expect(repositoryFile('stories/EditorChrome.stories.tsx')).toContain('cwl-tb-btn');
     expect(repositoryFile('stories/EditorChrome.stories.tsx')).toContain('autoFocus');
