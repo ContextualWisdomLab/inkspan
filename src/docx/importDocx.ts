@@ -9,6 +9,10 @@ import type {
 } from './types.js';
 import { ZipArchive } from './zip.js';
 
+const ARRAY_BUFFER_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
+  ArrayBuffer.prototype,
+  'byteLength',
+)!.get!;
 const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(
   Uint8Array.prototype,
 ) as object;
@@ -43,10 +47,30 @@ interface ArrayBufferViewRange {
   readonly byteLength: number;
 }
 
+/** Identify a genuine ArrayBuffer through its internal slot without prototype traversal. */
+function isIntrinsicArrayBuffer(value: unknown): value is ArrayBuffer {
+  try {
+    ARRAY_BUFFER_BYTE_LENGTH_GETTER.call(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Read Blob size through the platform prototype without invoking caller overrides. */
 function readBlobSize(blob: Blob): number {
   const getter = Object.getOwnPropertyDescriptor(Blob.prototype, 'size')!.get!;
   return getter.call(blob) as number;
+}
+
+/** Identify a genuine Blob and read its size without prototype traversal. */
+function tryReadBlobSize(value: unknown): number | undefined {
+  if (typeof Blob === 'undefined') return undefined;
+  try {
+    return readBlobSize(value as Blob);
+  } catch {
+    return undefined;
+  }
 }
 
 /** Read one proven Blob without requiring Blob.arrayBuffer() in older DOMs. */
@@ -101,21 +125,23 @@ async function snapshotSource(
 ): Promise<Uint8Array> {
   try {
     let view: Uint8Array;
-    if (source instanceof ArrayBuffer) {
+    if (isIntrinsicArrayBuffer(source)) {
       view = new Uint8Array(source);
     } else if (ArrayBuffer.isView(source)) {
       const { buffer, byteOffset, byteLength } = readArrayBufferViewRange(source);
-      if (!(buffer instanceof ArrayBuffer)) {
+      if (!isIntrinsicArrayBuffer(buffer)) {
         throw new DocxImportError('invalid_source');
       }
       view = new Uint8Array(buffer, byteOffset, byteLength);
-    } else if (typeof Blob !== 'undefined' && source instanceof Blob) {
-      if (readBlobSize(source) > maxArchiveBytes) {
+    } else {
+      const blobSize = tryReadBlobSize(source);
+      if (blobSize === undefined) {
+        throw new DocxImportError('invalid_source');
+      }
+      if (blobSize > maxArchiveBytes) {
         throw new DocxImportError('input_too_large');
       }
-      view = await readBlobBytes(source);
-    } else {
-      throw new DocxImportError('invalid_source');
+      view = await readBlobBytes(source as Blob);
     }
     if (view.byteLength === 0) throw new DocxImportError('invalid_source');
     if (view.byteLength > maxArchiveBytes) {
