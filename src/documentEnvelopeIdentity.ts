@@ -33,7 +33,9 @@ const IDENTITY_DOCUMENT_ENVELOPE_ERRORS = new WeakSet<object>();
 class DocumentEnvelopeError extends BaseDocumentEnvelopeError {
   constructor(message: string) {
     super(message);
-    IDENTITY_DOCUMENT_ENVELOPE_ERRORS.add(this);
+    const error = new BaseDocumentEnvelopeError(message);
+    IDENTITY_DOCUMENT_ENVELOPE_ERRORS.add(error);
+    return error;
   }
 }
 
