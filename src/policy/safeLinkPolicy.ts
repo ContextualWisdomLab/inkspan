@@ -10,7 +10,7 @@
 const SAFE_ABSOLUTE_SCHEMES = new Set(['http', 'https', 'mailto', 'tel']);
 const URI_SCHEME_PATTERN = /^([a-z][a-z0-9+.-]*):/i;
 const FORBIDDEN_LINK_CHARACTER_PATTERN =
-  /[\u0000-\u0020\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069\\]/u;
+  /[\u0000-\u001f\s\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069\\]/u;
 
 /** Return a bounded, secret-free category for an untrusted hyperlink target. */
 function redactLinkHref(href: unknown): string {
