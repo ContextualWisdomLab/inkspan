@@ -3,6 +3,9 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+const RELEASE_CHECKOUT_ACTION =
+  'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1';
+
 /** Read one authoritative repository file as UTF-8 text. */
 function repositoryFile(path: string): string {
   return readFileSync(resolve(process.cwd(), path), 'utf8');
@@ -27,7 +30,7 @@ function workflowStep(source: string, stepName: string, nextStepName: string): s
 }
 
 describe('release artifact checkout authority', () => {
-  it('binds the artifact build to the exact tag SHA without persisted credentials before setup', () => {
+  it('binds the artifact build to the repository checkout baseline and exact tag SHA before setup', () => {
     const workflow = repositoryFile('.github/workflows/release.yml');
     const buildJob = workflowJob(
       workflow,
@@ -45,7 +48,7 @@ describe('release artifact checkout authority', () => {
       'Set up pnpm',
     );
 
-    expect(checkoutStep).toContain('uses: actions/checkout@');
+    expect(checkoutStep).toContain(`uses: ${RELEASE_CHECKOUT_ACTION}`);
     expect(checkoutStep).toContain('with:');
     expect(checkoutStep).toContain('ref: ${{ github.sha }}');
     expect(checkoutStep).toContain('fetch-depth: 0');
