@@ -41,6 +41,7 @@ describe('editor design-token documentation contract', () => {
     expect(inventory).toContain('Editor Chrome / Live Toolbar');
     expect(inventory).toContain('shipped Toolbar');
     expect(inventory).toContain(':focus-visible');
+    expect(inventory).toContain('Shipped defaults require no host override');
     expect(inventory).toContain('Override `--cwl-accent`');
     expect(doctoring).toContain('cwl-accent-soft');
     expect(doctoring).toContain('meets the WCAG 2.2 4.5:1');
