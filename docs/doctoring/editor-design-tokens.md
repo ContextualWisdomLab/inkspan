@@ -28,15 +28,15 @@ WCAG 2.2 requires sufficient contrast for text and user-interface components (Wo
 ## Test-first evidence
 
 - RED: `src/designTokens.test.ts` failed because `./designTokens.js` did not exist.
-- GREEN: the catalog lists the nine shipped tokens, aligns light/dark/forced-colors color values with `src/styles.css`, rejects unknown names without reflecting caller input, and emits a DTCG 2025.10 group.
+- GREEN: the catalog lists the nine shipped tokens, aligns light/dark/print color values with the matching `src/styles.css` media blocks, rejects unknown names without reflecting caller input, and emits a DTCG 2025.10 group.
 
 ## Residual risk
 
-Forced-colors and print media still apply after a host override. The font token snapshot splits a CSS font-family list and does not execute CSS. Storybook success is not Chromium/Firefox/WebKit release evidence.
+Print media still remaps the color tokens after a host override. Forced-colors mode only restyles the toolbar focus outline to `CanvasText`; it does not assign `--cwl-*` values. The font token snapshot splits a CSS font-family list and does not execute CSS. Storybook success is not Chromium/Firefox/WebKit release evidence.
 
 ## Rollback
 
-Rollback must remove the catalog export, this record, the operator guide, the Storybook inventory/config/stories, ADR 0027, the changelog entry, and the documentation-index rows together.
+Rollback must remove the catalog export, this record, the operator guide, the Storybook inventory/config/stories, ADR 0031, the changelog entry, and the documentation-index rows together.
 
 ## References (APA 7th edition)
 

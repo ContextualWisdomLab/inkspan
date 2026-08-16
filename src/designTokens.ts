@@ -26,7 +26,7 @@ export interface EditorThemeToken {
   readonly role: EditorThemeTokenRole;
   readonly lightValue: string;
   readonly darkValue?: string;
-  readonly forcedColorsValue?: string;
+  readonly printValue?: string;
   readonly hostAction: string;
 }
 
@@ -75,7 +75,7 @@ function themeToken(
   role: EditorThemeTokenRole,
   lightValue: string,
   darkValue?: string,
-  forcedColorsValue?: string,
+  printValue?: string,
 ): EditorThemeToken {
   const cssCustomProperty = `--${name}` as const;
   return Object.freeze({
@@ -84,7 +84,7 @@ function themeToken(
     role,
     lightValue,
     darkValue,
-    forcedColorsValue,
+    printValue,
     hostAction: hostAction(cssCustomProperty),
   });
 }

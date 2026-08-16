@@ -97,6 +97,8 @@ CSS paged-media print boundary is implemented on protected `main` under Accepted
 
 The CSS contract does not introduce JavaScript print orchestration, a PDF service, durable export authority, credentials, network access, identity, tenancy, persistence, page-number/header/footer generation, signature authority, or PDF-conformance claims. Browser/OS print destination and durable artifact policy remain host/user responsibilities.
 
+A named editor-chrome theme-token catalog, DTCG 2025.10 interchange snapshot, and Storybook inventory are Active PR / Proposed. CSS remains runtime presentation authority. Hosts override `--cwl-*` on `.cwl-editor` after checking WCAG 2.2 contrast. The catalog's optional print values are the `@media print` remaps; forced-colors mode does not assign those custom properties. This slice adds no Figma, network, persistence, credential, or model authority.
+
 ## Model-assisted authoring
 
 Inkspan does not own model credentials, provider routing, prompt retention, external-data-use approval, tenant disclosure policy, or model audit. A host may route assistance through contextual-orchestrator or another approved provider. Model output is untrusted proposed content and cannot bypass deterministic clipboard/document/conversion validation, user/host approval, or durable save authorization.

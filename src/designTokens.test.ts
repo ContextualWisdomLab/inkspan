@@ -12,6 +12,27 @@ import {
 
 const stylesheet = readFileSync(resolve(process.cwd(), 'src/styles.css'), 'utf8');
 
+function mediaBlock(css: string, query: string): string {
+  const marker = `@media ${query}`;
+  const start = css.indexOf(marker);
+  expect(start).toBeGreaterThan(-1);
+  const open = css.indexOf('{', start);
+  let depth = 0;
+  for (let index = open; index < css.length; index += 1) {
+    const character = css[index];
+    if (character === '{') {
+      depth += 1;
+    }
+    if (character === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return css.slice(open + 1, index);
+      }
+    }
+  }
+  throw new Error(`Unclosed media query: ${query}`);
+}
+
 describe('editor theme token catalog', () => {
   it('lists every shipped .cwl-editor custom property hosts can override', () => {
     const tokens = listEditorThemeTokens();
@@ -37,18 +58,20 @@ describe('editor theme token catalog', () => {
     }
   });
 
-  it('keeps light, dark, and forced-colors color values aligned with the stylesheet', () => {
-    const foreground = getEditorThemeToken('cwl-fg');
+  it('keeps light, dark, and print color values inside the matching stylesheet media blocks', () => {
+    const printBlock = mediaBlock(stylesheet, 'print');
+    const darkBlock = mediaBlock(stylesheet, '(prefers-color-scheme: dark)');
+    const forcedColorsBlock = mediaBlock(stylesheet, '(forced-colors: active)');
+    const colorTokens = listEditorThemeTokens().filter((token) => token.role === 'color');
 
-    expect(foreground.role).toBe('color');
-    expect(foreground.lightValue).toBe('#1f2328');
-    expect(foreground.darkValue).toBe('#e6edf3');
-    expect(foreground.forcedColorsValue).toBe('#000000');
-    expect(stylesheet).toContain(`${foreground.cssCustomProperty}: ${foreground.lightValue};`);
-    expect(stylesheet).toContain(`${foreground.cssCustomProperty}: ${foreground.darkValue};`);
-    expect(stylesheet).toContain(
-      `${foreground.cssCustomProperty}: ${foreground.forcedColorsValue};`,
-    );
+    expect(forcedColorsBlock).toContain('outline-color: CanvasText');
+
+    for (const token of colorTokens) {
+      expect(stylesheet).toContain(`${token.cssCustomProperty}: ${token.lightValue};`);
+      expect(darkBlock).toContain(`${token.cssCustomProperty}: ${token.darkValue};`);
+      expect(printBlock).toContain(`${token.cssCustomProperty}: ${token.printValue};`);
+      expect(forcedColorsBlock).not.toContain(`${token.cssCustomProperty}:`);
+    }
   });
 
   it('rejects unknown token names without reflecting caller input', () => {

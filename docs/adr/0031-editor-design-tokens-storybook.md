@@ -4,7 +4,7 @@ Status: Proposed
 
 ## Context
 
-Inkspan ships repeating toolbar buttons, groups, and editor chrome styled through `--cwl-*` custom properties. Hosts already re-theme by overriding those properties, but the names, light/dark/forced-colors values, and buyer next action lived only inside `src/styles.css`. There was no typed catalog, no Design Tokens Format Module interchange snapshot, and no Storybook inventory of the repeating objects.
+Inkspan ships repeating toolbar buttons, groups, and editor chrome styled through `--cwl-*` custom properties. Hosts already re-theme by overriding those properties, but the names, light/dark/print values, and buyer next action lived only inside `src/styles.css`. There was no typed catalog, no Design Tokens Format Module interchange snapshot, and no Storybook inventory of the repeating objects.
 
 ## Alternatives considered
 

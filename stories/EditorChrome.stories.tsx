@@ -26,6 +26,16 @@ export const ToolbarButtonStates: Story = {
           <button type="button" className="cwl-tb-btn is-active" aria-pressed="true">
             I
           </button>
+          <button type="button" className="cwl-tb-btn" disabled>
+            U
+          </button>
+        </div>
+      </div>
+      <div className="cwl-collaboration-status">Idle</div>
+      <div className="cwl-editor__surface">
+        <div className="cwl-editor__content">
+          Preview the same `.cwl-*` classes buyers ship. This is a class-level
+          chrome sample, not a mounted Toolbar or CwlEditor.
         </div>
       </div>
     </div>
