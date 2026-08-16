@@ -18,6 +18,10 @@ interface JsonTraversalEntry {
   readonly depth: number;
 }
 
+type JsonContainerChildren =
+  | Readonly<{ kind: 'array'; length: number }>
+  | Readonly<{ kind: 'object'; keys: (string | symbol)[] }>;
+
 /** Detached evidence shape returned to the public autosave queue. */
 export interface DetachedDocumentAutosaveRevisionEvidence {
   /** Detached active-schema document envelope. */
@@ -105,12 +109,6 @@ export function isDeeplyFrozenDocumentJson(rootValue: unknown): boolean {
     while (pendingEntries.length > 0) {
       const currentEntry = pendingEntries.pop() as JsonTraversalEntry;
       inspectedValueCount += 1;
-      if (
-        inspectedValueCount > MAX_AUTOSAVE_EVIDENCE_JSON_VALUES ||
-        currentEntry.depth > MAX_AUTOSAVE_EVIDENCE_NESTING_DEPTH
-      ) {
-        return false;
-      }
 
       const currentValue = currentEntry.value;
       if (
@@ -136,23 +134,37 @@ export function isDeeplyFrozenDocumentJson(rootValue: unknown): boolean {
       visitedContainers.add(currentValue);
 
       const childDepth = currentEntry.depth + 1;
+      let children: JsonContainerChildren;
       if (Array.isArray(currentValue)) {
         const length = Object.getOwnPropertyDescriptor(
           currentValue,
           'length',
         )!.value as number;
-        const remainingValueCapacity =
-          MAX_AUTOSAVE_EVIDENCE_JSON_VALUES - inspectedValueCount;
-        if (length > remainingValueCapacity) return false;
-        if (
-          length > 0 &&
-          childDepth > MAX_AUTOSAVE_EVIDENCE_NESTING_DEPTH
-        ) {
-          return false;
-        }
+        children = { kind: 'array', length };
+      } else {
+        const prototype = Object.getPrototypeOf(currentValue);
+        if (prototype !== Object.prototype && prototype !== null) return false;
+        children = { kind: 'object', keys: Reflect.ownKeys(currentValue) };
+      }
+
+      const childCount =
+        children.kind === 'array' ? children.length : children.keys.length;
+      const remainingValueCapacity =
+        MAX_AUTOSAVE_EVIDENCE_JSON_VALUES -
+        inspectedValueCount -
+        pendingEntries.length;
+      if (childCount > remainingValueCapacity) return false;
+      if (
+        childCount > 0 &&
+        childDepth > MAX_AUTOSAVE_EVIDENCE_NESTING_DEPTH
+      ) {
+        return false;
+      }
+
+      if (children.kind === 'array') {
         const ownKeys = Reflect.ownKeys(currentValue);
-        if (ownKeys.length !== length + 1) return false;
-        for (let index = 0; index < length; index += 1) {
+        if (ownKeys.length !== children.length + 1) return false;
+        for (let index = 0; index < children.length; index += 1) {
           const descriptor = Object.getOwnPropertyDescriptor(
             currentValue,
             String(index),
@@ -172,10 +184,7 @@ export function isDeeplyFrozenDocumentJson(rootValue: unknown): boolean {
         continue;
       }
 
-      const prototype = Object.getPrototypeOf(currentValue);
-      if (prototype !== Object.prototype && prototype !== null) return false;
-      for (const key of Reflect.ownKeys(currentValue)) {
-        if (childDepth > MAX_AUTOSAVE_EVIDENCE_NESTING_DEPTH) return false;
+      for (const key of children.keys) {
         if (typeof key !== 'string') return false;
         const descriptor = Object.getOwnPropertyDescriptor(currentValue, key);
         if (
