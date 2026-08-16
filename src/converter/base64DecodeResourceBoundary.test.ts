@@ -25,6 +25,25 @@ describe('data URI decode resource boundary', () => {
     expect(decoder).not.toHaveBeenCalled();
   });
 
+  it('rejects oversized forgiving-base64 whitespace before decoder allocation', () => {
+    const decoder = vi.spyOn(globalThis.Buffer, 'from');
+    let failure: unknown;
+
+    try {
+      dataUriToBytes(
+        `data:application/octet-stream;base64,${'A A A A '.repeat(4)}`,
+        { maxBytes: 4 },
+      );
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(failure).toBeInstanceOf(Base64SizeError);
+    expect((failure as Base64SizeError).bytes).toBe(12);
+    expect((failure as Base64SizeError).maxBytes).toBe(4);
+    expect(decoder).not.toHaveBeenCalled();
+  });
+
   it('accounts for one canonical padding byte without changing accepted decode', () => {
     expect(
       dataUriToBytes('data:application/octet-stream;base64,YWI=', {
