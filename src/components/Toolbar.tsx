@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { Base64SizeError } from '../converter/base64.js';
 import { imageFileToInlineDataUri } from '../extensions/Base64Image.js';
+import { isSafeLinkHref } from '../extensions/SafeLink.js';
 import type { ImageConfig } from '../types.js';
 
 interface ToolbarProps {
@@ -183,6 +184,7 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
       editor.chain().focus().extendMarkRange('link').unsetLink().run();
       return;
     }
+    if (!isSafeLinkHref(url)) return;
     editor
       .chain()
       .focus()
