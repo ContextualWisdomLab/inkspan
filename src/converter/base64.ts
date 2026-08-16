@@ -150,20 +150,30 @@ function readUint8ArraySlots(input: unknown): Uint8ArraySlots {
   }
 }
 
-/** Read a genuine ArrayBuffer view's byte range without caller-owned accessors. */
+/** Read a genuine live ArrayBuffer view's range without caller-owned accessors. */
 function readArrayBufferViewSlots(input: ArrayBufferView): Uint8ArraySlots {
-  if (TYPED_ARRAY_TAG_GETTER.call(input) !== undefined) {
-    return {
-      buffer: TYPED_ARRAY_BUFFER_GETTER.call(input) as ArrayBufferLike,
-      byteOffset: TYPED_ARRAY_BYTE_OFFSET_GETTER.call(input) as number,
-      byteLength: TYPED_ARRAY_BYTE_LENGTH_GETTER.call(input) as number,
-    };
+  try {
+    const slots = TYPED_ARRAY_TAG_GETTER.call(input) !== undefined
+      ? {
+          buffer: TYPED_ARRAY_BUFFER_GETTER.call(input) as ArrayBufferLike,
+          byteOffset: TYPED_ARRAY_BYTE_OFFSET_GETTER.call(input) as number,
+          byteLength: TYPED_ARRAY_BYTE_LENGTH_GETTER.call(input) as number,
+        }
+      : {
+          buffer: DATA_VIEW_BUFFER_GETTER.call(input) as ArrayBufferLike,
+          byteOffset: DATA_VIEW_BYTE_OFFSET_GETTER.call(input) as number,
+          byteLength: DATA_VIEW_BYTE_LENGTH_GETTER.call(input) as number,
+        };
+    const probe = new Uint8Array(
+      slots.buffer,
+      slots.byteOffset,
+      slots.byteLength,
+    );
+    void probe;
+    return slots;
+  } catch {
+    throw new TypeError(INVALID_BINARY_INPUT_MESSAGE);
   }
-  return {
-    buffer: DATA_VIEW_BUFFER_GETTER.call(input) as ArrayBufferLike,
-    byteOffset: DATA_VIEW_BYTE_OFFSET_GETTER.call(input) as number,
-    byteLength: DATA_VIEW_BYTE_LENGTH_GETTER.call(input) as number,
-  };
 }
 
 /** Encode raw bytes to a base64 string. Works in Node and the browser. */
