@@ -80,6 +80,21 @@ function isHangulDocumentError(error: unknown): error is HangulDocumentError {
 
 const TEXT_ALIGNMENTS = new Set(['left', 'center', 'right', 'justify']);
 const DEFAULT_MAX_DOCUMENT_BYTES = 64 * 1024 * 1024;
+const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(
+  Uint8Array.prototype,
+) as object;
+const TYPED_ARRAY_BUFFER_GETTER = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  'buffer',
+)!.get!;
+const TYPED_ARRAY_BYTE_OFFSET_GETTER = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  'byteOffset',
+)!.get!;
+const TYPED_ARRAY_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
+  TYPED_ARRAY_PROTOTYPE,
+  'byteLength',
+)!.get!;
 
 /** Resolve a public runtime byte ceiling without coercion or fail-open numeric values. */
 function resolveHangulByteLimit(limit: number | undefined): number {
@@ -91,6 +106,40 @@ function resolveHangulByteLimit(limit: number | undefined): number {
     );
   }
   return resolved;
+}
+
+/** Copy one genuine Uint8Array into an Inkspan-owned immutable import snapshot. */
+function snapshotHangulSource(source: Uint8Array, maxSourceBytes: number): Uint8Array {
+  let buffer: ArrayBufferLike;
+  let byteOffset: number;
+  let byteLength: number;
+  try {
+    buffer = TYPED_ARRAY_BUFFER_GETTER.call(source) as ArrayBufferLike;
+    byteOffset = TYPED_ARRAY_BYTE_OFFSET_GETTER.call(source) as number;
+    byteLength = TYPED_ARRAY_BYTE_LENGTH_GETTER.call(source) as number;
+  } catch {
+    throw new HangulDocumentError(
+      'INVALID_SOURCE',
+      'Hangul source bytes are invalid.',
+    );
+  }
+
+  if (!(buffer instanceof ArrayBuffer)) {
+    throw new HangulDocumentError(
+      'INVALID_SOURCE',
+      'Hangul source bytes are invalid.',
+    );
+  }
+  if (byteLength > maxSourceBytes) {
+    throw new HangulDocumentError(
+      'SOURCE_LIMIT_EXCEEDED',
+      'Hangul source exceeds the configured limit.',
+    );
+  }
+
+  const snapshot = new Uint8Array(byteLength);
+  snapshot.set(new Uint8Array(buffer, byteOffset, byteLength));
+  return snapshot;
 }
 
 function parseInline(parent: ParentNode, marks: HangulDocumentMark[] = []): HangulDocumentJson[] {
@@ -265,9 +314,9 @@ function jsonToHtml(documentJson: HangulDocumentJson): string {
 /** Project HWP/HWPX bytes into the editor's JSON model. */
 export async function openHangulDocument(source: Uint8Array, options: OpenHangulDocumentOptions): Promise<HangulDocumentImportResult> {
   const maxSourceBytes = resolveHangulByteLimit(options.maxSourceBytes);
-  if (source.byteLength > maxSourceBytes) throw new HangulDocumentError('SOURCE_LIMIT_EXCEEDED', 'Hangul source exceeds the configured limit.');
+  const sourceSnapshot = snapshotHangulSource(source, maxSourceBytes);
   let document: HangulEngineDocument;
-  try { document = await options.engine.open(source); } catch { throw new HangulDocumentError('ENGINE_OPEN_FAILED', 'The Hangul engine could not open the document.'); }
+  try { document = await options.engine.open(sourceSnapshot); } catch { throw new HangulDocumentError('ENGINE_OPEN_FAILED', 'The Hangul engine could not open the document.'); }
   try {
     const sourceFormat = document.getSourceFormat().toLowerCase();
     if (sourceFormat !== 'hwp' && sourceFormat !== 'hwpx') throw new HangulDocumentError('UNSUPPORTED_SOURCE_FORMAT', 'Unsupported Hangul source format.');
