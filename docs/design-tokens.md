@@ -2,7 +2,7 @@
 
 Status: Active PR / Proposed
 
-Use this catalog when you need to re-theme Inkspan's repeating toolbar and editor chrome. Override the named custom properties on `.cwl-editor` after checking WCAG 2.2 contrast for both body text (`--cwl-fg` on `--cwl-bg`) and active toolbar text (`--cwl-accent` on `--cwl-accent-soft`). Do not edit Inkspan internals.
+Use this catalog when you need to re-theme Inkspan's repeating toolbar and editor chrome. Inkspan's shipped light, dark, and print token pairs are checked by repository tests; the shipped dark active-toolbar pair now uses `--cwl-accent: #58a6ff` on `--cwl-accent-soft: #163356` and measures about 5.06:1. When a host overrides any color token, re-check WCAG 2.2 contrast for both body text (`--cwl-fg` on `--cwl-bg`) and active toolbar text (`--cwl-accent` on `--cwl-accent-soft`). Do not edit Inkspan internals.
 
 ```css
 .cwl-editor {
@@ -31,7 +31,7 @@ void tokens;
 void dtcgGroup;
 ```
 
-The stylesheet remains runtime presentation authority. `toDesignTokenFormatGroup()` is an interchange snapshot aligned to Design Tokens Format Module 2025.10. It is not complete DTCG conformance, Figma Variables sync, or a host WCAG certification.
+The default-theme checks above are product evidence, not a host WCAG certification. The stylesheet remains runtime presentation authority. `toDesignTokenFormatGroup()` is an interchange snapshot aligned to Design Tokens Format Module 2025.10; it is not complete DTCG conformance or Figma Variables sync.
 
 Preview the repeating objects in Storybook (`pnpm storybook`) using the inventory in [`storybook-inventory.md`](storybook-inventory.md).
 
