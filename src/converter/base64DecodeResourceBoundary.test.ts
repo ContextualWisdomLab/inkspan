@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Base64SizeError, DataUriParseError, dataUriToBytes } from './index.js';
+import {
+  Base64ParseError,
+  Base64SizeError,
+  DataUriParseError,
+  dataUriToBytes,
+} from './index.js';
 
 describe('data URI decode resource boundary', () => {
   afterEach(() => {
@@ -42,6 +47,17 @@ describe('data URI decode resource boundary', () => {
     expect((failure as Base64SizeError).bytes).toBe(12);
     expect((failure as Base64SizeError).maxBytes).toBe(4);
     expect(decoder).not.toHaveBeenCalled();
+  });
+
+  it('preserves forgiving-base64 parse errors ahead of size guards', () => {
+    for (const payload of ['!!!!', 'A', 'YQ=']) {
+      expect(() =>
+        dataUriToBytes(
+          `data:application/octet-stream;base64,${payload}`,
+          { maxBytes: 0 },
+        ),
+      ).toThrow(Base64ParseError);
+    }
   });
 
   it('accounts for one canonical padding byte without changing accepted decode', () => {
