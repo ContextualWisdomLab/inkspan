@@ -1,6 +1,6 @@
 # Release security and provenance contract
 
-Inkspan release artifacts are part of the product boundary. Buyers and CWL/naruon integrators must be able to determine which source revision produced an npm tarball or Office wheel, verify that the artifact was not substituted, and reproduce the repository's release gates without trusting a long-lived publication secret.
+Inkspan release artifacts are part of the product boundary. Buyers and CWL/naruon integrators must be able to determine which source revision produced an npm tarball or Office wheel, inspect the release SBOM, verify that no artifact was substituted, and reproduce the repository's release gates without trusting a long-lived publication secret.
 
 ## Release trigger and identity
 
@@ -20,7 +20,7 @@ For stable registry releases, the root and Office package versions must both equ
 
 The GitHub Release path has a source-bearing build stage followed by a source-free publication stage, and external registry publication is downstream of that validated artifact boundary:
 
-1. `build-release-artifacts` has read-only repository access. It checks identity, installs dependencies, runs all quality gates, builds both distributions, and creates checksums.
+1. `build-release-artifacts` has read-only repository access. It checks identity, installs dependencies, runs all quality gates, builds both distributions, generates an SPDX 2.3 SBOM with signature-verified Syft, validates the SBOM, and creates checksums for the complete release set.
 2. `publish-release` receives only the validated files through GitHub's workflow artifact service. This smaller job alone receives the GitHub release, OpenID Connect, and attestation authority needed to create the immutable GitHub Release.
 3. `publish-npm` and `publish-pypi` consume the same validated npm tarball and Office wheel after the GitHub Release boundary. They receive OIDC only inside their protected registry environments and do not rebuild the packages.
 4. `verify-registry-publication` has no publishing credential. It performs post-publication digest verification against the public npm and PyPI registry identities and the exact validated local artifacts.
@@ -44,12 +44,22 @@ The release workflow repeats merge and product gates against the tagged source r
 9. hash-locked Office dependency installation on Python 3.14 for the release build;
 10. Office dependency consistency, 100% shipped-symbol docstring coverage, and 100% branch coverage;
 11. Office wheel construction and inspection for the bundled schema and license;
-12. SHA-256 checksum generation for every distributable artifact;
-13. checksum verification after the privilege boundary;
-14. exact draft asset inventory and digest verification before GitHub publication; and
-15. public npm and PyPI post-publication digest verification for stable registry releases.
+12. installation of the exact Syft v1.50.0 release through its commit-pinned installer with Cosign verification enabled, so the signed checksum material is verified before the Syft binary is accepted;
+13. deterministic SPDX 2.3 SBOM generation and validation for a non-empty inventory containing both `@contextualwisdomlab/cwl-editor` and `inkspan-office`;
+14. SHA-256 checksum generation for the npm tarball, Office wheel, `inkspan.spdx.json`, and checksum manifest boundary;
+15. checksum verification after the privilege boundary;
+16. exact draft asset inventory and digest verification before GitHub publication; and
+17. public npm and PyPI post-publication digest verification for stable registry releases.
 
 No release draft is created or modified unless every source-bearing build gate succeeds on the tagged commit. A stable release is not treated as registry-complete until both registry publication jobs and the downstream public digest verification succeed.
+
+## SBOM generator trust boundary
+
+The release path does not delegate Syft installation to an action that can retrieve a mutable installer from another branch. It installs Cosign from a full-commit-pinned `sigstore/cosign-installer` action, downloads Syft's installer from the exact commit behind the annotated `v1.50.0` tag, disables installer-script redirection with `DOWNLOAD_TAG_INSTALL_SCRIPT=false`, and invokes the installer with `-v`. The Syft installer therefore verifies the release checksum signature and certificate before accepting the downloaded Syft binary, then still verifies the binary checksum.
+
+Only that signature-verified Syft executable is added to the workflow `PATH` and used to generate `release/inkspan.spdx.json`. The workflow then validates the SPDX version, package inventory, expected Inkspan package identities, and the bounded attestation-input size before the SBOM can cross the build/publication privilege boundary.
+
+This controls the generator bootstrap path; it does not assert that an SBOM is a vulnerability scan or license-policy decision. Consumers and release operators must interpret the inventory separately from provenance and security-scan results.
 
 ## Immutable GitHub publication
 
@@ -71,11 +81,12 @@ A resumed draft is not assumed to contain only artifacts from the current workfl
 
 Immediately after upload and before the draft is published, the workflow therefore fails closed unless all of these conditions hold:
 
-- the local release directory contains exactly one npm `*.tgz`, one Office `*.whl`, and `SHA256SUMS`;
+- the local release directory contains exactly one npm `*.tgz`, one Office `*.whl`, `inkspan.spdx.json`, and `SHA256SUMS`;
+- `SHA256SUMS` binds the npm tarball, Office wheel, and SBOM digest to the transferred local release set;
 - the canonical GitHub Releases API still reports the release as a draft;
 - the sorted remote asset-name set exactly equals the sorted local artifact-name set;
 - every remote asset reports the `uploaded` state; and
-- every GitHub release-asset `sha256:` digest exactly equals a newly computed SHA-256 digest of the corresponding transferred local file.
+- every GitHub release-asset `sha256:` digest, including the SBOM digest and checksum-manifest digest, exactly equals a newly computed SHA-256 digest of the corresponding transferred local file.
 
 The draft lookup deliberately uses the authenticated, paginated **List releases** REST endpoint and filters its complete result for the exact tag. GitHub documents that authenticated callers with repository push access receive draft releases from this endpoint. The `Get a release by tag name` endpoint is documented for a **published** release, so it is not used as evidence for this pre-publication gate. The publish job fails unless the paginated listing contains exactly one release matching the tag and that object still reports `draft: true`.
 
@@ -91,19 +102,20 @@ Enabling immutable releases is an administrative repository control. Repository 
 
 ## Published artifacts
 
-Each successful GitHub release contains:
+Each successful GitHub release contains exactly four files:
 
 - the exact npm tarball produced by `npm pack`;
-- the `inkspan-office` wheel built from `office/`; and
-- `SHA256SUMS` covering both distributable artifacts.
+- the `inkspan-office` wheel built from `office/`;
+- `inkspan.spdx.json`, the validated SPDX 2.3 SBOM generated by signature-verified Syft; and
+- `SHA256SUMS` covering the npm tarball, Office wheel, and SBOM.
 
-The workflow does not rebuild artifacts after the read-only build job. The same transferred files are checksum-verified, attested, uploaded, inventory-checked against the draft, published to GitHub, and—on stable releases—forwarded to npm and PyPI.
+The workflow does not rebuild artifacts after the read-only build job. The same transferred files are checksum-verified, attested, uploaded, inventory-checked against the draft, and published to GitHub; on stable releases, the npm tarball and Office wheel are then forwarded unchanged to npm and PyPI.
 
 ## Provenance and verification
 
-The isolated GitHub publication job requests a short-lived OpenID Connect identity and uses GitHub artifact attestations to create signed SLSA provenance for the npm tarball, Office wheel, and checksum manifest. The repository is public, so the attestation is backed by the public Sigstore transparency infrastructure used by GitHub.
+The isolated GitHub publication job requests a short-lived OpenID Connect identity and uses GitHub artifact attestations to create signed SLSA provenance for the npm tarball, Office wheel, `inkspan.spdx.json`, and checksum manifest. It also creates SPDX SBOM attestations binding the npm tarball and Office wheel to the validated `inkspan.spdx.json` predicate. The repository is public, so the attestation is backed by the public Sigstore transparency infrastructure used by GitHub.
 
-Consumers should verify release-level and file-level provenance as well as checksums, using the actual version and filenames from the selected release:
+Consumers should verify release-level and file-level provenance, the SBOM predicate, and checksums, using the actual version and filenames from the selected release:
 
 ```bash
 VERSION=0.6.0
@@ -113,8 +125,15 @@ gh release verify "v${VERSION}" --repo ContextualWisdomLab/inkspan
 gh release verify-asset "v${VERSION}" "contextualwisdomlab-cwl-editor-${VERSION}.tgz" \
   --repo ContextualWisdomLab/inkspan
 
+gh release verify-asset "v${VERSION}" "inkspan.spdx.json" \
+  --repo ContextualWisdomLab/inkspan
+
 gh attestation verify "inkspan_office-${VERSION}-py3-none-any.whl" \
   --repo ContextualWisdomLab/inkspan
+
+gh attestation verify "contextualwisdomlab-cwl-editor-${VERSION}.tgz" \
+  --repo ContextualWisdomLab/inkspan \
+  --predicate-type https://spdx.dev/Document/v2.3
 
 sha256sum --check SHA256SUMS
 ```
@@ -134,11 +153,15 @@ npm and PyPI are independent immutable publication domains. If one registry acce
 ## Workflow security properties
 
 - Every third-party GitHub Action is pinned to a complete commit SHA.
+- Syft is installed from the exact commit behind v1.50.0 with signed-checksum verification enabled; a mutable branch installer is not part of the supported generator path.
+- Only the signature-verified Syft binary generates the release SBOM.
 - The default and source-bearing build-job workflow tokens are read-only.
 - GitHub release, OpenID Connect, and attestation permissions are scoped to the source-free jobs that actually require them.
 - Release tags must identify the exact current protected-main tip.
 - Stable root, Office, and tag versions must match before registry publication.
+- The local and draft release contract is exactly one npm tarball, one Office wheel, `inkspan.spdx.json`, and `SHA256SUMS`.
 - The draft asset set and every GitHub-reported SHA-256 asset digest must exactly match the transferred local release set before GitHub publication.
+- The SBOM digest is covered by `SHA256SUMS`, remote release-asset digest verification, and release provenance; package attestations additionally bind the distributable packages to the SPDX predicate.
 - The published GitHub release must report an immutable state; a mutable outcome is deleted and rejected.
 - Existing published assets are never refreshed, replaced, or deleted by a successful workflow path.
 - Stable npm and PyPI publication uses protected OIDC environments rather than long-lived registry secrets.
@@ -161,6 +184,8 @@ The release pipeline does not add runtime coupling. The npm package remains a ho
 - GitHub release attestation verification: <https://cli.github.com/manual/gh_release_verify>
 - GitHub artifact attestations: <https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations>
 - GitHub artifact-attestation concepts: <https://docs.github.com/en/actions/concepts/security/artifact-attestations>
+- Syft signed-release installer verification: <https://github.com/anchore/syft/blob/v1.50.0/install.sh>
+- Sigstore Cosign installer: <https://github.com/sigstore/cosign-installer>
 - npm Trusted Publishing and automatic provenance: <https://docs.npmjs.com/trusted-publishers/>
 - PyPI Trusted Publishing: <https://docs.pypi.org/trusted-publishers/>
 - PyPI Trusted Publishing security model: <https://docs.pypi.org/trusted-publishers/security-model/>
