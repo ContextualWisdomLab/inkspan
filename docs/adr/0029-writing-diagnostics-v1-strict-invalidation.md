@@ -1,10 +1,10 @@
-# ADR 0028: Strict invalidation and semantic-neutral accessibility for writing diagnostics v1
+# ADR 0029: Strict invalidation and semantic-neutral accessibility for writing diagnostics v1
 
 Status: Proposed
 
 ## Context
 
-ADR 0027, its design specification, and its implementation plan established the correct high-level boundary: hosts own every semantic writing judgment while Inkspan owns deterministic validation, revision/selector integrity, presentation, accessibility, and ordinary editor transactions.
+ADR 0028, its design specification, and its implementation plan established the correct high-level boundary: hosts own every semantic writing judgment while Inkspan owns deterministic validation, revision/selector integrity, presentation, accessibility, and ordinary editor transactions.
 
 Two lower-level clauses nevertheless permitted incompatible first-release interpretations:
 
@@ -21,7 +21,7 @@ Rejected for v1. ProseMirror can map structural positions, but position continui
 
 ### Derive ARIA validity from `categoryCode`
 
-Rejected. `categoryCode` is host-defined opaque metadata. Comparing it with strings such as `spelling`, `grammar`, `mechanics`, or language-specific equivalents would be the semantic keyword fallback that ADR 0027 explicitly prohibits.
+Rejected. `categoryCode` is host-defined opaque metadata. Comparing it with strings such as `spelling`, `grammar`, `mechanics`, or language-specific equivalents would be the semantic keyword fallback that ADR 0028 explicitly prohibits.
 
 ### Add an explicit semantic ARIA enum to v1
 
@@ -43,7 +43,7 @@ For writing diagnostics v1:
 - Inkspan does not derive `aria-invalid`, spelling/grammar state, or any other semantic accessibility assertion from `categoryCode`, title, explanation, replacement, confidence, provenance, or source text;
 - category, priority, title, explanation, and actions remain available as plain text in the named diagnostics panel, while underlines are a visual supplement rather than the sole information channel.
 
-This ADR narrows and supersedes only the conflicting lifecycle and decoration-accessibility clauses in ADR 0027, the 2026-08-12 design specification, and the original implementation plan. Their product/host/model authority, security, privacy, revision, packaging, and release decisions remain in force.
+This ADR narrows and supersedes only the conflicting lifecycle and decoration-accessibility clauses in ADR 0028, the 2026-08-12 design specification, and the original implementation plan. Their product/host/model authority, security, privacy, revision, packaging, and release decisions remain in force.
 
 ## Consequences
 
