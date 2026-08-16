@@ -8,6 +8,7 @@ import {
   type FocusEvent,
   type KeyboardEvent,
 } from 'react';
+import { Base64SizeError } from '../converter/base64.js';
 import { imageFileToInlineDataUri } from '../extensions/Base64Image.js';
 import type { ImageConfig } from '../types.js';
 
@@ -29,6 +30,15 @@ interface ButtonProps {
 }
 
 const TOOLBAR_ITEM_SELECTOR = 'button[data-cwl-toolbar-item="true"]';
+
+/** Read a genuine Blob's byte length without invoking caller-owned accessors. */
+function intrinsicBlobSize(blob: Blob): number {
+  const sizeGetter = Object.getOwnPropertyDescriptor(
+    globalThis.Blob.prototype,
+    'size',
+  )!.get!;
+  return Reflect.apply(sizeGetter, blob, []) as number;
+}
 
 /** Return every toolbar button in visual and DOM navigation order. */
 function getToolbarButtons(toolbar: HTMLDivElement): HTMLButtonElement[] {
@@ -203,15 +213,22 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
       event.target.value = '';
       if (!file) return;
 
+      const maxSizeBytes = image?.maxSizeBytes ?? 10 * 1024 * 1024;
+      const sourceBytes = intrinsicBlobSize(file);
+      if (maxSizeBytes > 0 && sourceBytes > maxSizeBytes) {
+        onImageError?.(new Base64SizeError(sourceBytes, maxSizeBytes));
+        return;
+      }
+
       let src: string;
       try {
         src = await imageFileToInlineDataUri(file, {
-          maxSizeBytes: image?.maxSizeBytes ?? 10 * 1024 * 1024,
+          maxSizeBytes,
           maxDimension: image?.maxDimension ?? 1600,
           quality: image?.quality ?? 0.85,
         });
-      } catch (err) {
-        onImageError?.(err);
+      } catch {
+        onImageError?.(new Error('Image processing failed.'));
         return;
       }
 
