@@ -1,12 +1,18 @@
 # XLS/XLSX Body Import Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans when available to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. If a named skill is unavailable in the current harness, preserve the same test-first/verification discipline rather than treating skill lookup failure as product completion.
 
 **Goal:** Let users insert visible worksheet content from local `.xls` and `.xlsx` files into the current Inkspan editor selection as editable headings and tables.
 
-**Architecture:** Keep binary parsing in a framework-neutral `spreadsheet` package boundary and lazy-load one pinned SheetJS-compatible parser only after a user selects a file. Convert parser output into bounded, inert TipTap JSON before one editor transaction; the toolbar owns file selection and accessible progress text, while hosts continue to own transport, authorization, persistence, and retention.
+**Architecture:** Keep binary parsing in a framework-neutral `spreadsheet` package boundary and lazy-load one pinned SheetJS parser only after a user selects a file. Convert parser output into bounded, inert TipTap JSON before one editor transaction; the toolbar owns file selection and accessible progress text, while hosts continue to own transport, authorization, persistence, and retention.
 
-**Tech Stack:** TypeScript 5.9, TipTap/ProseMirror JSON, React 18/19, Vitest, Testing Library, Vite library builds, `@lokalise/xlsx` 0.20.3 as the integrity-pinned SheetJS 0.20.3 mirror.
+**Tech Stack:** TypeScript 5.9, TipTap/ProseMirror JSON, React 18/19, Vitest, Testing Library, Vite library builds, and SheetJS `xlsx` 0.20.3 from the exact official tarball `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`.
+
+## Authority corrections
+
+- The earlier plan named `@lokalise/xlsx` 0.20.3, while this branch's existing read-only hosted dependency-provenance workflow installs and verifies the official SheetJS package as `xlsx` 0.20.3 from the pinned SheetJS CDN tarball. Hosted run `31968831519` on exact head `bfd8394687f3fedf969e5ef91ba149b5baab425e` resolved that package successfully and generated lock integrity `sha512-oLDq3jw7AcLqKWH2AhCpVTZl8mf6X2YReP+Neh0SJUzV/BdZYjth94tG5toiMB1PPrYtxOCfaoUCkvtuH+3AJA==`. This plan now follows that demonstrated package identity/provenance rather than the stale mirror claim.
+- ADR 0027 is already the earlier canonical claimant of PR #141 (bounded single-section DOCX page layout). Writing-diagnostics work owns 0028/0029, Hangul authoring owns 0030, and the active design-token/accessibility lane owns 0031. This spreadsheet lane therefore reserves **ADR 0032** rather than colliding with ADR 0027.
+- These corrections change planning authority only. They do not promote the incomplete parser or editor insertion path to protected-main behavior.
 
 ## Global Constraints
 
@@ -31,7 +37,7 @@
 **Interfaces:**
 - Produces: `SpreadsheetWorkbookData`, `SpreadsheetImportResult`, `SpreadsheetImportError`, and `spreadsheetWorkbookToDocumentJson(workbook)`.
 
-- [ ] **Step 1: Write one product-boundary failing test**
+- [x] **Step 1: Write one product-boundary failing test**
 
 ```ts
 const result = spreadsheetWorkbookToDocumentJson({
@@ -47,7 +53,7 @@ expect(result.content.map((node) => node.type)).toEqual([
 ]);
 ```
 
-- [ ] **Step 2: Commit a compiling placeholder that throws at the product boundary**
+- [x] **Step 2: Commit a compiling placeholder that throws at the product boundary**
 
 ```ts
 export function spreadsheetWorkbookToDocumentJson(
@@ -60,7 +66,7 @@ export function spreadsheetWorkbookToDocumentJson(
 }
 ```
 
-- [ ] **Step 3: Open a Draft PR and verify hosted RED**
+- [x] **Step 3: Open a Draft PR and verify hosted RED**
 
 Run: canonical GitHub `CI` against the exact contributor head.
 
@@ -78,11 +84,13 @@ Expected: dependency setup and TypeScript succeed; the dedicated spreadsheet tes
 
 **Interfaces:**
 - Produces: `DEFAULT_SPREADSHEET_IMPORT_LIMITS`, `SpreadsheetImportLimits`, `SpreadsheetImportErrorCode`, `spreadsheetFileToDocumentJson(source, limits?)`, and parser-neutral workbook conversion.
-- Consumes: `@lokalise/xlsx@0.20.3` through a dynamic import in `sheetJsAdapter.ts`.
+- Consumes: package `xlsx` 0.20.3 through a lazy dynamic import after local source preflight; the committed dependency must resolve from the exact official tarball and integrity recorded above.
 
 - [ ] **Step 1: Add failing tests for every public limit and error category**
 
 Cover source size before `arrayBuffer()`, visible worksheet count, decoded range rows/columns, rectangular cell count, per-cell and total text, malformed workbook structures, hidden/empty sheets, and payload-redacted failures.
+
+The first parser-adapter product-boundary RED is being established on this branch before implementation; it must prove the parser receives non-executing options and that only visible displayed text is materialized.
 
 - [ ] **Step 2: Add real XLSX and BIFF8 XLS round trips**
 
@@ -90,11 +98,17 @@ Create in-memory workbooks with Unicode, multiline values, dates, booleans, form
 
 - [ ] **Step 3: Pin the parser and immutable lock**
 
-Add exact dependency `@lokalise/xlsx: 0.20.3` and lock integrity `sha512-9+Wn7Hq2fHoaWJqhWXZXhUF6wNLk6Y5SL/QLLFuv6ChWWYi0lND7EwKeR6Hg8dXgyIc7Pkc0CaDXM+5z2zzi6Q==`.
+Add exact dependency:
+
+```json
+"xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+```
+
+Require the pnpm lock entry to preserve exact integrity `sha512-oLDq3jw7AcLqKWH2AhCpVTZl8mf6X2YReP+Neh0SJUzV/BdZYjth94tG5toiMB1PPrYtxOCfaoUCkvtuH+3AJA==` and the same tarball URL. Install with lifecycle scripts disabled during provenance verification. Do not substitute the stale `@lokalise/xlsx` plan value or an npm-registry `xlsx` version.
 
 - [ ] **Step 4: Implement bounded parsing**
 
-Use `Blob.size` preflight, one `arrayBuffer()` read, lazy `import('@lokalise/xlsx')`, `read(..., { type: 'array', cellFormula: false, cellHTML: false, cellNF: false, bookVBA: false })`, visible-sheet metadata, decoded-range preflight, and formatted cell text. Do not evaluate formulas or preserve executable links/macros/objects.
+Use local binary preflight before lazy `import('xlsx')`, then `read(..., { type: 'array', cellFormula: false, cellHTML: false, cellNF: false, bookVBA: false })`, visible-sheet metadata, decoded-range preflight, and formatted cell text. Do not evaluate formulas or preserve executable links/macros/objects.
 
 - [ ] **Step 5: Build deterministic TipTap JSON**
 
@@ -143,7 +157,7 @@ Keep one roving tab stop, arrow/Home/End behavior, native disabled semantics whi
 - Modify: `src/index.ts`
 - Modify: `package.json`
 - Modify: package verification tests/scripts as required
-- Create: `docs/adr/0027-bounded-local-spreadsheet-body-import.md`
+- Create: `docs/adr/0032-bounded-local-spreadsheet-body-import.md`
 - Modify: `docs/adr/README.md`
 - Modify: `README.md`
 - Modify: `CHANGELOG.md`
@@ -157,17 +171,17 @@ Keep one roving tab stop, arrow/Home/End behavior, native disabled semantics whi
 **Interfaces:**
 - Produces: package export `@contextualwisdomlab/cwl-editor/spreadsheet` with ESM, CommonJS, and declarations, while keeping React/TipTap runtime code outside that subpath.
 
-- [ ] **Step 1: Add package-consumer RED tests**
+- [x] **Step 1: Add package-consumer RED tests**
 
 Require ESM, CommonJS, and strict NodeNext TypeScript consumers to resolve the spreadsheet subpath and its declared public types from the packed tarball.
 
-- [ ] **Step 2: Add dedicated Vite build**
+- [x] **Step 2: Add dedicated Vite build**
 
-Build `src/spreadsheet/index.ts` as `cwl-spreadsheet.js` and `cwl-spreadsheet.cjs`; externalize the direct parser dependency so it remains lazy and package-managed rather than copied into ordinary editor startup.
+Build `src/spreadsheet/index.ts` as `cwl-spreadsheet.js` and `cwl-spreadsheet.cjs`; when the parser dependency is committed, externalize `xlsx` so it remains lazy and package-managed rather than copied into ordinary editor startup.
 
-- [ ] **Step 3: Record ADR 0027**
+- [ ] **Step 3: Record ADR 0032**
 
-Document context, decision, alternatives (server conversion, CSV-only, paste-only, static parser bundling), parser provenance, formula/macro non-execution, resource bounds, diagnostic privacy, accessibility, host authority, rollback, and release-freeze integration.
+Document context, decision, alternatives (server conversion, CSV-only, paste-only, static parser bundling), parser provenance, formula/macro non-execution, resource bounds, diagnostic privacy, accessibility, host authority, rollback, and release-freeze integration. ADR 0032 is reserved for this lane because active earlier lanes already own 0027–0031 as described above.
 
 - [ ] **Step 4: Reconcile canonical documentation**
 
