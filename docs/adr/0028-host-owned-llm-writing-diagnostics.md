@@ -1,4 +1,4 @@
-# ADR 0027: Host-owned, revision-bound writing diagnostics
+# ADR 0028: Host-owned, revision-bound writing diagnostics
 
 Status: Proposed
 

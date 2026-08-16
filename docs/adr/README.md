@@ -32,8 +32,8 @@ This index records durable architectural decisions. An ADR on a branch or protec
 | [0024](0024-bounded-docx-paragraph-alignment.md) | Accepted | Bounded paragraph alignment in deterministic DOCX output |
 | [0025](0025-bounded-docx-heading-alignment.md) | Accepted | Bounded heading alignment in deterministic DOCX output |
 | [0026](0026-bounded-docx-external-hyperlinks.md) | Accepted | Bounded external hyperlinks in deterministic DOCX rich text |
-| [0027](0027-host-owned-llm-writing-diagnostics.md) | Proposed | Host-owned, revision-bound LLM writing diagnostics |
-| [0028](0028-writing-diagnostics-v1-strict-invalidation.md) | Proposed | Strict writing-diagnostic invalidation and semantic-neutral accessibility |
+| [0028](0028-host-owned-llm-writing-diagnostics.md) | Proposed | Host-owned, revision-bound LLM writing diagnostics |
+| [0029](0029-writing-diagnostics-v1-strict-invalidation.md) | Proposed | Strict writing-diagnostic invalidation and semantic-neutral accessibility |
 
 ## Decision discipline
 
