@@ -58,6 +58,69 @@ describe('spreadsheet workbook metadata preflight', () => {
     );
   });
 
+  it('does not invoke a hostile worksheets iterator getter', () => {
+    let iteratorRead = false;
+    const worksheet = {
+      name: 'Data',
+      hidden: false,
+      rows: [['kept']],
+    };
+    const worksheets = new Proxy([worksheet], {
+      get(target, property, receiver) {
+        if (property === Symbol.iterator) {
+          iteratorRead = true;
+          throw new Error('private-worksheets-iterator-sentinel');
+        }
+        return Reflect.get(target, property, receiver);
+      },
+    });
+
+    expectUnsupportedSource(() =>
+      spreadsheetWorkbookToDocumentJson({ worksheets }),
+    );
+    expect(iteratorRead).toBe(false);
+  });
+
+  it('does not invoke hostile worksheet-row length access', () => {
+    let lengthRead = false;
+    const rows = new Proxy([['kept']], {
+      get(target, property, receiver) {
+        if (property === 'length') {
+          lengthRead = true;
+          throw new Error('private-rows-length-sentinel');
+        }
+        return Reflect.get(target, property, receiver);
+      },
+    });
+
+    expectUnsupportedSource(() =>
+      spreadsheetWorkbookToDocumentJson({
+        worksheets: [{ name: 'Data', hidden: false, rows }],
+      }),
+    );
+    expect(lengthRead).toBe(false);
+  });
+
+  it('does not invoke hostile row index access', () => {
+    let indexRead = false;
+    const row = new Proxy(['kept'], {
+      get(target, property, receiver) {
+        if (property === '0') {
+          indexRead = true;
+          throw new Error('private-row-index-sentinel');
+        }
+        return Reflect.get(target, property, receiver);
+      },
+    });
+
+    expectUnsupportedSource(() =>
+      spreadsheetWorkbookToDocumentJson({
+        worksheets: [{ name: 'Data', hidden: false, rows: [row] }],
+      }),
+    );
+    expect(indexRead).toBe(false);
+  });
+
   it.each(['name', 'hidden', 'rows'] as const)(
     'rejects an accessor-backed worksheet %s field without invoking it',
     (field) => {
