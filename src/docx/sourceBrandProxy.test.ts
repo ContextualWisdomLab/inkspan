@@ -20,4 +20,19 @@ describe('DOCX binary source branding', () => {
     });
     expect(getPrototypeOf).not.toHaveBeenCalled();
   });
+
+  it('rejects unsupported sources when Blob is unavailable', async () => {
+    vi.stubGlobal('Blob', undefined);
+    try {
+      await expect(
+        importDocx(Object.create(null) as unknown as ArrayBuffer),
+      ).rejects.toMatchObject({
+        name: 'DocxImportError',
+        code: 'invalid_source',
+        message: 'DOCX input must be a supported binary source.',
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
