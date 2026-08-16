@@ -70,6 +70,8 @@ const DATA_URI_RE = /^data:([^;,]*)?((?:;[^;,]+)*)?,([\s\S]*)$/;
 const CANONICAL_BASE64_RE =
   /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const FORGIVING_BASE64_ALPHABET_RE = /^[A-Za-z0-9+/]*$/;
+const FORGIVING_BASE64_RAW_RE =
+  /^[A-Za-z0-9+/\t\n\f\r ]*(?:=[\t\n\f\r ]*){0,2}$/;
 const CANONICAL_PERCENT_ENCODED_ASCII_RE =
   /^(?:[\x00-\x24\x26-\x7f]|%[0-7][0-9a-f])*$/i;
 const INVALID_OPTIONS_MESSAGE = 'converter options are invalid.';
@@ -447,6 +449,35 @@ function canonicalBase64DecodedByteLength(payload: string): number | undefined {
   return (payload.length / 4) * 3 - padding;
 }
 
+/**
+ * Return the decoded size for valid WHATWG forgiving-base64 without first
+ * allocating the whitespace-stripped replacement string.
+ */
+function forgivingBase64DecodedByteLength(payload: string): number | undefined {
+  if (!FORGIVING_BASE64_RAW_RE.test(payload)) return undefined;
+
+  let normalizedLength = 0;
+  let padding = 0;
+  for (let index = 0; index < payload.length; index += 1) {
+    const character = payload.charAt(index);
+    if (character === '=') {
+      normalizedLength += 1;
+      padding += 1;
+    } else if (FORGIVING_BASE64_ALPHABET_RE.test(character)) {
+      normalizedLength += 1;
+    }
+  }
+
+  if (
+    normalizedLength % 4 === 1 ||
+    (padding > 0 && normalizedLength % 4 !== 0)
+  ) {
+    return undefined;
+  }
+
+  return Math.floor(((normalizedLength - padding) * 3) / 4);
+}
+
 function canonicalPercentEncodedAsciiDecodedByteLength(
   payload: string,
 ): number | undefined {
@@ -587,7 +618,9 @@ export function dataUriToBytes(
   let bytes: Uint8Array;
   if (isBase64) {
     if (maxBytes !== undefined) {
-      const decodedLength = canonicalBase64DecodedByteLength(payload);
+      const decodedLength =
+        canonicalBase64DecodedByteLength(payload) ??
+        forgivingBase64DecodedByteLength(payload);
       if (decodedLength !== undefined) {
         assertSize(decodedLength, maxBytes);
       }
