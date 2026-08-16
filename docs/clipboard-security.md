@@ -42,6 +42,29 @@ Error observers are live: replacing `onClipboardError` does not recreate the
 editor or the Yjs binding. A host callback failure is contained and cannot make
 rejected HTML enter the document.
 
+## Resource preflight
+
+If a paste is rejected with `input_too_large` or `node_limit_exceeded`, raise
+the matching ceiling only after measuring a trusted source. Do not disable the
+limits to “make paste work.”
+
+Inkspan rejects an obviously oversized string when its UTF-16 code-unit length
+already exceeds `maxHtmlBytes`, before allocating a UTF-8 copy. Every UTF-16
+code unit encodes to at least one UTF-8 byte, so that length check is a safe
+lower bound. Strings whose code-unit length is within the ceiling still receive
+the exact UTF-8 byte-length check, because non-ASCII text can expand.
+
+Inkspan also rejects a broad source tree when already visited nodes, already
+queued frames, and newly enqueueable children would exceed `maxNodes`, before
+materializing those children. Dropped or hidden subtrees are never traversed
+and therefore do not consume descendant budget. The closed-`details` summary
+path uses the same queue invariant.
+
+These preflight checks do not change the redacted error codes or messages. They
+do not authorize the remaining HTML. See
+`docs/doctoring/clipboard-resource-preflight.md` for the standards basis,
+test-first evidence, residual risk, and rollback.
+
 ## Preserved structure
 
 Inkspan reconstructs a new fragment containing only:
