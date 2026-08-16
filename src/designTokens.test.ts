@@ -90,6 +90,7 @@ describe('editor theme token catalog', () => {
     const dark = getEditorThemeTokenContrast('cwl-fg', 'cwl-bg', 'dark');
     const print = getEditorThemeTokenContrast('cwl-fg', 'cwl-bg', 'print');
     const muted = getEditorThemeTokenContrast('cwl-muted', 'cwl-bg', 'light');
+    const lowContrast = getEditorThemeTokenContrast('cwl-border', 'cwl-bg', 'light');
 
     expect(light.ratio).toBeCloseTo(15.797619425332647, 8);
     expect(dark.ratio).toBeCloseTo(16.016082890827004, 8);
@@ -100,6 +101,9 @@ describe('editor theme token catalog', () => {
     expect(light.meetsNonTextContrast).toBe(true);
     expect(light.hostAction).toContain('Override --cwl-fg and --cwl-bg on .cwl-editor');
     expect(light.hostAction).toContain('WCAG 2.2');
+    expect(lowContrast.meetsTextContrast).toBe(false);
+    expect(lowContrast.hostAction).toContain('shipped light text contrast is below 4.5:1');
+    expect(lowContrast.hostAction).toContain('Override --cwl-border and --cwl-bg on .cwl-editor');
   });
 
   it('requires inventoried active-chrome text contrast to meet WCAG 2.2 AA', () => {
