@@ -84,4 +84,53 @@ describe('Toolbar asynchronous image-upload lifecycle boundary', () => {
     expect(prompt).not.toHaveBeenCalled();
     expect(editor.isDestroyed).toBe(true);
   });
+
+  it('does not expose hostile conversion throw values to the host error callback', async () => {
+    const editor = makeEditor();
+    const before = editor.getHTML();
+    const privateSentinel = new Error('private toolbar conversion sentinel');
+    const getPrototypeOf = vi.fn(() => {
+      throw privateSentinel;
+    });
+    const hostileThrownValue = new Proxy({}, { getPrototypeOf });
+    const hostileValues = new WeakSet<object>([hostileThrownValue]);
+    const file = new File([PNG_BYTES], 'hostile.png', { type: 'image/png' });
+    Object.defineProperty(file, 'arrayBuffer', {
+      configurable: true,
+      value: vi.fn().mockRejectedValue(hostileThrownValue),
+    });
+
+    let leakedHostileValue = false;
+    let observedError: unknown;
+    const onImageError = vi.fn((error: unknown) => {
+      observedError = error;
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        hostileValues.has(error)
+      ) {
+        leakedHostileValue = true;
+      }
+    });
+    const prompt = vi.spyOn(window, 'prompt').mockReturnValue('should not run');
+    render(
+      <Toolbar
+        editor={editor}
+        image={{ maxSizeBytes: 1024 * 1024, maxDimension: 0 }}
+        onImageError={onImageError}
+      />,
+    );
+
+    fireEvent.change(fileInput(), { target: { files: [file] } });
+    await settleConversion();
+
+    expect(onImageError).toHaveBeenCalledOnce();
+    expect(leakedHostileValue).toBe(false);
+    expect(getPrototypeOf).not.toHaveBeenCalled();
+    expect(observedError).toBeInstanceOf(Error);
+    expect((observedError as Error).message).toBe('Image processing failed.');
+    expect(prompt).not.toHaveBeenCalled();
+    expect(editor.getHTML()).toBe(before);
+    expect(editor.getHTML()).not.toContain('data:image');
+  });
 });
