@@ -18,18 +18,22 @@ const RESOURCE_LIMIT_MESSAGE =
 const UNSUPPORTED_SOURCE_MESSAGE =
   'Spreadsheet source is unsupported or corrupt.';
 
+interface SheetJsReadOptions {
+  readonly type: 'array';
+  readonly cellFormula: false;
+  readonly cellHTML: false;
+  readonly cellNF: false;
+  readonly bookVBA: false;
+  readonly sheetRows?: number;
+  readonly bookSheets?: true;
+  readonly sheets?: string;
+}
+
 /** Minimal SheetJS runtime contract consumed by Inkspan's local adapter. */
 export interface SheetJsParserModule {
   readonly read: (
     source: Uint8Array,
-    options: {
-      readonly type: 'array';
-      readonly cellFormula: false;
-      readonly cellHTML: false;
-      readonly cellNF: false;
-      readonly bookVBA: false;
-      readonly sheetRows: number;
-    },
+    options: SheetJsReadOptions,
   ) => unknown;
   readonly utils: {
     readonly decode_range: (range: string) => unknown;
@@ -43,13 +47,6 @@ export interface SheetJsParserModule {
       },
     ) => unknown;
   };
-}
-
-interface PreparedSheet {
-  readonly name: string;
-  readonly hidden: boolean;
-  readonly sheet: object;
-  readonly hasRange: boolean;
 }
 
 function resourceLimitExceeded(): never {
@@ -202,55 +199,85 @@ function readDisplayedRows(
   return rows;
 }
 
+function readWorkbook(
+  parser: SheetJsParserModule,
+  source: Uint8Array,
+  options: SheetJsReadOptions,
+): object {
+  let parsed: unknown;
+  try {
+    parsed = parser.read(source, options);
+  } catch {
+    unsupportedOrCorruptSource();
+  }
+  if (!isObject(parsed)) unsupportedOrCorruptSource();
+  return parsed;
+}
+
+function baseReadOptions(): Omit<
+  SheetJsReadOptions,
+  'bookSheets' | 'sheets' | 'sheetRows'
+> {
+  return {
+    type: 'array',
+    cellFormula: false,
+    cellHTML: false,
+    cellNF: false,
+    bookVBA: false,
+  };
+}
+
 /**
  * Project locally parsed SheetJS workbook data into Inkspan's parser-neutral
  * workbook contract without granting formulas, macros, links, or parser output
- * any editor authority. Parsing is capped one row beyond the accepted aggregate
- * row ceiling so an oversized source can be rejected without unbounded worksheet
- * materialization; decoded ranges are then checked against the exact workbook
- * limits before displayed row arrays are materialized by `sheet_to_json`.
+ * any editor authority. Inkspan first performs a sheet-name-only discovery pass,
+ * then parses each selected worksheet with a row ceiling derived from the
+ * remaining aggregate workbook budget. Exact decoded row, column, and cell
+ * limits are checked before displayed rows are materialized by `sheet_to_json`.
  */
 export function sheetJsBytesToWorkbookData(
   source: Uint8Array,
   parser: SheetJsParserModule,
 ): SpreadsheetWorkbookData {
   const boundedSource = preflightSpreadsheetBinarySource(source);
-  let parsed: unknown;
-  try {
-    parsed = parser.read(boundedSource.bytes, {
-      type: 'array',
-      cellFormula: false,
-      cellHTML: false,
-      cellNF: false,
-      bookVBA: false,
-      sheetRows: MAX_WORKBOOK_ROWS + 1,
-    });
-  } catch {
-    unsupportedOrCorruptSource();
-  }
-  if (!isObject(parsed)) unsupportedOrCorruptSource();
-
-  const sheetNames = readOwnDataProperty(parsed, 'SheetNames');
-  const sheets = readOwnDataProperty(parsed, 'Sheets');
-  if (!isArray(sheetNames) || !isObject(sheets)) unsupportedOrCorruptSource();
+  const discovery = readWorkbook(parser, boundedSource.bytes, {
+    ...baseReadOptions(),
+    bookSheets: true,
+  });
+  const sheetNames = readOwnDataProperty(discovery, 'SheetNames');
+  if (!isArray(sheetNames)) unsupportedOrCorruptSource();
   const sheetCount = readArrayLength(sheetNames);
   if (sheetCount > MAX_WORKBOOK_WORKSHEETS) resourceLimitExceeded();
-  const sheetMetadata = readWorkbookSheetMetadata(parsed);
 
-  const prepared: PreparedSheet[] = [];
-  let visibleCount = 0;
-  let decodedRows = 0;
-  let decodedCells = 0;
-
+  const worksheetNames: string[] = [];
   for (let index = 0; index < sheetCount; index += 1) {
     const name = readOwnDataProperty(sheetNames, String(index));
     if (typeof name !== 'string') unsupportedOrCorruptSource();
     if (name.length > MAX_WORKSHEET_NAME_CODE_UNITS) resourceLimitExceeded();
+    worksheetNames.push(name);
+  }
+
+  const worksheets: SpreadsheetWorksheetData[] = [];
+  let visibleCount = 0;
+  let decodedRows = 0;
+  let decodedCells = 0;
+
+  for (let index = 0; index < worksheetNames.length; index += 1) {
+    const name = worksheetNames[index] as string;
+    const remainingRows = MAX_WORKBOOK_ROWS - decodedRows;
+    const parsed = readWorkbook(parser, boundedSource.bytes, {
+      ...baseReadOptions(),
+      sheets: name,
+      sheetRows: remainingRows + 1,
+    });
+    const sheets = readOwnDataProperty(parsed, 'Sheets');
+    if (!isObject(sheets)) unsupportedOrCorruptSource();
     const sheet = readOwnDataProperty(sheets, name);
     if (!isObject(sheet)) unsupportedOrCorruptSource();
+    const sheetMetadata = readWorkbookSheetMetadata(parsed);
     const hidden = readHiddenState(sheetMetadata, index);
     if (hidden) {
-      prepared.push({ name, hidden: true, sheet, hasRange: false });
+      worksheets.push({ name, hidden: true, rows: [] });
       continue;
     }
 
@@ -258,7 +285,7 @@ export function sheetJsBytesToWorkbookData(
     if (visibleCount > MAX_VISIBLE_WORKSHEETS) resourceLimitExceeded();
     const reference = readOptionalOwnDataProperty(sheet, '!ref');
     if (reference === undefined) {
-      prepared.push({ name, hidden: false, sheet, hasRange: false });
+      worksheets.push({ name, hidden: false, rows: [] });
       continue;
     }
     if (typeof reference !== 'string' || reference.length === 0) {
@@ -266,21 +293,23 @@ export function sheetJsBytesToWorkbookData(
     }
     const dimensions = decodeRangeDimensions(parser, reference);
     if (dimensions.columns > MAX_WORKSHEET_COLUMNS) resourceLimitExceeded();
-    decodedRows += dimensions.rows;
-    decodedCells += dimensions.rows * dimensions.columns;
-    if (decodedRows > MAX_WORKBOOK_ROWS || decodedCells > MAX_WORKBOOK_CELLS) {
+    const nextDecodedRows = decodedRows + dimensions.rows;
+    const nextDecodedCells =
+      decodedCells + dimensions.rows * dimensions.columns;
+    if (
+      nextDecodedRows > MAX_WORKBOOK_ROWS ||
+      nextDecodedCells > MAX_WORKBOOK_CELLS
+    ) {
       resourceLimitExceeded();
     }
-    prepared.push({ name, hidden: false, sheet, hasRange: true });
+    decodedRows = nextDecodedRows;
+    decodedCells = nextDecodedCells;
+    worksheets.push({
+      name,
+      hidden: false,
+      rows: readDisplayedRows(parser, sheet),
+    });
   }
 
-  const worksheets: SpreadsheetWorksheetData[] = prepared.map((entry) => ({
-    name: entry.name,
-    hidden: entry.hidden,
-    rows:
-      entry.hidden || !entry.hasRange
-        ? []
-        : readDisplayedRows(parser, entry.sheet),
-  }));
   return { worksheets };
 }
