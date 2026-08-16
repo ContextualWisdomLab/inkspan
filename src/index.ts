@@ -166,6 +166,21 @@ export {
 } from './markdown/plainText.js';
 export type { PlainTextOptions } from './markdown/plainText.js';
 
+// Host-facing editor chrome theme tokens (CSS remains runtime authority).
+export {
+  EditorThemeTokenError,
+  getEditorThemeToken,
+  listEditorThemeTokens,
+  toDesignTokenFormatGroup,
+} from './designTokens.js';
+export type {
+  DesignTokenFormatGroup,
+  DesignTokenFormatNode,
+  EditorThemeToken,
+  EditorThemeTokenName,
+  EditorThemeTokenRole,
+} from './designTokens.js';
+
 // Standalone, framework-agnostic base64 / data-URI converter.
 export * from './converter/index.js';
 export {

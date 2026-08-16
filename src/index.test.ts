@@ -49,6 +49,13 @@ describe('package entry point', () => {
     expect(typeof api.htmlToPlainText).toBe('function');
   });
 
+  it('re-exports the editor theme token catalog', () => {
+    expect(typeof api.listEditorThemeTokens).toBe('function');
+    expect(typeof api.getEditorThemeToken).toBe('function');
+    expect(typeof api.toDesignTokenFormatGroup).toBe('function');
+    expect(typeof api.EditorThemeTokenError).toBe('function');
+  });
+
   it('re-exports the standalone base64 converter', () => {
     expect(typeof api.bytesToBase64).toBe('function');
     expect(typeof api.base64ToBytes).toBe('function');
