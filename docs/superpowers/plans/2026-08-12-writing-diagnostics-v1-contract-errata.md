@@ -2,7 +2,7 @@
 
 Status: Required companion to `2026-08-12-writing-diagnostics-implementation.md`
 
-ADR 0028 resolves two contradictions discovered after the original atomic implementation plan was written. Every remaining task and acceptance review must apply this errata. Task 10 must fold these corrections into the canonical ADR, design, plan, PRD, TRD, contracts, threat model, operability, traceability, and CHANGELOG so the final protected-main documentation has no parallel instruction set.
+ADR 0029 resolves two contradictions discovered after the original atomic implementation plan was written. Every remaining task and acceptance review must apply this errata. Task 10 must fold these corrections into the canonical ADR, design, plan, PRD, TRD, contracts, threat model, operability, traceability, and CHANGELOG so the final protected-main documentation has no parallel instruction set.
 
 ## Global lifecycle correction
 
@@ -61,7 +61,7 @@ Cross-engine and hostile-input evidence must prove:
 
 ## Task 10 reconciliation requirement
 
-Before the feature stack can become Ready, the original ADR 0027 and design/plan prose must be edited so they directly express ADR 0028. This errata is temporary planning evidence, not the desired final duplicate source of truth. The final documentation contract tests must fail if either of the superseded claims reappears:
+Before the feature stack can become Ready, the original ADR 0028 and design/plan prose must be edited so they directly express ADR 0029. This errata is temporary planning evidence, not the desired final duplicate source of truth. The final documentation contract tests must fail if either of the superseded claims reappears:
 
 1. a diagnostic can survive `docChanged` through transaction mapping; or
 2. Inkspan derives `aria-invalid` or other semantic state from an opaque category string.
