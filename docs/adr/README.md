@@ -32,7 +32,7 @@ This index records durable architectural decisions. Protected-main implementatio
 | [0024](0024-bounded-docx-paragraph-alignment.md) | Accepted | Bounded paragraph alignment in deterministic DOCX output |
 | [0025](0025-bounded-docx-heading-alignment.md) | Accepted | Bounded heading alignment in deterministic DOCX output |
 | [0026](0026-bounded-docx-external-hyperlinks.md) | Accepted | Bounded external hyperlinks in deterministic DOCX rich text |
-| [0027](0027-editor-design-tokens-storybook.md) | Proposed | Editor chrome design tokens and Storybook inventory |
+| [0031](0031-editor-design-tokens-storybook.md) | Proposed | Editor chrome design tokens and Storybook inventory |
 
 ## Decision discipline
 
