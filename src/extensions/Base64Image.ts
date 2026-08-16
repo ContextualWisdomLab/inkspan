@@ -9,7 +9,7 @@
  */
 import Image from '@tiptap/extension-image';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
-import { blobToDataUri } from '../converter/base64.js';
+import { Base64SizeError, blobToDataUri } from '../converter/base64.js';
 import {
   Base64ImageSourceError,
   validateInlineImageSource,
@@ -45,6 +45,48 @@ export interface Base64ImageOptions {
 }
 
 export const base64ImagePluginKey = new PluginKey('cwlBase64Image');
+
+const blobSizeGetter = Object.getOwnPropertyDescriptor(
+  globalThis.Blob.prototype,
+  'size',
+)!.get!;
+const safeImageIngressErrors = new WeakSet<object>();
+
+/** Read Blob byte length from its platform internal slot, ignoring own accessors. */
+function intrinsicBlobSize(blob: Blob): number {
+  return Reflect.apply(blobSizeGetter, blob, []) as number;
+}
+
+/** Mark an Inkspan-created ingress error without exposing a forgeable property. */
+function markSafeImageIngressError<T extends Error>(error: T): T {
+  safeImageIngressErrors.add(error);
+  return error;
+}
+
+/** Normalize an untrusted caught value without inspecting or coercing it. */
+function normalizeUntrustedImageIngressError(error: unknown): Error {
+  return safeImageIngressErrors.has(error as object)
+    ? (error as Error)
+    : new Error('Image processing failed.');
+}
+
+/**
+ * Validate a generated source and privately brand any deterministic policy
+ * failure so the async ingress boundary may preserve its safe diagnostic.
+ */
+function validateGeneratedInlineImageSource(
+  source: string,
+  maxSizeBytes: number,
+): string {
+  try {
+    return validateInlineImageSource(source, maxSizeBytes);
+  } catch (error) {
+    if (typeof error === 'object' && error !== null) {
+      safeImageIngressErrors.add(error);
+    }
+    throw error;
+  }
+}
 
 /**
  * Downscale an image data URI using an offscreen canvas when it exceeds
@@ -100,24 +142,33 @@ export async function imageFileToInlineDataUri(
   file: Blob,
   options: Pick<Base64ImageOptions, 'maxSizeBytes' | 'maxDimension' | 'quality'>,
 ): Promise<string> {
+  if (options.maxSizeBytes > 0) {
+    const sourceBytes = intrinsicBlobSize(file);
+    if (sourceBytes > options.maxSizeBytes) {
+      throw markSafeImageIngressError(
+        new Base64SizeError(sourceBytes, options.maxSizeBytes),
+      );
+    }
+  }
+
   const dataUri = await blobToDataUri(file, {
     maxBytes: options.maxSizeBytes > 0 ? options.maxSizeBytes : undefined,
   });
-  validateInlineImageSource(dataUri, options.maxSizeBytes);
+  validateGeneratedInlineImageSource(dataUri, options.maxSizeBytes);
   if (options.maxDimension && options.maxDimension > 0) {
     const scaled = await downscaleDataUri(
       dataUri,
       options.maxDimension,
       options.quality,
     );
-    return validateInlineImageSource(scaled, options.maxSizeBytes);
+    return validateGeneratedInlineImageSource(scaled, options.maxSizeBytes);
   }
   return dataUri;
 }
 
-/** Normalize a caught value to the Error contract exposed to hosts. */
+/** Normalize a caught value from Inkspan-controlled validation paths. */
 function normalizeImageError(error: unknown): Error {
-  /* v8 ignore next -- all shipped validation and conversion paths throw Error. */
+  /* v8 ignore next -- all shipped validation paths throw Error. */
   return error instanceof Error ? error : new Error('Image processing failed.');
 }
 
@@ -218,8 +269,8 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
               insertionPosition = transaction.mapping.map(pos, 1);
             }
             editor.view.dispatch(transaction);
-          } catch {
-            options.onError?.(new Error('Image processing failed.'));
+          } catch (error) {
+            options.onError?.(normalizeUntrustedImageIngressError(error));
           }
         }
       };
