@@ -9,6 +9,8 @@
 
 export type EditorThemeTokenRole = 'color' | 'dimension' | 'fontFamily';
 
+export type EditorThemeTokenScheme = 'light' | 'dark' | 'print';
+
 export type EditorThemeTokenName =
   | 'cwl-fg'
   | 'cwl-muted'
@@ -27,6 +29,14 @@ export interface EditorThemeToken {
   readonly lightValue: string;
   readonly darkValue?: string;
   readonly printValue?: string;
+  readonly hostAction: string;
+}
+
+export interface EditorThemeTokenContrast {
+  readonly foreground: EditorThemeTokenName;
+  readonly background: EditorThemeTokenName;
+  readonly scheme: EditorThemeTokenScheme;
+  readonly ratio: number;
   readonly hostAction: string;
 }
 
@@ -63,6 +73,16 @@ export class EditorThemeTokenError extends Error {
   constructor() {
     super('Unknown editor theme token.');
     this.name = 'EditorThemeTokenError';
+  }
+}
+
+/** Stable fail-closed error when contrast is requested for a non-color token. */
+export class EditorThemeTokenContrastError extends Error {
+  readonly code = 'non_color_theme_token';
+
+  constructor() {
+    super('Theme token contrast requires color tokens.');
+    this.name = 'EditorThemeTokenContrastError';
   }
 }
 
@@ -137,6 +157,90 @@ export function getEditorThemeToken(name: string): EditorThemeToken {
     throw new EditorThemeTokenError();
   }
   return token;
+}
+
+function srgbChannel(value: number): number {
+  const channel = value / 255;
+  return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+}
+
+function relativeLuminance(hex: string): number {
+  const match = /^#([0-9a-f]{6})$/iu.exec(hex);
+  if (!match) {
+    throw new EditorThemeTokenContrastError();
+  }
+  const integer = Number.parseInt(match[1], 16);
+  return (
+    0.2126 * srgbChannel((integer >> 16) & 0xff) +
+    0.7152 * srgbChannel((integer >> 8) & 0xff) +
+    0.0722 * srgbChannel(integer & 0xff)
+  );
+}
+
+/**
+ * Return the WCAG 2.2 contrast ratio for two `#rrggbb` colors.
+ *
+ * Use this after a host override so the new hex pair can be checked without
+ * editing Inkspan internals. The ratio is not a host WCAG certification.
+ *
+ * @throws {EditorThemeTokenContrastError} When either value is not `#rrggbb`.
+ */
+export function contrastRatioFromHex(left: string, right: string): number {
+  const first = relativeLuminance(left);
+  const second = relativeLuminance(right);
+  const lighter = Math.max(first, second);
+  const darker = Math.min(first, second);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function colorValueForScheme(
+  token: EditorThemeToken,
+  scheme: EditorThemeTokenScheme,
+): string {
+  switch (scheme) {
+    case 'light':
+      return token.lightValue;
+    case 'dark':
+      return token.darkValue!;
+    case 'print':
+      return token.printValue!;
+    default: {
+      const exhaustive: never = scheme;
+      void exhaustive;
+      throw new EditorThemeTokenContrastError();
+    }
+  }
+}
+
+/**
+ * Return the WCAG 2.2 contrast ratio for two shipped color tokens.
+ *
+ * Use this after a host override to decide whether `--cwl-fg` still meets
+ * 4.5:1 against `--cwl-bg`. The ratio is not a host WCAG certification.
+ *
+ * @throws {EditorThemeTokenError} When either name is not a shipped token.
+ * @throws {EditorThemeTokenContrastError} When either token is not a color.
+ */
+export function getEditorThemeTokenContrast(
+  foregroundName: string,
+  backgroundName: string,
+  scheme: EditorThemeTokenScheme = 'light',
+): EditorThemeTokenContrast {
+  const foreground = getEditorThemeToken(foregroundName);
+  const background = getEditorThemeToken(backgroundName);
+  if (foreground.role !== 'color' || background.role !== 'color') {
+    throw new EditorThemeTokenContrastError();
+  }
+  return Object.freeze({
+    foreground: foreground.name,
+    background: background.name,
+    scheme,
+    ratio: contrastRatioFromHex(
+      colorValueForScheme(foreground, scheme),
+      colorValueForScheme(background, scheme),
+    ),
+    hostAction: `Override --${foreground.name} and --${background.name} on .cwl-editor after checking WCAG 2.2 contrast. Do not edit Inkspan internals.`,
+  });
 }
 
 function formatTokenValue(token: EditorThemeToken): string | readonly string[] {

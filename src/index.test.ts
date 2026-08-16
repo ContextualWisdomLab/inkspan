@@ -52,8 +52,11 @@ describe('package entry point', () => {
   it('re-exports the editor theme token catalog', () => {
     expect(typeof api.listEditorThemeTokens).toBe('function');
     expect(typeof api.getEditorThemeToken).toBe('function');
+    expect(typeof api.getEditorThemeTokenContrast).toBe('function');
+    expect(typeof api.contrastRatioFromHex).toBe('function');
     expect(typeof api.toDesignTokenFormatGroup).toBe('function');
     expect(typeof api.EditorThemeTokenError).toBe('function');
+    expect(typeof api.EditorThemeTokenContrastError).toBe('function');
   });
 
   it('re-exports the standalone base64 converter', () => {

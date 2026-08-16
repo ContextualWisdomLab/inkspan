@@ -4,8 +4,11 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  EditorThemeTokenContrastError,
   EditorThemeTokenError,
+  contrastRatioFromHex,
   getEditorThemeToken,
+  getEditorThemeTokenContrast,
   listEditorThemeTokens,
   toDesignTokenFormatGroup,
 } from './designTokens.js';
@@ -80,6 +83,46 @@ describe('editor theme token catalog', () => {
       /unknown editor theme token/iu,
     );
     expect(() => getEditorThemeToken('not-a-theme-token')).not.toThrow(/not-a-theme-token/u);
+  });
+
+  it('reports WCAG 2.2 contrast for shipped color pairs so hosts can check overrides', () => {
+    const light = getEditorThemeTokenContrast('cwl-fg', 'cwl-bg', 'light');
+    const dark = getEditorThemeTokenContrast('cwl-fg', 'cwl-bg', 'dark');
+    const print = getEditorThemeTokenContrast('cwl-fg', 'cwl-bg', 'print');
+    const muted = getEditorThemeTokenContrast('cwl-muted', 'cwl-bg', 'light');
+
+    expect(light.ratio).toBeCloseTo(15.797619425332647, 8);
+    expect(dark.ratio).toBeCloseTo(16.016082890827004, 8);
+    expect(print.ratio).toBeCloseTo(21, 8);
+    expect(muted.ratio).toBeCloseTo(6.114136455475549, 8);
+    expect(light.ratio).toBeGreaterThanOrEqual(4.5);
+    expect(light.hostAction).toContain('Override --cwl-fg and --cwl-bg on .cwl-editor');
+    expect(light.hostAction).toContain('WCAG 2.2');
+  });
+
+  it('rejects contrast lookups that are not shipped color tokens without reflecting caller input', () => {
+    expect(() => getEditorThemeTokenContrast('not-a-theme-token', 'cwl-bg')).toThrow(
+      EditorThemeTokenError,
+    );
+    expect(() => getEditorThemeTokenContrast('not-a-theme-token', 'cwl-bg')).not.toThrow(
+      /not-a-theme-token/u,
+    );
+    expect(() => getEditorThemeTokenContrast('cwl-font', 'cwl-bg')).toThrow(
+      EditorThemeTokenContrastError,
+    );
+    expect(() => getEditorThemeTokenContrast('cwl-font', 'cwl-bg')).toThrow(
+      /theme token contrast requires color tokens/iu,
+    );
+    expect(() => getEditorThemeTokenContrast('cwl-font', 'cwl-bg')).not.toThrow(/cwl-font/u);
+    expect(() =>
+      getEditorThemeTokenContrast('cwl-fg', 'cwl-bg', 'solar' as 'light'),
+    ).toThrow(EditorThemeTokenContrastError);
+    expect(contrastRatioFromHex('#1f2328', '#ffffff')).toBeCloseTo(15.797619425332647, 8);
+    expect(contrastRatioFromHex('#000000', '#ffffff')).toBeCloseTo(21, 8);
+    expect(() => contrastRatioFromHex('not-a-hex', '#ffffff')).toThrow(
+      EditorThemeTokenContrastError,
+    );
+    expect(() => contrastRatioFromHex('not-a-hex', '#ffffff')).not.toThrow(/not-a-hex/u);
   });
 
   it('emits a DTCG 2025.10 group that hosts can copy into a theme file', () => {

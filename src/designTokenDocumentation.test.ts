@@ -32,6 +32,8 @@ describe('editor design-token documentation contract', () => {
     expect(doctoring).toContain('ADR 0031');
     expect(doctoring).not.toContain('ADR 0027');
     expect(operatorGuide).toContain('Override the named custom properties on `.cwl-editor`');
+    expect(operatorGuide).toContain('getEditorThemeTokenContrast');
+    expect(operatorGuide).toContain('contrastRatioFromHex');
     expect(operatorGuide).toContain('Do not edit Inkspan internals');
     expect(inventory).toContain('Editor Chrome / Toolbar Button States');
     expect(inventory).toContain('Editor Chrome / Live Toolbar');

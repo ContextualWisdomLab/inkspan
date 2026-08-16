@@ -14,7 +14,7 @@ If contrast fails after a re-theme, override only the named tokens on `.cwl-edit
 ## Decision
 
 1. Keep `src/styles.css` as runtime presentation authority.
-2. Publish `listEditorThemeTokens()` / `getEditorThemeToken()` / `toDesignTokenFormatGroup()` as a host-facing catalog of the nine shipped chrome tokens.
+2. Publish `listEditorThemeTokens()` / `getEditorThemeToken()` / `getEditorThemeTokenContrast()` / `toDesignTokenFormatGroup()` as a host-facing catalog of the nine shipped chrome tokens.
 3. Reject unknown token names with a stable payload-redacted `EditorThemeTokenError`.
 4. Preview repeating `.cwl-tb-btn` states, the shipped Toolbar, and token swatches in Storybook.
 5. Add no network, persistence, credential, model, tenant, Figma, or design-tool sync authority.
@@ -28,7 +28,7 @@ WCAG 2.2 requires sufficient contrast for text and user-interface components (Wo
 ## Test-first evidence
 
 - RED: `src/designTokens.test.ts` failed because `./designTokens.js` did not exist.
-- GREEN: the catalog lists the nine shipped tokens, aligns light/dark/print color values with the matching `src/styles.css` media blocks, rejects unknown names without reflecting caller input, and emits a DTCG 2025.10 group.
+- GREEN: the catalog lists the nine shipped tokens, aligns light/dark/print color values with the matching `src/styles.css` media blocks, reports WCAG 2.2 contrast for shipped color pairs, rejects unknown names without reflecting caller input, and emits a DTCG 2025.10 group.
 
 ## Residual risk
 

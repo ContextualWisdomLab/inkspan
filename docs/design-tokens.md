@@ -13,12 +13,19 @@ Use this catalog when you need to re-theme Inkspan's repeating toolbar and edito
 
 ```ts
 import {
+  contrastRatioFromHex,
+  getEditorThemeTokenContrast,
   listEditorThemeTokens,
   toDesignTokenFormatGroup,
 } from '@contextualwisdomlab/cwl-editor';
 
 const tokens = listEditorThemeTokens();
 const dtcgGroup = toDesignTokenFormatGroup();
+const contrast = getEditorThemeTokenContrast('cwl-fg', 'cwl-bg', 'light');
+const overrideRatio = contrastRatioFromHex('#0b6e4f', '#ffffff');
+if (contrast.ratio < 4.5 || overrideRatio < 4.5) {
+  throw new Error(contrast.hostAction);
+}
 void tokens;
 void dtcgGroup;
 ```
