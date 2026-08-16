@@ -23,7 +23,6 @@ const RESOLVED_DIAGNOSTIC_FIELDS = Object.freeze([
   'from',
   'to',
   'priority',
-  'ariaInvalid',
 ] as const);
 const REQUIRED_RESOLVED_DIAGNOSTIC_FIELDS = Object.freeze([
   'diagnosticId',
@@ -37,15 +36,12 @@ const PRIORITIES = new Set<CwlWritingDiagnosticPriority>([
   'critical',
 ]);
 
-/** Explicit host-approved ARIA invalidity mapping for mechanics guidance. */
-export type CwlWritingDiagnosticAriaInvalid = 'spelling';
-
 /**
  * Privacy-minimized structural range that may be rendered as one decoration.
  *
- * Semantic prose, source text, replacement text, model output, and confidence
- * are deliberately absent. `ariaInvalid` is explicit host policy output; the
- * extension never derives it from `diagnosticId` or any category-like string.
+ * Semantic prose, source text, replacement text, model output, confidence, and
+ * semantic accessibility assertions are deliberately absent. The extension
+ * never derives behavior from `diagnosticId` or any category-like string.
  */
 export interface CwlResolvedWritingDiagnosticDecoration {
   /** Opaque identifier already validated by the host contract. */
@@ -56,8 +52,6 @@ export interface CwlResolvedWritingDiagnosticDecoration {
   readonly to: number;
   /** Host-selected visual priority. */
   readonly priority: CwlWritingDiagnosticPriority;
-  /** Optional explicit host mapping for mechanics-related accessibility state. */
-  readonly ariaInvalid?: CwlWritingDiagnosticAriaInvalid;
 }
 
 /** Immutable state owned by the writing-diagnostic ProseMirror plugin. */
@@ -295,9 +289,6 @@ function applyInstallMeta(
       class: `cwl-writing-diagnostic cwl-writing-diagnostic--${diagnostic.priority}`,
       'data-cwl-diagnostic-id': diagnostic.diagnosticId,
     };
-    if (diagnostic.ariaInvalid === 'spelling') {
-      attributes['aria-invalid'] = 'spelling';
-    }
     return [
       Decoration.inline(diagnostic.from, diagnostic.to, attributes, {
         inclusiveStart: false,
@@ -417,7 +408,6 @@ function normalizeResolvedDiagnostic(
   const from = record.from;
   const to = record.to;
   const priority = record.priority;
-  const ariaInvalid = record.ariaInvalid;
   if (
     typeof diagnosticId !== 'string' ||
     diagnosticId.length === 0 ||
@@ -428,27 +418,17 @@ function normalizeResolvedDiagnostic(
     (to as number) < (from as number) ||
     (to as number) > documentNode.content.size ||
     typeof priority !== 'string' ||
-    !PRIORITIES.has(priority as CwlWritingDiagnosticPriority) ||
-    (ariaInvalid !== undefined && ariaInvalid !== 'spelling')
+    !PRIORITIES.has(priority as CwlWritingDiagnosticPriority)
   ) {
     return null;
   }
 
-  const normalized: CwlResolvedWritingDiagnosticDecoration = {
+  return Object.freeze({
     diagnosticId,
     from: from as number,
     to: to as number,
     priority: priority as CwlWritingDiagnosticPriority,
-  };
-  if (ariaInvalid === 'spelling') {
-    Object.defineProperty(normalized, 'ariaInvalid', {
-      value: 'spelling',
-      enumerable: true,
-      configurable: false,
-      writable: false,
-    });
-  }
-  return Object.freeze(normalized);
+  });
 }
 
 export default WritingDiagnostics;
