@@ -133,4 +133,34 @@ describe('Toolbar asynchronous image-upload lifecycle boundary', () => {
     expect(editor.getHTML()).toBe(before);
     expect(editor.getHTML()).not.toContain('data:image');
   });
+
+  it('contains host image-error observer failures after conversion rejection', async () => {
+    const editor = makeEditor();
+    const before = editor.getHTML();
+    const privateSentinel = new Error('private toolbar observer sentinel');
+    const failedFile = new File([PNG_BYTES], 'failed.png', { type: 'image/png' });
+    Object.defineProperty(failedFile, 'arrayBuffer', {
+      configurable: true,
+      value: vi.fn().mockRejectedValue(new Error('private conversion failure')),
+    });
+    const onImageError = vi.fn(() => {
+      throw privateSentinel;
+    });
+    const prompt = vi.spyOn(window, 'prompt').mockReturnValue('should not run');
+
+    render(
+      <Toolbar
+        editor={editor}
+        image={{ maxSizeBytes: 1024 * 1024, maxDimension: 0 }}
+        onImageError={onImageError}
+      />,
+    );
+
+    fireEvent.change(fileInput(), { target: { files: [failedFile] } });
+    await settleConversion();
+
+    expect(onImageError).toHaveBeenCalledOnce();
+    expect(prompt).not.toHaveBeenCalled();
+    expect(editor.getHTML()).toBe(before);
+  });
 });
