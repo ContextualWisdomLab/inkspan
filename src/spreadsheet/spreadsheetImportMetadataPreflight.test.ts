@@ -40,6 +40,18 @@ describe('spreadsheet workbook metadata preflight', () => {
     expect(accessed).toBe(false);
   });
 
+  it('redacts a hostile metadata reflection failure', () => {
+    const workbook = new Proxy(Object.create(null) as object, {
+      getOwnPropertyDescriptor() {
+        throw new Error('private-metadata-reflection-sentinel');
+      },
+    });
+
+    expectUnsupportedSource(() =>
+      spreadsheetWorkbookToDocumentJson(workbook as never),
+    );
+  });
+
   it.each(['name', 'hidden', 'rows'] as const)(
     'rejects an accessor-backed worksheet %s field without invoking it',
     (field) => {
