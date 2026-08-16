@@ -102,7 +102,7 @@ describe('editor theme token catalog', () => {
     expect(light.hostAction).toContain('WCAG 2.2');
   });
 
-  it('reports inventoried active-chrome contrast including the dark pair below 4.5:1', () => {
+  it('requires inventoried active-chrome text contrast to meet WCAG 2.2 AA', () => {
     const lightActive = getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'light');
     const darkActive = getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'dark');
     const printActive = getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'print');
@@ -110,12 +110,12 @@ describe('editor theme token catalog', () => {
 
     expect(lightActive.ratio).toBeCloseTo(4.563748387142551, 8);
     expect(lightActive.meetsTextContrast).toBe(true);
-    expect(darkActive.ratio).toBeCloseTo(4.125850234317593, 8);
-    expect(darkActive.meetsTextContrast).toBe(false);
+    expect(darkActive.ratio).toBeCloseTo(5.062920561609967, 8);
+    expect(darkActive.meetsTextContrast).toBe(true);
     expect(darkActive.meetsNonTextContrast).toBe(true);
     expect(darkActive.hostAction).toContain('--cwl-accent');
     expect(darkActive.hostAction).toContain('--cwl-accent-soft');
-    expect(darkActive.hostAction).toContain('below 4.5:1');
+    expect(darkActive.hostAction).not.toContain('below 4.5:1');
     expect(printActive.meetsTextContrast).toBe(true);
     expect(accentOnBackground.meetsTextContrast).toBe(true);
   });
