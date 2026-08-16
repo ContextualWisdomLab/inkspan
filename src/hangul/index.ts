@@ -79,6 +79,19 @@ function isHangulDocumentError(error: unknown): error is HangulDocumentError {
 }
 
 const TEXT_ALIGNMENTS = new Set(['left', 'center', 'right', 'justify']);
+const DEFAULT_MAX_DOCUMENT_BYTES = 64 * 1024 * 1024;
+
+/** Resolve a public runtime byte ceiling without coercion or fail-open numeric values. */
+function resolveHangulByteLimit(limit: number | undefined): number {
+  const resolved = limit ?? DEFAULT_MAX_DOCUMENT_BYTES;
+  if (!Number.isSafeInteger(resolved) || resolved < 0) {
+    throw new HangulDocumentError(
+      'INVALID_CONFIGURATION',
+      'Hangul byte limit configuration is invalid.',
+    );
+  }
+  return resolved;
+}
 
 function parseInline(parent: ParentNode, marks: HangulDocumentMark[] = []): HangulDocumentJson[] {
   const output: HangulDocumentJson[] = [];
@@ -251,7 +264,8 @@ function jsonToHtml(documentJson: HangulDocumentJson): string {
 
 /** Project HWP/HWPX bytes into the editor's JSON model. */
 export async function openHangulDocument(source: Uint8Array, options: OpenHangulDocumentOptions): Promise<HangulDocumentImportResult> {
-  if (source.byteLength > (options.maxSourceBytes ?? 64 * 1024 * 1024)) throw new HangulDocumentError('SOURCE_LIMIT_EXCEEDED', 'Hangul source exceeds the configured limit.');
+  const maxSourceBytes = resolveHangulByteLimit(options.maxSourceBytes);
+  if (source.byteLength > maxSourceBytes) throw new HangulDocumentError('SOURCE_LIMIT_EXCEEDED', 'Hangul source exceeds the configured limit.');
   let document: HangulEngineDocument;
   try { document = await options.engine.open(source); } catch { throw new HangulDocumentError('ENGINE_OPEN_FAILED', 'The Hangul engine could not open the document.'); }
   try {
@@ -270,6 +284,7 @@ export async function openHangulDocument(source: Uint8Array, options: OpenHangul
 
 /** Export edited Inkspan JSON as HWPX by default or HWP explicitly. */
 export async function exportHangulDocument(documentJson: HangulDocumentJson, options: ExportHangulDocumentOptions): Promise<HangulDocumentExportResult> {
+  const maxOutputBytes = resolveHangulByteLimit(options.maxOutputBytes);
   const format = options.format ?? 'hwpx';
   const html = jsonToHtml(documentJson);
   let document: HangulEngineDocument;
@@ -283,7 +298,7 @@ export async function exportHangulDocument(documentJson: HangulDocumentJson, opt
       document.pasteHtml(0, 0, 0, html);
       document.endBatch?.();
       const bytes = format === 'hwp' ? document.exportHwp() : document.exportHwpx();
-      if (bytes.byteLength > (options.maxOutputBytes ?? 64 * 1024 * 1024)) throw new HangulDocumentError('OUTPUT_LIMIT_EXCEEDED', 'Hangul export exceeds the configured limit.');
+      if (bytes.byteLength > maxOutputBytes) throw new HangulDocumentError('OUTPUT_LIMIT_EXCEEDED', 'Hangul export exceeds the configured limit.');
       return { format, bytes, warnings: Object.freeze([]) };
     } catch (error) {
       if (isHangulDocumentError(error)) throw error;
