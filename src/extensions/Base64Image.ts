@@ -218,8 +218,8 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
               insertionPosition = transaction.mapping.map(pos, 1);
             }
             editor.view.dispatch(transaction);
-          } catch (error: unknown) {
-            options.onError?.(normalizeImageError(error));
+          } catch {
+            options.onError?.(new Error('Image processing failed.'));
           }
         }
       };
