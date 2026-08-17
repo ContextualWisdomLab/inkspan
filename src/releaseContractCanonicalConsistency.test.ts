@@ -7,9 +7,11 @@ const repositoryFile = (path: string): string =>
   readFileSync(resolve(process.cwd(), path), 'utf8');
 
 describe('canonical release artifact inventory consistency', () => {
-  it('keeps the public contract aligned with the protected four-file release boundary', () => {
+  it('keeps canonical release documents aligned with the protected four-file boundary', () => {
     const contracts = repositoryFile('docs/CONTRACTS.md');
+    const operability = repositoryFile('docs/OPERABILITY.md');
     const releaseSecurity = repositoryFile('docs/release-security.md');
+    const testStrategy = repositoryFile('docs/TEST_STRATEGY.md');
 
     expect(releaseSecurity).toContain(
       'Each successful GitHub release contains exactly four files',
@@ -19,7 +21,20 @@ describe('canonical release artifact inventory consistency', () => {
     expect(contracts).toContain('exactly four regular top-level files');
     expect(contracts).toContain('`inkspan.spdx.json`');
     expect(contracts).toMatch(/release evidence \| exact four-file draft inventory/u);
-    expect(contracts).not.toContain('exactly three regular top-level files');
-    expect(contracts).not.toContain('release evidence | exact three-file draft inventory');
+
+    expect(testStrategy).toContain('exact four-file inventory violations');
+    expect(testStrategy).toContain(
+      'exactly one npm tarball, exactly one Office wheel, `inkspan.spdx.json`, and `SHA256SUMS`',
+    );
+
+    expect(operability).toContain('build exactly four regular top-level release files');
+    expect(operability).toContain(
+      'exactly one npm tarball, exactly one Inkspan Office wheel, `inkspan.spdx.json`, and `SHA256SUMS`',
+    );
+
+    for (const document of [contracts, testStrategy, operability]) {
+      expect(document).not.toContain('exactly three regular top-level files');
+      expect(document).not.toContain('exact three-file draft inventory');
+    }
   });
 });
