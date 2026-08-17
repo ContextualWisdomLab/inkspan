@@ -17,7 +17,7 @@ integrations.
 | `@contextualwisdomlab/cwl-editor/envelope-identity` | Framework-independent identity-only envelope routing for bounded schema identity inspection; migration remains host-owned |
 | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent revision evidence and document-transition evidence for local content equality/lineage claims |
 | `@contextualwisdomlab/cwl-editor/text-position-selector` | `implemented_on_protected_main` — React-free text-position projection core implementing W3C `TextPositionSelector`; interactive capture, revision binding, authorization, persistence, and re-anchoring remain outside this subpath |
-| `@contextualwisdomlab/cwl-editor/markdown` | `implemented_on_active_pr` — headless deterministic Markdown/HTML/email/plain-text conversion with the same safe-link and strict inline-raster policies as the editor, without importing the React/TipTap editor graph |
+| `@contextualwisdomlab/cwl-editor/markdown` | `implemented_on_protected_main` — headless deterministic Markdown/HTML/email/plain-text conversion with the same safe-link and strict inline-raster policies as the editor, without importing the React/TipTap editor graph |
 | `@contextualwisdomlab/cwl-editor/spreadsheet` | `implemented_on_active_pr` — framework-neutral bounded XLS/XLSX envelope preflight, lazy official SheetJS parse, and parser-neutral worksheet-to-editor JSON conversion used by the toolbar to insert visible worksheet tables; not protected-main authority |
 | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
 | `@contextualwisdomlab/cwl-editor/fonts.css` | Full offline KR/EN/JP/SC/TC/VI font bundle |
