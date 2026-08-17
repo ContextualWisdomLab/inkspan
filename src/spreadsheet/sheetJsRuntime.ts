@@ -408,14 +408,22 @@ export async function spreadsheetFileToDocumentJson(
 
   const buffer = await readSourceArrayBuffer(source);
   let isArrayBuffer: boolean;
-  let bufferByteLength: number;
   try {
     isArrayBuffer = buffer instanceof ArrayBuffer;
+  } catch {
+    throw unsupportedOrCorruptSource();
+  }
+  if (!isArrayBuffer) {
+    throw unsupportedOrCorruptSource();
+  }
+
+  let bufferByteLength: number;
+  try {
     bufferByteLength = buffer.byteLength;
   } catch {
     throw unsupportedOrCorruptSource();
   }
-  if (!isArrayBuffer || bufferByteLength !== sourceSize) {
+  if (bufferByteLength !== sourceSize) {
     throw unsupportedOrCorruptSource();
   }
 
