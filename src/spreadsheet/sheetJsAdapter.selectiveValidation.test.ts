@@ -28,80 +28,93 @@ function selectedWorkbook(sheetNames: unknown): object {
   };
 }
 
-async function expectUnsupported(action: () => unknown): Promise<void> {
-  expect(action).toThrowError(
-    expect.objectContaining({
-      name: 'SpreadsheetImportError',
-      code: 'UNSUPPORTED_OR_CORRUPT',
-      message: 'Spreadsheet source is unsupported or corrupt.',
-    }),
-  );
-}
+function expectSpreadsheetError(
+  action: () => unknown,
+  code: 'UNSUPPORTED_OR_CORRUPT' | 'RESOURCE_LIMIT_EXCEEDED',
+): void {
+  let caught: unknown;
+  try {
+    action();
+  } catch (error) {
+    caught = error;
+  }
 
-async function expectResourceLimit(action: () => unknown): Promise<void> {
-  expect(action).toThrowError(
-    expect.objectContaining({
-      name: 'SpreadsheetImportError',
-      code: 'RESOURCE_LIMIT_EXCEEDED',
-      message: 'Spreadsheet exceeds the configured resource limits.',
-    }),
-  );
+  expect(caught).toMatchObject({
+    name: 'SpreadsheetImportError',
+    code,
+    message:
+      code === 'UNSUPPORTED_OR_CORRUPT'
+        ? 'Spreadsheet source is unsupported or corrupt.'
+        : 'Spreadsheet exceeds the configured resource limits.',
+  });
 }
 
 describe('SheetJS selective worksheet identity validation', () => {
-  it('rejects a selected workbook without an array SheetNames identity', async () => {
-    await expectUnsupported(() =>
-      sheetJsBytesToWorkbookData(
-        XLSX_SOURCE,
-        parserForSelectedWorkbook(selectedWorkbook('Summary')),
-      ),
-    );
-  });
-
-  it('rejects a selected workbook with too many SheetNames entries', async () => {
-    await expectResourceLimit(() =>
-      sheetJsBytesToWorkbookData(
-        XLSX_SOURCE,
-        parserForSelectedWorkbook(
-          selectedWorkbook(new Array<string>(257).fill('Other')),
+  it('rejects a selected workbook without an array SheetNames identity', () => {
+    expectSpreadsheetError(
+      () =>
+        sheetJsBytesToWorkbookData(
+          XLSX_SOURCE,
+          parserForSelectedWorkbook(selectedWorkbook('Summary')),
         ),
-      ),
+      'UNSUPPORTED_OR_CORRUPT',
     );
   });
 
-  it('rejects a selected workbook with a non-string sheet identity', async () => {
-    await expectUnsupported(() =>
-      sheetJsBytesToWorkbookData(
-        XLSX_SOURCE,
-        parserForSelectedWorkbook(selectedWorkbook([42])),
-      ),
+  it('rejects a selected workbook with too many SheetNames entries', () => {
+    expectSpreadsheetError(
+      () =>
+        sheetJsBytesToWorkbookData(
+          XLSX_SOURCE,
+          parserForSelectedWorkbook(
+            selectedWorkbook(new Array<string>(257).fill('Other')),
+          ),
+        ),
+      'RESOURCE_LIMIT_EXCEEDED',
     );
   });
 
-  it('rejects a selected workbook with an oversized sheet identity', async () => {
-    await expectResourceLimit(() =>
-      sheetJsBytesToWorkbookData(
-        XLSX_SOURCE,
-        parserForSelectedWorkbook(selectedWorkbook(['x'.repeat(1_025)])),
-      ),
+  it('rejects a selected workbook with a non-string sheet identity', () => {
+    expectSpreadsheetError(
+      () =>
+        sheetJsBytesToWorkbookData(
+          XLSX_SOURCE,
+          parserForSelectedWorkbook(selectedWorkbook([42])),
+        ),
+      'UNSUPPORTED_OR_CORRUPT',
     );
   });
 
-  it('rejects a selected workbook that omits the requested worksheet identity', async () => {
-    await expectUnsupported(() =>
-      sheetJsBytesToWorkbookData(
-        XLSX_SOURCE,
-        parserForSelectedWorkbook(selectedWorkbook(['Other'])),
-      ),
+  it('rejects a selected workbook with an oversized sheet identity', () => {
+    expectSpreadsheetError(
+      () =>
+        sheetJsBytesToWorkbookData(
+          XLSX_SOURCE,
+          parserForSelectedWorkbook(selectedWorkbook(['x'.repeat(1_025)])),
+        ),
+      'RESOURCE_LIMIT_EXCEEDED',
     );
   });
 
-  it('rejects an ambiguous selected workbook that repeats the requested identity', async () => {
-    await expectUnsupported(() =>
-      sheetJsBytesToWorkbookData(
-        XLSX_SOURCE,
-        parserForSelectedWorkbook(selectedWorkbook(['Summary', 'Summary'])),
-      ),
+  it('rejects a selected workbook that omits the requested worksheet identity', () => {
+    expectSpreadsheetError(
+      () =>
+        sheetJsBytesToWorkbookData(
+          XLSX_SOURCE,
+          parserForSelectedWorkbook(selectedWorkbook(['Other'])),
+        ),
+      'UNSUPPORTED_OR_CORRUPT',
+    );
+  });
+
+  it('rejects an ambiguous selected workbook that repeats the requested identity', () => {
+    expectSpreadsheetError(
+      () =>
+        sheetJsBytesToWorkbookData(
+          XLSX_SOURCE,
+          parserForSelectedWorkbook(selectedWorkbook(['Summary', 'Summary'])),
+        ),
+      'UNSUPPORTED_OR_CORRUPT',
     );
   });
 });
