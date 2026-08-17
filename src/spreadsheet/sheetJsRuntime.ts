@@ -78,13 +78,7 @@ export async function spreadsheetFileToDocumentJson(
   } catch {
     throw unsupportedOrCorruptSource();
   }
-  if (!(buffer instanceof ArrayBuffer)) {
-    throw unsupportedOrCorruptSource();
-  }
-  if (buffer.byteLength > MAX_SPREADSHEET_SOURCE_BYTES) {
-    throw resourceLimitExceeded();
-  }
-  if (buffer.byteLength !== sourceSize) {
+  if (!(buffer instanceof ArrayBuffer) || buffer.byteLength !== sourceSize) {
     throw unsupportedOrCorruptSource();
   }
 
