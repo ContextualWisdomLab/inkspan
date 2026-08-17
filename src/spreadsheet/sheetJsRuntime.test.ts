@@ -54,4 +54,14 @@ describe('real SheetJS spreadsheet runtime', () => {
       ],
     });
   });
+
+  it('rejects direct parser input above the public source-byte ceiling', async () => {
+    const oversized = new Uint8Array(64 * 1024 * 1024 + 1);
+
+    await expect(parseSheetJsSpreadsheetBytes(oversized)).rejects.toMatchObject({
+      name: 'SpreadsheetImportError',
+      code: 'RESOURCE_LIMIT_EXCEEDED',
+      message: 'Spreadsheet exceeds the configured resource limits.',
+    });
+  });
 });
