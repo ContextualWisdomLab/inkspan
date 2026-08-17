@@ -19,6 +19,7 @@ This record maps durable Inkspan product decisions to authoritative standards, p
 | Provenance semantics | Local transition/release evidence keeps content lineage separate from actor/authorization/durable claims | W3C PROV family | transition evidence, release evidence, canonical data model | Inkspan does not claim complete PROV conformance or host audit provenance |
 | Accessibility | Native controls, keyboard semantics, shortcut metadata, semantic placeholder guidance, and host-facing status state support accessible embedding | W3C WCAG 2.2; WAI-ARIA 1.2 where used | protected toolbar/accessibility tests, SSR tests, autosave lifecycle data, protected #131 placeholder tests/packed consumer and `docs/doctoring/editor-placeholder-accessibility.md` | Component evidence alone is not a full host WCAG conformance claim; `aria-placeholder` supplements but never replaces the accessible name |
 | Browser clipboard behavior | Security-relevant rich HTML handling requires actual paste-pipeline integration and bounded semantic reconstruction before editor state | WHATWG HTML parsing; W3C Clipboard API | protected-main rich-clipboard unit/integration corpus and SafeClipboard ADR | Protected jsdom/TipTap integration success is not universal browser-engine conformance |
+| Clipboard resource preflight | Reject UTF-16 length above `maxHtmlBytes` before UTF-8 allocation, and reject `visited + queued + enqueueable > maxNodes` before child materialization | Unicode Standard 16.0 §3.9; ECMA-262 string length; WHATWG DOM `NodeList`; CWE-770; W3C Clipboard API | Active-PR doctoring `docs/doctoring/clipboard-resource-preflight.md`, operator guide, and SafeClipboard preflight/traversal regressions | Proposed until protected `main`; jsdom proof is not cross-engine conformance or a claim that remaining HTML is trusted |
 | Cross-engine release assurance | The same committed synthetic adversarial corpus runs under required Chromium, Firefox, and WebKit projects; exact package-lock and packed npm artifact SHA-256 digests are required, and only focused standards-grounded safe differences may be admitted | WHATWG HTML Living Standard; W3C Clipboard API and events; Playwright 1.62 release notes and browser/project documentation | ADR 0016, protected-main browser evidence source/workflows, TEST_STRATEGY, OPERABILITY and UML | Protected-main implementation is the release-policy authority; every release candidate must regenerate fresh exact-source/lock/run/browser evidence bound to the exact packed npm artifact SHA-256 and does not claim byte-identical browser serialization or branded enterprise-policy coverage |
 | CSS paged-media output | Shipped editor CSS has a declarative print boundary that removes interactive chrome and screen clipping while preserving authored document flow and bounded fragmentation behavior | W3C Media Queries Level 3; CSS Fragmentation Level 3; CSS Paged Media Level 3 as tracked draft input | protected-main #116 packaged stylesheet, real-browser print-media evidence, ADR 0021, print doctoring and tests | `implemented_on_protected_main`; browser print styling does not create a durable PDF service, page-number/header authority, persistence, signing, or PDF-conformance claim |
 | Editor integration | Public behavior must exercise the actual TipTap/ProseMirror integration path, not an inert extension field or test-only hook | official TipTap and ProseMirror documentation for the locked dependency line | integration tests and package consumers | Inkspan does not claim compatibility with untested major-version integration semantics |
@@ -40,6 +41,8 @@ Bray, T. (Ed.). (2017). *The JavaScript Object Notation (JSON) Data Interchange 
 
 Ecma International. (2021). *ECMA-376: Office Open XML file formats* (5th ed.). https://ecma-international.org/publications-and-standards/standards/ecma-376/
 
+Ecma International. (2025). *ECMAScript® 2025 language specification* (ECMA-262, 16th ed.). https://tc39.es/ecma262/2025/
+
 Ecma International. (2026). *ECMA-402: ECMAScript 2026 internationalization API specification* (13th ed.). https://402.ecma-international.org/
 
 Fielding, R., Nottingham, M., & Reschke, J. (Eds.). (2022). *HTTP Semantics* (RFC 9110; STD 97). RFC Editor. https://doi.org/10.17487/RFC9110
@@ -58,6 +61,8 @@ Microsoft. (n.d.-e). *Release notes: Version 1.62*. Playwright. Retrieved August
 
 Microsoft. (n.d.-f). *Working with paragraphs*. Microsoft Learn. Retrieved August 10, 2026, from https://learn.microsoft.com/en-us/office/open-xml/word/working-with-paragraphs
 
+MITRE. (2024). *CWE-770: Allocation of resources without limits or throttling*. https://cwe.mitre.org/data/definitions/770.html
+
 Node.js contributors. (2026). *Modules: Packages*. Node.js documentation. https://nodejs.org/api/packages.html
 
 ProseMirror. (n.d.). *ProseMirror reference manual*. Retrieved August 10, 2026, from https://prosemirror.net/docs/ref/
@@ -69,6 +74,10 @@ python-docx. (n.d.-b). *Working with text*. Retrieved August 10, 2026, from http
 Rundgren, A., Jordan, B., & Erdtman, S. (2020). *JSON Canonicalization Scheme (JCS)* (RFC 8785). RFC Editor. https://doi.org/10.17487/RFC8785
 
 Souppaya, M., Scarfone, K., & Dodson, D. (2022). *Secure Software Development Framework (SSDF) Version 1.1: Recommendations for Mitigating the Risk of Software Vulnerabilities* (NIST SP 800-218). National Institute of Standards and Technology. https://doi.org/10.6028/NIST.SP.800-218
+
+Unicode Consortium. (2024). *The Unicode Standard, Version 16.0.0*. https://www.unicode.org/versions/Unicode16.0.0/
+
+Web Hypertext Application Technology Working Group. (2026). *DOM Standard*. Retrieved August 16, 2026, from https://dom.spec.whatwg.org/
 
 Web Hypertext Application Technology Working Group. (2026). *HTML Standard: Parsing HTML documents* (Living Standard). Retrieved August 10, 2026, from https://html.spec.whatwg.org/multipage/parsing.html
 

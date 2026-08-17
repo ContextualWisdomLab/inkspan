@@ -6,6 +6,9 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Reliability
+- Reject obviously oversized rich clipboard HTML from UTF-16 code-unit length before allocating a UTF-8 copy, and reject broad source trees before materializing children beyond `maxNodes`.
+
 ## [0.6.0] — 2026-08-10
 
 ### Release
