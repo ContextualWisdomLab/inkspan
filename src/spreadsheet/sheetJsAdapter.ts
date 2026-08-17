@@ -133,6 +133,25 @@ function readWorkbookSheetMetadata(workbook: object): readonly unknown[] | undef
   return sheetMetadata;
 }
 
+function readParsedSheetIndex(workbook: object, expectedName: string): number {
+  const sheetNames = readOwnDataProperty(workbook, 'SheetNames');
+  if (!isArray(sheetNames)) unsupportedOrCorruptSource();
+  const sheetCount = readArrayLength(sheetNames);
+  if (sheetCount > MAX_WORKBOOK_WORKSHEETS) resourceLimitExceeded();
+
+  let matchedIndex = -1;
+  for (let index = 0; index < sheetCount; index += 1) {
+    const name = readOwnDataProperty(sheetNames, String(index));
+    if (typeof name !== 'string') unsupportedOrCorruptSource();
+    if (name.length > MAX_WORKSHEET_NAME_CODE_UNITS) resourceLimitExceeded();
+    if (name !== expectedName) continue;
+    if (matchedIndex !== -1) unsupportedOrCorruptSource();
+    matchedIndex = index;
+  }
+  if (matchedIndex === -1) unsupportedOrCorruptSource();
+  return matchedIndex;
+}
+
 function decodeRangeDimensions(
   parser: SheetJsParserModule,
   reference: string,
@@ -266,8 +285,7 @@ export function sheetJsBytesToWorkbookData(
   let decodedRows = 0;
   let decodedCells = 0;
 
-  for (let index = 0; index < worksheetNames.length; index += 1) {
-    const name = worksheetNames[index] as string;
+  for (const name of worksheetNames) {
     const remainingRows = MAX_WORKBOOK_ROWS - decodedRows;
     const parsed = readWorkbook(parser, boundedSource.bytes, {
       ...baseReadOptions(),
@@ -278,8 +296,9 @@ export function sheetJsBytesToWorkbookData(
     if (!isObject(sheets)) unsupportedOrCorruptSource();
     const sheet = readOwnDataProperty(sheets, name);
     if (!isObject(sheet)) unsupportedOrCorruptSource();
+    const parsedSheetIndex = readParsedSheetIndex(parsed, name);
     const sheetMetadata = readWorkbookSheetMetadata(parsed);
-    const hidden = readHiddenState(sheetMetadata, index);
+    const hidden = readHiddenState(sheetMetadata, parsedSheetIndex);
     if (hidden) {
       worksheets.push({ name, hidden: true, rows: [] });
       continue;
