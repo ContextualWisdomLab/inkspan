@@ -326,6 +326,15 @@ describe('BIFF8 raw visibility validation', () => {
     );
   });
 
+  it('normalizes a revoked parser SheetNames array proxy', async () => {
+    const stream = workbookStream();
+    const { proxy, revoke } = Proxy.revocable<string[]>(['Visible'], {});
+    const workbook = { SheetNames: proxy, Sheets: { Visible: {} } };
+    revoke();
+
+    await expectUnsupported(parseWith(stream, parserForStream(stream, workbook)));
+  });
+
   it('rejects parser SheetNames that disagree with raw BoundSheet8 count', async () => {
     const stream = workbookStream();
     await expectUnsupported(
