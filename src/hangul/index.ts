@@ -149,6 +149,8 @@ function freeHangulDocument(
 
 const TEXT_ALIGNMENTS = new Set(['left', 'center', 'right', 'justify']);
 const DEFAULT_MAX_DOCUMENT_BYTES = 64 * 1024 * 1024;
+const HANGUL_IMPORT_FAILURE_MESSAGE = 'The Hangul engine failed during import.';
+const HANGUL_EXPORT_FAILURE_MESSAGE = 'The Hangul engine failed during export.';
 const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(
   Uint8Array.prototype,
 ) as object;
@@ -175,6 +177,14 @@ function resolveHangulByteLimit(limit: number | undefined): number {
     );
   }
   return resolved;
+}
+
+/** Validate host-engine traversal metadata before using it as an index or bound. */
+function resolveHangulEngineCount(value: number, failureMessage: string): number {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new HangulDocumentError('ENGINE_OPERATION_FAILED', failureMessage);
+  }
+  return value;
 }
 
 /** Validate the runtime export selector before the host engine receives authority. */
@@ -235,14 +245,14 @@ function snapshotHangulOutput(source: Uint8Array, maxOutputBytes: number): Uint8
   } catch {
     throw new HangulDocumentError(
       'ENGINE_OPERATION_FAILED',
-      'The Hangul engine failed during export.',
+      HANGUL_EXPORT_FAILURE_MESSAGE,
     );
   }
 
   if (!(buffer instanceof ArrayBuffer)) {
     throw new HangulDocumentError(
       'ENGINE_OPERATION_FAILED',
-      'The Hangul engine failed during export.',
+      HANGUL_EXPORT_FAILURE_MESSAGE,
     );
   }
   if (byteLength > maxOutputBytes) {
@@ -441,9 +451,30 @@ export async function openHangulDocument(source: Uint8Array, options: OpenHangul
       const sourceFormat = document.getSourceFormat().toLowerCase();
       if (sourceFormat !== 'hwp' && sourceFormat !== 'hwpx') throw new HangulDocumentError('UNSUPPORTED_SOURCE_FORMAT', 'Unsupported Hangul source format.');
       const html: string[] = [];
-      for (let section = 0; section < document.getSectionCount(); section += 1) {
-        const count = document.getParagraphCount(section);
-        if (count > 0) html.push(document.exportSelectionHtml(section, 0, 0, count - 1, document.getParagraphLength(section, count - 1)));
+      const sectionCount = resolveHangulEngineCount(
+        document.getSectionCount(),
+        HANGUL_IMPORT_FAILURE_MESSAGE,
+      );
+      for (let section = 0; section < sectionCount; section += 1) {
+        const count = resolveHangulEngineCount(
+          document.getParagraphCount(section),
+          HANGUL_IMPORT_FAILURE_MESSAGE,
+        );
+        if (count > 0) {
+          const paragraphLength = resolveHangulEngineCount(
+            document.getParagraphLength(section, count - 1),
+            HANGUL_IMPORT_FAILURE_MESSAGE,
+          );
+          html.push(
+            document.exportSelectionHtml(
+              section,
+              0,
+              0,
+              count - 1,
+              paragraphLength,
+            ),
+          );
+        }
       }
       const documentJson = htmlToJson(html.join(''));
       Object.freeze(documentJson);
@@ -459,7 +490,7 @@ export async function openHangulDocument(source: Uint8Array, options: OpenHangul
         ? error
         : new HangulDocumentError(
             'ENGINE_OPERATION_FAILED',
-            'The Hangul engine failed during import.',
+            HANGUL_IMPORT_FAILURE_MESSAGE,
           );
       throw primaryError;
     }
@@ -485,7 +516,10 @@ export async function exportHangulDocument(documentJson: HangulDocumentJson, opt
     try {
       document.createBlankDocument?.();
       document.beginBatch?.();
-      const length = document.getParagraphLength(0, 0);
+      const length = resolveHangulEngineCount(
+        document.getParagraphLength(0, 0),
+        HANGUL_EXPORT_FAILURE_MESSAGE,
+      );
       if (length > 0) document.deleteText(0, 0, 0, length);
       document.pasteHtml(0, 0, 0, html);
       document.endBatch?.();
@@ -497,7 +531,7 @@ export async function exportHangulDocument(documentJson: HangulDocumentJson, opt
         ? error
         : new HangulDocumentError(
             'ENGINE_OPERATION_FAILED',
-            'The Hangul engine failed during export.',
+            HANGUL_EXPORT_FAILURE_MESSAGE,
           );
       throw primaryError;
     }
