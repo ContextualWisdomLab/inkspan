@@ -311,13 +311,51 @@ function parseParagraph(element: Element): HangulDocumentJson {
     : { type: 'paragraph', attrs: { textAlign }, content };
 }
 
+function isListBlockElement(element: Element): boolean {
+  const tag = element.tagName.toLowerCase();
+  return (
+    /^h[1-6]$/u.test(tag) ||
+    tag === 'ul' ||
+    tag === 'ol' ||
+    tag === 'blockquote' ||
+    tag === 'pre' ||
+    tag === 'table' ||
+    tag === 'p'
+  );
+}
+
+function parseListItem(item: Element): HangulDocumentJson {
+  const blockChildren = Array.from(item.children).filter(isListBlockElement);
+  if (blockChildren.length === 0) {
+    return {
+      type: 'listItem',
+      content: [{ type: 'paragraph', content: parseInline(item) }],
+    };
+  }
+
+  const hasDirectInlineContent = Array.from(item.childNodes).some((child) => {
+    if (child.nodeType === Node.TEXT_NODE) {
+      return (child.textContent ?? '').trim().length > 0;
+    }
+    return child instanceof Element && !isListBlockElement(child);
+  });
+  if (hasDirectInlineContent || blockChildren.length !== item.children.length) {
+    throw new HangulDocumentError(
+      'UNSUPPORTED_DOCUMENT_NODE',
+      'Hangul import contains an unsupported block node.',
+    );
+  }
+
+  return {
+    type: 'listItem',
+    content: blockChildren.map(parseBlock),
+  };
+}
+
 function parseList(element: Element, type: 'bulletList' | 'orderedList'): HangulDocumentJson {
   return {
     type,
-    content: Array.from(element.children).map((item) => ({
-      type: 'listItem',
-      content: Array.from(item.children).map(parseBlock),
-    })),
+    content: Array.from(element.children).map(parseListItem),
   };
 }
 
