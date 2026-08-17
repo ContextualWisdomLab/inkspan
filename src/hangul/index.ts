@@ -436,6 +436,19 @@ function jsonToHtml(documentJson: HangulDocumentJson): string {
   return contentOf(documentJson).map(renderBlock).join('');
 }
 
+/** Render caller-provided document JSON without allowing hostile access failures to escape. */
+function renderHangulDocumentJson(documentJson: HangulDocumentJson): string {
+  try {
+    return jsonToHtml(documentJson);
+  } catch (error) {
+    if (isHangulDocumentError(error)) throw error;
+    throw new HangulDocumentError(
+      'INVALID_DOCUMENT',
+      'Hangul document JSON is invalid.',
+    );
+  }
+}
+
 /** Project HWP/HWPX bytes into the editor's JSON model. */
 export async function openHangulDocument(source: Uint8Array, options: OpenHangulDocumentOptions): Promise<HangulDocumentImportResult> {
   const engine = readHangulOption(() => options.engine);
@@ -508,7 +521,7 @@ export async function exportHangulDocument(documentJson: HangulDocumentJson, opt
   const format = resolveHangulExportFormat(
     readHangulOption(() => options.format),
   );
-  const html = jsonToHtml(documentJson);
+  const html = renderHangulDocumentJson(documentJson);
   let document: HangulEngineDocument;
   try { document = await engine.create(); } catch { throw new HangulDocumentError('ENGINE_CREATE_FAILED', 'The Hangul engine could not create a document.'); }
   let primaryError: HangulDocumentError | undefined;
