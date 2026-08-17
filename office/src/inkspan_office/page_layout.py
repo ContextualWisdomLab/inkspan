@@ -20,6 +20,17 @@ _MARGIN_NAMES = ("top", "right", "bottom", "left")
 def normalize_docx_page_layout(value: Any) -> dict[str, object]:
     """Validate and detach one bounded page-layout value before DOCX rendering."""
 
+    try:
+        return _normalize_docx_page_layout(value)
+    except OfficeDocumentError:
+        raise
+    except Exception:
+        raise OfficeDocumentError("page_layout is invalid") from None
+
+
+def _normalize_docx_page_layout(value: Any) -> dict[str, object]:
+    """Validate one page-layout mapping after entering the redaction boundary."""
+
     layout = _mapping(value, "page_layout")
     _reject_unknown(
         layout,
