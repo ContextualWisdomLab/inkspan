@@ -120,7 +120,7 @@ describe('Toolbar spreadsheet import', () => {
 
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent(
-        'Imported 1 worksheet, 1 row, 1 cell.',
+        'Imported 1 worksheet, 1 row, and 1 cell.',
       ),
     );
     expect(spreadsheetMocks.importFile).toHaveBeenCalledTimes(1);
@@ -192,6 +192,6 @@ describe('Toolbar spreadsheet import', () => {
     fireEvent.change(spreadsheetInput(), { target: { files: [] } });
 
     expect(spreadsheetMocks.importFile).not.toHaveBeenCalled();
-    expect(screen.getByRole('status')).toHaveTextContent('');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 });
