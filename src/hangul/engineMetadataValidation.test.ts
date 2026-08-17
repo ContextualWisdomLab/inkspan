@@ -1,4 +1,5 @@
 import {
+  exportHangulDocument,
   openHangulDocument,
   type HangulDocumentEngine,
   type HangulEngineDocument,
@@ -30,6 +31,11 @@ function createEngine(document: HangulEngineDocument): HangulDocumentEngine {
 const EXPECTED_IMPORT_FAILURE = {
   code: 'ENGINE_OPERATION_FAILED',
   message: 'The Hangul engine failed during import.',
+};
+
+const EXPECTED_EXPORT_FAILURE = {
+  code: 'ENGINE_OPERATION_FAILED',
+  message: 'The Hangul engine failed during export.',
 };
 
 describe('Hangul engine structural metadata validation', () => {
@@ -85,5 +91,27 @@ describe('Hangul engine structural metadata validation', () => {
       content: [{ type: 'paragraph', content: [{ type: 'text', text: 'x' }] }],
     });
     expect(getSectionCount).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a fractional export paragraph length before mutating the host document', async () => {
+    const deleteText = vi.fn(() => '{"ok":true}');
+    const pasteHtml = vi.fn(() => '{"ok":true}');
+    const document = createDocument({
+      getParagraphLength: () => 1.5,
+      deleteText,
+      pasteHtml,
+    });
+
+    await expect(
+      exportHangulDocument(
+        {
+          type: 'doc',
+          content: [{ type: 'paragraph', content: [{ type: 'text', text: 'x' }] }],
+        },
+        { engine: createEngine(document) },
+      ),
+    ).rejects.toMatchObject(EXPECTED_EXPORT_FAILURE);
+    expect(deleteText).not.toHaveBeenCalled();
+    expect(pasteHtml).not.toHaveBeenCalled();
   });
 });
