@@ -78,6 +78,18 @@ function isHangulDocumentError(error: unknown): error is HangulDocumentError {
   return HANGUL_DOCUMENT_ERRORS.has(error as object);
 }
 
+/** Read a public Hangul option without allowing hostile accessors to leak values. */
+function readHangulOption<T>(read: () => T): T {
+  try {
+    return read();
+  } catch {
+    throw new HangulDocumentError(
+      'INVALID_CONFIGURATION',
+      'Hangul options are invalid.',
+    );
+  }
+}
+
 /** Contain host cleanup failures without replacing an existing Inkspan failure. */
 function freeHangulDocument(
   document: HangulEngineDocument,
@@ -376,10 +388,13 @@ function jsonToHtml(documentJson: HangulDocumentJson): string {
 
 /** Project HWP/HWPX bytes into the editor's JSON model. */
 export async function openHangulDocument(source: Uint8Array, options: OpenHangulDocumentOptions): Promise<HangulDocumentImportResult> {
-  const maxSourceBytes = resolveHangulByteLimit(options.maxSourceBytes);
+  const engine = readHangulOption(() => options.engine);
+  const maxSourceBytes = resolveHangulByteLimit(
+    readHangulOption(() => options.maxSourceBytes),
+  );
   const sourceSnapshot = snapshotHangulSource(source, maxSourceBytes);
   let document: HangulEngineDocument;
-  try { document = await options.engine.open(sourceSnapshot); } catch { throw new HangulDocumentError('ENGINE_OPEN_FAILED', 'The Hangul engine could not open the document.'); }
+  try { document = await engine.open(sourceSnapshot); } catch { throw new HangulDocumentError('ENGINE_OPEN_FAILED', 'The Hangul engine could not open the document.'); }
   let primaryError: HangulDocumentError | undefined;
   try {
     try {
@@ -409,11 +424,16 @@ export async function openHangulDocument(source: Uint8Array, options: OpenHangul
 
 /** Export edited Inkspan JSON as HWPX by default or HWP explicitly. */
 export async function exportHangulDocument(documentJson: HangulDocumentJson, options: ExportHangulDocumentOptions): Promise<HangulDocumentExportResult> {
-  const maxOutputBytes = resolveHangulByteLimit(options.maxOutputBytes);
-  const format = resolveHangulExportFormat(options.format);
+  const engine = readHangulOption(() => options.engine);
+  const maxOutputBytes = resolveHangulByteLimit(
+    readHangulOption(() => options.maxOutputBytes),
+  );
+  const format = resolveHangulExportFormat(
+    readHangulOption(() => options.format),
+  );
   const html = jsonToHtml(documentJson);
   let document: HangulEngineDocument;
-  try { document = await options.engine.create(); } catch { throw new HangulDocumentError('ENGINE_CREATE_FAILED', 'The Hangul engine could not create a document.'); }
+  try { document = await engine.create(); } catch { throw new HangulDocumentError('ENGINE_CREATE_FAILED', 'The Hangul engine could not create a document.'); }
   let primaryError: HangulDocumentError | undefined;
   try {
     try {
