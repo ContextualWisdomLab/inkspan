@@ -94,6 +94,12 @@ function richWorkbookBytes(bookType: WorkbookFormat): Uint8Array {
   return serializeWorkbook(workbook, bookType);
 }
 
+function fileFromWorkbookBytes(bytes: Uint8Array, name: string, type: string): File {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return new File([copy], name, { type });
+}
+
 function expectUnsupported(promise: Promise<unknown>) {
   return expect(promise).rejects.toMatchObject({
     name: 'SpreadsheetImportError',
@@ -252,9 +258,11 @@ describe('spreadsheetFileToDocumentJson', () => {
 
   it('reads a genuine browser File through FileReader when arrayBuffer is absent', async () => {
     const bytes = workbookBytes('xlsx');
-    const file = new File([bytes], 'quarterly-revenue.xlsx', {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
+    const file = fileFromWorkbookBytes(
+      bytes,
+      'quarterly-revenue.xlsx',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
     expect(typeof file.arrayBuffer).not.toBe('function');
 
     const result = await spreadsheetFileToDocumentJson(file);
@@ -288,9 +296,11 @@ describe('spreadsheetFileToDocumentJson', () => {
 
   it('normalizes FileReader construction and read failures', async () => {
     const bytes = workbookBytes('xlsx');
-    const file = new File([bytes], 'quarterly-revenue.xlsx', {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
+    const file = fileFromWorkbookBytes(
+      bytes,
+      'quarterly-revenue.xlsx',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
 
     class ThrowingReader {
       onload: ((event: ProgressEvent<FileReader>) => void) | null = null;
@@ -346,9 +356,11 @@ describe('spreadsheetFileToDocumentJson', () => {
 
   it('reads a Blob through Response when FileReader is unavailable', async () => {
     const bytes = workbookBytes('xlsx');
-    const file = new File([bytes], 'quarterly-revenue.xlsx', {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
+    const file = fileFromWorkbookBytes(
+      bytes,
+      'quarterly-revenue.xlsx',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
     const copied = bytes.buffer.slice(
       bytes.byteOffset,
       bytes.byteOffset + bytes.byteLength,
@@ -372,9 +384,11 @@ describe('spreadsheetFileToDocumentJson', () => {
 
   it('normalizes a failing Response fallback without leaking payload text', async () => {
     const bytes = workbookBytes('xlsx');
-    const file = new File([bytes], 'quarterly-revenue.xlsx', {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
+    const file = fileFromWorkbookBytes(
+      bytes,
+      'quarterly-revenue.xlsx',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
     vi.stubGlobal('FileReader', undefined);
     vi.stubGlobal(
       'Response',
@@ -389,9 +403,11 @@ describe('spreadsheetFileToDocumentJson', () => {
 
   it('rejects a Blob when neither FileReader nor Response can read it', async () => {
     const bytes = workbookBytes('xlsx');
-    const file = new File([bytes], 'quarterly-revenue.xlsx', {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
+    const file = fileFromWorkbookBytes(
+      bytes,
+      'quarterly-revenue.xlsx',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
     vi.stubGlobal('FileReader', undefined);
     vi.stubGlobal('Response', undefined);
     await expectUnsupported(spreadsheetFileToDocumentJson(file));

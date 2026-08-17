@@ -28,14 +28,24 @@ function serializeWorkbook(bookType: 'xlsx' | 'biff8'): Uint8Array {
     : new Uint8Array(serialized as ArrayBuffer);
 }
 
+function fileFromWorkbookBytes(
+  bytes: Uint8Array,
+  name: string,
+  type: string,
+): File {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return new File([copy], name, { type });
+}
+
 function quarterlyRevenueFile(bookType: 'xlsx' | 'biff8'): File {
-  const bytes = serializeWorkbook(bookType);
-  return new File([bytes], 'quarterly-revenue.xlsx', {
-    type:
-      bookType === 'xlsx'
-        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        : 'application/vnd.ms-excel',
-  });
+  return fileFromWorkbookBytes(
+    serializeWorkbook(bookType),
+    'quarterly-revenue.xlsx',
+    bookType === 'xlsx'
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      : 'application/vnd.ms-excel',
+  );
 }
 
 function expectQuarterlyRevenueTable(root: ParentNode): void {
