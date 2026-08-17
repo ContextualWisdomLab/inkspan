@@ -1,6 +1,6 @@
 # Email document language and direction — standards doctoring
 
-Status: Implemented on active PR
+Status: Implemented on protected main
 
 ## Decision under review
 
