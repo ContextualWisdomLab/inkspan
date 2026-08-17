@@ -142,7 +142,69 @@ describe('Toolbar spreadsheet import', () => {
     expect(editor.getJSON()).toEqual(before);
   });
 
-  it('disables import while parsing and permits the same file to be selected again', async () => {
+  it('reports plural zero counts without mutating the document when every sheet is filtered out', async () => {
+    spreadsheetMocks.importFile.mockResolvedValue({
+      worksheetCount: 0,
+      rowCount: 0,
+      cellCount: 0,
+      content: [],
+    });
+    const editor = makeEditor();
+    const before = editor.getJSON();
+    render(<Toolbar editor={editor} />);
+
+    fireEvent.change(spreadsheetInput(), {
+      target: { files: [spreadsheetFile()] },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Imported 0 worksheets, 0 rows, and 0 cells.',
+      ),
+    );
+    expect(editor.getJSON()).toEqual(before);
+  });
+
+  it('fails closed and notifies the host when the editor rejects the insertion transaction', async () => {
+    spreadsheetMocks.importFile.mockResolvedValue(importedResult());
+    const editor = makeEditor();
+    const before = editor.getJSON();
+    const onSpreadsheetError = vi.fn();
+    const rejectedChain = {
+      focus: vi.fn(),
+      insertContent: vi.fn(),
+      run: vi.fn(() => false),
+    };
+    rejectedChain.focus.mockReturnValue(rejectedChain);
+    rejectedChain.insertContent.mockReturnValue(rejectedChain);
+    vi.spyOn(editor, 'chain').mockReturnValue(
+      rejectedChain as unknown as ReturnType<Editor['chain']>,
+    );
+    render(
+      <Toolbar
+        editor={editor}
+        onSpreadsheetError={onSpreadsheetError}
+      />,
+    );
+
+    fireEvent.change(spreadsheetInput(), {
+      target: { files: [spreadsheetFile()] },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Spreadsheet import failed.',
+      ),
+    );
+    expect(rejectedChain.run).toHaveBeenCalledTimes(1);
+    expect(onSpreadsheetError).toHaveBeenCalledTimes(1);
+    expect(onSpreadsheetError.mock.calls[0]?.[0]).toMatchObject({
+      message: 'Spreadsheet insertion was rejected.',
+    });
+    expect(editor.getJSON()).toEqual(before);
+  });
+
+  it('disables import while parsing, ignores duplicate busy events, and permits the same file to be selected again', async () => {
     let resolveImport: ((result: ReturnType<typeof importedResult>) => void) | undefined;
     spreadsheetMocks.importFile.mockImplementation(
       () =>
@@ -164,6 +226,9 @@ describe('Toolbar spreadsheet import', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Importing spreadsheet…');
     expect(input.value).toBe('');
 
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(spreadsheetMocks.importFile).toHaveBeenCalledTimes(1);
+
     await act(async () => resolveImport?.(importedResult()));
     await waitFor(() => expect(button).not.toBeDisabled());
 
@@ -172,13 +237,18 @@ describe('Toolbar spreadsheet import', () => {
     await waitFor(() => expect(spreadsheetMocks.importFile).toHaveBeenCalledTimes(2));
   });
 
-  it('announces a stable payload-redacted failure and leaves the document unchanged', async () => {
-    spreadsheetMocks.importFile.mockRejectedValue(
-      new Error('secret workbook cell and local filesystem path'),
-    );
+  it('announces a stable payload-redacted failure, notifies the host, and leaves the document unchanged', async () => {
+    const parserFailure = new Error('secret workbook cell and local filesystem path');
+    spreadsheetMocks.importFile.mockRejectedValue(parserFailure);
     const editor = makeEditor();
     const before = editor.getJSON();
-    render(<Toolbar editor={editor} />);
+    const onSpreadsheetError = vi.fn();
+    render(
+      <Toolbar
+        editor={editor}
+        onSpreadsheetError={onSpreadsheetError}
+      />,
+    );
 
     fireEvent.change(spreadsheetInput(), {
       target: { files: [spreadsheetFile()] },
@@ -190,6 +260,7 @@ describe('Toolbar spreadsheet import', () => {
       ),
     );
     expect(screen.getByRole('status')).not.toHaveTextContent('secret workbook');
+    expect(onSpreadsheetError).toHaveBeenCalledWith(parserFailure);
     expect(editor.getJSON()).toEqual(before);
   });
 
