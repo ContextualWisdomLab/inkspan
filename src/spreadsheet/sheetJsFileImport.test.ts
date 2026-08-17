@@ -25,7 +25,10 @@ function xlsxBytes(): Uint8Array {
     ['Revenue', 42],
   ]);
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Summary');
-  return XLSX.write(workbook, { type: 'array', bookType: 'xlsx' }) as Uint8Array;
+  const serialized = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+  return serialized instanceof Uint8Array
+    ? serialized
+    : new Uint8Array(serialized as ArrayBuffer);
 }
 
 function expectUnsupported(promise: Promise<unknown>) {
