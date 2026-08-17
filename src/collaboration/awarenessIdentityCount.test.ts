@@ -96,6 +96,36 @@ describe('collaboration awareness identity counting', () => {
     expect(idGetterCalls).toBe(0);
   });
 
+  it('ignores inherited and non-enumerable remote identity fields', () => {
+    const inheritedState = Object.create({ user: { id: 'editor-inherited' } }) as Record<
+      string,
+      unknown
+    >;
+    const nonEnumerableState: Record<string, unknown> = {};
+    Object.defineProperty(nonEnumerableState, 'user', {
+      enumerable: false,
+      value: { id: 'editor-hidden' },
+    });
+
+    const states = new Map<number, Record<string, unknown>>([
+      [11, { user: { id: 'local-editor' } }],
+      [12, inheritedState],
+      [13, nonEnumerableState],
+      [14, { user: { id: 'editor-bob' } }],
+    ]);
+    const awareness: CollaborationAwareness = {
+      clientID: 11,
+      states,
+      getLocalState: () => states.get(11) ?? null,
+      getStates: () => states,
+      setLocalStateField: () => undefined,
+      on: () => undefined,
+      off: () => undefined,
+    };
+
+    expect(countRemoteCollaborators(awareness)).toBe(1);
+  });
+
   it('skips reflection-hostile remote identity shapes without leaking trap failures', () => {
     const hostileState = new Proxy<Record<string, unknown>>(
       {},
