@@ -60,6 +60,10 @@ function realBiff8WithHiddenSheet(): Uint8Array {
     : new Uint8Array(serialized as ArrayBuffer);
 }
 
+function hiddenStates(workbook: XLSX.WorkBook) {
+  return workbook.Workbook?.Sheets?.map((sheet) => sheet.Hidden ?? 0);
+}
+
 function visibilityProjection(workbook: {
   readonly worksheets: readonly { readonly name: string; readonly hidden: boolean }[];
 }) {
@@ -72,35 +76,53 @@ const EXPECTED_VISIBILITY = [
   { name: 'Empty', hidden: false },
 ] as const;
 
+const VISIBILITY_OPTIONS = {
+  type: 'array',
+  cellFormula: false,
+  cellHTML: false,
+  cellNF: false,
+  bookVBA: false,
+  sheetRows: 1,
+} as const;
+
 describe('real BIFF8 hidden-sheet metadata', () => {
   it('survives parser, adapter, runtime, and file-source boundaries', async () => {
     const bytes = realBiff8WithHiddenSheet();
     expect(preflightSpreadsheetBinarySource(bytes).format).toBe('xls');
 
     const lazyXlsx = await import('xlsx');
-    const visibilityWorkbook = lazyXlsx.read(bytes, {
-      type: 'array',
-      cellFormula: false,
-      cellHTML: false,
-      cellNF: false,
-      bookVBA: false,
-      sheetRows: 1,
-    });
+    const visibilityWorkbook = lazyXlsx.read(bytes, VISIBILITY_OPTIONS);
 
     expect(visibilityWorkbook.SheetNames).toEqual([
       'Summary',
       'Hidden',
       'Empty',
     ]);
-    expect(
-      visibilityWorkbook.Workbook?.Sheets?.map((sheet) => sheet.Hidden ?? 0),
-    ).toEqual([0, 1, 0]);
+    expect(hiddenStates(visibilityWorkbook)).toEqual([0, 1, 0]);
     expect(
       Object.getOwnPropertyDescriptor(
         visibilityWorkbook.Workbook!.Sheets![1]!,
         'Hidden',
       )?.value,
     ).toBe(1);
+
+    const copiedBuffer = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength,
+    ) as ArrayBuffer;
+    const browserBytes = new Uint8Array(copiedBuffer);
+    expect(Array.from(browserBytes)).toEqual(Array.from(bytes));
+    expect({
+      browserUint8Array: hiddenStates(
+        lazyXlsx.read(browserBytes, VISIBILITY_OPTIONS),
+      ),
+      browserArrayBuffer: hiddenStates(
+        lazyXlsx.read(copiedBuffer, VISIBILITY_OPTIONS),
+      ),
+    }).toEqual({
+      browserUint8Array: [0, 1, 0],
+      browserArrayBuffer: [0, 1, 0],
+    });
 
     expect(
       visibilityProjection(
@@ -118,10 +140,7 @@ describe('real BIFF8 hidden-sheet metadata', () => {
     const result = await spreadsheetFileToDocumentJson({
       size: bytes.byteLength,
       async arrayBuffer() {
-        return bytes.buffer.slice(
-          bytes.byteOffset,
-          bytes.byteOffset + bytes.byteLength,
-        ) as ArrayBuffer;
+        return copiedBuffer;
       },
     });
     expect(result).toMatchObject({
