@@ -70,6 +70,13 @@ function visibilityProjection(workbook: {
   return workbook.worksheets.map(({ name, hidden }) => ({ name, hidden }));
 }
 
+function exactArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
+}
+
 const EXPECTED_VISIBILITY = [
   { name: 'Summary', hidden: false },
   { name: 'Hidden', hidden: true },
@@ -106,10 +113,7 @@ describe('real BIFF8 hidden-sheet metadata', () => {
       )?.value,
     ).toBe(1);
 
-    const copiedBuffer = bytes.buffer.slice(
-      bytes.byteOffset,
-      bytes.byteOffset + bytes.byteLength,
-    ) as ArrayBuffer;
+    const copiedBuffer = exactArrayBuffer(bytes);
     const browserBytes = new Uint8Array(copiedBuffer);
     expect(Array.from(browserBytes)).toEqual(Array.from(bytes));
     expect({
@@ -132,15 +136,31 @@ describe('real BIFF8 hidden-sheet metadata', () => {
         ),
       ),
     ).toEqual(EXPECTED_VISIBILITY);
+    expect(
+      visibilityProjection(
+        sheetJsBytesToWorkbookData(
+          new Uint8Array(exactArrayBuffer(bytes)),
+          lazyXlsx as unknown as SheetJsParserModule,
+        ),
+      ),
+    ).toEqual(EXPECTED_VISIBILITY);
 
     expect(
       visibilityProjection(await parseSheetJsSpreadsheetBytes(bytes)),
     ).toEqual(EXPECTED_VISIBILITY);
+    expect(
+      visibilityProjection(
+        await parseSheetJsSpreadsheetBytes(
+          new Uint8Array(exactArrayBuffer(bytes)),
+        ),
+      ),
+    ).toEqual(EXPECTED_VISIBILITY);
 
+    const fileBuffer = exactArrayBuffer(bytes);
     const result = await spreadsheetFileToDocumentJson({
       size: bytes.byteLength,
       async arrayBuffer() {
-        return copiedBuffer;
+        return fileBuffer;
       },
     });
     expect(result).toMatchObject({
