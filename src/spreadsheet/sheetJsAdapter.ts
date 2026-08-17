@@ -222,6 +222,10 @@ function readDisplayedRows(
   return rows;
 }
 
+function hasDisplayedCellText(rows: readonly (readonly string[])[]): boolean {
+  return rows.some((row) => row.some((cell) => cell.length > 0));
+}
+
 function readWorkbook(
   parser: SheetJsParserModule,
   source: Uint8Array,
@@ -259,9 +263,12 @@ function baseReadOptions(): Omit<
  * `MAX_WORKBOOK_ROWS + 1` rows per worksheet. Real BIFF8 evidence shows that
  * mixing visibility and selective parser reads can make later hidden-sheet state
  * depend on parser history, so visibility and displayed bodies must come from the
- * same parser result. The source envelope remains bounded before parser loading,
- * and exact worksheet/count/range/row/column/cell limits are revalidated before
- * displayed rows are materialized into Inkspan's parser-neutral contract.
+ * same parser result. Parser-synthesized blank-only BIFF8 ranges are normalized to
+ * an empty displayed-row projection so an otherwise empty worksheet cannot become
+ * a visible one-cell table merely because the parser reports a degenerate `A1`
+ * range. The source envelope remains bounded before parser loading, and exact
+ * worksheet/count/range/row/column/cell limits are revalidated before displayed
+ * rows are materialized into Inkspan's parser-neutral contract.
  */
 export function sheetJsBytesToWorkbookData(
   source: Uint8Array,
@@ -367,15 +374,16 @@ export function sheetJsBytesToWorkbookData(
     }
     decodedRows = nextDecodedRows;
     decodedCells = nextDecodedCells;
+    const displayedRows = readDisplayedRows(
+      parser,
+      sheet,
+      dimensions.rows,
+      dimensions.columns,
+    );
     worksheets.push({
       name,
       hidden: false,
-      rows: readDisplayedRows(
-        parser,
-        sheet,
-        dimensions.rows,
-        dimensions.columns,
-      ),
+      rows: hasDisplayedCellText(displayedRows) ? displayedRows : [],
     });
   }
 
