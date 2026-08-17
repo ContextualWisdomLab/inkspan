@@ -16,7 +16,7 @@ const BIFF8_SOURCE = new Uint8Array([
 ]);
 
 describe('sheetJsBytesToWorkbookData BIFF8 visibility authority', () => {
-  it('uses bounded whole-workbook metadata instead of selective-parse visibility', () => {
+  it('uses the bounded pristine whole-workbook pass as discovery and visibility authority', () => {
     const summarySheet = { '!ref': 'A1' };
     const privateSheet = { '!ref': 'A1' };
     const read = vi.fn(
@@ -24,12 +24,6 @@ describe('sheetJsBytesToWorkbookData BIFF8 visibility authority', () => {
         _source: Uint8Array,
         options: Parameters<SheetJsParserModule['read']>[1],
       ): unknown => {
-        if (options.bookSheets === true) {
-          return {
-            SheetNames: ['Summary', 'Private'],
-            Sheets: {},
-          };
-        }
         if (options.sheetRows === 1 && options.sheets === undefined) {
           return {
             SheetNames: ['Summary', 'Private'],
@@ -76,16 +70,8 @@ describe('sheetJsBytesToWorkbookData BIFF8 visibility authority', () => {
         { name: 'Private', hidden: true, rows: [] },
       ],
     });
-    expect(read).toHaveBeenCalledTimes(3);
+    expect(read).toHaveBeenCalledTimes(2);
     expect(read).toHaveBeenNthCalledWith(1, BIFF8_SOURCE, {
-      type: 'array',
-      cellFormula: false,
-      cellHTML: false,
-      cellNF: false,
-      bookVBA: false,
-      bookSheets: true,
-    });
-    expect(read).toHaveBeenNthCalledWith(2, BIFF8_SOURCE, {
       type: 'array',
       cellFormula: false,
       cellHTML: false,
@@ -93,7 +79,7 @@ describe('sheetJsBytesToWorkbookData BIFF8 visibility authority', () => {
       bookVBA: false,
       sheetRows: 1,
     });
-    expect(read).toHaveBeenNthCalledWith(3, BIFF8_SOURCE, {
+    expect(read).toHaveBeenNthCalledWith(2, BIFF8_SOURCE, {
       type: 'array',
       cellFormula: false,
       cellHTML: false,
@@ -111,7 +97,7 @@ describe('sheetJsBytesToWorkbookData BIFF8 visibility authority', () => {
     });
   });
 
-  it('does not issue metadata or body reads when discovery reports no sheets', () => {
+  it('does not issue body reads when bounded BIFF8 discovery reports no sheets', () => {
     const read = vi.fn(() => ({ SheetNames: [], Sheets: {} }));
     const parser: SheetJsParserModule = {
       read,
@@ -131,7 +117,7 @@ describe('sheetJsBytesToWorkbookData BIFF8 visibility authority', () => {
       cellHTML: false,
       cellNF: false,
       bookVBA: false,
-      bookSheets: true,
+      sheetRows: 1,
     });
   });
 });
