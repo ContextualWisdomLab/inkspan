@@ -96,6 +96,8 @@ async function saveAsHwpx(
 
 The initial bridge deliberately supports a bounded semantic subset and rejects unsupported export nodes instead of silently deleting them. The compatibility matrix expands only when real HWP/HWPX fixtures demonstrate stable round-trip behavior. `capabilities.supportedContent` is the machine-consumable projection of the same currently implemented subset; this table remains the human-readable contract and limitation guide.
 
+Committed synthetic OWPML fixtures under `src/hangul/fixtures/` are the current known-document suite. `briefing-minutes.section.xml` must project to the expected heading, paragraph, and table cells when wrapped as HWPX or legacy HWP. `unsupported-shape.section.xml` must fail closed; Inkspan does not keep surrounding paragraphs while dropping a shape. After export, the same fixture engine reopens the bytes and compares semantic JSON. These fixtures are synthetic and contain no customer documents. To inspect a mismatch, open the exact source fixture and compare it against the committed expected paragraphs and tables.
+
 | Content | Import | Export | Notes |
 |---|---|---|---|
 | Paragraph text | Yes | Yes | Unicode preserved by JavaScript strings and the selected engine |
@@ -109,7 +111,7 @@ The initial bridge deliberately supports a bounded semantic subset and rejects u
 | Basic tables | Yes | Yes | Header/cell topology is preserved; spans and layout styling are not modeled |
 | Links | Planned | Planned | Must use Inkspan safe-link policy |
 | Images | Planned | Planned | Must remain inline/host-approved; no external fetch |
-| Shapes/charts/equations | Warning | Rejected | Requires dedicated projection contract |
+| Shapes/charts/equations | Rejected | Rejected | Fail closed; no silent drop |
 | Macros/OLE/active content | Not executed | Not generated | Outside the editor authority boundary |
 
 ## Failure containment

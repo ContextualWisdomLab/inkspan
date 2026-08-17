@@ -20,6 +20,16 @@ describe('Hangul compatibility documentation', () => {
     );
     expect(hangulGuide).not.toContain('| Lists | Planned | Planned |');
     expect(hangulGuide).not.toContain('| Tables | Planned | Planned |');
+    expect(hangulGuide).toContain(
+      '| Shapes/charts/equations | Rejected | Rejected | Fail closed; no silent drop |',
+    );
+    expect(hangulGuide).toContain('src/hangul/fixtures/');
+    expect(hangulGuide).toContain('briefing-minutes.section.xml');
+    expect(hangulGuide).toContain('unsupported-shape.section.xml');
+    expect(hangulGuide).toContain('fail closed');
+    expect(hangulGuide).toContain(
+      'open the exact source fixture and compare it against the committed expected paragraphs and tables',
+    );
   });
 
   it('documents the capability metadata returned by the public import API', () => {

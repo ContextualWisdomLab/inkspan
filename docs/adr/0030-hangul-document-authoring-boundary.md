@@ -52,6 +52,7 @@ Acceptance requires all of the following on one exact PR head:
 
 - HWP and HWPX import tests;
 - edited JSON to HWPX and HWP export tests;
+- committed synthetic `briefing-minutes` and `unsupported-shape` fixtures that project known paragraphs/tables and fail closed on unsupported structures;
 - real documents reopened after export and compared against expected semantic content;
 - hostile/malformed input and resource-limit tests;
 - package-consumer verification for ESM, CommonJS, and declarations;
