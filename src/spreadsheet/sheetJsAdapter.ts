@@ -253,9 +253,11 @@ function baseReadOptions(): Omit<
 /**
  * Project locally parsed SheetJS workbook data into Inkspan's parser-neutral
  * workbook contract without granting formulas, macros, links, or parser output
- * any editor authority. Inkspan first performs a sheet-name-only discovery pass,
- * then parses each selected worksheet with a row ceiling derived from the
- * remaining aggregate workbook budget. Exact decoded row, column, and cell
+ * any editor authority. Inkspan first performs a sheet-name-only discovery pass.
+ * BIFF8 then receives one bounded whole-workbook metadata pass because selective
+ * BIFF8 parses do not reliably retain the source sheet visibility flag. Only
+ * visible worksheets are subsequently parsed with a row ceiling derived from
+ * the remaining aggregate workbook budget. Exact decoded row, column, and cell
  * limits are checked before displayed rows are materialized by `sheet_to_json`.
  */
 export function sheetJsBytesToWorkbookData(
@@ -280,12 +282,35 @@ export function sheetJsBytesToWorkbookData(
     worksheetNames.push(name);
   }
 
+  const biff8VisibilityWorkbook =
+    boundedSource.format === 'xls' && sheetCount > 0
+      ? readWorkbook(parser, boundedSource.bytes, {
+          ...baseReadOptions(),
+          sheetRows: 1,
+        })
+      : undefined;
+  const biff8SheetMetadata =
+    biff8VisibilityWorkbook === undefined
+      ? undefined
+      : readWorkbookSheetMetadata(biff8VisibilityWorkbook);
+
   const worksheets: SpreadsheetWorksheetData[] = [];
   let visibleCount = 0;
   let decodedRows = 0;
   let decodedCells = 0;
 
   for (const name of worksheetNames) {
+    if (biff8VisibilityWorkbook !== undefined) {
+      const visibilityIndex = readParsedSheetIndex(
+        biff8VisibilityWorkbook,
+        name,
+      );
+      if (readHiddenState(biff8SheetMetadata, visibilityIndex)) {
+        worksheets.push({ name, hidden: true, rows: [] });
+        continue;
+      }
+    }
+
     const remainingRows = MAX_WORKBOOK_ROWS - decodedRows;
     const parsed = readWorkbook(parser, boundedSource.bytes, {
       ...baseReadOptions(),
@@ -296,12 +321,14 @@ export function sheetJsBytesToWorkbookData(
     if (!isObject(sheets)) unsupportedOrCorruptSource();
     const sheet = readOwnDataProperty(sheets, name);
     if (!isObject(sheet)) unsupportedOrCorruptSource();
-    const parsedSheetIndex = readParsedSheetIndex(parsed, name);
-    const sheetMetadata = readWorkbookSheetMetadata(parsed);
-    const hidden = readHiddenState(sheetMetadata, parsedSheetIndex);
-    if (hidden) {
-      worksheets.push({ name, hidden: true, rows: [] });
-      continue;
+
+    if (biff8VisibilityWorkbook === undefined) {
+      const parsedSheetIndex = readParsedSheetIndex(parsed, name);
+      const sheetMetadata = readWorkbookSheetMetadata(parsed);
+      if (readHiddenState(sheetMetadata, parsedSheetIndex)) {
+        worksheets.push({ name, hidden: true, rows: [] });
+        continue;
+      }
     }
 
     visibleCount += 1;
