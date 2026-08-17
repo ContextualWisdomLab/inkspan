@@ -31,6 +31,24 @@ describe('spreadsheet local source boundary', () => {
     await expectUnsupported(spreadsheetFileToDocumentJson(source));
   });
 
+  it('normalizes a hostile returned ArrayBuffer byteLength accessor', async () => {
+    const hostileBuffer = new ArrayBuffer(4);
+    Object.defineProperty(hostileBuffer, 'byteLength', {
+      configurable: true,
+      get() {
+        throw new Error('private returned buffer length');
+      },
+    });
+    const source = {
+      size: 4,
+      async arrayBuffer() {
+        return hostileBuffer;
+      },
+    } as SpreadsheetFileSource;
+
+    await expectUnsupported(spreadsheetFileToDocumentJson(source));
+  });
+
   it('normalizes a hostile non-Blob source prototype trap when arrayBuffer is absent', async () => {
     const privatePrototypeError = new Error('private source prototype');
     const source = new Proxy(
