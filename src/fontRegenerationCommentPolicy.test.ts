@@ -1,0 +1,179 @@
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { spawnSync } from 'node:child_process';
+import { afterEach, describe, expect, it } from 'vitest';
+
+const temporaryRoots: string[] = [];
+
+type CssPolicyMode =
+  | 'comments'
+  | 'string'
+  | 'descriptor-string'
+  | 'comment-like-string';
+
+function createIsolatedFontRegenerator(): {
+  root: string;
+  scriptPath: string;
+  preloadPath: string;
+  existingFontMarker: string;
+} {
+  const root = mkdtempSync(join(tmpdir(), 'inkspan-font-comment-policy-'));
+  temporaryRoots.push(root);
+  const scriptPath = join(root, 'scripts', 'fetch-fonts.mjs');
+  const preloadPath = join(root, 'mock-fetch.mjs');
+  const existingFontMarker = join(
+    root,
+    'src',
+    'fonts',
+    'files',
+    'known-good.woff2',
+  );
+
+  mkdirSync(dirname(scriptPath), { recursive: true });
+  mkdirSync(dirname(existingFontMarker), { recursive: true });
+  writeFileSync(existingFontMarker, 'known-good', 'utf8');
+  writeFileSync(
+    scriptPath,
+    readFileSync(resolve('scripts/fetch-fonts.mjs'), 'utf8'),
+    'utf8',
+  );
+  writeFileSync(
+    preloadPath,
+    `const trustedAsset = 'https://fonts.gstatic.com/s/notosans/test-subset.woff2';
+const familyDefinitions = [
+  ['Noto Sans KR', [400]],
+  ['Noto Sans JP', [400]],
+  ['Noto Sans SC', [400]],
+  ['Noto Sans TC', [400]],
+  ['Noto Sans', [400, 700]],
+];
+function requestedFamily(url) {
+  const request = new URL(url).searchParams.get('family') ?? '';
+  return familyDefinitions.find(([family]) => request.startsWith(\`${'${family}'}:wght@\`));
+}
+function liveFontFace(family, weight) {
+  return \`@font-face { font-family: '\${family}'; font-style: normal; font-weight: \${weight}; src: url(\${trustedAsset}) format('woff2'); unicode-range: U+0000-00FF; }\`;
+}
+function quotedDescriptorFontFace(family, weight) {
+  return \`@font-face { content: "font-family: '\${family}'; font-style: normal; font-weight: \${weight}; src: url(\${trustedAsset}) format('woff2'); unicode-range: U+0000-00FF;"; }\`;
+}
+function commentLookingFamilyFontFace(weight) {
+  return \`@font-face { font-family: 'Noto /*private*/Sans'; font-style: normal; font-weight: \${weight}; src: url(\${trustedAsset}) format('woff2'); unicode-range: U+0000-00FF; }\`;
+}
+function cssFor(url) {
+  const definition = requestedFamily(url);
+  if (!definition) throw new Error('unexpected family request');
+  const [family, weights] = definition;
+  if (family === 'Noto Sans') {
+    if (process.env.INKSPAN_CSS_POLICY_MODE === 'string') {
+      const disguisedFaces = weights.map((weight) => liveFontFace(family, weight)).join(' ');
+      return \`a::before { content: "\${disguisedFaces}"; }\`;
+    }
+    if (process.env.INKSPAN_CSS_POLICY_MODE === 'descriptor-string') {
+      return weights.map((weight) => quotedDescriptorFontFace(family, weight)).join('\\n');
+    }
+    if (process.env.INKSPAN_CSS_POLICY_MODE === 'comment-like-string') {
+      return weights.map((weight) => commentLookingFamilyFontFace(weight)).join('\\n');
+    }
+    return weights.map((weight) => \`@font-face {\n  /* font-family: '\${family}'; */\n  /* font-style: normal; */\n  /* font-weight: \${weight}; */\n  src: url(\${trustedAsset}) format('woff2');\n  /* unicode-range: U+0000-00FF; */\n}\`).join('\\n');
+  }
+  return weights.map((weight) => liveFontFace(family, weight)).join('\\n');
+}
+function woff2() {
+  const bytes = new Uint8Array(48);
+  bytes.set([0x77, 0x4f, 0x46, 0x32]);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(8, bytes.byteLength, false);
+  view.setUint16(12, 1, false);
+  return bytes;
+}
+globalThis.fetch = async (input) => {
+  const url = String(input);
+  if (url.startsWith('https://fonts.googleapis.com/css2?')) {
+    return new Response(cssFor(url), {
+      status: 200,
+      headers: { 'content-type': 'text/css; charset=utf-8' },
+    });
+  }
+  if (url === trustedAsset) {
+    return new Response(woff2(), {
+      status: 200,
+      headers: { 'content-type': 'font/woff2' },
+    });
+  }
+  throw new Error('unexpected test URL');
+};
+`,
+    'utf8',
+  );
+
+  return { root, scriptPath, preloadPath, existingFontMarker };
+}
+
+function runFixture(mode: CssPolicyMode) {
+  const fixture = createIsolatedFontRegenerator();
+  const result = spawnSync(
+    process.execPath,
+    ['--import', pathToFileURL(fixture.preloadPath).href, fixture.scriptPath],
+    {
+      cwd: fixture.root,
+      encoding: 'utf8',
+      env: { ...process.env, INKSPAN_CSS_POLICY_MODE: mode },
+      timeout: 15_000,
+    },
+  );
+  return { fixture, result };
+}
+
+afterEach(() => {
+  while (temporaryRoots.length > 0) {
+    rmSync(temporaryRoots.pop()!, { recursive: true, force: true });
+  }
+});
+
+describe('font regeneration CSS lexical policy', () => {
+  it('rejects descriptors that exist only inside CSS comments', () => {
+    const { fixture, result } = runFixture('comments');
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).not.toBe(0);
+    expect(existsSync(fixture.existingFontMarker)).toBe(true);
+    expect(readFileSync(fixture.existingFontMarker, 'utf8')).toBe('known-good');
+  });
+
+  it('rejects font-face syntax that exists only inside a quoted CSS string', () => {
+    const { fixture, result } = runFixture('string');
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).not.toBe(0);
+    expect(existsSync(fixture.existingFontMarker)).toBe(true);
+    expect(readFileSync(fixture.existingFontMarker, 'utf8')).toBe('known-good');
+  });
+
+  it('rejects font-face descriptors that exist only inside a quoted CSS string', () => {
+    const { fixture, result } = runFixture('descriptor-string');
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).not.toBe(0);
+    expect(existsSync(fixture.existingFontMarker)).toBe(true);
+    expect(readFileSync(fixture.existingFontMarker, 'utf8')).toBe('known-good');
+  });
+
+  it('does not erase comment-looking text inside quoted descriptor values', () => {
+    const { fixture, result } = runFixture('comment-like-string');
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).not.toBe(0);
+    expect(existsSync(fixture.existingFontMarker)).toBe(true);
+    expect(readFileSync(fixture.existingFontMarker, 'utf8')).toBe('known-good');
+  });
+});

@@ -14,7 +14,14 @@
  *
  * Fonts are Noto Sans (OFL 1.1). See src/fonts/OFL.txt and src/fonts/NOTICE.
  */
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  renameSync,
+  writeFileSync,
+  rmSync,
+} from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,6 +32,15 @@ const FILES_DIR = resolve(FONTS_DIR, 'files');
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+const TRUSTED_FONT_ASSET_HOST = 'fonts.gstatic.com';
+const MAX_FONT_CSS_BYTES = 1024 * 1024;
+const MAX_FONT_SUBSET_BYTES = 16 * 1024 * 1024;
+const MAX_FONT_FAMILY_DOWNLOAD_BYTES = 64 * 1024 * 1024;
+const MAX_FONT_RESPONSE_CHUNKS = 4096;
+const MAX_FONT_FACE_BLOCKS_PER_FAMILY = 512;
+const MAX_UNICODE_CODE_POINT = 0x10ffff;
+const WOFF2_HEADER_BYTES = 48;
+const WOFF2_SIGNATURE = Buffer.from([0x77, 0x4f, 0x46, 0x32]);
 
 // Latin/Vietnamese carries the primary UI text and is cheap, so ship 400+700.
 // The CJK families are large; ship weight 400 only and let the browser
@@ -37,46 +53,539 @@ const FAMILIES = [
   { css: 'Noto Sans TC', slug: 'noto-sans-tc', family: 'Noto Sans TC', weights: [400] },
 ];
 
-const FONT_FACE_RE = /@font-face\s*{([^}]*)}/g;
-const SRC_URL_RE = /url\((https:\/\/[^)]+\.woff2)\)/;
-const RANGE_RE = /unicode-range:\s*([^;]+);/;
-const WEIGHT_RE = /font-weight:\s*(\d+)/;
+const SOURCE_VALUE_RE = /^url\((https:\/\/[^)]+\.woff2)\)\s+format\((?:"woff2"|'woff2')\)$/i;
+const FAMILY_VALUE_RE = /^(?:"([^"]+)"|'([^']+)')$/;
+const STYLE_VALUE_RE = /^[a-z-]+$/i;
+const WEIGHT_VALUE_RE = /^\d+$/;
+const UNICODE_RANGE_HEX_RE = /^[0-9a-f]{1,6}$/i;
+const UNICODE_RANGE_WILDCARD_RE = /^[0-9a-f]*\?+$/i;
+
+/** Read CSS discovery data through a bounded stream before decoding it. */
+async function readBoundedCssBody(response) {
+  const declaredLength = response.headers.get('content-length');
+  if (
+    declaredLength !== null &&
+    /^\d+$/.test(declaredLength) &&
+    Number(declaredLength) > MAX_FONT_CSS_BYTES
+  ) {
+    throw new Error('Google Fonts returned an oversized CSS response');
+  }
+
+  if (response.body === null) {
+    throw new Error('Google Fonts returned an empty CSS response');
+  }
+
+  const reader = response.body.getReader();
+  const chunks = [];
+  let totalBytes = 0;
+  let chunkCount = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunkCount += 1;
+    totalBytes += value.byteLength;
+    if (totalBytes > MAX_FONT_CSS_BYTES) {
+      await reader.cancel();
+      throw new Error('Google Fonts returned an oversized CSS response');
+    }
+    if (chunkCount > MAX_FONT_RESPONSE_CHUNKS) {
+      await reader.cancel();
+      throw new Error('Google Fonts returned an excessively fragmented CSS response');
+    }
+    chunks.push(Buffer.from(value));
+  }
+  return Buffer.concat(chunks, totalBytes);
+}
 
 async function fetchCss(family, weights) {
   const w = weights.join(';');
   const url = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(
     family,
   )}:wght@${w}&display=swap`;
-  const res = await fetch(url, { headers: { 'User-Agent': UA } });
+  const res = await fetch(url, {
+    redirect: 'error',
+    headers: { 'User-Agent': UA },
+  });
   if (!res.ok) throw new Error(`css2 fetch failed for ${family}: ${res.status}`);
-  return res.text();
+
+  const mediaType = res.headers
+    .get('content-type')
+    ?.split(';', 1)[0]
+    .trim()
+    .toLowerCase();
+  if (mediaType !== 'text/css') {
+    throw new Error('Google Fonts returned an invalid CSS response type');
+  }
+
+  const bytes = await readBoundedCssBody(res);
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error('Google Fonts returned invalid UTF-8 CSS');
+  }
 }
 
-async function download(url) {
-  const res = await fetch(url, { headers: { 'User-Agent': UA } });
-  if (!res.ok) throw new Error(`woff2 fetch failed ${url}: ${res.status}`);
-  return Buffer.from(await res.arrayBuffer());
+/** Validate one CSS-provided asset URL before any asset request occurs. */
+function validateFontAssetUrl(source) {
+  let url;
+  try {
+    url = new URL(source);
+  } catch {
+    throw new Error('Google Fonts returned an invalid font asset URL');
+  }
+
+  if (
+    url.protocol !== 'https:' ||
+    url.hostname !== TRUSTED_FONT_ASSET_HOST ||
+    url.port !== '' ||
+    url.username !== '' ||
+    url.password !== '' ||
+    !url.pathname.endsWith('.woff2') ||
+    url.search !== '' ||
+    url.hash !== ''
+  ) {
+    throw new Error('Google Fonts returned an untrusted font asset URL');
+  }
+  return url.href;
 }
 
-async function processFamily(def) {
+/** Validate the CSS Fonts unicode-range subset grammar without evaluating CSS. */
+function isValidUnicodeRangeDescriptor(value) {
+  const terms = value.split(',');
+  return (
+    terms.length > 0 &&
+    terms.every((rawTerm) => {
+      const term = rawTerm.trim();
+      if (!/^u\+/i.test(term)) return false;
+      const body = term.slice(2);
+      const dashIndex = body.indexOf('-');
+
+      if (dashIndex >= 0) {
+        if (body.indexOf('-', dashIndex + 1) >= 0) return false;
+        const start = body.slice(0, dashIndex);
+        const end = body.slice(dashIndex + 1);
+        if (!UNICODE_RANGE_HEX_RE.test(start) || !UNICODE_RANGE_HEX_RE.test(end)) {
+          return false;
+        }
+        const startCodePoint = Number.parseInt(start, 16);
+        const endCodePoint = Number.parseInt(end, 16);
+        return (
+          startCodePoint <= endCodePoint &&
+          endCodePoint <= MAX_UNICODE_CODE_POINT
+        );
+      }
+
+      if (UNICODE_RANGE_HEX_RE.test(body)) {
+        return Number.parseInt(body, 16) <= MAX_UNICODE_CODE_POINT;
+      }
+
+      if (
+        body.length < 1 ||
+        body.length > 6 ||
+        !UNICODE_RANGE_WILDCARD_RE.test(body)
+      ) {
+        return false;
+      }
+      const wildcardUpperBound = Number.parseInt(body.replaceAll('?', 'f'), 16);
+      return (
+        Number.isFinite(wildcardUpperBound) &&
+        wildcardUpperBound <= MAX_UNICODE_CODE_POINT
+      );
+    })
+  );
+}
+
+/** Fail closed when a bounded CSS response cannot be lexed deterministically. */
+function invalidCssLexicalStructure() {
+  throw new Error('Google Fonts returned invalid CSS lexical structure');
+}
+
+/** Skip one quoted CSS string without interpreting its contents. */
+function skipCssString(css, start) {
+  const quote = css[start];
+  let cursor = start + 1;
+  while (cursor < css.length) {
+    const char = css[cursor];
+    if (char === quote) return cursor + 1;
+    if (char === '\\') {
+      cursor += 1;
+      if (cursor >= css.length) invalidCssLexicalStructure();
+      if (css[cursor] === '\r' && css[cursor + 1] === '\n') cursor += 1;
+      cursor += 1;
+      continue;
+    }
+    if (char === '\n' || char === '\r' || char === '\f') {
+      invalidCssLexicalStructure();
+    }
+    cursor += 1;
+  }
+  invalidCssLexicalStructure();
+}
+
+/** Skip one CSS comment, rejecting an unterminated input instead of recovering it. */
+function skipCssComment(css, start) {
+  const end = css.indexOf('*/', start + 2);
+  if (end < 0) invalidCssLexicalStructure();
+  return end + 2;
+}
+
+/**
+ * Remove actual CSS comments without rewriting quoted string data. A comment
+ * becomes one whitespace byte so removal cannot concatenate surrounding CSS
+ * tokens into a different descriptor name or value.
+ */
+function normalizeCssComments(css) {
+  const chunks = [];
+  let cursor = 0;
+  let segmentStart = 0;
+
+  while (cursor < css.length) {
+    if (css[cursor] === '"' || css[cursor] === "'") {
+      cursor = skipCssString(css, cursor);
+      continue;
+    }
+    if (!css.startsWith('/*', cursor)) {
+      cursor += 1;
+      continue;
+    }
+
+    chunks.push(css.slice(segmentStart, cursor), ' ');
+    cursor = skipCssComment(css, cursor);
+    segmentStart = cursor;
+  }
+
+  chunks.push(css.slice(segmentStart));
+  return chunks.join('');
+}
+
+/**
+ * Parse live font-face blocks in one bounded lexical pass. At-rule-looking text
+ * inside CSS strings or comments is never promoted to packageable metadata.
+ */
+function collectBoundedFontFaceBlocks(css) {
+  const blocks = [];
+  let cursor = 0;
+  let braceDepth = 0;
+
+  while (cursor < css.length) {
+    if (css.startsWith('/*', cursor)) {
+      cursor = skipCssComment(css, cursor);
+      continue;
+    }
+    if (css[cursor] === '"' || css[cursor] === "'") {
+      cursor = skipCssString(css, cursor);
+      continue;
+    }
+    if (css[cursor] === '{') {
+      braceDepth += 1;
+      cursor += 1;
+      continue;
+    }
+    if (css[cursor] === '}') {
+      if (braceDepth === 0) invalidCssLexicalStructure();
+      braceDepth -= 1;
+      cursor += 1;
+      continue;
+    }
+    if (braceDepth !== 0 || !css.startsWith('@font-face', cursor)) {
+      cursor += 1;
+      continue;
+    }
+
+    let blockCursor = cursor + '@font-face'.length;
+    while (blockCursor < css.length) {
+      if (/\s/.test(css[blockCursor])) {
+        blockCursor += 1;
+        continue;
+      }
+      if (css.startsWith('/*', blockCursor)) {
+        blockCursor = skipCssComment(css, blockCursor);
+        continue;
+      }
+      break;
+    }
+    if (css[blockCursor] !== '{') {
+      cursor += 1;
+      continue;
+    }
+
+    const bodyStart = blockCursor + 1;
+    blockCursor = bodyStart;
+    while (blockCursor < css.length) {
+      if (css.startsWith('/*', blockCursor)) {
+        blockCursor = skipCssComment(css, blockCursor);
+        continue;
+      }
+      if (css[blockCursor] === '"' || css[blockCursor] === "'") {
+        blockCursor = skipCssString(css, blockCursor);
+        continue;
+      }
+      if (css[blockCursor] === '{') invalidCssLexicalStructure();
+      if (css[blockCursor] === '}') break;
+      blockCursor += 1;
+    }
+    if (blockCursor >= css.length) invalidCssLexicalStructure();
+    if (blocks.length >= MAX_FONT_FACE_BLOCKS_PER_FAMILY) {
+      throw new Error('Google Fonts returned excessive font-face metadata');
+    }
+    blocks.push(normalizeCssComments(css.slice(bodyStart, blockCursor)));
+    cursor = blockCursor + 1;
+  }
+
+  if (braceDepth !== 0) invalidCssLexicalStructure();
+  return blocks;
+}
+
+/**
+ * Split one accepted font-face body into declaration values without treating
+ * semicolons or descriptor-looking text inside strings/functions as metadata.
+ */
+function collectFontFaceDeclarations(block) {
+  const declarations = new Map();
+  let cursor = 0;
+  let declarationStart = 0;
+  let parenthesisDepth = 0;
+
+  while (cursor < block.length) {
+    if (block[cursor] === '"' || block[cursor] === "'") {
+      cursor = skipCssString(block, cursor);
+      continue;
+    }
+    if (block[cursor] === '(') {
+      parenthesisDepth += 1;
+      cursor += 1;
+      continue;
+    }
+    if (block[cursor] === ')') {
+      if (parenthesisDepth === 0) invalidCssLexicalStructure();
+      parenthesisDepth -= 1;
+      cursor += 1;
+      continue;
+    }
+    if (block[cursor] !== ';' || parenthesisDepth !== 0) {
+      cursor += 1;
+      continue;
+    }
+
+    const declaration = block.slice(declarationStart, cursor).trim();
+    declarationStart = cursor + 1;
+    cursor += 1;
+    if (!declaration) continue;
+
+    const colonIndex = declaration.indexOf(':');
+    if (colonIndex <= 0) invalidCssLexicalStructure();
+    const name = declaration.slice(0, colonIndex).trim().toLowerCase();
+    const value = declaration.slice(colonIndex + 1).trim();
+    if (!/^[a-z-]+$/.test(name) || !value) invalidCssLexicalStructure();
+    const values = declarations.get(name) ?? [];
+    values.push(value);
+    declarations.set(name, values);
+  }
+
+  if (parenthesisDepth !== 0 || block.slice(declarationStart).trim() !== '') {
+    invalidCssLexicalStructure();
+  }
+  return declarations;
+}
+
+/** Read one response body without allowing per-subset or per-family overrun. */
+async function readBoundedFontBody(response, remainingFamilyBytes) {
+  const declaredLength = response.headers.get('content-length');
+  const declaredBytes =
+    declaredLength !== null && /^\d+$/.test(declaredLength)
+      ? Number(declaredLength)
+      : null;
+  if (declaredBytes !== null && declaredBytes > MAX_FONT_SUBSET_BYTES) {
+    throw new Error('Google Fonts returned an oversized font asset');
+  }
+  if (declaredBytes !== null && declaredBytes > remainingFamilyBytes) {
+    throw new Error('Google Fonts exceeded the aggregate font download budget');
+  }
+
+  if (response.body === null) {
+    throw new Error('Google Fonts returned an empty font asset response');
+  }
+
+  const reader = response.body.getReader();
+  const chunks = [];
+  let totalBytes = 0;
+  let chunkCount = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunkCount += 1;
+    totalBytes += value.byteLength;
+    if (totalBytes > MAX_FONT_SUBSET_BYTES) {
+      await reader.cancel();
+      throw new Error('Google Fonts returned an oversized font asset');
+    }
+    if (totalBytes > remainingFamilyBytes) {
+      await reader.cancel();
+      throw new Error('Google Fonts exceeded the aggregate font download budget');
+    }
+    if (chunkCount > MAX_FONT_RESPONSE_CHUNKS) {
+      await reader.cancel();
+      throw new Error('Google Fonts returned an excessively fragmented font asset response');
+    }
+    chunks.push(Buffer.from(value));
+  }
+  const bytes = Buffer.concat(chunks, totalBytes);
+  return {
+    bytes,
+    budgetBytes: Math.max(declaredBytes ?? 0, totalBytes),
+  };
+}
+
+/** Download and authenticate the minimal file-format boundary for one subset. */
+async function download(source, remainingFamilyBytes) {
+  const url = validateFontAssetUrl(source);
+  const res = await fetch(url, {
+    redirect: 'error',
+    headers: { 'User-Agent': UA },
+  });
+  if (!res.ok) {
+    throw new Error(`Google Fonts font asset fetch failed with status ${res.status}`);
+  }
+  const { bytes, budgetBytes } = await readBoundedFontBody(
+    res,
+    remainingFamilyBytes,
+  );
+  const hasWoff2Signature =
+    bytes.byteLength >= WOFF2_SIGNATURE.byteLength &&
+    bytes.subarray(0, WOFF2_SIGNATURE.byteLength).equals(WOFF2_SIGNATURE);
+  const hasConsistentDeclaredLength =
+    bytes.byteLength >= WOFF2_HEADER_BYTES &&
+    bytes.readUInt32BE(8) === bytes.byteLength;
+  const hasDeclaredTables =
+    bytes.byteLength >= WOFF2_HEADER_BYTES && bytes.readUInt16BE(12) > 0;
+  if (!hasWoff2Signature || !hasConsistentDeclaredLength || !hasDeclaredTables) {
+    throw new Error('Google Fonts returned a non-WOFF2 font asset');
+  }
+  return { bytes, budgetBytes };
+}
+
+async function processFamily(def, outputFilesDir) {
   const css = await fetchCss(def.css, def.weights);
-  const blocks = [...css.matchAll(FONT_FACE_RE)].map((m) => m[1]);
+  const blocks = collectBoundedFontFaceBlocks(css);
+  const descriptors = [];
+  const descriptorKeys = new Set();
+  const requestedWeightCounts = {};
+
+  for (const block of blocks) {
+    const declarations = collectFontFaceDeclarations(block);
+    const sourceValues = declarations.get('src') ?? [];
+    if (sourceValues.length === 0) continue;
+    if (sourceValues.length !== 1) {
+      throw new Error('Google Fonts returned ambiguous font source metadata');
+    }
+    const sourceMatch = SOURCE_VALUE_RE.exec(sourceValues[0]);
+    if (sourceMatch === null) {
+      throw new Error('Google Fonts returned ambiguous font source metadata');
+    }
+
+    const familyValues = declarations.get('font-family') ?? [];
+    if (familyValues.length !== 1) {
+      throw new Error('Google Fonts returned ambiguous font family metadata');
+    }
+    const familyMatch = FAMILY_VALUE_RE.exec(familyValues[0]);
+    if (familyMatch === null) {
+      throw new Error('Google Fonts returned ambiguous font family metadata');
+    }
+    const family = familyMatch[1] ?? familyMatch[2];
+    if (family !== def.family) {
+      throw new Error('Google Fonts returned unexpected font family metadata');
+    }
+
+    const styleValues = declarations.get('font-style') ?? [];
+    if (styleValues.length !== 1 || !STYLE_VALUE_RE.test(styleValues[0])) {
+      throw new Error('Google Fonts returned ambiguous font style metadata');
+    }
+    const style = styleValues[0].toLowerCase();
+    if (style !== 'normal') {
+      throw new Error('Google Fonts returned unexpected font style metadata');
+    }
+
+    const stretchValues = declarations.get('font-stretch') ?? [];
+    if (stretchValues.length > 1) {
+      throw new Error('Google Fonts returned ambiguous font stretch metadata');
+    }
+    const stretch =
+      stretchValues.length === 0
+        ? 'normal'
+        : stretchValues[0].trim().toLowerCase();
+    if (stretch !== 'normal') {
+      throw new Error('Google Fonts returned unexpected font stretch metadata');
+    }
+
+    const weightValues = declarations.get('font-weight') ?? [];
+    if (weightValues.length === 0) {
+      throw new Error('Google Fonts returned unexpected font weight metadata');
+    }
+    if (weightValues.length !== 1 || !WEIGHT_VALUE_RE.test(weightValues[0])) {
+      throw new Error('Google Fonts returned ambiguous font weight metadata');
+    }
+    const weight = weightValues[0];
+    if (!def.weights.includes(Number(weight))) {
+      throw new Error('Google Fonts returned unexpected font weight metadata');
+    }
+
+    const rangeValues = declarations.get('unicode-range') ?? [];
+    if (rangeValues.length === 0) {
+      throw new Error('Google Fonts returned invalid unicode-range metadata');
+    }
+    if (rangeValues.length !== 1) {
+      throw new Error('Google Fonts returned ambiguous unicode-range metadata');
+    }
+    const range = rangeValues[0].trim();
+    if (!range || !isValidUnicodeRangeDescriptor(range)) {
+      throw new Error('Google Fonts returned invalid unicode-range metadata');
+    }
+
+    const source = validateFontAssetUrl(sourceMatch[1]);
+    const normalizedRange = range
+      .split(',')
+      .map((term) => term.trim().toLowerCase())
+      .join(',');
+    const descriptorKey = JSON.stringify([
+      family,
+      style,
+      stretch,
+      weight,
+      normalizedRange,
+    ]);
+    if (descriptorKeys.has(descriptorKey)) {
+      throw new Error('Google Fonts returned duplicate font-face metadata');
+    }
+    descriptorKeys.add(descriptorKey);
+    requestedWeightCounts[weight] = (requestedWeightCounts[weight] ?? 0) + 1;
+    descriptors.push({ source, weight, range });
+  }
+
+  if (descriptors.length === 0) {
+    throw new Error('Google Fonts returned CSS without usable WOFF2 assets');
+  }
+  for (const requestedWeight of def.weights) {
+    if (!requestedWeightCounts[String(requestedWeight)]) {
+      throw new Error('Google Fonts returned incomplete requested font weight metadata');
+    }
+  }
+
   const out = [];
   let totalBytes = 0;
+  let downloadBudgetBytes = 0;
   const counters = {};
-  for (const block of blocks) {
-    const urlMatch = SRC_URL_RE.exec(block);
-    const rangeMatch = RANGE_RE.exec(block);
-    const weightMatch = WEIGHT_RE.exec(block);
-    if (!urlMatch) continue;
-    const weight = weightMatch ? weightMatch[1] : '400';
+  for (const descriptor of descriptors) {
+    const { source, weight, range } = descriptor;
     counters[weight] = (counters[weight] ?? 0) + 1;
     const idx = counters[weight];
     const localName = `${def.slug}-${weight}-${idx}.woff2`;
-    const bytes = await download(urlMatch[1]);
+    const { bytes, budgetBytes } = await download(
+      source,
+      MAX_FONT_FAMILY_DOWNLOAD_BYTES - downloadBudgetBytes,
+    );
+    downloadBudgetBytes += budgetBytes;
     totalBytes += bytes.byteLength;
-    writeFileSync(resolve(FILES_DIR, localName), bytes);
-    const range = rangeMatch ? rangeMatch[1].trim() : '';
+    writeFileSync(resolve(outputFilesDir, localName), bytes);
     out.push(
       [
         '@font-face {',
@@ -85,14 +594,62 @@ async function processFamily(def) {
         `  font-weight: ${weight};`,
         '  font-display: swap;',
         `  src: url('./files/${localName}') format('woff2');`,
-        range ? `  unicode-range: ${range};` : null,
+        `  unicode-range: ${range};`,
         '}',
-      ]
-        .filter(Boolean)
-        .join('\n'),
+      ].join('\n'),
     );
   }
-  return { css: out.join('\n\n'), totalBytes, count: blocks.length };
+
+  return { css: out.join('\n\n'), totalBytes, count: out.length };
+}
+
+/** Install validated generated outputs and restore the prior bundle on failure. */
+function commitGeneratedOutputs(stagingRoot, outputs) {
+  const backupRoot = resolve(stagingRoot, 'backup');
+  mkdirSync(backupRoot, { recursive: true });
+
+  const backedUp = [];
+  const installed = [];
+  try {
+    for (const output of outputs) {
+      if (!existsSync(output.target)) continue;
+      renameSync(output.target, output.backup);
+      backedUp.push(output);
+    }
+
+    for (const output of outputs) {
+      renameSync(output.staged, output.target);
+      installed.push(output);
+    }
+  } catch (commitError) {
+    let rollbackFailed = false;
+
+    for (const output of installed.reverse()) {
+      try {
+        rmSync(output.target, { recursive: true, force: true });
+      } catch {
+        rollbackFailed = true;
+      }
+    }
+
+    for (const output of backedUp.reverse()) {
+      try {
+        if (existsSync(output.target)) {
+          rmSync(output.target, { recursive: true, force: true });
+        }
+        renameSync(output.backup, output.target);
+      } catch {
+        rollbackFailed = true;
+      }
+    }
+
+    if (rollbackFailed) {
+      throw new Error(
+        'Font bundle commit failed and the previous generated outputs could not be fully restored',
+      );
+    }
+    throw commitError;
+  }
 }
 
 const HEADER = (title) =>
@@ -105,40 +662,74 @@ const HEADER = (title) =>
   ` */\n`;
 
 async function main() {
-  rmSync(FILES_DIR, { recursive: true, force: true });
-  mkdirSync(FILES_DIR, { recursive: true });
+  // Remote CSS/assets are generated completely in a sibling staging directory.
+  // A fetch or validation failure therefore cannot delete the last known-good
+  // bundled font set. Only after every remote input is accepted do we replace
+  // the generated outputs in the working tree.
+  const stagingRoot = mkdtempSync(resolve(FONTS_DIR, '.font-refresh-'));
+  const stagingFilesDir = resolve(stagingRoot, 'files');
+  mkdirSync(stagingFilesDir, { recursive: true });
 
-  const perFamily = {};
-  let grandTotal = 0;
-  for (const def of FAMILIES) {
-    process.stdout.write(`Fetching ${def.css} (weights ${def.weights.join(', ')})… `);
-    const r = await processFamily(def);
-    perFamily[def.slug] = r;
-    grandTotal += r.totalBytes;
-    console.log(`${r.count} subsets, ${(r.totalBytes / 1024 / 1024).toFixed(2)} MB`);
+  try {
+    const perFamily = {};
+    let grandTotal = 0;
+    for (const def of FAMILIES) {
+      process.stdout.write(`Fetching ${def.css} (weights ${def.weights.join(', ')})… `);
+      const r = await processFamily(def, stagingFilesDir);
+      perFamily[def.slug] = r;
+      grandTotal += r.totalBytes;
+      console.log(`${r.count} subsets, ${(r.totalBytes / 1024 / 1024).toFixed(2)} MB`);
+    }
+
+    // Full stack: all five scripts (Korean, Latin/Vietnamese, Japanese, SC, TC).
+    const fullOrder = ['noto-sans', 'noto-sans-kr', 'noto-sans-jp', 'noto-sans-sc', 'noto-sans-tc'];
+    const fullCss =
+      HEADER('cwl-editor fonts — full multilingual stack (KR / EN+VI / JP / SC / TC)') +
+      '\n' +
+      fullOrder.map((s) => perFamily[s].css).join('\n\n') +
+      '\n';
+
+    // Latin-only opt-out (English + Vietnamese + Latin-ext), tiny.
+    const latinCss =
+      HEADER('cwl-editor fonts — Latin/Vietnamese only (opt-out of CJK)') +
+      '\n' +
+      perFamily['noto-sans'].css +
+      '\n';
+
+    const stagedFullCss = resolve(stagingRoot, 'fonts.css');
+    const stagedLatinCss = resolve(stagingRoot, 'fonts-latin.css');
+    writeFileSync(stagedFullCss, fullCss);
+    writeFileSync(stagedLatinCss, latinCss);
+
+    // Back up each previous output on the same filesystem before installing any
+    // staged output. An ordinary synchronous installation failure can therefore
+    // restore the complete prior generated bundle before the error escapes.
+    const backupRoot = resolve(stagingRoot, 'backup');
+    commitGeneratedOutputs(stagingRoot, [
+      {
+        staged: stagingFilesDir,
+        target: FILES_DIR,
+        backup: resolve(backupRoot, 'files'),
+      },
+      {
+        staged: stagedFullCss,
+        target: resolve(FONTS_DIR, 'fonts.css'),
+        backup: resolve(backupRoot, 'fonts.css'),
+      },
+      {
+        staged: stagedLatinCss,
+        target: resolve(FONTS_DIR, 'fonts-latin.css'),
+        backup: resolve(backupRoot, 'fonts-latin.css'),
+      },
+    ]);
+
+    console.log(
+      `\nTotal bundled: ${(grandTotal / 1024 / 1024).toFixed(2)} MB across ` +
+        `${Object.values(perFamily).reduce((n, r) => n + r.count, 0)} woff2 files.`,
+    );
+  } finally {
+    rmSync(stagingRoot, { recursive: true, force: true });
   }
-
-  // Full stack: all five scripts (Korean, Latin/Vietnamese, Japanese, SC, TC).
-  const fullOrder = ['noto-sans', 'noto-sans-kr', 'noto-sans-jp', 'noto-sans-sc', 'noto-sans-tc'];
-  const fullCss =
-    HEADER('cwl-editor fonts — full multilingual stack (KR / EN+VI / JP / SC / TC)') +
-    '\n' +
-    fullOrder.map((s) => perFamily[s].css).join('\n\n') +
-    '\n';
-  writeFileSync(resolve(FONTS_DIR, 'fonts.css'), fullCss);
-
-  // Latin-only opt-out (English + Vietnamese + Latin-ext), tiny.
-  const latinCss =
-    HEADER('cwl-editor fonts — Latin/Vietnamese only (opt-out of CJK)') +
-    '\n' +
-    perFamily['noto-sans'].css +
-    '\n';
-  writeFileSync(resolve(FONTS_DIR, 'fonts-latin.css'), latinCss);
-
-  console.log(
-    `\nTotal bundled: ${(grandTotal / 1024 / 1024).toFixed(2)} MB across ` +
-      `${Object.values(perFamily).reduce((n, r) => n + r.count, 0)} woff2 files.`,
-  );
 }
 
 main().catch((err) => {
