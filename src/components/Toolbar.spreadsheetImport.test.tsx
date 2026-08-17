@@ -112,8 +112,14 @@ describe('Toolbar spreadsheet import', () => {
     spreadsheetMocks.importFile.mockResolvedValue(importedResult());
     const editor = makeEditor();
     editor.commands.setTextSelection(7);
-    const insertContent = vi.spyOn(editor.commands, 'insertContent');
+    const before = editor.getJSON();
     render(<Toolbar editor={editor} />);
+
+    let docChangingTransactions = 0;
+    const countDocChanges = ({ transaction }: { transaction: { docChanged: boolean } }) => {
+      if (transaction.docChanged) docChangingTransactions += 1;
+    };
+    editor.on('transaction', countDocChanges);
 
     const input = spreadsheetInput();
     fireEvent.change(input, { target: { files: [spreadsheetFile()] } });
@@ -124,14 +130,16 @@ describe('Toolbar spreadsheet import', () => {
       ),
     );
     expect(spreadsheetMocks.importFile).toHaveBeenCalledTimes(1);
-    expect(insertContent).toHaveBeenCalledTimes(1);
-    expect(editor.getHTML()).toContain('Summary');
-    expect(editor.getHTML()).toContain('<table');
+    expect(docChangingTransactions).toBe(1);
+    const html = editor.getHTML();
+    expect(html).toContain('<table');
+    expect(html.indexOf('Before')).toBeLessThan(html.indexOf('Summary'));
+    expect(html.indexOf('Summary')).toBeLessThan(html.indexOf('After'));
     expect(input.value).toBe('');
 
+    editor.off('transaction', countDocChanges);
     act(() => editor.commands.undo());
-    expect(editor.getHTML()).not.toContain('Summary');
-    expect(editor.getHTML()).not.toContain('<table');
+    expect(editor.getJSON()).toEqual(before);
   });
 
   it('disables import while parsing and permits the same file to be selected again', async () => {
