@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
-import { parseSheetJsSpreadsheetBytes } from './sheetJsRuntime.js';
+import type { SheetJsParserModule } from './sheetJsAdapter.js';
+import {
+  parseSheetJsSpreadsheetBytes,
+  parseSheetJsSpreadsheetBytesWithParserLoader,
+} from './sheetJsRuntime.js';
 
 function serializeBiff8(workbook: XLSX.WorkBook): Uint8Array {
   const serialized = XLSX.write(workbook, { type: 'array', bookType: 'biff8' });
@@ -83,5 +87,34 @@ describe('SheetJS BIFF8 runtime source isolation', () => {
         await parseSheetJsSpreadsheetBytes(realBiff8WithHiddenSheet()),
       ),
     ).toEqual(EXPECTED_VISIBILITY);
+  });
+
+  it('uses raw BIFF8 BoundSheet8 records when parser-emitted visibility is wrong', async () => {
+    const bytes = realBiff8WithHiddenSheet();
+    const parserThatLosesHiddenMetadata = {
+      CFB: XLSX.CFB,
+      read(
+        source: Uint8Array,
+        options: Parameters<SheetJsParserModule['read']>[1],
+      ) {
+        const parsed = XLSX.read(source, options as XLSX.ParsingOptions);
+        if (parsed.Workbook?.Sheets?.[1] === undefined) {
+          throw new Error('fixture did not materialize hidden-sheet metadata');
+        }
+        parsed.Workbook.Sheets[1] = {
+          ...parsed.Workbook.Sheets[1],
+          Hidden: 0,
+        };
+        return parsed;
+      },
+      utils: XLSX.utils,
+    } as unknown as SheetJsParserModule;
+
+    const workbook = await parseSheetJsSpreadsheetBytesWithParserLoader(
+      bytes,
+      async () => parserThatLosesHiddenMetadata,
+    );
+
+    expect(visibilityProjection(workbook)).toEqual(EXPECTED_VISIBILITY);
   });
 });
