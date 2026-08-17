@@ -4,11 +4,13 @@ import {
   useEffect,
   useReducer,
   useRef,
+  useState,
   type ChangeEvent,
   type FocusEvent,
   type KeyboardEvent,
 } from 'react';
 import { imageFileToInlineDataUri } from '../extensions/Base64Image.js';
+import { spreadsheetFileToDocumentJson } from '../spreadsheet/index.js';
 import type { ImageConfig } from '../types.js';
 
 interface ToolbarProps {
@@ -16,6 +18,8 @@ interface ToolbarProps {
   image?: ImageConfig;
   /** Forwarded from {@link CwlEditor} — image failures must reach the host. */
   onImageError?: (error: unknown) => void;
+  /** Optional host observer for payload-redacted spreadsheet import failures. */
+  onSpreadsheetError?: (error: unknown) => void;
 }
 
 interface ButtonProps {
@@ -29,6 +33,8 @@ interface ButtonProps {
 }
 
 const TOOLBAR_ITEM_SELECTOR = 'button[data-cwl-toolbar-item="true"]';
+const SPREADSHEET_ACCEPT =
+  '.xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 /** Return every toolbar button in visual and DOM navigation order. */
 function getToolbarButtons(toolbar: HTMLDivElement): HTMLButtonElement[] {
@@ -77,7 +83,8 @@ function ToolbarButton({
 /**
  * Commercial-grade toolbar covering the common rich-text affordances:
  * marks, headings, lists, code, quote, link, horizontal rule, table insert +
- * edit, inline-base64 image upload, and image alternative-text authoring.
+ * edit, inline-base64 image upload, local spreadsheet insertion, and image
+ * alternative-text authoring.
  *
  * The toolbar follows the WAI-ARIA composite-toolbar keyboard model: it is one
  * tab stop, Left/Right arrows move between enabled controls with wrapping, and
@@ -86,10 +93,18 @@ function ToolbarButton({
  * already implemented by the editor are exposed with `aria-keyshortcuts` so
  * assistive technology receives the same cross-platform commands as tooltips.
  */
-export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+export function Toolbar({
+  editor,
+  image,
+  onImageError,
+  onSpreadsheetError,
+}: ToolbarProps) {
+  const imageFileInputRef = useRef<HTMLInputElement | null>(null);
+  const spreadsheetFileInputRef = useRef<HTMLInputElement | null>(null);
   const toolbarRef = useRef<HTMLDivElement | null>(null);
   const lastFocusedButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [spreadsheetBusy, setSpreadsheetBusy] = useState(false);
+  const [spreadsheetStatus, setSpreadsheetStatus] = useState('');
   // Re-render on every transaction so active/disabled states (marks, image and
   // table selection, undo/redo) stay in sync without host re-renders.
   const [, bump] = useReducer((n: number) => n + 1, 0);
@@ -224,6 +239,37 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
       editor.chain().focus().setImage({ src, alt: alternativeText }).run();
     },
     [editor, image, onImageError],
+  );
+
+  const onPickSpreadsheet = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (!file || spreadsheetBusy) return;
+
+      setSpreadsheetBusy(true);
+      setSpreadsheetStatus('Importing spreadsheet…');
+      try {
+        const result = await spreadsheetFileToDocumentJson(file);
+        if (result.content.length > 0) {
+          const inserted = editor
+            .chain()
+            .focus()
+            .insertContent(result.content)
+            .run();
+          if (!inserted) throw new Error('Spreadsheet insertion was rejected.');
+        }
+        setSpreadsheetStatus(
+          `Imported ${result.worksheetCount} worksheets, ${result.rowCount} rows, ${result.cellCount} cells.`,
+        );
+      } catch (error) {
+        onSpreadsheetError?.(error);
+        setSpreadsheetStatus('Spreadsheet import failed.');
+      } finally {
+        setSpreadsheetBusy(false);
+      }
+    },
+    [editor, onSpreadsheetError, spreadsheetBusy],
   );
 
   return (
@@ -370,7 +416,13 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
         <ToolbarButton
           title="Insert inline (base64) image"
           label="🖼"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => imageFileInputRef.current?.click()}
+        />
+        <ToolbarButton
+          title="Insert XLS/XLSX spreadsheet"
+          label="XLS"
+          disabled={spreadsheetBusy}
+          onClick={() => spreadsheetFileInputRef.current?.click()}
         />
         <ToolbarButton
           title="Edit image alternative text"
@@ -379,11 +431,20 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
           onClick={setImageAlternativeText}
         />
         <input
-          ref={fileInputRef}
+          ref={imageFileInputRef}
           type="file"
           accept="image/*"
           hidden
           onChange={onPickImage}
+        />
+        <input
+          ref={spreadsheetFileInputRef}
+          data-cwl-spreadsheet-input="true"
+          type="file"
+          accept={SPREADSHEET_ACCEPT}
+          hidden
+          disabled={spreadsheetBusy}
+          onChange={onPickSpreadsheet}
         />
       </div>
 
@@ -403,6 +464,15 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
           onClick={() => editor.chain().focus().redo().run()}
         />
       </div>
+
+      <span
+        className="cwl-toolbar__status"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {spreadsheetStatus}
+      </span>
     </div>
   );
 }
