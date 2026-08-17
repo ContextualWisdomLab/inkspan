@@ -60,7 +60,7 @@ describe('Hangul list import integrity', () => {
     });
   });
 
-  it('rejects mixed direct inline and block list-item content instead of dropping text', async () => {
+  it('rejects mixed direct text and block list-item content instead of dropping text', async () => {
     const privateText = 'private-direct-content';
     let caught: unknown;
 
@@ -68,6 +68,28 @@ describe('Hangul list import integrity', () => {
       await openHangulDocument(new Uint8Array([1]), {
         engine: engineReturning(
           `<ul><li>${privateText}<p>Block</p></li></ul>`,
+        ),
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toMatchObject({
+      name: 'HangulDocumentError',
+      code: 'UNSUPPORTED_DOCUMENT_NODE',
+      message: 'Hangul import contains an unsupported block node.',
+    });
+    expect((caught as Error).message).not.toContain(privateText);
+  });
+
+  it('rejects mixed direct inline elements and block list-item content instead of dropping text', async () => {
+    const privateText = 'private-inline-content';
+    let caught: unknown;
+
+    try {
+      await openHangulDocument(new Uint8Array([1]), {
+        engine: engineReturning(
+          `<ul><li><strong>${privateText}</strong><p>Block</p></li></ul>`,
         ),
       });
     } catch (error) {
