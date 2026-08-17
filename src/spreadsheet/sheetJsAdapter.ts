@@ -269,16 +269,24 @@ export function sheetJsBytesToWorkbookData(
   parser: SheetJsParserModule,
 ): SpreadsheetWorkbookData {
   const boundedSource = preflightSpreadsheetBinarySource(source);
+  // The legacy BIFF8/CFB parser is invoked multiple times per workbook. Give that
+  // parser one bounded invocation-local copy so any in-place parser-side changes
+  // cannot accumulate in caller-owned bytes across adapter/runtime boundaries.
+  // Copying once here preserves the 64 MiB source ceiling without per-sheet copies.
+  const parserSource =
+    boundedSource.format === 'xls'
+      ? new Uint8Array(boundedSource.bytes)
+      : boundedSource.bytes;
   const biff8VisibilityWorkbook =
     boundedSource.format === 'xls'
-      ? readWorkbook(parser, boundedSource.bytes, {
+      ? readWorkbook(parser, parserSource, {
           ...baseReadOptions(),
           sheetRows: 1,
         })
       : undefined;
   const discovery =
     biff8VisibilityWorkbook ??
-    readWorkbook(parser, boundedSource.bytes, {
+    readWorkbook(parser, parserSource, {
       ...baseReadOptions(),
       bookSheets: true,
     });
@@ -321,7 +329,7 @@ export function sheetJsBytesToWorkbookData(
     }
 
     const remainingRows = MAX_WORKBOOK_ROWS - decodedRows;
-    const parsed = readWorkbook(parser, boundedSource.bytes, {
+    const parsed = readWorkbook(parser, parserSource, {
       ...baseReadOptions(),
       sheets: name,
       sheetRows: remainingRows + 1,
