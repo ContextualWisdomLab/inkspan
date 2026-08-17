@@ -260,7 +260,7 @@ export function Toolbar({
           if (!inserted) throw new Error('Spreadsheet insertion was rejected.');
         }
         setSpreadsheetStatus(
-          `Imported ${result.worksheetCount} worksheets, ${result.rowCount} rows, ${result.cellCount} cells.`,
+          `Imported ${result.worksheetCount} ${result.worksheetCount === 1 ? 'worksheet' : 'worksheets'}, ${result.rowCount} ${result.rowCount === 1 ? 'row' : 'rows'}, and ${result.cellCount} ${result.cellCount === 1 ? 'cell' : 'cells'}.`,
         );
       } catch (error) {
         onSpreadsheetError?.(error);
@@ -467,7 +467,7 @@ export function Toolbar({
 
       <span
         className="cwl-toolbar__status"
-        role="status"
+        role={spreadsheetStatus ? 'status' : undefined}
         aria-live="polite"
         aria-atomic="true"
       >
