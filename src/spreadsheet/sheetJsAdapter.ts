@@ -253,22 +253,33 @@ function baseReadOptions(): Omit<
 /**
  * Project locally parsed SheetJS workbook data into Inkspan's parser-neutral
  * workbook contract without granting formulas, macros, links, or parser output
- * any editor authority. Inkspan first performs a sheet-name-only discovery pass.
- * BIFF8 then receives one bounded whole-workbook metadata pass because selective
- * BIFF8 parses do not reliably retain the source sheet visibility flag. Only
- * visible worksheets are subsequently parsed with a row ceiling derived from
- * the remaining aggregate workbook budget. Exact decoded row, column, and cell
- * limits are checked before displayed rows are materialized by `sheet_to_json`.
+ * any editor authority. XLSX first performs a sheet-name-only discovery pass.
+ * BIFF8 instead uses one bounded `sheetRows: 1` whole-workbook parse as both
+ * discovery and the authoritative visibility read: issuing SheetJS's BIFF8
+ * `bookSheets` pass first can alter the parser's subsequent visibility result for
+ * the same fresh byte source. Only worksheets proven visible are selectively
+ * body-parsed with a row ceiling derived from the remaining aggregate workbook
+ * budget. Exact decoded row, column, and cell limits are checked before displayed
+ * rows are materialized by `sheet_to_json`.
  */
 export function sheetJsBytesToWorkbookData(
   source: Uint8Array,
   parser: SheetJsParserModule,
 ): SpreadsheetWorkbookData {
   const boundedSource = preflightSpreadsheetBinarySource(source);
-  const discovery = readWorkbook(parser, boundedSource.bytes, {
-    ...baseReadOptions(),
-    bookSheets: true,
-  });
+  const biff8VisibilityWorkbook =
+    boundedSource.format === 'xls'
+      ? readWorkbook(parser, boundedSource.bytes, {
+          ...baseReadOptions(),
+          sheetRows: 1,
+        })
+      : undefined;
+  const discovery =
+    biff8VisibilityWorkbook ??
+    readWorkbook(parser, boundedSource.bytes, {
+      ...baseReadOptions(),
+      bookSheets: true,
+    });
   const sheetNames = readOwnDataProperty(discovery, 'SheetNames');
   if (!isArray(sheetNames)) unsupportedOrCorruptSource();
   const sheetCount = readArrayLength(sheetNames);
@@ -282,13 +293,6 @@ export function sheetJsBytesToWorkbookData(
     worksheetNames.push(name);
   }
 
-  const biff8VisibilityWorkbook =
-    boundedSource.format === 'xls' && sheetCount > 0
-      ? readWorkbook(parser, boundedSource.bytes, {
-          ...baseReadOptions(),
-          sheetRows: 1,
-        })
-      : undefined;
   const biff8SheetMetadata =
     biff8VisibilityWorkbook === undefined
       ? undefined
