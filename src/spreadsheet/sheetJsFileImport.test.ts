@@ -80,9 +80,16 @@ function richWorkbookBytes(bookType: WorkbookFormat): Uint8Array {
   );
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([]), 'Empty');
 
-  if (!workbook.Workbook) workbook.Workbook = {};
-  if (!workbook.Workbook.Sheets) workbook.Workbook.Sheets = [];
-  workbook.Workbook.Sheets[1] = { Hidden: 1 };
+  /*
+   * Keep a complete metadata array. SheetJS stores visibility by worksheet
+   * index, and its BIFF8 writer traverses workbook metadata as an ordered
+   * sequence. A sparse array can collapse the intended index when serialized,
+   * producing a fixture whose supposedly hidden sheet is actually visible.
+   */
+  workbook.Workbook = {
+    ...(workbook.Workbook ?? {}),
+    Sheets: [{ Hidden: 0 }, { Hidden: 1 }, { Hidden: 0 }],
+  };
 
   return serializeWorkbook(workbook, bookType);
 }
