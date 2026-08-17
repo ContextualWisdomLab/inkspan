@@ -204,6 +204,46 @@ describe('Toolbar spreadsheet import', () => {
     expect(editor.getJSON()).toEqual(before);
   });
 
+  it('fails closed when the editor becomes read-only while parsing', async () => {
+    let resolveImport: ((result: ReturnType<typeof importedResult>) => void) | undefined;
+    spreadsheetMocks.importFile.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveImport = resolve;
+        }),
+    );
+    const editor = makeEditor();
+    const before = editor.getJSON();
+    const onSpreadsheetError = vi.fn();
+    render(
+      <Toolbar
+        editor={editor}
+        onSpreadsheetError={onSpreadsheetError}
+      />,
+    );
+
+    fireEvent.change(spreadsheetInput(), {
+      target: { files: [spreadsheetFile()] },
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Importing spreadsheet…'),
+    );
+
+    act(() => editor.setEditable(false));
+    await act(async () => resolveImport?.(importedResult()));
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Spreadsheet import failed.',
+      ),
+    );
+    expect(onSpreadsheetError).toHaveBeenCalledTimes(1);
+    expect(onSpreadsheetError.mock.calls[0]?.[0]).toMatchObject({
+      message: 'Spreadsheet insertion is unavailable.',
+    });
+    expect(editor.getJSON()).toEqual(before);
+  });
+
   it('disables import while parsing, ignores duplicate busy events, and permits the same file to be selected again', async () => {
     let resolveImport: ((result: ReturnType<typeof importedResult>) => void) | undefined;
     spreadsheetMocks.importFile.mockImplementation(
@@ -261,6 +301,36 @@ describe('Toolbar spreadsheet import', () => {
     );
     expect(screen.getByRole('status')).not.toHaveTextContent('secret workbook');
     expect(onSpreadsheetError).toHaveBeenCalledWith(parserFailure);
+    expect(editor.getJSON()).toEqual(before);
+  });
+
+  it('contains host spreadsheet-error observer failures without changing the redacted status', async () => {
+    spreadsheetMocks.importFile.mockRejectedValue(
+      new Error('private parser failure'),
+    );
+    const editor = makeEditor();
+    const before = editor.getJSON();
+    const onSpreadsheetError = vi.fn(() => {
+      throw new Error('private host observer failure');
+    });
+    render(
+      <Toolbar
+        editor={editor}
+        onSpreadsheetError={onSpreadsheetError}
+      />,
+    );
+
+    fireEvent.change(spreadsheetInput(), {
+      target: { files: [spreadsheetFile()] },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Spreadsheet import failed.',
+      ),
+    );
+    expect(onSpreadsheetError).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('status')).not.toHaveTextContent('private');
     expect(editor.getJSON()).toEqual(before);
   });
 
