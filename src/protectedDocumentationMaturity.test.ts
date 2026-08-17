@@ -25,4 +25,19 @@ describe('protected capability documentation maturity', () => {
     expect(doctoring).not.toContain('Status: Implemented on active PR');
     expect(doctoring).not.toContain('implemented_on_active_pr');
   });
+
+  it('keeps the shipped Markdown export and package-distribution maturity aligned', () => {
+    const manifest = JSON.parse(repositoryFile('package.json')) as {
+      exports?: Record<string, unknown>;
+    };
+    const distribution = repositoryFile('docs/package-distribution.md');
+
+    expect(manifest.exports).toHaveProperty('./markdown');
+    expect(distribution).toContain(
+      '| `@contextualwisdomlab/cwl-editor/markdown` | `implemented_on_protected_main`',
+    );
+    expect(distribution).not.toContain(
+      '| `@contextualwisdomlab/cwl-editor/markdown` | `implemented_on_active_pr`',
+    );
+  });
 });
