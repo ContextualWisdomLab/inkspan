@@ -110,4 +110,28 @@ describe('sheetJsBytesToWorkbookData BIFF8 visibility authority', () => {
       blankrows: true,
     });
   });
+
+  it('does not issue metadata or body reads when discovery reports no sheets', () => {
+    const read = vi.fn(() => ({ SheetNames: [], Sheets: {} }));
+    const parser: SheetJsParserModule = {
+      read,
+      utils: {
+        decode_range: vi.fn(),
+        sheet_to_json: vi.fn(),
+      },
+    };
+
+    expect(sheetJsBytesToWorkbookData(BIFF8_SOURCE, parser)).toEqual({
+      worksheets: [],
+    });
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(read).toHaveBeenCalledWith(BIFF8_SOURCE, {
+      type: 'array',
+      cellFormula: false,
+      cellHTML: false,
+      cellNF: false,
+      bookVBA: false,
+      bookSheets: true,
+    });
+  });
 });
