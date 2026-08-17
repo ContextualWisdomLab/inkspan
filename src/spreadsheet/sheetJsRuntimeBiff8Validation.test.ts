@@ -238,19 +238,20 @@ describe('BIFF8 raw visibility validation', () => {
   });
 
   it('normalizes a throwing typed-view length accessor', async () => {
-    class ThrowingLengthUint8Array extends Uint8Array {
-      override get length(): number {
-        throw new Error('private parser detail');
-      }
-    }
-
     const stream = workbookStream();
+    const content = new Uint8Array(stream);
+    Object.defineProperty(content, 'length', {
+      get() {
+        throw new Error('private parser detail');
+      },
+    });
+
     await expectUnsupported(
       parseWith(
         stream,
         parserWith({
           read: () => ({}),
-          find: () => ({ content: new ThrowingLengthUint8Array(stream) }),
+          find: () => ({ content }),
         }),
       ),
     );
