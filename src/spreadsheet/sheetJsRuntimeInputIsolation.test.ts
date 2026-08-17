@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
 import { parseSheetJsSpreadsheetBytes } from './sheetJsRuntime.js';
 
+function serializeBiff8(workbook: XLSX.WorkBook): Uint8Array {
+  const serialized = XLSX.write(workbook, { type: 'array', bookType: 'biff8' });
+  return serialized instanceof Uint8Array
+    ? serialized
+    : new Uint8Array(serialized as ArrayBuffer);
+}
+
 function realBiff8WithHiddenSheet(): Uint8Array {
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(
@@ -21,11 +28,20 @@ function realBiff8WithHiddenSheet(): Uint8Array {
     ...(workbook.Workbook ?? {}),
     Sheets: [{ Hidden: 0 }, { Hidden: 1 }],
   };
+  return serializeBiff8(workbook);
+}
 
-  const serialized = XLSX.write(workbook, { type: 'array', bookType: 'biff8' });
-  return serialized instanceof Uint8Array
-    ? serialized
-    : new Uint8Array(serialized as ArrayBuffer);
+function realBiff8WithoutHiddenSheet(): Uint8Array {
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(
+    workbook,
+    XLSX.utils.aoa_to_sheet([
+      ['Kind', 'Value'],
+      ['Previous', 1],
+    ]),
+    'Previous',
+  );
+  return serializeBiff8(workbook);
 }
 
 function visibilityProjection(workbook: {
@@ -53,5 +69,19 @@ describe('SheetJS BIFF8 runtime source isolation', () => {
       visibilityProjection(await parseSheetJsSpreadsheetBytes(bytes)),
     ).toEqual(EXPECTED_VISIBILITY);
     expect(Array.from(bytes)).toEqual(pristineBytes);
+  });
+
+  it('does not let an earlier BIFF8 workbook alter a later workbook visibility decision', async () => {
+    expect(
+      visibilityProjection(
+        await parseSheetJsSpreadsheetBytes(realBiff8WithoutHiddenSheet()),
+      ),
+    ).toEqual([{ name: 'Previous', hidden: false }]);
+
+    expect(
+      visibilityProjection(
+        await parseSheetJsSpreadsheetBytes(realBiff8WithHiddenSheet()),
+      ),
+    ).toEqual(EXPECTED_VISIBILITY);
   });
 });
