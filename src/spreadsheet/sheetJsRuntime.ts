@@ -78,11 +78,33 @@ function readUint16LittleEndian(source: Uint8Array, offset: number): number {
 }
 
 function copyCfbEntryBytes(content: unknown, sourceByteLength: number): Uint8Array {
-  if (content instanceof Uint8Array) {
-    if (content.byteLength > sourceByteLength) {
+  if (ArrayBuffer.isView(content)) {
+    let byteLength: number;
+    let elementLength: unknown;
+    try {
+      byteLength = content.byteLength;
+      elementLength = Reflect.get(content, 'length');
+    } catch {
       throw unsupportedOrCorruptSource();
     }
-    return new Uint8Array(content);
+    if (
+      !Number.isSafeInteger(byteLength) ||
+      byteLength < 0 ||
+      byteLength > sourceByteLength ||
+      elementLength !== byteLength
+    ) {
+      throw unsupportedOrCorruptSource();
+    }
+
+    const copy = new Uint8Array(byteLength);
+    for (let index = 0; index < copy.byteLength; index += 1) {
+      const value = readOwnDataProperty(content, String(index));
+      if (!Number.isInteger(value) || (value as number) < 0 || (value as number) > 0xff) {
+        throw unsupportedOrCorruptSource();
+      }
+      copy[index] = value as number;
+    }
+    return copy;
   }
   if (!Array.isArray(content)) {
     throw unsupportedOrCorruptSource();
