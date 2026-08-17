@@ -16,9 +16,10 @@ const BIFF8_SOURCE = new Uint8Array([
 ]);
 
 describe('sheetJsBytesToWorkbookData BIFF8 visibility authority', () => {
-  it('uses the bounded pristine whole-workbook pass as discovery and visibility authority', () => {
+  it('snapshots pristine visibility before any selective body read can mutate parser metadata', () => {
     const summarySheet = { '!ref': 'A1' };
     const privateSheet = { '!ref': 'A1' };
+    const pristineSheetMetadata = [{ Hidden: 0 }, { Hidden: 1 }];
     const read = vi.fn(
       (
         _source: Uint8Array,
@@ -32,11 +33,16 @@ describe('sheetJsBytesToWorkbookData BIFF8 visibility authority', () => {
               Private: privateSheet,
             },
             Workbook: {
-              Sheets: [{ Hidden: 0 }, { Hidden: 1 }],
+              Sheets: pristineSheetMetadata,
             },
           };
         }
         if (options.sheets === 'Summary') {
+          // Model the real BIFF8 parser interaction observed in hosted CI: a
+          // later selective read can invalidate metadata objects retained from
+          // the pristine visibility parse. Inkspan must have copied the hidden
+          // decision before granting the parser another read.
+          pristineSheetMetadata[1]!.Hidden = 0;
           return {
             SheetNames: ['Summary'],
             Sheets: { Summary: summarySheet },
