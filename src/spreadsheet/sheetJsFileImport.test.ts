@@ -28,6 +28,14 @@ function xlsxBytes(): Uint8Array {
   return XLSX.write(workbook, { type: 'array', bookType: 'xlsx' }) as Uint8Array;
 }
 
+function expectUnsupported(promise: Promise<unknown>) {
+  return expect(promise).rejects.toMatchObject({
+    name: 'SpreadsheetImportError',
+    code: 'UNSUPPORTED_OR_CORRUPT',
+    message: 'Spreadsheet source is unsupported or corrupt.',
+  } satisfies Partial<SpreadsheetImportError>);
+}
+
 describe('spreadsheetFileToDocumentJson', () => {
   it('converts a real local XLSX source into bounded editable TipTap content', async () => {
     const result = await spreadsheetFileToDocumentJson(
@@ -66,7 +74,29 @@ describe('spreadsheetFileToDocumentJson', () => {
     expect(arrayBuffer).not.toHaveBeenCalled();
   });
 
-  it('normalizes unreadable local sources without leaking parser payload details', async () => {
+  it.each([-1, 1.5])('rejects an invalid declared source size %s', async (size) => {
+    const arrayBuffer = vi.fn(async () => new ArrayBuffer(0));
+    await expectUnsupported(
+      spreadsheetFileToDocumentJson({ size, arrayBuffer }),
+    );
+    expect(arrayBuffer).not.toHaveBeenCalled();
+  });
+
+  it('normalizes an unreadable source-size accessor', async () => {
+    const source = {
+      arrayBuffer: vi.fn(async () => new ArrayBuffer(0)),
+    } as unknown as SpreadsheetFileSource;
+    Object.defineProperty(source, 'size', {
+      get() {
+        throw new Error('private local path');
+      },
+    });
+
+    await expectUnsupported(spreadsheetFileToDocumentJson(source));
+    expect(source.arrayBuffer).not.toHaveBeenCalled();
+  });
+
+  it('normalizes unreadable local bytes without leaking parser payload details', async () => {
     const source: SpreadsheetFileSource = {
       size: 4,
       async arrayBuffer() {
@@ -74,10 +104,28 @@ describe('spreadsheetFileToDocumentJson', () => {
       },
     };
 
-    await expect(spreadsheetFileToDocumentJson(source)).rejects.toMatchObject({
-      name: 'SpreadsheetImportError',
-      code: 'UNSUPPORTED_OR_CORRUPT',
-      message: 'Spreadsheet source is unsupported or corrupt.',
-    } satisfies Partial<SpreadsheetImportError>);
+    await expectUnsupported(spreadsheetFileToDocumentJson(source));
+  });
+
+  it('rejects a non-ArrayBuffer body from a hostile source adapter', async () => {
+    const source = {
+      size: 4,
+      async arrayBuffer() {
+        return 'not bytes';
+      },
+    } as unknown as SpreadsheetFileSource;
+
+    await expectUnsupported(spreadsheetFileToDocumentJson(source));
+  });
+
+  it('rejects a source whose declared size changes at the byte boundary', async () => {
+    const source: SpreadsheetFileSource = {
+      size: 4,
+      async arrayBuffer() {
+        return new ArrayBuffer(5);
+      },
+    };
+
+    await expectUnsupported(spreadsheetFileToDocumentJson(source));
   });
 });
