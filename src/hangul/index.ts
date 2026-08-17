@@ -187,6 +187,14 @@ function resolveHangulEngineCount(value: number, failureMessage: string): number
   return value;
 }
 
+/** Validate host-engine text before caller member access or coercion. */
+function resolveHangulEngineString(value: unknown, failureMessage: string): string {
+  if (typeof value !== 'string') {
+    throw new HangulDocumentError('ENGINE_OPERATION_FAILED', failureMessage);
+  }
+  return value;
+}
+
 /** Validate the runtime export selector before the host engine receives authority. */
 function resolveHangulExportFormat(format: unknown): 'hwp' | 'hwpx' {
   const resolved = format === undefined ? 'hwpx' : format;
@@ -499,7 +507,10 @@ export async function openHangulDocument(source: Uint8Array, options: OpenHangul
   let primaryError: HangulDocumentError | undefined;
   try {
     try {
-      const sourceFormat = document.getSourceFormat().toLowerCase();
+      const sourceFormat = resolveHangulEngineString(
+        document.getSourceFormat(),
+        HANGUL_IMPORT_FAILURE_MESSAGE,
+      ).toLowerCase();
       if (sourceFormat !== 'hwp' && sourceFormat !== 'hwpx') throw new HangulDocumentError('UNSUPPORTED_SOURCE_FORMAT', 'Unsupported Hangul source format.');
       const html: string[] = [];
       const sectionCount = resolveHangulEngineCount(
@@ -517,12 +528,15 @@ export async function openHangulDocument(source: Uint8Array, options: OpenHangul
             HANGUL_IMPORT_FAILURE_MESSAGE,
           );
           html.push(
-            document.exportSelectionHtml(
-              section,
-              0,
-              0,
-              count - 1,
-              paragraphLength,
+            resolveHangulEngineString(
+              document.exportSelectionHtml(
+                section,
+                0,
+                0,
+                count - 1,
+                paragraphLength,
+              ),
+              HANGUL_IMPORT_FAILURE_MESSAGE,
             ),
           );
         }
