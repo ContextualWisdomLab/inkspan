@@ -106,12 +106,6 @@
   cursor: not-allowed;
 }
 
-@media (forced-colors: active) {
-  .cwl-tb-btn:focus-visible {
-    outline-color: CanvasText;
-  }
-}
-
 .cwl-editor__surface {
   overflow-y: auto;
   max-height: 70vh;
@@ -127,6 +121,11 @@
 
 .cwl-editor__content:focus {
   outline: none;
+}
+
+.cwl-editor__content:focus-visible {
+  outline: 2px solid var(--cwl-accent);
+  outline-offset: -2px;
 }
 
 .cwl-editor__content > * + * {
@@ -258,6 +257,94 @@
 
 .cwl-editor__surface:has(.collaboration-cursor__caret) .cwl-editor__content {
   padding-top: calc(16px + 1.6em);
+}
+
+@media (forced-colors: active) {
+  .cwl-editor {
+    color: CanvasText;
+    background: Canvas;
+    border-color: CanvasText;
+  }
+
+  .cwl-toolbar,
+  .cwl-collaboration-status {
+    background: ButtonFace;
+    color: ButtonText;
+    border-bottom-color: CanvasText;
+  }
+
+  .cwl-tb-group {
+    border-right-color: CanvasText;
+  }
+
+  .cwl-tb-btn {
+    background: ButtonFace;
+    color: ButtonText;
+    border-color: ButtonText;
+  }
+
+  .cwl-tb-btn:hover:not(:disabled) {
+    background: Highlight;
+    color: HighlightText;
+  }
+
+  .cwl-tb-btn:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+
+  .cwl-tb-btn.is-active {
+    background: Highlight;
+    border-color: Highlight;
+    color: HighlightText;
+  }
+
+  .cwl-tb-btn:disabled {
+    opacity: 1;
+    color: GrayText;
+    border-color: GrayText;
+  }
+
+  .cwl-editor__content:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
+  .cwl-editor__content a {
+    color: LinkText;
+  }
+
+  .cwl-editor__content blockquote {
+    border-left-color: CanvasText;
+    color: GrayText;
+  }
+
+  .cwl-editor__content .is-editor-empty:first-child::before {
+    color: GrayText;
+  }
+
+  .cwl-editor__content code,
+  .cwl-editor__content pre,
+  .cwl-editor__content th,
+  .cwl-editor__content td {
+    border-color: CanvasText;
+  }
+
+  .cwl-editor__content code,
+  .cwl-editor__content pre,
+  .cwl-editor__content th {
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .collaboration-cursor__caret {
+    border-left-color: Highlight;
+  }
+
+  .collaboration-cursor__label {
+    background: Highlight;
+    color: HighlightText;
+  }
 }
 
 @media print {
