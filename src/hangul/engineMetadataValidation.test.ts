@@ -71,4 +71,19 @@ describe('Hangul engine structural metadata validation', () => {
     ).rejects.toMatchObject(EXPECTED_IMPORT_FAILURE);
     expect(exportSelectionHtml).not.toHaveBeenCalled();
   });
+
+  it('reads the section count once so a stateful host cannot move the traversal bound', async () => {
+    const getSectionCount = vi.fn(() => 1);
+    const document = createDocument({ getSectionCount });
+
+    const result = await openHangulDocument(new Uint8Array([1]), {
+      engine: createEngine(document),
+    });
+
+    expect(result.documentJson).toEqual({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'x' }] }],
+    });
+    expect(getSectionCount).toHaveBeenCalledTimes(1);
+  });
 });
