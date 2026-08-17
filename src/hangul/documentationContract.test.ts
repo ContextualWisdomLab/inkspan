@@ -21,4 +21,15 @@ describe('Hangul compatibility documentation', () => {
     expect(hangulGuide).not.toContain('| Lists | Planned | Planned |');
     expect(hangulGuide).not.toContain('| Tables | Planned | Planned |');
   });
+
+  it('documents the capability metadata returned by the public import API', () => {
+    expect(hangulGuide).toContain(
+      '{ documentJson, sourceFormat, warnings, lossy, capabilities }',
+    );
+    expect(hangulGuide).toContain('`capabilities` object is frozen');
+    expect(hangulGuide).toContain('`importFormats`');
+    expect(hangulGuide).toContain('`exportFormats`');
+    expect(hangulGuide).toContain('`recommendedExportFormat`');
+    expect(hangulGuide).toContain('`supportedContent`');
+  });
 });
