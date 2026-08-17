@@ -103,6 +103,22 @@ function expectUnsupported(promise: Promise<unknown>) {
 }
 
 describe('spreadsheetFileToDocumentJson', () => {
+  it('preserves hidden-sheet metadata in the real BIFF8 visibility parse', () => {
+    const workbook = XLSX.read(richWorkbookBytes('biff8'), {
+      type: 'array',
+      cellFormula: false,
+      cellHTML: false,
+      cellNF: false,
+      bookVBA: false,
+      sheetRows: 1,
+    });
+
+    expect(workbook.SheetNames).toEqual(['Summary', 'Hidden', 'Empty']);
+    expect(
+      workbook.Workbook?.Sheets?.map((sheet) => sheet.Hidden ?? 0),
+    ).toEqual([0, 1, 0]);
+  });
+
   it.each([
     ['XLSX', 'xlsx'],
     ['BIFF8 XLS', 'biff8'],
