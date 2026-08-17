@@ -52,4 +52,47 @@ describe('collaboration awareness identity counting', () => {
       trimSpy.mockRestore();
     }
   });
+
+  it('skips accessor-backed remote identity fields without executing caller code', () => {
+    let userGetterCalls = 0;
+    let idGetterCalls = 0;
+
+    const accessorBackedState: Record<string, unknown> = {};
+    Object.defineProperty(accessorBackedState, 'user', {
+      enumerable: true,
+      get() {
+        userGetterCalls += 1;
+        throw new Error('private remote user getter must not execute');
+      },
+    });
+
+    const accessorBackedUser: Record<string, unknown> = {};
+    Object.defineProperty(accessorBackedUser, 'id', {
+      enumerable: true,
+      get() {
+        idGetterCalls += 1;
+        throw new Error('private remote id getter must not execute');
+      },
+    });
+
+    const states = new Map<number, Record<string, unknown>>([
+      [11, { user: { id: 'local-editor' } }],
+      [12, accessorBackedState],
+      [13, { user: accessorBackedUser }],
+      [14, { user: { id: 'editor-bob' } }],
+    ]);
+    const awareness: CollaborationAwareness = {
+      clientID: 11,
+      states,
+      getLocalState: () => states.get(11) ?? null,
+      getStates: () => states,
+      setLocalStateField: () => undefined,
+      on: () => undefined,
+      off: () => undefined,
+    };
+
+    expect(countRemoteCollaborators(awareness)).toBe(1);
+    expect(userGetterCalls).toBe(0);
+    expect(idGetterCalls).toBe(0);
+  });
 });
