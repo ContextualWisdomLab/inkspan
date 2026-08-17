@@ -48,11 +48,33 @@ export interface ExportHangulDocumentOptions {
   maxOutputBytes?: number;
 }
 
+/** Structural content kinds the bounded Hangul bridge currently round-trips. */
+export type HangulSupportedContent =
+  | 'paragraph'
+  | 'heading'
+  | 'bold'
+  | 'italic'
+  | 'strike'
+  | 'bulletList'
+  | 'orderedList'
+  | 'blockquote'
+  | 'codeBlock'
+  | 'table';
+
+/** Deterministic host-visible capability metadata for the bounded Hangul bridge. */
+export interface HangulDocumentCapabilities {
+  readonly importFormats: readonly ('hwp' | 'hwpx')[];
+  readonly exportFormats: readonly ('hwpx' | 'hwp')[];
+  readonly recommendedExportFormat: 'hwpx';
+  readonly supportedContent: readonly HangulSupportedContent[];
+}
+
 export interface HangulDocumentImportResult {
   sourceFormat: 'hwp' | 'hwpx';
   documentJson: Readonly<HangulDocumentJson>;
   warnings: readonly string[];
   lossy: boolean;
+  capabilities: HangulDocumentCapabilities;
 }
 
 export interface HangulDocumentExportResult {
@@ -60,6 +82,24 @@ export interface HangulDocumentExportResult {
   bytes: Uint8Array;
   warnings: readonly string[];
 }
+
+const HANGUL_DOCUMENT_CAPABILITIES: HangulDocumentCapabilities = Object.freeze({
+  importFormats: Object.freeze(['hwp', 'hwpx'] as const),
+  exportFormats: Object.freeze(['hwpx', 'hwp'] as const),
+  recommendedExportFormat: 'hwpx',
+  supportedContent: Object.freeze([
+    'paragraph',
+    'heading',
+    'bold',
+    'italic',
+    'strike',
+    'bulletList',
+    'orderedList',
+    'blockquote',
+    'codeBlock',
+    'table',
+  ] as const),
+});
 
 /** Module-owned identity brand that never reflects over untrusted thrown values. */
 const HANGUL_DOCUMENT_ERRORS = new WeakSet<object>();
@@ -407,7 +447,13 @@ export async function openHangulDocument(source: Uint8Array, options: OpenHangul
       }
       const documentJson = htmlToJson(html.join(''));
       Object.freeze(documentJson);
-      return { sourceFormat, documentJson, warnings: Object.freeze([]), lossy: false };
+      return {
+        sourceFormat,
+        documentJson,
+        warnings: Object.freeze([]),
+        lossy: false,
+        capabilities: HANGUL_DOCUMENT_CAPABILITIES,
+      };
     } catch (error) {
       primaryError = isHangulDocumentError(error)
         ? error
