@@ -103,6 +103,79 @@ describe('sheetJsBytesToWorkbookData BIFF8 visibility authority', () => {
     });
   });
 
+  it('isolates the authoritative BIFF8 visibility source from later body reads', () => {
+    const summarySheet = { '!ref': 'A1' };
+    const privateSheet = { '!ref': 'A1' };
+    let retainedVisibilitySource: Uint8Array | undefined;
+    let visibilityWasCorrupted = false;
+
+    const read = vi.fn(
+      (
+        source: Uint8Array,
+        options: Parameters<SheetJsParserModule['read']>[1],
+      ): unknown => {
+        if (options.sheetRows === 1 && options.sheets === undefined) {
+          retainedVisibilitySource = source;
+          const hidden = visibilityWasCorrupted ? 0 : 1;
+          visibilityWasCorrupted = false;
+          return {
+            SheetNames: ['Summary', 'Private'],
+            Sheets: {
+              Summary: summarySheet,
+              Private: privateSheet,
+            },
+            Workbook: {
+              Sheets: [{ Hidden: 0 }, { Hidden: hidden }],
+            },
+          };
+        }
+        if (options.sheets === 'Summary') {
+          if (source === retainedVisibilitySource) {
+            visibilityWasCorrupted = true;
+          }
+          return {
+            SheetNames: ['Summary'],
+            Sheets: { Summary: summarySheet },
+            Workbook: { Sheets: [{ Hidden: 0 }] },
+          };
+        }
+        if (options.sheets === 'Private') {
+          return {
+            SheetNames: ['Private'],
+            Sheets: { Private: privateSheet },
+            Workbook: { Sheets: [{ Hidden: 0 }] },
+          };
+        }
+        throw new Error('unexpected parser invocation');
+      },
+    );
+    const parser: SheetJsParserModule = {
+      read,
+      utils: {
+        decode_range: () => ({ s: { r: 0, c: 0 }, e: { r: 0, c: 0 } }),
+        sheet_to_json: vi.fn(() => [['public']]),
+      },
+    };
+
+    expect(sheetJsBytesToWorkbookData(BIFF8_SOURCE, parser)).toEqual({
+      worksheets: [
+        { name: 'Summary', hidden: false, rows: [['public']] },
+        { name: 'Private', hidden: true, rows: [] },
+      ],
+    });
+    expect(sheetJsBytesToWorkbookData(BIFF8_SOURCE, parser)).toEqual({
+      worksheets: [
+        { name: 'Summary', hidden: false, rows: [['public']] },
+        { name: 'Private', hidden: true, rows: [] },
+      ],
+    });
+
+    expect(read).toHaveBeenCalledTimes(4);
+    expect(read.mock.calls[0]?.[0]).not.toBe(BIFF8_SOURCE);
+    expect(read.mock.calls[0]?.[0]).not.toBe(read.mock.calls[1]?.[0]);
+    expect(read.mock.calls[2]?.[0]).not.toBe(read.mock.calls[3]?.[0]);
+  });
+
   it('does not issue body reads when bounded BIFF8 discovery reports no sheets', () => {
     const read = vi.fn(() => ({ SheetNames: [], Sheets: {} }));
     const parser: SheetJsParserModule = {
