@@ -13,6 +13,7 @@ export interface EditorFrameProps {
   image?: ImageConfig;
   className?: string;
   onImageError?: (error: unknown) => void;
+  onSpreadsheetError?: (error: unknown) => void;
   formFieldName?: string;
   formId?: string;
   formFieldDisabled?: boolean;
@@ -34,6 +35,7 @@ export function EditorFrame({
   image,
   className,
   onImageError,
+  onSpreadsheetError,
   formFieldName,
   formId,
   formFieldDisabled,
@@ -88,6 +90,7 @@ export function EditorFrame({
           editor={editor}
           image={image}
           onImageError={onImageError}
+          onSpreadsheetError={onSpreadsheetError}
         />
       ) : null}
       <div className="cwl-editor__surface" onKeyDown={onKeyDown}>
