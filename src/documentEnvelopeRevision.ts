@@ -10,11 +10,21 @@ const ARRAY_BUFFER_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
   ArrayBuffer.prototype,
   'byteLength',
 )!.get!;
+const DIGEST_CREATION_FAILURE_MESSAGE =
+  'Document envelope SHA-256 digest could not be created';
 
 /** SHA-256 provider compatible with the Web Cryptography `SubtleCrypto` API. */
 export interface DocumentEnvelopeDigestProvider {
   /** Produce a SHA-256 digest for one complete canonical byte sequence. */
   digest(algorithm: 'SHA-256', source: BufferSource): Promise<ArrayBuffer>;
+}
+
+/** Package-internal snapshot of one provider capability and its receiver. */
+export interface ResolvedDocumentEnvelopeDigestProvider {
+  /** Original provider receiver required by Web Crypto-compatible methods. */
+  readonly provider: DocumentEnvelopeDigestProvider;
+  /** Exact digest callable captured once at the operation boundary. */
+  readonly digest: DocumentEnvelopeDigestProvider['digest'];
 }
 
 /** Portable strong validator derived from one canonical document envelope. */
@@ -39,7 +49,8 @@ export class DocumentEnvelopeRevisionError extends Error {
 /**
  * Create a SHA-256 revision validator from an envelope object or JSON text.
  *
- * The source is parsed through Inkspan's strict envelope boundary and then
+ * The digest capability is captured before the caller-controlled source is
+ * parsed. The source then passes Inkspan's strict envelope boundary and is
  * canonicalized before hashing, so equivalent supported envelopes produce the
  * same validator regardless of object-property or insignificant-whitespace
  * order. The optional provider exists for dependency injection; omitting it
@@ -50,25 +61,34 @@ export async function createDocumentEnvelopeRevision(
   limits?: DocumentEnvelopeLimits,
   digestProvider?: DocumentEnvelopeDigestProvider | null,
 ): Promise<CwlEditorDocumentRevision> {
+  const resolvedProvider = resolveDocumentEnvelopeDigestProvider(digestProvider);
   const envelope = parseDocumentEnvelope(source, limits);
-  return createValidatedDocumentEnvelopeRevision(envelope, digestProvider);
+  return createValidatedDocumentEnvelopeRevisionWithResolvedProvider(
+    envelope,
+    resolvedProvider,
+  );
 }
 
 /**
  * Create a SHA-256 revision validator from strict UTF-8 envelope bytes.
  *
- * Noncanonical but otherwise valid input is parsed and reserialized to the RFC
- * 8785 representation before hashing. Byte-order marks, malformed UTF-8,
- * duplicate names, unsupported versions, and resource-limit violations fail
- * before the digest provider runs.
+ * The digest capability is captured before byte-source processing. Noncanonical
+ * but otherwise valid input is parsed and reserialized to the RFC 8785
+ * representation before hashing. Byte-order marks, malformed UTF-8, duplicate
+ * names, unsupported versions, and resource-limit violations fail before the
+ * digest callable runs.
  */
 export async function createDocumentEnvelopeRevisionBytes(
   source: unknown,
   limits?: DocumentEnvelopeLimits,
   digestProvider?: DocumentEnvelopeDigestProvider | null,
 ): Promise<CwlEditorDocumentRevision> {
+  const resolvedProvider = resolveDocumentEnvelopeDigestProvider(digestProvider);
   const envelope = parseDocumentEnvelopeBytes(source, limits);
-  return createValidatedDocumentEnvelopeRevision(envelope, digestProvider);
+  return createValidatedDocumentEnvelopeRevisionWithResolvedProvider(
+    envelope,
+    resolvedProvider,
+  );
 }
 
 /**
@@ -82,15 +102,32 @@ export async function createValidatedDocumentEnvelopeRevision(
   envelope: CwlEditorDocumentEnvelope,
   digestProvider?: DocumentEnvelopeDigestProvider | null,
 ): Promise<CwlEditorDocumentRevision> {
-  const provider = resolveDigestProvider(digestProvider);
+  return createValidatedDocumentEnvelopeRevisionWithResolvedProvider(
+    envelope,
+    resolveDocumentEnvelopeDigestProvider(digestProvider),
+  );
+}
+
+/**
+ * Hash one validated envelope with an already captured provider capability.
+ *
+ * Multi-revision operations use this package-internal helper so one hostile or
+ * mutable provider property cannot change meaning between related revisions.
+ */
+export async function createValidatedDocumentEnvelopeRevisionWithResolvedProvider(
+  envelope: CwlEditorDocumentEnvelope,
+  resolvedProvider: ResolvedDocumentEnvelopeDigestProvider,
+): Promise<CwlEditorDocumentRevision> {
   const canonicalBytes = encodeValidatedDocumentEnvelope(envelope);
   let digestResult: ArrayBuffer;
   try {
-    digestResult = await provider.digest('SHA-256', canonicalBytes);
-  } catch {
-    throw new DocumentEnvelopeRevisionError(
-      'Document envelope SHA-256 digest could not be created',
+    digestResult = await resolvedProvider.digest.call(
+      resolvedProvider.provider,
+      'SHA-256',
+      canonicalBytes,
     );
+  } catch {
+    throw new DocumentEnvelopeRevisionError(DIGEST_CREATION_FAILURE_MESSAGE);
   }
 
   let digestBytes: Uint8Array;
@@ -113,30 +150,51 @@ export async function createValidatedDocumentEnvelopeRevision(
   });
 }
 
-function resolveDigestProvider(
+/**
+ * Capture one usable SHA-256 capability before expensive operation work begins.
+ *
+ * The returned object keeps the exact callable together with its original
+ * receiver. Provider-property reflection failures are converted into the same
+ * payload-redacted revision error as invocation failures.
+ */
+export function resolveDocumentEnvelopeDigestProvider(
   digestProvider: DocumentEnvelopeDigestProvider | null | undefined,
-): DocumentEnvelopeDigestProvider {
+): ResolvedDocumentEnvelopeDigestProvider {
   if (digestProvider === null) {
     throw new DocumentEnvelopeRevisionError(
       'A SHA-256 digest provider is unavailable',
     );
   }
-  if (digestProvider !== undefined) return digestProvider;
 
-  let platformProvider: SubtleCrypto | undefined;
+  let provider: DocumentEnvelopeDigestProvider;
+  if (digestProvider !== undefined) {
+    provider = digestProvider;
+  } else {
+    let platformProvider: SubtleCrypto | undefined;
+    try {
+      platformProvider = globalThis.crypto?.subtle;
+    } catch {
+      throw new DocumentEnvelopeRevisionError(
+        'A SHA-256 digest provider is unavailable',
+      );
+    }
+    if (platformProvider === undefined) {
+      throw new DocumentEnvelopeRevisionError(
+        'A SHA-256 digest provider is unavailable',
+      );
+    }
+    provider = platformProvider;
+  }
+
   try {
-    platformProvider = globalThis.crypto?.subtle;
+    const digest = provider.digest;
+    if (typeof digest !== 'function') {
+      throw new TypeError('invalid digest provider');
+    }
+    return Object.freeze({ provider, digest });
   } catch {
-    throw new DocumentEnvelopeRevisionError(
-      'A SHA-256 digest provider is unavailable',
-    );
+    throw new DocumentEnvelopeRevisionError(DIGEST_CREATION_FAILURE_MESSAGE);
   }
-  if (platformProvider === undefined) {
-    throw new DocumentEnvelopeRevisionError(
-      'A SHA-256 digest provider is unavailable',
-    );
-  }
-  return platformProvider;
 }
 
 function bytesToLowercaseHex(bytes: Uint8Array): string {

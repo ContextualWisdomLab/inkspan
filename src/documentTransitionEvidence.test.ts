@@ -5,7 +5,10 @@ import {
   type CwlEditorDocumentEnvelope,
 } from './documentEnvelope.js';
 import { encodeDocumentEnvelope } from './documentEnvelopeCanonical.js';
-import type { DocumentEnvelopeDigestProvider } from './documentEnvelopeRevision.js';
+import {
+  DocumentEnvelopeRevisionError,
+  type DocumentEnvelopeDigestProvider,
+} from './documentEnvelopeRevision.js';
 import {
   DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_ID,
   DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_VERSION,
@@ -158,6 +161,70 @@ describe('document transition evidence', () => {
     ).rejects.toThrow();
 
     expect(digestProvider.digest).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unusable provider before object or byte source processing', async () => {
+    let objectSourceReads = 0;
+    const objectSource = new Proxy(createDocumentEnvelope(PREVIOUS_DOCUMENT), {
+      ownKeys(target) {
+        objectSourceReads += 1;
+        return Reflect.ownKeys(target);
+      },
+    });
+    const malformedProvider = {
+      digest: 42,
+    } as unknown as DocumentEnvelopeDigestProvider;
+
+    await expect(
+      createDocumentEnvelopeTransitionEvidence(
+        objectSource,
+        createDocumentEnvelope(RESULTING_DOCUMENT),
+        undefined,
+        malformedProvider,
+      ),
+    ).rejects.toBeInstanceOf(DocumentEnvelopeRevisionError);
+    expect(objectSourceReads).toBe(0);
+
+    await expect(
+      createDocumentEnvelopeTransitionEvidenceBytes(
+        'invalid byte source',
+        'invalid byte source',
+        undefined,
+        malformedProvider,
+      ),
+    ).rejects.toBeInstanceOf(DocumentEnvelopeRevisionError);
+  });
+
+  it('resolves one provider capability for both transition revisions', async () => {
+    const previousEnvelope = createDocumentEnvelope(PREVIOUS_DOCUMENT);
+    const resultingEnvelope = createDocumentEnvelope(RESULTING_DOCUMENT);
+    let digestReads = 0;
+    const calls: unknown[] = [];
+    const provider = {
+      get digest() {
+        digestReads += 1;
+        return async function (
+          this: unknown,
+          algorithm: 'SHA-256',
+          source: BufferSource,
+        ): Promise<ArrayBuffer> {
+          expect(algorithm).toBe('SHA-256');
+          calls.push(this);
+          return sha256(source);
+        };
+      },
+    } as DocumentEnvelopeDigestProvider;
+
+    const evidence = await createDocumentEnvelopeTransitionEvidence(
+      previousEnvelope,
+      resultingEnvelope,
+      undefined,
+      provider,
+    );
+
+    expect(evidence.changed).toBe(true);
+    expect(digestReads).toBe(1);
+    expect(calls).toEqual([provider, provider]);
   });
 
   it('hashes previous then resulting canonical bytes without overlapping provider calls', async () => {

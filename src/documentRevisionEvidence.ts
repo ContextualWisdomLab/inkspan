@@ -5,9 +5,11 @@ import {
   type DocumentEnvelopeLimits,
 } from './documentEnvelope.js';
 import {
-  createValidatedDocumentEnvelopeRevision,
+  createValidatedDocumentEnvelopeRevisionWithResolvedProvider,
+  resolveDocumentEnvelopeDigestProvider,
   type CwlEditorDocumentRevision,
   type DocumentEnvelopeDigestProvider,
+  type ResolvedDocumentEnvelopeDigestProvider,
 } from './documentEnvelopeRevision.js';
 
 /**
@@ -28,7 +30,8 @@ export interface CwlEditorDocumentRevisionEvidence {
 /**
  * Create frozen revision evidence from an envelope object or JSON text.
  *
- * The source is parsed once through Inkspan's strict versioned-envelope
+ * The digest capability is captured before caller-controlled source processing.
+ * The source is then parsed once through Inkspan's strict versioned-envelope
  * boundary. The returned envelope is the exact normalized frozen payload whose
  * RFC 8785 canonical UTF-8 bytes produced the paired SHA-256 revision.
  */
@@ -37,30 +40,32 @@ export async function createDocumentEnvelopeRevisionEvidence(
   limits?: DocumentEnvelopeLimits,
   digestProvider?: DocumentEnvelopeDigestProvider | null,
 ): Promise<CwlEditorDocumentRevisionEvidence> {
+  const resolvedProvider = resolveDocumentEnvelopeDigestProvider(digestProvider);
   const envelope = parseDocumentEnvelope(source, limits);
-  return createValidatedDocumentEnvelopeRevisionEvidence(
+  return createValidatedDocumentEnvelopeRevisionEvidenceWithResolvedProvider(
     envelope,
-    digestProvider,
+    resolvedProvider,
   );
 }
 
 /**
  * Create frozen revision evidence from strict UTF-8 envelope bytes.
  *
- * Noncanonical but valid JSON is normalized through the existing strict byte
- * parser before hashing. Malformed UTF-8, byte-order marks, duplicate names,
- * unsupported versions, and resource-limit violations fail before the digest
- * provider runs.
+ * The digest capability is captured before byte-source processing. Noncanonical
+ * but valid JSON is normalized through the existing strict byte parser before
+ * hashing. Malformed UTF-8, byte-order marks, duplicate names, unsupported
+ * versions, and resource-limit violations fail before the digest callable runs.
  */
 export async function createDocumentEnvelopeRevisionEvidenceBytes(
   source: unknown,
   limits?: DocumentEnvelopeLimits,
   digestProvider?: DocumentEnvelopeDigestProvider | null,
 ): Promise<CwlEditorDocumentRevisionEvidence> {
+  const resolvedProvider = resolveDocumentEnvelopeDigestProvider(digestProvider);
   const envelope = parseDocumentEnvelopeBytes(source, limits);
-  return createValidatedDocumentEnvelopeRevisionEvidence(
+  return createValidatedDocumentEnvelopeRevisionEvidenceWithResolvedProvider(
     envelope,
-    digestProvider,
+    resolvedProvider,
   );
 }
 
@@ -75,9 +80,21 @@ export async function createValidatedDocumentEnvelopeRevisionEvidence(
   envelope: CwlEditorDocumentEnvelope,
   digestProvider?: DocumentEnvelopeDigestProvider | null,
 ): Promise<CwlEditorDocumentRevisionEvidence> {
-  const revision = await createValidatedDocumentEnvelopeRevision(
+  return createValidatedDocumentEnvelopeRevisionEvidenceWithResolvedProvider(
     envelope,
-    digestProvider,
+    resolveDocumentEnvelopeDigestProvider(digestProvider),
   );
+}
+
+/** Pair a validated envelope with a revision using one captured digest capability. */
+async function createValidatedDocumentEnvelopeRevisionEvidenceWithResolvedProvider(
+  envelope: CwlEditorDocumentEnvelope,
+  resolvedProvider: ResolvedDocumentEnvelopeDigestProvider,
+): Promise<CwlEditorDocumentRevisionEvidence> {
+  const revision =
+    await createValidatedDocumentEnvelopeRevisionWithResolvedProvider(
+      envelope,
+      resolvedProvider,
+    );
   return Object.freeze({ envelope, revision });
 }
