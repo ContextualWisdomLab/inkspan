@@ -77,6 +77,37 @@ function readUint16LittleEndian(source: Uint8Array, offset: number): number {
   return source[offset]! | (source[offset + 1]! << 8);
 }
 
+function copyCfbEntryBytes(content: unknown, sourceByteLength: number): Uint8Array {
+  if (content instanceof Uint8Array) {
+    if (content.byteLength > sourceByteLength) {
+      throw unsupportedOrCorruptSource();
+    }
+    return new Uint8Array(content);
+  }
+  if (!Array.isArray(content)) {
+    throw unsupportedOrCorruptSource();
+  }
+
+  const length = readOwnDataProperty(content, 'length');
+  if (
+    !Number.isSafeInteger(length) ||
+    (length as number) < 0 ||
+    (length as number) > sourceByteLength
+  ) {
+    throw unsupportedOrCorruptSource();
+  }
+
+  const copy = new Uint8Array(length as number);
+  for (let index = 0; index < copy.byteLength; index += 1) {
+    const value = readOwnDataProperty(content, String(index));
+    if (!Number.isInteger(value) || (value as number) < 0 || (value as number) > 0xff) {
+      throw unsupportedOrCorruptSource();
+    }
+    copy[index] = value as number;
+  }
+  return copy;
+}
+
 function readBiff8WorkbookStream(
   source: Uint8Array,
   parser: SheetJsParserModule,
@@ -103,10 +134,7 @@ function readBiff8WorkbookStream(
   }
 
   const content = readOwnDataProperty(workbookEntry, 'content');
-  if (!(content instanceof Uint8Array)) {
-    throw unsupportedOrCorruptSource();
-  }
-  return new Uint8Array(content);
+  return copyCfbEntryBytes(content, source.byteLength);
 }
 
 function readBiff8HiddenStates(workbookStream: Uint8Array): readonly boolean[] {
