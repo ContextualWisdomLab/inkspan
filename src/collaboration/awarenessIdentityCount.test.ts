@@ -134,6 +134,30 @@ describe('collaboration awareness identity counting', () => {
     expect(countRemoteCollaborators(awareness)).toBe(1);
   });
 
+  it('skips null and primitive remote states before descriptor reflection', () => {
+    const runtimeStates = new Map<number, unknown>([
+      [11, { user: { id: 'local-editor' } }],
+      [12, null],
+      [13, 'not-an-awareness-state'],
+      [14, { user: { id: 'editor-bob' } }],
+    ]);
+    const states = runtimeStates as unknown as Map<
+      number,
+      Record<string, unknown>
+    >;
+    const awareness: CollaborationAwareness = {
+      clientID: 11,
+      states,
+      getLocalState: () => states.get(11) ?? null,
+      getStates: () => states,
+      setLocalStateField: () => undefined,
+      on: () => undefined,
+      off: () => undefined,
+    };
+
+    expect(countRemoteCollaborators(awareness)).toBe(1);
+  });
+
   it('skips reflection-hostile remote identity shapes without leaking trap failures', () => {
     const hostileState = new Proxy<Record<string, unknown>>(
       {},
