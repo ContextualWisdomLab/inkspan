@@ -78,6 +78,23 @@ function isHangulDocumentError(error: unknown): error is HangulDocumentError {
   return HANGUL_DOCUMENT_ERRORS.has(error as object);
 }
 
+/** Contain host cleanup failures without replacing an existing Inkspan failure. */
+function freeHangulDocument(
+  document: HangulEngineDocument,
+  primaryError: HangulDocumentError | undefined,
+): void {
+  try {
+    document.free?.();
+  } catch {
+    if (primaryError === undefined) {
+      throw new HangulDocumentError(
+        'ENGINE_CLEANUP_FAILED',
+        'The Hangul engine failed during cleanup.',
+      );
+    }
+  }
+}
+
 const TEXT_ALIGNMENTS = new Set(['left', 'center', 'right', 'justify']);
 const DEFAULT_MAX_DOCUMENT_BYTES = 64 * 1024 * 1024;
 const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(
@@ -363,6 +380,7 @@ export async function openHangulDocument(source: Uint8Array, options: OpenHangul
   const sourceSnapshot = snapshotHangulSource(source, maxSourceBytes);
   let document: HangulEngineDocument;
   try { document = await options.engine.open(sourceSnapshot); } catch { throw new HangulDocumentError('ENGINE_OPEN_FAILED', 'The Hangul engine could not open the document.'); }
+  let primaryError: HangulDocumentError | undefined;
   try {
     try {
       const sourceFormat = document.getSourceFormat().toLowerCase();
@@ -376,10 +394,17 @@ export async function openHangulDocument(source: Uint8Array, options: OpenHangul
       Object.freeze(documentJson);
       return { sourceFormat, documentJson, warnings: Object.freeze([]), lossy: false };
     } catch (error) {
-      if (isHangulDocumentError(error)) throw error;
-      throw new HangulDocumentError('ENGINE_OPERATION_FAILED', 'The Hangul engine failed during import.');
+      primaryError = isHangulDocumentError(error)
+        ? error
+        : new HangulDocumentError(
+            'ENGINE_OPERATION_FAILED',
+            'The Hangul engine failed during import.',
+          );
+      throw primaryError;
     }
-  } finally { document.free?.(); }
+  } finally {
+    freeHangulDocument(document, primaryError);
+  }
 }
 
 /** Export edited Inkspan JSON as HWPX by default or HWP explicitly. */
@@ -389,6 +414,7 @@ export async function exportHangulDocument(documentJson: HangulDocumentJson, opt
   const html = jsonToHtml(documentJson);
   let document: HangulEngineDocument;
   try { document = await options.engine.create(); } catch { throw new HangulDocumentError('ENGINE_CREATE_FAILED', 'The Hangul engine could not create a document.'); }
+  let primaryError: HangulDocumentError | undefined;
   try {
     try {
       document.createBlankDocument?.();
@@ -401,8 +427,15 @@ export async function exportHangulDocument(documentJson: HangulDocumentJson, opt
       const bytes = snapshotHangulOutput(engineBytes, maxOutputBytes);
       return { format, bytes, warnings: Object.freeze([]) };
     } catch (error) {
-      if (isHangulDocumentError(error)) throw error;
-      throw new HangulDocumentError('ENGINE_OPERATION_FAILED', 'The Hangul engine failed during export.');
+      primaryError = isHangulDocumentError(error)
+        ? error
+        : new HangulDocumentError(
+            'ENGINE_OPERATION_FAILED',
+            'The Hangul engine failed during export.',
+          );
+      throw primaryError;
     }
-  } finally { document.free?.(); }
+  } finally {
+    freeHangulDocument(document, primaryError);
+  }
 }
