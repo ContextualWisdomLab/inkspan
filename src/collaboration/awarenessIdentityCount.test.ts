@@ -106,12 +106,20 @@ describe('collaboration awareness identity counting', () => {
       enumerable: false,
       value: { id: 'editor-hidden' },
     });
+    const missingIdState = { user: { name: 'missing-id' } };
+    const nonEnumerableIdUser: Record<string, unknown> = {};
+    Object.defineProperty(nonEnumerableIdUser, 'id', {
+      enumerable: false,
+      value: 'editor-hidden-id',
+    });
 
     const states = new Map<number, Record<string, unknown>>([
       [11, { user: { id: 'local-editor' } }],
       [12, inheritedState],
       [13, nonEnumerableState],
-      [14, { user: { id: 'editor-bob' } }],
+      [14, missingIdState],
+      [15, { user: nonEnumerableIdUser }],
+      [16, { user: { id: 'editor-bob' } }],
     ]);
     const awareness: CollaborationAwareness = {
       clientID: 11,
