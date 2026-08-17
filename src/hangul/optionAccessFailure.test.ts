@@ -24,15 +24,15 @@ function unusedEngine(onUse: () => void): HangulDocumentEngine {
   };
 }
 
-const PARAGRAPH_DOCUMENT = Object.freeze({
+const PARAGRAPH_DOCUMENT = {
   type: 'doc',
-  content: Object.freeze([
-    Object.freeze({
+  content: [
+    {
       type: 'paragraph',
-      content: Object.freeze([Object.freeze({ type: 'text', text: 'safe' })]),
-    }),
-  ]),
-});
+      content: [{ type: 'text', text: 'safe' }],
+    },
+  ],
+};
 
 function expectInvalidOptions(result: Promise<unknown>): Promise<void> {
   return expect(result).rejects.toMatchObject({
