@@ -12,7 +12,7 @@ describe('editor placeholder accessibility documentation', () => {
       'docs/doctoring/editor-placeholder-accessibility.md',
     );
 
-    expect(doctoring).toContain('Status: Implemented on protected main');
+    expect(doctoring).toContain('Status: Implemented on active PR');
     expect(doctoring).toContain('aria-placeholder');
     expect(doctoring).toContain('supplemental guidance');
     expect(doctoring).toContain('aria-labelledby');

@@ -1,10 +1,10 @@
 # Editor placeholder accessibility
 
-Status: Implemented on protected main
+Status: Implemented on active PR
 
 ## Purpose
 
-Inkspan's visual empty-editor hint is rendered by the TipTap Placeholder extension. The protected accessibility behavior mirrors that same host-supplied placeholder into the ProseMirror textbox's `aria-placeholder` attribute so assistive-technology users can receive equivalent entry guidance without requiring every embedding host to duplicate the text in a separate description element.
+Inkspan's visual empty-editor hint is rendered by the TipTap Placeholder extension. The active accessibility change mirrors that same host-supplied placeholder into the ProseMirror textbox's `aria-placeholder` attribute so assistive-technology users can receive equivalent entry guidance without requiring every embedding host to duplicate the text in a separate description element.
 
 The placeholder remains **supplemental guidance**, not the editor's accessible name. Inkspan's existing accessible-name precedence remains unchanged: `aria-labelledby` whenever a host supplies a non-blank label reference, otherwise an explicit `aria-label`, otherwise the product fallback label.
 
@@ -22,7 +22,7 @@ Standalone and provider-neutral collaborative surfaces use the same `buildEditor
 
 ## Verification
 
-The protected verification line includes:
+The active test line includes:
 
 - a focused historical RED proving the accessibility builder had no placeholder input or attribute contract;
 - normalized non-empty placeholder plus `aria-labelledby` name precedence;
