@@ -9,7 +9,7 @@
  */
 import Image from '@tiptap/extension-image';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
-import { blobToDataUri } from '../converter/base64.js';
+import { Base64SizeError, blobToDataUri } from '../converter/base64.js';
 import {
   Base64ImageSourceError,
   validateInlineImageSource,
@@ -46,6 +46,80 @@ export interface Base64ImageOptions {
 
 export const base64ImagePluginKey = new PluginKey('cwlBase64Image');
 
+const blobSizeGetter = Object.getOwnPropertyDescriptor(
+  globalThis.Blob.prototype,
+  'size',
+)!.get!;
+const safeImageIngressErrors = new WeakSet<object>();
+const INVALID_IMAGE_PROCESSING_OPTIONS_MESSAGE =
+  'Image processing options must use bounded numeric values.';
+
+/** Reject a malformed runtime byte or pixel limit before consuming input. */
+function assertNonNegativeSafeInteger(value: number): void {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new RangeError(INVALID_IMAGE_PROCESSING_OPTIONS_MESSAGE);
+  }
+}
+
+/** Reject a malformed runtime image quality before browser image processing. */
+function assertImageQuality(value: number): void {
+  if (!Number.isFinite(value) || value < 0 || value > 1) {
+    throw new RangeError(INVALID_IMAGE_PROCESSING_OPTIONS_MESSAGE);
+  }
+}
+
+/** Read Blob byte length from its platform internal slot, ignoring own accessors. */
+function intrinsicBlobSize(blob: Blob): number {
+  return Reflect.apply(blobSizeGetter, blob, []) as number;
+}
+
+/** Mark an Inkspan-created ingress error without exposing a forgeable property. */
+function markSafeImageIngressError<T extends Error>(error: T): T {
+  safeImageIngressErrors.add(error);
+  return error;
+}
+
+/** Normalize an untrusted caught value without inspecting or coercing it. */
+function normalizeUntrustedImageIngressError(error: unknown): Error {
+  return safeImageIngressErrors.has(error as object)
+    ? (error as Error)
+    : new Error('Image processing failed.');
+}
+
+/**
+ * Notify the host about an image rejection without granting observer failures
+ * authority over parser, transaction-filter, or asynchronous ingress results.
+ */
+function reportImageError(
+  observer: Base64ImageOptions['onError'],
+  error: Error,
+): void {
+  if (!observer) return;
+  try {
+    observer(error);
+  } catch {
+    // Host presentation/telemetry is best-effort and cannot change rejection.
+  }
+}
+
+/**
+ * Validate a generated source and privately brand any deterministic policy
+ * failure so the async ingress boundary may preserve its safe diagnostic.
+ */
+function validateGeneratedInlineImageSource(
+  source: string,
+  maxSizeBytes: number,
+): string {
+  try {
+    return validateInlineImageSource(source, maxSizeBytes);
+  } catch (error) {
+    if (typeof error === 'object' && error !== null) {
+      safeImageIngressErrors.add(error);
+    }
+    throw error;
+  }
+}
+
 /**
  * Downscale an image data URI using an offscreen canvas when it exceeds
  * `maxDimension`. Returns the original URI unchanged when no DOM is available
@@ -56,10 +130,12 @@ export async function downscaleDataUri(
   maxDimension: number,
   quality: number,
 ): Promise<string> {
+  assertNonNegativeSafeInteger(maxDimension);
+  assertImageQuality(quality);
   if (
     typeof document === 'undefined' ||
     typeof globalThis.Image === 'undefined' ||
-    maxDimension <= 0
+    maxDimension === 0
   ) {
     return dataUri;
   }
@@ -100,24 +176,39 @@ export async function imageFileToInlineDataUri(
   file: Blob,
   options: Pick<Base64ImageOptions, 'maxSizeBytes' | 'maxDimension' | 'quality'>,
 ): Promise<string> {
+  assertNonNegativeSafeInteger(options.maxSizeBytes);
+  if (options.maxDimension !== undefined) {
+    assertNonNegativeSafeInteger(options.maxDimension);
+  }
+  assertImageQuality(options.quality);
+
+  if (options.maxSizeBytes > 0) {
+    const sourceBytes = intrinsicBlobSize(file);
+    if (sourceBytes > options.maxSizeBytes) {
+      throw markSafeImageIngressError(
+        new Base64SizeError(sourceBytes, options.maxSizeBytes),
+      );
+    }
+  }
+
   const dataUri = await blobToDataUri(file, {
     maxBytes: options.maxSizeBytes > 0 ? options.maxSizeBytes : undefined,
   });
-  validateInlineImageSource(dataUri, options.maxSizeBytes);
-  if (options.maxDimension && options.maxDimension > 0) {
+  validateGeneratedInlineImageSource(dataUri, options.maxSizeBytes);
+  if (options.maxDimension !== undefined && options.maxDimension > 0) {
     const scaled = await downscaleDataUri(
       dataUri,
       options.maxDimension,
       options.quality,
     );
-    return validateInlineImageSource(scaled, options.maxSizeBytes);
+    return validateGeneratedInlineImageSource(scaled, options.maxSizeBytes);
   }
   return dataUri;
 }
 
-/** Normalize a caught value to the Error contract exposed to hosts. */
+/** Normalize a caught value from Inkspan-controlled validation paths. */
 function normalizeImageError(error: unknown): Error {
-  /* v8 ignore next -- all shipped validation and conversion paths throw Error. */
+  /* v8 ignore next -- all shipped validation paths throw Error. */
   return error instanceof Error ? error : new Error('Image processing failed.');
 }
 
@@ -155,7 +246,7 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
               title: element.getAttribute('title'),
             };
           } catch (error) {
-            this.options.onError?.(normalizeImageError(error));
+            reportImageError(this.options.onError, normalizeImageError(error));
             return false;
           }
         },
@@ -190,24 +281,44 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
     const editor = this.editor;
 
     const insertFiles = (files: File[], at?: number) => {
+      if (!editor.isEditable) return false;
       const images = files.filter((file) => file.type.startsWith('image/'));
       if (images.length === 0) return false;
-      for (const file of images) {
-        imageFileToInlineDataUri(file, options)
-          .then((src) => {
-            if (editor.isDestroyed) return;
-            // New images are explicitly decorative until an author supplies
-            // meaningful replacement text through the toolbar.
-            const node = editor.schema.nodes.image.create({ src, alt: '' });
+
+      const insertInSourceOrder = async () => {
+        let insertionPosition = at;
+        for (const file of images) {
+          try {
+            const src = await imageFileToInlineDataUri(file, options);
+            if (editor.isDestroyed || !editor.isEditable) return;
+            const alternativeText = window.prompt(
+              'Image alternative text. Leave empty only if this image is decorative.',
+              '',
+            );
+            if (alternativeText === null) continue;
+            const node = editor.schema.nodes.image.create({
+              src,
+              alt: alternativeText,
+            });
             const pos =
-              typeof at === 'number' ? at : editor.state.selection.from;
+              typeof insertionPosition === 'number'
+                ? insertionPosition
+                : editor.state.selection.from;
             const transaction = editor.state.tr.insert(pos, node);
+            if (typeof insertionPosition === 'number') {
+              insertionPosition = transaction.mapping.map(pos, 1);
+            }
             editor.view.dispatch(transaction);
-          })
-          .catch((error: unknown) => {
-            options.onError?.(normalizeImageError(error));
-          });
-      }
+          } catch (error) {
+            reportImageError(
+              options.onError,
+              normalizeUntrustedImageIngressError(error),
+            );
+          }
+        }
+      };
+
+      void insertInSourceOrder();
       return true;
     };
 
@@ -232,7 +343,7 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
             }
           });
           if (!rejection) return true;
-          options.onError?.(rejection);
+          reportImageError(options.onError, rejection);
           return false;
         },
         props: {
