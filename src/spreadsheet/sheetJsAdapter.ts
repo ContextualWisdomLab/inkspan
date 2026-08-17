@@ -253,18 +253,15 @@ function baseReadOptions(): Omit<
 /**
  * Project locally parsed SheetJS workbook data into Inkspan's parser-neutral
  * workbook contract without granting formulas, macros, links, or parser output
- * any editor authority. XLSX first performs a sheet-name-only discovery pass.
- * BIFF8 instead uses one bounded `sheetRows: 1` whole-workbook parse as both
- * discovery and the authoritative visibility read: issuing SheetJS's BIFF8
- * `bookSheets` pass first can alter the parser's subsequent visibility result for
- * the same fresh byte source. The visibility read receives an invocation-local
- * source that is never reused for body parsing, and visibility decisions are copied
- * to primitive booleans before any selective body read. This prevents later BIFF8
- * parser activity from mutating either retained metadata or the byte source that
- * established visibility. Only worksheets proven visible are then selectively
- * body-parsed with a row ceiling derived from the remaining aggregate workbook
- * budget. Exact decoded row, column, and cell limits are checked before displayed
- * rows are materialized by `sheet_to_json`.
+ * any editor authority. XLSX first performs a sheet-name-only discovery pass and
+ * then selectively parses individual sheet bodies against the remaining aggregate
+ * row budget. BIFF8 uses one invocation-local whole-workbook snapshot bounded to
+ * `MAX_WORKBOOK_ROWS + 1` rows per worksheet. Real BIFF8 evidence shows that
+ * mixing visibility and selective parser reads can make later hidden-sheet state
+ * depend on parser history, so visibility and displayed bodies must come from the
+ * same parser result. The source envelope remains bounded before parser loading,
+ * and exact worksheet/count/range/row/column/cell limits are revalidated before
+ * displayed rows are materialized into Inkspan's parser-neutral contract.
  */
 export function sheetJsBytesToWorkbookData(
   source: Uint8Array,
@@ -272,24 +269,17 @@ export function sheetJsBytesToWorkbookData(
 ): SpreadsheetWorkbookData {
   const boundedSource = preflightSpreadsheetBinarySource(source);
   const isBiff8 = boundedSource.format === 'xls';
-  // SheetJS's legacy BIFF8/CFB reader can retain parser objects that refer to the
-  // invocation source. Keep the authoritative visibility input isolated from all
-  // later body reads, while still using at most two bounded parser-owned copies.
-  const biff8VisibilitySource = isBiff8
-    ? new Uint8Array(boundedSource.bytes)
-    : undefined;
   const parserSource = isBiff8
     ? new Uint8Array(boundedSource.bytes)
     : boundedSource.bytes;
-  const biff8VisibilityWorkbook =
-    biff8VisibilitySource === undefined
-      ? undefined
-      : readWorkbook(parser, biff8VisibilitySource, {
-          ...baseReadOptions(),
-          sheetRows: 1,
-        });
+  const biff8Workbook = isBiff8
+    ? readWorkbook(parser, parserSource, {
+        ...baseReadOptions(),
+        sheetRows: MAX_WORKBOOK_ROWS + 1,
+      })
+    : undefined;
   const discovery =
-    biff8VisibilityWorkbook ??
+    biff8Workbook ??
     readWorkbook(parser, parserSource, {
       ...baseReadOptions(),
       bookSheets: true,
@@ -308,16 +298,16 @@ export function sheetJsBytesToWorkbookData(
   }
 
   const biff8SheetMetadata =
-    biff8VisibilityWorkbook === undefined
+    biff8Workbook === undefined
       ? undefined
-      : readWorkbookSheetMetadata(biff8VisibilityWorkbook);
+      : readWorkbookSheetMetadata(biff8Workbook);
   const biff8HiddenStates =
-    biff8VisibilityWorkbook === undefined
+    biff8Workbook === undefined
       ? undefined
       : worksheetNames.map((name) =>
           readHiddenState(
             biff8SheetMetadata,
-            readParsedSheetIndex(biff8VisibilityWorkbook, name),
+            readParsedSheetIndex(biff8Workbook, name),
           ),
         );
 
@@ -333,17 +323,19 @@ export function sheetJsBytesToWorkbookData(
     }
 
     const remainingRows = MAX_WORKBOOK_ROWS - decodedRows;
-    const parsed = readWorkbook(parser, parserSource, {
-      ...baseReadOptions(),
-      sheets: name,
-      sheetRows: remainingRows + 1,
-    });
+    const parsed =
+      biff8Workbook ??
+      readWorkbook(parser, parserSource, {
+        ...baseReadOptions(),
+        sheets: name,
+        sheetRows: remainingRows + 1,
+      });
     const sheets = readOwnDataProperty(parsed, 'Sheets');
     if (!isObject(sheets)) unsupportedOrCorruptSource();
     const sheet = readOwnDataProperty(sheets, name);
     if (!isObject(sheet)) unsupportedOrCorruptSource();
 
-    if (biff8VisibilityWorkbook === undefined) {
+    if (biff8Workbook === undefined) {
       const parsedSheetIndex = readParsedSheetIndex(parsed, name);
       const sheetMetadata = readWorkbookSheetMetadata(parsed);
       if (readHiddenState(sheetMetadata, parsedSheetIndex)) {
