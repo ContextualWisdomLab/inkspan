@@ -10,7 +10,8 @@ Inkspan owns:
 - deterministic conversion rules;
 - stable error semantics;
 - byte/resource limits;
-- explicit loss reporting.
+- explicit loss reporting;
+- deterministic public capability metadata for the bounded bridge.
 
 The host owns:
 
@@ -36,11 +37,11 @@ sequenceDiagram
     Bridge->>Engine: open(bytes)
     Engine-->>Bridge: bounded document API
     Bridge->>Engine: source format / sections / HTML projection
-    Bridge-->>Host: { documentJson, sourceFormat, warnings, lossy }
+    Bridge-->>Host: { documentJson, sourceFormat, warnings, lossy, capabilities }
     Host->>Editor: setDocumentJson(documentJson)
 ```
 
-The original bytes remain host-owned. Importing a file does not mutate it.
+The original bytes remain host-owned. Importing a file does not mutate it. The returned `capabilities` object is frozen, deterministic Inkspan metadata: it declares `importFormats`, `exportFormats`, `recommendedExportFormat`, and the currently round-trippable `supportedContent`. Hosts can use that metadata for UI and routing without probing the host engine or inferring support from failures.
 
 ## Export flow
 
@@ -93,7 +94,7 @@ async function saveAsHwpx(
 
 ## Compatibility contract
 
-The initial bridge deliberately supports a bounded semantic subset and rejects unsupported export nodes instead of silently deleting them. The compatibility matrix expands only when real HWP/HWPX fixtures demonstrate stable round-trip behavior.
+The initial bridge deliberately supports a bounded semantic subset and rejects unsupported export nodes instead of silently deleting them. The compatibility matrix expands only when real HWP/HWPX fixtures demonstrate stable round-trip behavior. `capabilities.supportedContent` is the machine-consumable projection of the same currently implemented subset; this table remains the human-readable contract and limitation guide.
 
 | Content | Import | Export | Notes |
 |---|---|---|---|
