@@ -65,28 +65,62 @@ function preparePackage() {
   );
 }
 
-function verifyAuthorityFreeBundles() {
+function assertAuthorityBoundedSource(source, filename) {
+  assert.doesNotMatch(
+    source,
+    ambientAuthorityPattern,
+    `${filename} must not reference ambient network or credential authority`,
+  );
+  assert.doesNotMatch(
+    source,
+    forbiddenProductGraphPattern,
+    `${filename} must not embed React, Yjs, CWL host, or model authority`,
+  );
+}
+
+function verifyOwnedLazyParserChunk(filename, findings) {
+  assert.equal(
+    findings.length,
+    1,
+    `${filename} must contain only its single package-owned lazy parser edge`,
+  );
+  const [finding] = findings;
+  assert.ok(
+    finding.kind === 'dynamic-import' || finding.kind === 'commonjs-require',
+    `${filename} lazy parser edge must remain an explicit import or require`,
+  );
+  const extension = filename.endsWith('.cjs') ? 'cjs' : 'js';
+  assert.match(
+    finding.specifier ?? '',
+    new RegExp(`^\\./xlsx-[A-Za-z0-9_-]+\\.${extension}$`, 'u'),
+    `${filename} may lazy-load only its emitted package-owned SheetJS chunk`,
+  );
+
+  const chunkFilename = finding.specifier.slice(2);
+  const chunkPath = join(packageDirectory, 'dist', chunkFilename);
+  assert.ok(
+    existsSync(chunkPath),
+    `${filename} lazy parser chunk must be present in the packed artifact`,
+  );
+  const chunkSource = readFileSync(chunkPath, 'utf8');
+  assert.deepEqual(
+    findRuntimeModuleAuthority(chunkSource, chunkFilename),
+    [],
+    `${chunkFilename} must not delegate further executable module authority`,
+  );
+  assertAuthorityBoundedSource(chunkSource, chunkFilename);
+}
+
+function verifyAuthorityBoundedBundles() {
   assert.ok(existsSync(join(packageDirectory, 'dist', 'spreadsheet', 'index.d.ts')));
   for (const filename of ['cwl-spreadsheet.js', 'cwl-spreadsheet.cjs']) {
     const bundleSource = readFileSync(
       join(packageDirectory, 'dist', filename),
       'utf8',
     );
-    assert.deepEqual(
-      findRuntimeModuleAuthority(bundleSource, filename),
-      [],
-      `${filename} must not contain executable runtime module authority`,
-    );
-    assert.doesNotMatch(
-      bundleSource,
-      ambientAuthorityPattern,
-      `${filename} must not reference ambient network or credential authority`,
-    );
-    assert.doesNotMatch(
-      bundleSource,
-      forbiddenProductGraphPattern,
-      `${filename} must not embed React, Yjs, CWL host, or model authority`,
-    );
+    const findings = findRuntimeModuleAuthority(bundleSource, filename);
+    verifyOwnedLazyParserChunk(filename, findings);
+    assertAuthorityBoundedSource(bundleSource, filename);
   }
 }
 
@@ -133,7 +167,7 @@ assert.throws(
 
 try {
   preparePackage();
-  verifyAuthorityFreeBundles();
+  verifyAuthorityBoundedBundles();
   verifyRuntimeConsumers();
   console.log(
     `Verified packed ${packageJson.name}/spreadsheet through authority-bounded ESM and CommonJS consumers.`,
