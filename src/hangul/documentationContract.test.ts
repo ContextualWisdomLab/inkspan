@@ -2,10 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-const hangulGuide = readFileSync(
-  new URL('../../docs/HANGUL.md', import.meta.url),
-  'utf8',
-);
+const hangulGuide = readFileSync('docs/HANGUL.md', 'utf8');
 
 describe('Hangul compatibility documentation', () => {
   it('documents the structures exercised by the public round-trip contract', () => {
