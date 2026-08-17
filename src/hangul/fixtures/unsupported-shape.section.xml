@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<hs:sec xmlns:hs="http://www.hancom.co.kr/hwpml/2011/section" xmlns:hp="http://www.hancom.co.kr/hwpml/2011/paragraph">
+  <hp:p>
+    <hp:run>
+      <hp:t>Opening Remarks</hp:t>
+    </hp:run>
+  </hp:p>
+  <hp:rect>
+    <hp:t>tenant-secret-shape</hp:t>
+  </hp:rect>
+</hs:sec>
