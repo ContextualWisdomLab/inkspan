@@ -144,7 +144,7 @@ Expected degraded states are explicit rather than mapped to false success:
 
 A public release binds one exact integrated protected source head to package/artifact identity, applicable CI/security/accessibility/document-fidelity evidence, owned production coverage, public-docstring evidence, SBOM/provenance/reproducibility where configured, formal review requirements, rollback guidance, and post-publication smoke verification.
 
-Before immutable publication, the canonical draft inventory is **exactly three regular top-level files**: exactly one npm tarball, exactly one Inkspan Office wheel, and `SHA256SUMS`. Missing, stale, unexpected, duplicate, non-regular, incompletely uploaded, or digest-mismatched assets fail closed. After upload and before publication, the authenticated paginated GitHub Releases API inventory must equal the local release directory by exact asset name, every remote asset must report an uploaded state, and every GitHub-reported `sha256:` digest must equal the digest of the exact transferred local file. The workflow does not silently delete an unexpected remote asset to make an ambiguous draft look clean.
+Before immutable publication, the canonical draft inventory is **exactly four regular top-level files**: exactly one npm tarball, exactly one Inkspan Office wheel, `inkspan.spdx.json`, and `SHA256SUMS`. Missing, stale, unexpected, duplicate, non-regular, incompletely uploaded, or digest-mismatched assets fail closed. After upload and before publication, the authenticated paginated GitHub Releases API inventory must equal the local release directory by exact asset name, every remote asset must report an uploaded state, and every GitHub-reported `sha256:` digest must equal the digest of the exact transferred local file. The workflow does not silently delete an unexpected remote asset to make an ambiguous draft look clean.
 
 Rollback must preserve readable canonical documents and must not require silently reinterpreting persisted schema or selector-projection semantics. Host-owned migrations, persistence rollback, annotation re-anchoring, tenant recovery, and deployment rollback remain host responsibilities unless a future versioned contract explicitly assigns them to Inkspan.
 
@@ -160,7 +160,7 @@ Rollback must preserve readable canonical documents and must not require silentl
 | Office rendering | deterministic bounded JSON→artifact conversion | file destination policy, downstream distribution, tenant authorization |
 | naruon composition | stable local package/module boundary | authenticated compose transport, tenancy, provider/model policy |
 | model assistance | deterministic proposal acceptance boundary | provider, prompt/data policy, credentials, human approval |
-| release evidence | exact three-file draft inventory, package/artifact/digest verification and repository evidence | downstream deployment and operational rollout |
+| release evidence | exact four-file draft inventory, package/artifact/digest verification and repository evidence | downstream deployment and operational rollout |
 
 ## Related canonical documents
 

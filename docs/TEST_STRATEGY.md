@@ -57,7 +57,7 @@ At minimum, maintain regressions for:
 - selection/revision races and document movement during asynchronous hashing;
 - Office formula prefixes, invalid XML characters, malicious strings, path/publication races, invalid worksheet names, invalid freeze panes, cyclic input, pathological nesting, excessive container size, and partial write failure;
 - local XLS/XLSX body import from a known small workbook File through the real toolbar/editor path, including asserted heading/cell text, hidden-sheet exclusion, formula/link non-execution, FileReader fallback when `arrayBuffer` is absent, and payload-redacted failures;
-- package/release stale draft assets, unexpected or non-regular local entries, exact three-file inventory violations, incomplete remote uploads, GitHub-vs-local digest mismatch, stale exact-head evidence, mutable provenance inputs, and isolated packed-consumer behavior.
+- package/release stale draft assets, unexpected or non-regular local entries, exact four-file inventory violations, incomplete remote uploads, GitHub-vs-local digest mismatch, stale exact-head evidence, mutable provenance inputs, and isolated packed-consumer behavior.
 
 ## Concurrency and failure testing
 
@@ -69,7 +69,7 @@ Host persistence transactions, tenant isolation, distributed collaboration autho
 
 A release candidate requires the exact integrated protected head to satisfy applicable CI, security, JavaScript/TypeScript 100% statement/branch/function/line coverage, Office coverage.py 100% report plus public-docstring completeness, package-consumer, accessibility, browser differential, Office artifact, SBOM/provenance, reproducibility, unresolved-thread, actually required independent-review, and release-workflow gates. Queued, skipped-required, cancelled, absent, stale-head, predecessor-head, status-only, or synthetic-merge evidence is not accepted as success.
 
-The release workflow must also satisfy the normative `docs/CONTRACTS.md` draft inventory contract: exactly one npm tarball, exactly one Office wheel, and `SHA256SUMS`; no other top-level entry; remote uploaded asset names exactly equal local names; and every GitHub-reported `sha256:` digest equals the exact transferred local file digest. Missing, stale, unexpected, non-regular, incomplete, or digest-mismatched assets are failures, not cleanup opportunities.
+The release workflow must also satisfy the normative `docs/CONTRACTS.md` draft inventory contract: exactly one npm tarball, exactly one Office wheel, `inkspan.spdx.json`, and `SHA256SUMS`; no other top-level entry; remote uploaded asset names exactly equal local names; and every GitHub-reported `sha256:` digest equals the exact transferred local file digest. Missing, stale, unexpected, non-regular, incomplete, or digest-mismatched assets are failures, not cleanup opportunities.
 
 The 0.6.0 rich-clipboard release line specifically requires the protected dependency-locked **Playwright 1.62.0** Chromium, Firefox, and WebKit differential gate on the exact integrated protected release candidate before publication. Deterministic jsdom coverage remains useful but is not a substitute for browser-engine acceptance. Tagged release evidence must be generated anew from the release candidate and must verify the exact packed npm artifact, not merely reuse a previously green feature-branch run.
 
