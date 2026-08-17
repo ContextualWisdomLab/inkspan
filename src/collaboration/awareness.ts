@@ -185,6 +185,22 @@ export function createScopedCollaborationProvider(
   };
 }
 
+/** Read one own enumerable data field without invoking caller-defined accessors. */
+function ownEnumerableDataValue(
+  value: unknown,
+  property: string,
+): unknown {
+  if (typeof value !== 'object' || value === null) return undefined;
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(value, property);
+    return descriptor?.enumerable === true && 'value' in descriptor
+      ? descriptor.value
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Count remote awareness clients carrying a valid public user identifier. */
 export function countRemoteCollaborators(
   awareness: CollaborationAwareness | undefined,
@@ -193,9 +209,9 @@ export function countRemoteCollaborators(
   let count = 0;
   for (const [clientId, state] of awareness.getStates()) {
     if (clientId === awareness.clientID) continue;
-    const user = state.user;
+    const user = ownEnumerableDataValue(state, 'user');
     if (typeof user !== 'object' || user === null) continue;
-    const id = (user as Record<string, unknown>).id;
+    const id = ownEnumerableDataValue(user, 'id');
     if (typeof id !== 'string') continue;
     if (id.length > MAX_REMOTE_IDENTIFIER_SOURCE_LENGTH) continue;
     const normalizedId = id.trim();
