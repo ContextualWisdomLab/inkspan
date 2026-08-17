@@ -257,10 +257,12 @@ function baseReadOptions(): Omit<
  * BIFF8 instead uses one bounded `sheetRows: 1` whole-workbook parse as both
  * discovery and the authoritative visibility read: issuing SheetJS's BIFF8
  * `bookSheets` pass first can alter the parser's subsequent visibility result for
- * the same fresh byte source. Only worksheets proven visible are selectively
- * body-parsed with a row ceiling derived from the remaining aggregate workbook
- * budget. Exact decoded row, column, and cell limits are checked before displayed
- * rows are materialized by `sheet_to_json`.
+ * the same fresh byte source. BIFF8 visibility decisions are copied to primitive
+ * booleans before any selective body read so later parser activity cannot mutate
+ * the authoritative metadata objects. Only worksheets proven visible are then
+ * selectively body-parsed with a row ceiling derived from the remaining aggregate
+ * workbook budget. Exact decoded row, column, and cell limits are checked before
+ * displayed rows are materialized by `sheet_to_json`.
  */
 export function sheetJsBytesToWorkbookData(
   source: Uint8Array,
@@ -297,22 +299,25 @@ export function sheetJsBytesToWorkbookData(
     biff8VisibilityWorkbook === undefined
       ? undefined
       : readWorkbookSheetMetadata(biff8VisibilityWorkbook);
+  const biff8HiddenStates =
+    biff8VisibilityWorkbook === undefined
+      ? undefined
+      : worksheetNames.map((name) =>
+          readHiddenState(
+            biff8SheetMetadata,
+            readParsedSheetIndex(biff8VisibilityWorkbook, name),
+          ),
+        );
 
   const worksheets: SpreadsheetWorksheetData[] = [];
   let visibleCount = 0;
   let decodedRows = 0;
   let decodedCells = 0;
 
-  for (const name of worksheetNames) {
-    if (biff8VisibilityWorkbook !== undefined) {
-      const visibilityIndex = readParsedSheetIndex(
-        biff8VisibilityWorkbook,
-        name,
-      );
-      if (readHiddenState(biff8SheetMetadata, visibilityIndex)) {
-        worksheets.push({ name, hidden: true, rows: [] });
-        continue;
-      }
+  for (const [worksheetIndex, name] of worksheetNames.entries()) {
+    if (biff8HiddenStates?.[worksheetIndex] === true) {
+      worksheets.push({ name, hidden: true, rows: [] });
+      continue;
     }
 
     const remainingRows = MAX_WORKBOOK_ROWS - decodedRows;
