@@ -56,6 +56,7 @@ At minimum, maintain regressions for:
 - autosave stale validators, conflict/failure recovery, ambiguous transport outcomes, duplicate/no-op lifecycle transitions, callback exceptions, queue bounds, flush/close behavior, and durable-validator coherence;
 - selection/revision races and document movement during asynchronous hashing;
 - Office formula prefixes, invalid XML characters, malicious strings, path/publication races, invalid worksheet names, invalid freeze panes, cyclic input, pathological nesting, excessive container size, and partial write failure;
+- local XLS/XLSX body import from a known small workbook File through the real toolbar/editor path, including asserted heading/cell text, hidden-sheet exclusion, formula/link non-execution, FileReader fallback when `arrayBuffer` is absent, and payload-redacted failures;
 - package/release stale draft assets, unexpected or non-regular local entries, exact three-file inventory violations, incomplete remote uploads, GitHub-vs-local digest mismatch, stale exact-head evidence, mutable provenance inputs, and isolated packed-consumer behavior.
 
 ## Concurrency and failure testing

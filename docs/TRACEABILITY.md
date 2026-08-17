@@ -24,6 +24,7 @@ This record maps durable Inkspan product decisions to authoritative standards, p
 | Editor integration | Public behavior must exercise the actual TipTap/ProseMirror integration path, not an inert extension field or test-only hook | official TipTap and ProseMirror documentation for the locked dependency line | integration tests and package consumers | Inkspan does not claim compatibility with untested major-version integration semantics |
 | Collaboration | Inkspan provides provider-neutral editor/Yjs bindings; host owns provider lifecycle, room authorization, awareness privacy, persistence and audit | official Yjs/provider documentation plus Inkspan public contract | collaboration tests and architecture ownership matrix | No network-provider or tenant-authorization authority is implied |
 | Secure development | Security controls are developed test-first, with exact-head scanning/review/package evidence and root-cause regression | NIST SP 800-218 SSDF 1.1 | CI/security/SAST/package/provenance gates, doctoring and regression history | Repository evidence is not a claim of complete SSDF organizational conformance |
+| Local spreadsheet body import | Visible XLS/XLSX worksheet text is inserted locally as inert headings/tables after ZIP/OLE preflight, BIFF8 BoundSheet8 visibility recovery, and File/FileReader/Response body reads | ECMA-376; [MS-XLS]; SheetJS CE; WAI-ARIA 1.2 status/live regions | Proposed ADR 0032, active-PR spreadsheet runtime/editor insertion tests and `./spreadsheet` package surface | `implemented_on_active_pr`; not protected-main authority; no upload, formula execution, macro, network, or destination-trust claim |
 | Office rendering | JSON→DOCX/XLSX/PPTX is deterministic, bounded, network-free, macro-free, injection-aware and package-inspected | Office Open XML specifications and relevant Python package contracts | Office renderer tests, Python coverage/docstring/package gates | Format fidelity is limited to explicitly tested supported constructs |
 | DOCX informative PNG figures | Informative figures accept only bounded inline PNG data, explicit alt text, bounded dimensions/bytes and deterministic WordprocessingML output | Office Open XML drawing semantics; python-docx public picture APIs | protected-main #121 renderer/schema/tests, ADR 0022 and PNG doctoring | No remote/file/SVG/JPEG fetch, decorative-image claim, arbitrary drawing authority, or image-based model inference is implied |
 | DOCX bounded rich-text runs | `rich_paragraph` preserves ordered bold/italic/underline run emphasis through a strict bounded JSON contract | Office Open XML run semantics; python-docx run API | protected-main #124 renderer/schema/tests, ADR 0023 and rich-run doctoring | No arbitrary Word styles, font/color/size, hyperlink, field-code, tracked-change, raw-OOXML or source-format parsing authority is implied |
@@ -46,17 +47,19 @@ Fielding, R., Nottingham, M., & Reschke, J. (Eds.). (2022). *HTTP Semantics* (RF
 
 MacFarlane, J. (2024, January 28). *CommonMark specification* (Version 0.31.2). CommonMark. https://spec.commonmark.org/0.31.2/
 
-Microsoft. (n.d.-a). *Browsers*. Playwright documentation. Retrieved August 10, 2026, from https://playwright.dev/docs/browsers
+Microsoft. (n.d.-a). *[MS-XLS]: Excel Binary File Format (.xls) Structure*. Microsoft Learn. Retrieved August 17, 2026, from https://learn.microsoft.com/en-us/openspecs/office_file_formats/ms-xls
 
-Microsoft. (n.d.-b). *Hyperlink class (DocumentFormat.OpenXml.Wordprocessing)*. Microsoft Learn. Retrieved August 10, 2026, from https://learn.microsoft.com/en-us/dotnet/api/documentformat.openxml.wordprocessing.hyperlink
+Microsoft. (n.d.-b). *Browsers*. Playwright documentation. Retrieved August 10, 2026, from https://playwright.dev/docs/browsers
 
-Microsoft. (n.d.-c). *HyperlinkRelationship class (DocumentFormat.OpenXml.Packaging)*. Microsoft Learn. Retrieved August 10, 2026, from https://learn.microsoft.com/en-us/dotnet/api/documentformat.openxml.packaging.hyperlinkrelationship
+Microsoft. (n.d.-c). *Hyperlink class (DocumentFormat.OpenXml.Wordprocessing)*. Microsoft Learn. Retrieved August 10, 2026, from https://learn.microsoft.com/en-us/dotnet/api/documentformat.openxml.wordprocessing.hyperlink
 
-Microsoft. (n.d.-d). *Projects*. Playwright documentation. Retrieved August 10, 2026, from https://playwright.dev/docs/test-projects
+Microsoft. (n.d.-d). *HyperlinkRelationship class (DocumentFormat.OpenXml.Packaging)*. Microsoft Learn. Retrieved August 10, 2026, from https://learn.microsoft.com/en-us/dotnet/api/documentformat.openxml.packaging.hyperlinkrelationship
 
-Microsoft. (n.d.-e). *Release notes: Version 1.62*. Playwright. Retrieved August 10, 2026, from https://playwright.dev/docs/release-notes
+Microsoft. (n.d.-e). *Projects*. Playwright documentation. Retrieved August 10, 2026, from https://playwright.dev/docs/test-projects
 
-Microsoft. (n.d.-f). *Working with paragraphs*. Microsoft Learn. Retrieved August 10, 2026, from https://learn.microsoft.com/en-us/office/open-xml/word/working-with-paragraphs
+Microsoft. (n.d.-f). *Release notes: Version 1.62*. Playwright. Retrieved August 10, 2026, from https://playwright.dev/docs/release-notes
+
+Microsoft. (n.d.-g). *Working with paragraphs*. Microsoft Learn. Retrieved August 10, 2026, from https://learn.microsoft.com/en-us/office/open-xml/word/working-with-paragraphs
 
 Node.js contributors. (2026). *Modules: Packages*. Node.js documentation. https://nodejs.org/api/packages.html
 
@@ -67,6 +70,8 @@ python-docx. (n.d.-a). *Hyperlink — python-docx 1.2.0 documentation*. Retrieve
 python-docx. (n.d.-b). *Working with text*. Retrieved August 10, 2026, from https://python-docx.readthedocs.io/en/latest/user/text.html
 
 Rundgren, A., Jordan, B., & Erdtman, S. (2020). *JSON Canonicalization Scheme (JCS)* (RFC 8785). RFC Editor. https://doi.org/10.17487/RFC8785
+
+SheetJS. (n.d.). *SheetJS CE*. Retrieved August 17, 2026, from https://docs.sheetjs.com/
 
 Souppaya, M., Scarfone, K., & Dodson, D. (2022). *Secure Software Development Framework (SSDF) Version 1.1: Recommendations for Mitigating the Risk of Software Vulnerabilities* (NIST SP 800-218). National Institute of Standards and Technology. https://doi.org/10.6028/NIST.SP.800-218
 

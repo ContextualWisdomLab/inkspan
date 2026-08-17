@@ -38,8 +38,12 @@ type SheetJsParserWithCfb = SheetJsParserModule & {
 export interface SpreadsheetFileSource {
   /** Byte length available before allocating and reading the file body. */
   readonly size: number;
-  /** Read the local file body without granting any path, network, or persistence authority. */
-  arrayBuffer(): Promise<ArrayBuffer>;
+  /**
+   * Read the local file body without granting any path, network, or persistence
+   * authority. Genuine `File`/`Blob` values may omit this method; those are
+   * read through `FileReader` or `Response` instead of requiring `arrayBuffer`.
+   */
+  arrayBuffer?(): Promise<ArrayBuffer>;
 }
 
 function resourceLimitExceeded(): SpreadsheetImportError {
@@ -54,6 +58,71 @@ function unsupportedOrCorruptSource(): SpreadsheetImportError {
     'UNSUPPORTED_OR_CORRUPT',
     'Spreadsheet source is unsupported or corrupt.',
   );
+}
+
+function isBlobSource(source: SpreadsheetFileSource): source is SpreadsheetFileSource & Blob {
+  return typeof Blob !== 'undefined' && source instanceof Blob;
+}
+
+function readBlobViaFileReader(blob: Blob): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
+    let reader: FileReader;
+    try {
+      reader = new FileReader();
+    } catch {
+      reject(unsupportedOrCorruptSource());
+      return;
+    }
+
+    reader.onload = () => {
+      const result = reader.result;
+      if (!(result instanceof ArrayBuffer)) {
+        reject(unsupportedOrCorruptSource());
+        return;
+      }
+      resolve(result);
+    };
+    reader.onerror = () => {
+      reject(unsupportedOrCorruptSource());
+    };
+
+    try {
+      reader.readAsArrayBuffer(blob);
+    } catch {
+      reject(unsupportedOrCorruptSource());
+    }
+  });
+}
+
+async function readSourceArrayBuffer(
+  source: SpreadsheetFileSource,
+): Promise<ArrayBuffer> {
+  let arrayBufferMethod: unknown;
+  try {
+    arrayBufferMethod = source.arrayBuffer;
+  } catch {
+    throw unsupportedOrCorruptSource();
+  }
+
+  if (typeof arrayBufferMethod === 'function') {
+    try {
+      return await arrayBufferMethod.call(source);
+    } catch {
+      throw unsupportedOrCorruptSource();
+    }
+  }
+
+  if (isBlobSource(source) && typeof FileReader !== 'undefined') {
+    return readBlobViaFileReader(source);
+  }
+  if (isBlobSource(source) && typeof Response !== 'undefined') {
+    try {
+      return await new Response(source).arrayBuffer();
+    } catch {
+      throw unsupportedOrCorruptSource();
+    }
+  }
+  throw unsupportedOrCorruptSource();
 }
 
 function isObject(value: unknown): value is object {
@@ -309,9 +378,12 @@ export async function parseSheetJsSpreadsheetBytes(
 /**
  * Read one local browser file and convert its visible worksheets to inert TipTap JSON.
  *
- * Source size is checked before `arrayBuffer()` so oversized user-selected files are
- * rejected before a proportional allocation. Read failures and malformed source
- * identities are normalized to the stable payload-redacted import error contract.
+ * Source size is checked before the file body is read so oversized user-selected
+ * files are rejected before a proportional allocation. Browser `File` values are
+ * read through `arrayBuffer()` when present, otherwise through `FileReader` or
+ * `Response`, matching the image-import fallback for DOMs that omit
+ * `Blob.arrayBuffer`. Read failures and malformed source identities are
+ * normalized to the stable payload-redacted import error contract.
  */
 export async function spreadsheetFileToDocumentJson(
   source: SpreadsheetFileSource,
@@ -330,12 +402,7 @@ export async function spreadsheetFileToDocumentJson(
     throw resourceLimitExceeded();
   }
 
-  let buffer: ArrayBuffer;
-  try {
-    buffer = await source.arrayBuffer();
-  } catch {
-    throw unsupportedOrCorruptSource();
-  }
+  const buffer = await readSourceArrayBuffer(source);
   if (!(buffer instanceof ArrayBuffer) || buffer.byteLength !== sourceSize) {
     throw unsupportedOrCorruptSource();
   }

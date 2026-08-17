@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as XLSX from 'xlsx';
 import {
   SpreadsheetImportError,
@@ -101,6 +101,10 @@ function expectUnsupported(promise: Promise<unknown>) {
     message: 'Spreadsheet source is unsupported or corrupt.',
   } satisfies Partial<SpreadsheetImportError>);
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('spreadsheetFileToDocumentJson', () => {
   it('preserves hidden-sheet metadata in the real BIFF8 visibility parse', () => {
@@ -244,5 +248,152 @@ describe('spreadsheetFileToDocumentJson', () => {
     };
 
     await expectUnsupported(spreadsheetFileToDocumentJson(source));
+  });
+
+  it('reads a genuine browser File through FileReader when arrayBuffer is absent', async () => {
+    const bytes = workbookBytes('xlsx');
+    const file = new File([bytes], 'quarterly-revenue.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    expect(typeof file.arrayBuffer).not.toBe('function');
+
+    const result = await spreadsheetFileToDocumentJson(file);
+    expect(result).toMatchObject({
+      worksheetCount: 1,
+      rowCount: 2,
+      cellCount: 4,
+    });
+    expect(JSON.stringify(result.content)).toContain('Revenue');
+    expect(JSON.stringify(result.content)).toContain('42');
+  });
+
+  it('normalizes a hostile arrayBuffer accessor without leaking payload text', async () => {
+    const source = {
+      size: 4,
+    } as SpreadsheetFileSource;
+    Object.defineProperty(source, 'arrayBuffer', {
+      enumerable: true,
+      get() {
+        throw new Error('private local path');
+      },
+    });
+    await expectUnsupported(spreadsheetFileToDocumentJson(source));
+  });
+
+  it('rejects a non-Blob source that cannot supply arrayBuffer', async () => {
+    await expectUnsupported(
+      spreadsheetFileToDocumentJson({ size: 4 } as SpreadsheetFileSource),
+    );
+  });
+
+  it('normalizes FileReader construction and read failures', async () => {
+    const bytes = workbookBytes('xlsx');
+    const file = new File([bytes], 'quarterly-revenue.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+
+    class ThrowingReader {
+      onload: ((event: ProgressEvent<FileReader>) => void) | null = null;
+      onerror: ((event: ProgressEvent<FileReader>) => void) | null = null;
+      result: ArrayBuffer | null = null;
+      error: DOMException | null = null;
+      constructor() {
+        throw new Error('private FileReader construction');
+      }
+      readAsArrayBuffer(): void {}
+    }
+    vi.stubGlobal('FileReader', ThrowingReader);
+    await expectUnsupported(spreadsheetFileToDocumentJson(file));
+
+    class ReadThrowingReader {
+      onload: ((event: ProgressEvent<FileReader>) => void) | null = null;
+      onerror: ((event: ProgressEvent<FileReader>) => void) | null = null;
+      result: ArrayBuffer | null = null;
+      error: DOMException | null = null;
+      readAsArrayBuffer(): void {
+        throw new Error('private FileReader read');
+      }
+    }
+    vi.stubGlobal('FileReader', ReadThrowingReader);
+    await expectUnsupported(spreadsheetFileToDocumentJson(file));
+
+    class ErroringReader {
+      onload: ((event: ProgressEvent<FileReader>) => void) | null = null;
+      onerror: ((event: ProgressEvent<FileReader>) => void) | null = null;
+      result: ArrayBuffer | null = null;
+      error = new DOMException('private FileReader error');
+      readAsArrayBuffer(): void {
+        this.onerror?.(new Event('error') as ProgressEvent<FileReader>);
+      }
+    }
+    vi.stubGlobal('FileReader', ErroringReader);
+    await expectUnsupported(spreadsheetFileToDocumentJson(file));
+
+    class NonBufferReader {
+      onload: ((event: ProgressEvent<FileReader>) => void) | null = null;
+      onerror: ((event: ProgressEvent<FileReader>) => void) | null = null;
+      result: string | ArrayBuffer | null = 'not bytes';
+      error: DOMException | null = null;
+      readAsArrayBuffer(): void {
+        this.onload?.(new Event('load') as ProgressEvent<FileReader>);
+      }
+    }
+    vi.stubGlobal('FileReader', NonBufferReader);
+    await expectUnsupported(spreadsheetFileToDocumentJson(file));
+
+    vi.unstubAllGlobals();
+  });
+
+  it('reads a Blob through Response when FileReader is unavailable', async () => {
+    const bytes = workbookBytes('xlsx');
+    const file = new File([bytes], 'quarterly-revenue.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const copied = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength,
+    ) as ArrayBuffer;
+    vi.stubGlobal('FileReader', undefined);
+    vi.stubGlobal(
+      'Response',
+      class {
+        async arrayBuffer(): Promise<ArrayBuffer> {
+          return copied;
+        }
+      },
+    );
+    const result = await spreadsheetFileToDocumentJson(file);
+    expect(result).toMatchObject({
+      worksheetCount: 1,
+      rowCount: 2,
+      cellCount: 4,
+    });
+  });
+
+  it('normalizes a failing Response fallback without leaking payload text', async () => {
+    const bytes = workbookBytes('xlsx');
+    const file = new File([bytes], 'quarterly-revenue.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    vi.stubGlobal('FileReader', undefined);
+    vi.stubGlobal(
+      'Response',
+      class {
+        constructor() {
+          throw new Error('private Response payload');
+        }
+      },
+    );
+    await expectUnsupported(spreadsheetFileToDocumentJson(file));
+  });
+
+  it('rejects a Blob when neither FileReader nor Response can read it', async () => {
+    const bytes = workbookBytes('xlsx');
+    const file = new File([bytes], 'quarterly-revenue.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    vi.stubGlobal('FileReader', undefined);
+    vi.stubGlobal('Response', undefined);
+    await expectUnsupported(spreadsheetFileToDocumentJson(file));
   });
 });

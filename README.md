@@ -72,7 +72,7 @@ runtime.
 | Text-position selector | `@contextualwisdomlab/cwl-editor/text-position-selector` | React-free deterministic W3C `TextPositionSelector` projection core |
 | Autosave | `@contextualwisdomlab/cwl-editor/autosave` | Provider-neutral bounded single-flight persistence coordination |
 | Headless Markdown | `@contextualwisdomlab/cwl-editor/markdown` | React-free deterministic Markdown/HTML/email/plain-text conversion |
-| Spreadsheet conversion | `@contextualwisdomlab/cwl-editor/spreadsheet` | Framework-neutral bounded workbook-to-document conversion primitives |
+| Spreadsheet conversion | `@contextualwisdomlab/cwl-editor/spreadsheet` | Active PR: bounded local XLS/XLSX worksheet-to-document conversion used by the editor toolbar |
 | Styles | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
 | Full fonts | `@contextualwisdomlab/cwl-editor/fonts.css` | KR/EN/JP/SC/TC/VI offline font bundle |
 | Latin fonts | `@contextualwisdomlab/cwl-editor/fonts-latin.css` | Smaller Latin/Vietnamese-only bundle |
