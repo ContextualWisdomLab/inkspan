@@ -23,7 +23,10 @@ interface SheetJsCfbEntry {
 }
 
 interface SheetJsCfbModule {
-  readonly read: (source: Uint8Array) => unknown;
+  readonly read: (
+    source: Uint8Array,
+    options: { readonly type: 'buffer' },
+  ) => unknown;
   readonly find: (container: unknown, path: string) => SheetJsCfbEntry | null;
 }
 
@@ -90,7 +93,7 @@ function readBiff8WorkbookStream(
   let container: unknown;
   let workbookEntry: SheetJsCfbEntry | null;
   try {
-    container = cfb.read(new Uint8Array(source));
+    container = cfb.read(new Uint8Array(source), { type: 'buffer' });
     workbookEntry = cfb.find(container, 'Workbook');
   } catch {
     throw unsupportedOrCorruptSource();
