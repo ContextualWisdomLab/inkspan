@@ -4,9 +4,18 @@ import {
   type SheetJsParserModule,
 } from './sheetJsAdapter.js';
 
-const XLSX_SOURCE = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
+const BIFF8_SOURCE = new Uint8Array([
+  0xd0,
+  0xcf,
+  0x11,
+  0xe0,
+  0xa1,
+  0xb1,
+  0x1a,
+  0xe1,
+]);
 
-describe('sheetJsBytesToWorkbookData worksheet visibility authority', () => {
+describe('sheetJsBytesToWorkbookData BIFF8 visibility authority', () => {
   it('uses bounded whole-workbook metadata instead of selective-parse visibility', () => {
     const summarySheet = { '!ref': 'A1' };
     const privateSheet = { '!ref': 'A1' };
@@ -44,8 +53,6 @@ describe('sheetJsBytesToWorkbookData worksheet visibility authority', () => {
           return {
             SheetNames: ['Private'],
             Sheets: { Private: privateSheet },
-            // Selective BIFF8 parsing can no longer be treated as visibility
-            // authority because it may not preserve the original sheet flag.
             Workbook: { Sheets: [{ Hidden: 0 }] },
           };
         }
@@ -63,14 +70,14 @@ describe('sheetJsBytesToWorkbookData worksheet visibility authority', () => {
       },
     };
 
-    expect(sheetJsBytesToWorkbookData(XLSX_SOURCE, parser)).toEqual({
+    expect(sheetJsBytesToWorkbookData(BIFF8_SOURCE, parser)).toEqual({
       worksheets: [
         { name: 'Summary', hidden: false, rows: [['public']] },
         { name: 'Private', hidden: true, rows: [] },
       ],
     });
     expect(read).toHaveBeenCalledTimes(3);
-    expect(read).toHaveBeenNthCalledWith(1, XLSX_SOURCE, {
+    expect(read).toHaveBeenNthCalledWith(1, BIFF8_SOURCE, {
       type: 'array',
       cellFormula: false,
       cellHTML: false,
@@ -78,7 +85,7 @@ describe('sheetJsBytesToWorkbookData worksheet visibility authority', () => {
       bookVBA: false,
       bookSheets: true,
     });
-    expect(read).toHaveBeenNthCalledWith(2, XLSX_SOURCE, {
+    expect(read).toHaveBeenNthCalledWith(2, BIFF8_SOURCE, {
       type: 'array',
       cellFormula: false,
       cellHTML: false,
@@ -86,7 +93,7 @@ describe('sheetJsBytesToWorkbookData worksheet visibility authority', () => {
       bookVBA: false,
       sheetRows: 1,
     });
-    expect(read).toHaveBeenNthCalledWith(3, XLSX_SOURCE, {
+    expect(read).toHaveBeenNthCalledWith(3, BIFF8_SOURCE, {
       type: 'array',
       cellFormula: false,
       cellHTML: false,
