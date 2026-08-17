@@ -49,6 +49,25 @@ describe('spreadsheet local source boundary', () => {
     await expectUnsupported(spreadsheetFileToDocumentJson(source));
   });
 
+  it('rejects a non-ArrayBuffer body before reading its byteLength member', async () => {
+    let byteLengthReads = 0;
+    const hostileBody = {
+      get byteLength() {
+        byteLengthReads += 1;
+        throw new Error('private non-buffer length');
+      },
+    };
+    const source = {
+      size: 4,
+      async arrayBuffer() {
+        return hostileBody as unknown as ArrayBuffer;
+      },
+    } as SpreadsheetFileSource;
+
+    await expectUnsupported(spreadsheetFileToDocumentJson(source));
+    expect(byteLengthReads).toBe(0);
+  });
+
   it('normalizes a hostile non-Blob source prototype trap when arrayBuffer is absent', async () => {
     const privatePrototypeError = new Error('private source prototype');
     const source = new Proxy(
