@@ -102,12 +102,18 @@ The initial bridge deliberately supports a bounded semantic subset and rejects u
 | Bold | Yes | Yes | Common HTML projection |
 | Italic | Yes | Yes | Common HTML projection |
 | Strike | Yes | Yes | Common HTML projection |
-| Lists | Planned | Planned | Must preserve nesting and numbering |
-| Tables | Planned | Planned | Must preserve cell topology before layout styling |
+| Lists | Yes | Yes | Structural bullet and ordered lists; explicit start-number metadata is not modeled |
+| Block quotes | Yes | Yes | Nested supported block content is preserved |
+| Code blocks | Yes | Yes | Text content is preserved; language metadata is not modeled |
+| Basic tables | Yes | Yes | Header/cell topology is preserved; spans and layout styling are not modeled |
 | Links | Planned | Planned | Must use Inkspan safe-link policy |
 | Images | Planned | Planned | Must remain inline/host-approved; no external fetch |
 | Shapes/charts/equations | Warning | Rejected | Requires dedicated projection contract |
 | Macros/OLE/active content | Not executed | Not generated | Outside the editor authority boundary |
+
+## Failure containment
+
+The host engine is untrusted at every call boundary, including cleanup. Open/create/operation failures are normalized to stable payload-redacted `HangulDocumentError` values. If engine cleanup fails after an otherwise successful public operation, Inkspan reports `ENGINE_CLEANUP_FAILED` without reading or stringifying the host-thrown value. If cleanup fails while Inkspan is already propagating a normalized primary import/export error, the primary error remains authoritative and the secondary cleanup failure is contained.
 
 ## Security requirements
 
