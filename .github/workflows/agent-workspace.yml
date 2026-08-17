@@ -6,7 +6,7 @@ on:
       - agent/318-spreadsheet-body-import
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: agent-workspace-${{ github.ref }}
@@ -33,41 +33,12 @@ jobs:
           cache: pnpm
       - name: Install the immutable workspace
         run: pnpm install --frozen-lockfile
-      - name: Generate and verify the exact official spreadsheet dependency graph
+      - name: Stage the exact official spreadsheet parser without lifecycle scripts
         run: |
           set -euo pipefail
           pnpm add --save-exact --ignore-scripts https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
           node --input-type=module -e "const XLSX=await import('xlsx'); if (XLSX.version !== '0.20.3') throw new Error('Unexpected SheetJS runtime version: '+XLSX.version);"
           grep -F 'cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz' pnpm-lock.yaml
-          changed="$(git diff --name-only)"
-          test "$changed" = $'package.json\npnpm-lock.yaml' || { printf 'Unexpected generated files:\n%s\n' "$changed" >&2; exit 1; }
-      - name: Upload generated files as dangling Git blobs only
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          upload_blob() {
-            local path="$1"
-            jq -n --rawfile content "$path" '{content:$content,encoding:"utf-8"}' \
-              | gh api --method POST "repos/${GITHUB_REPOSITORY}/git/blobs" --input - --jq '.sha'
-          }
-          package_sha="$(upload_blob package.json)"
-          lock_sha="$(upload_blob pnpm-lock.yaml)"
-          jq -n \
-            --arg source_head "${GITHUB_SHA}" \
-            --arg package_sha "$package_sha" \
-            --arg lock_sha "$lock_sha" \
-            '{source_head:$source_head,package_json_blob:$package_sha,pnpm_lock_blob:$lock_sha}' \
-            > "$RUNNER_TEMP/generated-dependency-blobs.json"
-          cat "$RUNNER_TEMP/generated-dependency-blobs.json"
-      - name: Upload generated blob identities
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: inkspan-generated-dependency-blobs-${{ github.sha }}
-          path: ${{ runner.temp }}/generated-dependency-blobs.json
-          if-no-files-found: error
-          retention-days: 1
-          compression-level: 0
       - name: Archive the exact source and installed dependency graph
         run: |
           set -euo pipefail
