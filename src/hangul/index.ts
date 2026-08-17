@@ -335,7 +335,7 @@ function parseListItem(item: Element): HangulDocumentJson {
 
   const hasDirectInlineContent = Array.from(item.childNodes).some((child) => {
     if (child.nodeType === Node.TEXT_NODE) {
-      return (child.textContent ?? '').trim().length > 0;
+      return (child as Text).data.trim().length > 0;
     }
     return child instanceof Element && !isListBlockElement(child);
   });
