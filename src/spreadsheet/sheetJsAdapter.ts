@@ -257,33 +257,37 @@ function baseReadOptions(): Omit<
  * BIFF8 instead uses one bounded `sheetRows: 1` whole-workbook parse as both
  * discovery and the authoritative visibility read: issuing SheetJS's BIFF8
  * `bookSheets` pass first can alter the parser's subsequent visibility result for
- * the same fresh byte source. BIFF8 visibility decisions are copied to primitive
- * booleans before any selective body read so later parser activity cannot mutate
- * the authoritative metadata objects. Only worksheets proven visible are then
- * selectively body-parsed with a row ceiling derived from the remaining aggregate
- * workbook budget. Exact decoded row, column, and cell limits are checked before
- * displayed rows are materialized by `sheet_to_json`.
+ * the same fresh byte source. The visibility read receives an invocation-local
+ * source that is never reused for body parsing, and visibility decisions are copied
+ * to primitive booleans before any selective body read. This prevents later BIFF8
+ * parser activity from mutating either retained metadata or the byte source that
+ * established visibility. Only worksheets proven visible are then selectively
+ * body-parsed with a row ceiling derived from the remaining aggregate workbook
+ * budget. Exact decoded row, column, and cell limits are checked before displayed
+ * rows are materialized by `sheet_to_json`.
  */
 export function sheetJsBytesToWorkbookData(
   source: Uint8Array,
   parser: SheetJsParserModule,
 ): SpreadsheetWorkbookData {
   const boundedSource = preflightSpreadsheetBinarySource(source);
-  // The legacy BIFF8/CFB parser is invoked multiple times per workbook. Give that
-  // parser one bounded invocation-local copy so any in-place parser-side changes
-  // cannot accumulate in caller-owned bytes across adapter/runtime boundaries.
-  // Copying once here preserves the 64 MiB source ceiling without per-sheet copies.
-  const parserSource =
-    boundedSource.format === 'xls'
-      ? new Uint8Array(boundedSource.bytes)
-      : boundedSource.bytes;
+  const isBiff8 = boundedSource.format === 'xls';
+  // SheetJS's legacy BIFF8/CFB reader can retain parser objects that refer to the
+  // invocation source. Keep the authoritative visibility input isolated from all
+  // later body reads, while still using at most two bounded parser-owned copies.
+  const biff8VisibilitySource = isBiff8
+    ? new Uint8Array(boundedSource.bytes)
+    : undefined;
+  const parserSource = isBiff8
+    ? new Uint8Array(boundedSource.bytes)
+    : boundedSource.bytes;
   const biff8VisibilityWorkbook =
-    boundedSource.format === 'xls'
-      ? readWorkbook(parser, parserSource, {
+    biff8VisibilitySource === undefined
+      ? undefined
+      : readWorkbook(parser, biff8VisibilitySource, {
           ...baseReadOptions(),
           sheetRows: 1,
-        })
-      : undefined;
+        });
   const discovery =
     biff8VisibilityWorkbook ??
     readWorkbook(parser, parserSource, {
