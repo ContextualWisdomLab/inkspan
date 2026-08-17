@@ -18,14 +18,14 @@ function sourceFromBytes(bytes: Uint8Array): SpreadsheetFileSource {
   };
 }
 
-function xlsxBytes(): Uint8Array {
+function workbookBytes(bookType: 'xlsx' | 'biff8'): Uint8Array {
   const workbook = XLSX.utils.book_new();
   const worksheet = XLSX.utils.aoa_to_sheet([
     ['Name', 'Value'],
     ['Revenue', 42],
   ]);
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Summary');
-  const serialized = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+  const serialized = XLSX.write(workbook, { type: 'array', bookType });
   return serialized instanceof Uint8Array
     ? serialized
     : new Uint8Array(serialized as ArrayBuffer);
@@ -40,27 +40,33 @@ function expectUnsupported(promise: Promise<unknown>) {
 }
 
 describe('spreadsheetFileToDocumentJson', () => {
-  it('converts a real local XLSX source into bounded editable TipTap content', async () => {
-    const result = await spreadsheetFileToDocumentJson(
-      sourceFromBytes(xlsxBytes()),
-    );
+  it.each([
+    ['XLSX', 'xlsx'],
+    ['BIFF8 XLS', 'biff8'],
+  ] as const)(
+    'converts a real local %s source into bounded editable TipTap content',
+    async (_label, bookType) => {
+      const result = await spreadsheetFileToDocumentJson(
+        sourceFromBytes(workbookBytes(bookType)),
+      );
 
-    expect(result).toMatchObject({
-      worksheetCount: 1,
-      rowCount: 2,
-      cellCount: 4,
-    });
-    expect(result.content.map((node) => node.type)).toEqual([
-      'heading',
-      'table',
-      'paragraph',
-    ]);
-    expect(result.content[0]).toEqual({
-      type: 'heading',
-      attrs: { level: 3 },
-      content: [{ type: 'text', text: 'Summary' }],
-    });
-  });
+      expect(result).toMatchObject({
+        worksheetCount: 1,
+        rowCount: 2,
+        cellCount: 4,
+      });
+      expect(result.content.map((node) => node.type)).toEqual([
+        'heading',
+        'table',
+        'paragraph',
+      ]);
+      expect(result.content[0]).toEqual({
+        type: 'heading',
+        attrs: { level: 3 },
+        content: [{ type: 'text', text: 'Summary' }],
+      });
+    },
+  );
 
   it('rejects an oversized source before reading its bytes', async () => {
     const arrayBuffer = vi.fn(async () => new ArrayBuffer(0));
