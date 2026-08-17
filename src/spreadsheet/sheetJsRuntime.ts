@@ -207,14 +207,16 @@ function readBiff8HiddenStates(workbookStream: Uint8Array): readonly boolean[] {
 }
 
 function readArrayLength(value: unknown): number {
-  if (!Array.isArray(value)) {
+  let arrayValue: unknown[];
+  try {
+    if (!Array.isArray(value)) {
+      throw unsupportedOrCorruptSource();
+    }
+    arrayValue = value;
+  } catch {
     throw unsupportedOrCorruptSource();
   }
-  const length = readOwnDataProperty(value, 'length');
-  if (!Number.isSafeInteger(length) || (length as number) < 0) {
-    throw unsupportedOrCorruptSource();
-  }
-  return length as number;
+  return readOwnDataProperty(arrayValue, 'length') as number;
 }
 
 function withAuthoritativeBiff8Visibility(
