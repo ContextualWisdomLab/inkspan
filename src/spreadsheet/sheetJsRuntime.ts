@@ -35,6 +35,22 @@ function unsupportedOrCorruptSource(): SpreadsheetImportError {
 }
 
 /**
+ * Parse supported local XLS/XLSX bytes after preflighting their binary envelope.
+ *
+ * The parser loader is deliberately injected so the preflight ordering is directly
+ * testable without importing the parser package. The loader is not invoked until the
+ * caller-controlled bytes have crossed Inkspan's local signature and resource bounds.
+ */
+export async function parseSheetJsSpreadsheetBytesWithParserLoader(
+  source: Uint8Array,
+  loadParser: () => Promise<SheetJsParserModule>,
+): Promise<SpreadsheetWorkbookData> {
+  const boundedSource = preflightSpreadsheetBinarySource(source);
+  const parser = await loadParser();
+  return sheetJsBytesToWorkbookData(boundedSource.bytes, parser);
+}
+
+/**
  * Parse supported local XLS/XLSX bytes through Inkspan's bounded SheetJS adapter.
  *
  * The public byte-array entry point validates the source envelope and byte ceiling
@@ -47,9 +63,10 @@ function unsupportedOrCorruptSource(): SpreadsheetImportError {
 export async function parseSheetJsSpreadsheetBytes(
   source: Uint8Array,
 ): Promise<SpreadsheetWorkbookData> {
-  const boundedSource = preflightSpreadsheetBinarySource(source);
-  const parser = (await import('xlsx')) as unknown as SheetJsParserModule;
-  return sheetJsBytesToWorkbookData(boundedSource.bytes, parser);
+  return parseSheetJsSpreadsheetBytesWithParserLoader(
+    source,
+    async () => (await import('xlsx')) as unknown as SheetJsParserModule,
+  );
 }
 
 /**
