@@ -193,9 +193,10 @@ function ownEnumerableDataValue(
   if (typeof value !== 'object' || value === null) return undefined;
   try {
     const descriptor = Object.getOwnPropertyDescriptor(value, property);
-    return descriptor?.enumerable === true && 'value' in descriptor
-      ? descriptor.value
-      : undefined;
+    if (!descriptor) return undefined;
+    if (!descriptor.enumerable) return undefined;
+    if (!('value' in descriptor)) return undefined;
+    return descriptor.value;
   } catch {
     return undefined;
   }
