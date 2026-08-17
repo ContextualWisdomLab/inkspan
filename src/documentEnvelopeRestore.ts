@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/react';
+import type { EditorState } from '@tiptap/pm/state';
 import {
   parseDocumentEnvelope,
   parseDocumentEnvelopeBytes,
@@ -106,18 +107,52 @@ export function restoreDocumentEnvelopeBytes(
  * Apply one already-validated envelope and verify the active editor accepted it.
  *
  * ProseMirror transaction filters may reject schema-valid content for security
- * or host policy reasons. A restore is reported as successful only when the
- * resulting active document is structurally equal to the prepared document.
+ * or host policy reasons, while append-transaction hooks may transform an
+ * otherwise accepted replacement. Preview those document-policy semantics on
+ * detached state first so a known rejection/transformation cannot partially
+ * mutate the live editor. If live dispatch either diverges or throws after the
+ * view has already accepted the replacement, restore the captured local editor
+ * state before reporting one payload-redacted restore failure. The rollback is
+ * intentionally local; Inkspan does not claim authority over external effects
+ * a host plugin or observer may have emitted during dispatch.
  */
 export function applyPreparedDocumentEnvelope(
   editor: Editor,
   prepared: PreparedDocumentEnvelope,
 ): CwlEditorDocumentEnvelope {
-  editor.commands.setContent(prepared.documentNode, false);
+  const originalState = editor.state;
+  const previewTransaction = originalState.tr
+    .replaceWith(
+      0,
+      originalState.doc.content.size,
+      prepared.documentNode.content,
+    )
+    .setMeta('preventUpdate', true);
+  const previewState = originalState.applyTransaction(previewTransaction).state;
+  if (!previewState.doc.eq(prepared.documentNode)) {
+    throw new DocumentEnvelopeRestoreError();
+  }
+
+  try {
+    editor.commands.setContent(prepared.documentNode, false);
+  } catch {
+    restoreCapturedEditorState(editor, originalState);
+    throw new DocumentEnvelopeRestoreError();
+  }
   if (!editor.state.doc.eq(prepared.documentNode)) {
+    restoreCapturedEditorState(editor, originalState);
     throw new DocumentEnvelopeRestoreError();
   }
   return prepared.envelope;
+}
+
+/** Best-effort local rollback that never reflects host callback/plugin failures. */
+function restoreCapturedEditorState(editor: Editor, state: EditorState): void {
+  try {
+    editor.view.updateState(state);
+  } catch {
+    // A hostile or failing plugin view must not replace the redacted restore error.
+  }
 }
 
 type DocumentEnvelopePreparation = (
