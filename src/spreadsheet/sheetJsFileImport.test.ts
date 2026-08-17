@@ -6,6 +6,8 @@ import {
   type SpreadsheetFileSource,
 } from './index.js';
 
+type WorkbookFormat = 'xlsx' | 'biff8';
+
 function sourceFromBytes(bytes: Uint8Array): SpreadsheetFileSource {
   return {
     size: bytes.byteLength,
@@ -18,17 +20,71 @@ function sourceFromBytes(bytes: Uint8Array): SpreadsheetFileSource {
   };
 }
 
-function workbookBytes(bookType: 'xlsx' | 'biff8'): Uint8Array {
+function serializeWorkbook(
+  workbook: XLSX.WorkBook,
+  bookType: WorkbookFormat,
+): Uint8Array {
+  const serialized = XLSX.write(workbook, { type: 'array', bookType });
+  return serialized instanceof Uint8Array
+    ? serialized
+    : new Uint8Array(serialized as ArrayBuffer);
+}
+
+function workbookBytes(bookType: WorkbookFormat): Uint8Array {
   const workbook = XLSX.utils.book_new();
   const worksheet = XLSX.utils.aoa_to_sheet([
     ['Name', 'Value'],
     ['Revenue', 42],
   ]);
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Summary');
-  const serialized = XLSX.write(workbook, { type: 'array', bookType });
-  return serialized instanceof Uint8Array
-    ? serialized
-    : new Uint8Array(serialized as ArrayBuffer);
+  return serializeWorkbook(workbook, bookType);
+}
+
+function richWorkbookBytes(bookType: WorkbookFormat): Uint8Array {
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.aoa_to_sheet([
+    ['Kind', 'Value'],
+    ['Unicode', '매출'],
+    ['Multiline', 'line 1\nline 2'],
+    ['Boolean', true],
+    [
+      'Date',
+      {
+        t: 'd',
+        v: new Date(Date.UTC(2026, 7, 17)),
+        z: 'yyyy-mm-dd',
+      } satisfies XLSX.CellObject,
+    ],
+    [
+      'Formula',
+      {
+        t: 'n',
+        v: 42,
+        f: 'SUM(40,2)',
+      } satisfies XLSX.CellObject,
+    ],
+    [
+      'Hyperlink',
+      {
+        t: 's',
+        v: 'Reference',
+        l: { Target: 'https://secret.invalid/workbook' },
+      } satisfies XLSX.CellObject,
+    ],
+  ]);
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Summary');
+  XLSX.utils.book_append_sheet(
+    workbook,
+    XLSX.utils.aoa_to_sheet([['private hidden value']]),
+    'Hidden',
+  );
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([]), 'Empty');
+
+  if (!workbook.Workbook) workbook.Workbook = {};
+  if (!workbook.Workbook.Sheets) workbook.Workbook.Sheets = [];
+  workbook.Workbook.Sheets[1] = { Hidden: 1 };
+
+  return serializeWorkbook(workbook, bookType);
 }
 
 function expectUnsupported(promise: Promise<unknown>) {
@@ -65,6 +121,35 @@ describe('spreadsheetFileToDocumentJson', () => {
         attrs: { level: 3 },
         content: [{ type: 'text', text: 'Summary' }],
       });
+    },
+  );
+
+  it.each([
+    ['XLSX', 'xlsx'],
+    ['BIFF8 XLS', 'biff8'],
+  ] as const)(
+    'materializes only inert visible displayed values from a real %s workbook',
+    async (_label, bookType) => {
+      const result = await spreadsheetFileToDocumentJson(
+        sourceFromBytes(richWorkbookBytes(bookType)),
+      );
+      const materialized = JSON.stringify(result.content);
+
+      expect(result).toMatchObject({
+        worksheetCount: 1,
+        rowCount: 7,
+        cellCount: 14,
+      });
+      expect(materialized).toContain('매출');
+      expect(materialized).toContain('hardBreak');
+      expect(materialized).toContain('2026-08-17');
+      expect(materialized).toContain('Reference');
+      expect(materialized).toContain('42');
+      expect(materialized).not.toContain('SUM(40,2)');
+      expect(materialized).not.toContain('https://secret.invalid/workbook');
+      expect(materialized).not.toContain('private hidden value');
+      expect(materialized).not.toContain('Hidden');
+      expect(materialized).not.toContain('Empty');
     },
   );
 
