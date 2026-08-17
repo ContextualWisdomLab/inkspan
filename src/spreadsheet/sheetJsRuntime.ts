@@ -36,14 +36,20 @@ function unsupportedOrCorruptSource(): SpreadsheetImportError {
 /**
  * Parse supported local XLS/XLSX bytes through Inkspan's bounded SheetJS adapter.
  *
- * The parser package is loaded locally and receives no network, credential,
- * persistence, model, transport, or editor mutation authority. Its untrusted
- * materialized output still crosses the same descriptor-safe resource bounds as
- * an injected parser module before it becomes parser-neutral workbook data.
+ * The public byte-array entry point enforces the same source ceiling as the
+ * browser-file boundary before the parser module is loaded. The parser package
+ * is loaded locally and receives no network, credential, persistence, model,
+ * transport, or editor mutation authority. Its untrusted materialized output
+ * still crosses the same descriptor-safe resource bounds as an injected parser
+ * module before it becomes parser-neutral workbook data.
  */
 export async function parseSheetJsSpreadsheetBytes(
   source: Uint8Array,
 ): Promise<SpreadsheetWorkbookData> {
+  if (source.byteLength > MAX_SPREADSHEET_SOURCE_BYTES) {
+    throw resourceLimitExceeded();
+  }
+
   const parser = (await import('xlsx')) as unknown as SheetJsParserModule;
   return sheetJsBytesToWorkbookData(source, parser);
 }
