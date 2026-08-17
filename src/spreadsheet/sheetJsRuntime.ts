@@ -61,7 +61,11 @@ function unsupportedOrCorruptSource(): SpreadsheetImportError {
 }
 
 function isBlobSource(source: SpreadsheetFileSource): source is SpreadsheetFileSource & Blob {
-  return typeof Blob !== 'undefined' && source instanceof Blob;
+  try {
+    return typeof Blob !== 'undefined' && source instanceof Blob;
+  } catch {
+    throw unsupportedOrCorruptSource();
+  }
 }
 
 function readBlobViaFileReader(blob: Blob): Promise<ArrayBuffer> {
@@ -403,7 +407,13 @@ export async function spreadsheetFileToDocumentJson(
   }
 
   const buffer = await readSourceArrayBuffer(source);
-  if (!(buffer instanceof ArrayBuffer) || buffer.byteLength !== sourceSize) {
+  let isArrayBuffer: boolean;
+  try {
+    isArrayBuffer = buffer instanceof ArrayBuffer;
+  } catch {
+    throw unsupportedOrCorruptSource();
+  }
+  if (!isArrayBuffer || buffer.byteLength !== sourceSize) {
     throw unsupportedOrCorruptSource();
   }
 
