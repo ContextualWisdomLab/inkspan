@@ -39,8 +39,16 @@ describe('exact-head CI workflow contract', () => {
     expect(workflow).not.toContain('  pull_request:\n    branches: [main]');
   });
 
-  it('bounds every CI job with an explicit 30-minute timeout', () => {
-    expect(workflow.match(/timeout-minutes: 30/g)).toHaveLength(3);
+  it('keeps ordinary jobs bounded while allowing slow browser dependency mirrors to finish', () => {
+    expect(workflow.match(/timeout-minutes: 30/g)).toHaveLength(2);
+    expect(workflow.match(/timeout-minutes: 60/g)).toHaveLength(1);
+
+    const browserStart = workflow.indexOf('  browser-release-evidence:');
+    const officeStart = workflow.indexOf('  office:', browserStart);
+    expect(browserStart).toBeGreaterThan(-1);
+    expect(officeStart).toBeGreaterThan(browserStart);
+    const browserJob = workflow.slice(browserStart, officeStart);
+    expect(browserJob).toContain('timeout-minutes: 60');
   });
 
   it('verifies the runtime checkout SHA before any job consumes repository code', () => {
