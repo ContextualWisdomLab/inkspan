@@ -3,6 +3,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { createDocx } from '../../test/docxFixture.js';
 import { importDocx } from './index.js';
 
+function createDocxBlob(): Blob {
+  const fixture = createDocx();
+  const bytes = new Uint8Array(fixture.byteLength);
+  bytes.set(fixture);
+  return new Blob([bytes.buffer]);
+}
+
 describe('DOCX binary source branding', () => {
   it('rejects hostile proxy sources without invoking prototype traps', async () => {
     const getPrototypeOf = vi.fn(() => {
@@ -23,7 +30,7 @@ describe('DOCX binary source branding', () => {
   });
 
   it('does not execute post-load Blob size getter interposition', async () => {
-    const source = new Blob([createDocx()]);
+    const source = createDocxBlob();
     const originalSize = Object.getOwnPropertyDescriptor(Blob.prototype, 'size');
     const hostileSize = vi.fn(() => {
       throw new Error('private Blob size sentinel');
@@ -44,7 +51,7 @@ describe('DOCX binary source branding', () => {
   });
 
   it('does not execute post-load Blob byte-reader interposition', async () => {
-    const source = new Blob([createDocx()]);
+    const source = createDocxBlob();
     const originalArrayBuffer = Object.getOwnPropertyDescriptor(
       Blob.prototype,
       'arrayBuffer',
