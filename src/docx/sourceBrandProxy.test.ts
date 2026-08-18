@@ -82,6 +82,45 @@ describe('DOCX binary source branding', () => {
     }
   });
 
+  it('does not consult a replaced global Blob after platform capture', async () => {
+    const source = createDocxBlob();
+    const originalBlob = globalThis.Blob;
+    const get = vi.fn((_target: typeof Blob, property: PropertyKey) => {
+      if (property === 'prototype') {
+        throw new Error('private global Blob sentinel');
+      }
+      return Reflect.get(originalBlob, property);
+    });
+
+    vi.stubGlobal('Blob', new Proxy(originalBlob, { get }));
+    try {
+      await expect(importDocx(source)).resolves.toMatchObject({
+        documentJson: { type: 'doc' },
+      });
+      expect(get).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('fails closed when Blob support was absent at module initialization', async () => {
+    const originalBlob = globalThis.Blob;
+    vi.resetModules();
+    vi.stubGlobal('Blob', undefined);
+    const { importDocx: importWithoutBlob } = await import('./importDocx.js');
+    vi.stubGlobal('Blob', originalBlob);
+    try {
+      await expect(importWithoutBlob(createDocxBlob())).rejects.toMatchObject({
+        name: 'DocxImportError',
+        code: 'invalid_source',
+        message: 'DOCX input must be a supported binary source.',
+      });
+    } finally {
+      vi.unstubAllGlobals();
+      vi.resetModules();
+    }
+  });
+
   it('rejects hostile FileReader results without invoking prototype traps', async () => {
     const source = new Blob([new Uint8Array([1])]);
     Object.defineProperty(source, 'arrayBuffer', {
