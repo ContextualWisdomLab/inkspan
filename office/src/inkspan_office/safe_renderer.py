@@ -29,9 +29,44 @@ _EXCEL_MAX_ROWS = 1_048_576
 _EXCEL_MAX_COLUMNS = 16_384
 _EXCEL_MAX_TEXT_LENGTH = 32_767
 _EXCEL_MAX_SIGNIFICANT_DIGITS = 15
+_DOCX_MAX_RICH_RUNS = 4_096
 _MAX_CONTAINER_DEPTH = 128
+_MAX_MAPPING_FIELDS = 64
 _CANONICAL_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 _CANONICAL_CORE_TIMESTAMP = b"1980-01-01T00:00:00Z"
+_DIAGNOSTIC_SCHEMA_KEYS = frozenset(
+    {
+        "alignment",
+        "alt_text",
+        "author",
+        "auto_filter",
+        "blocks",
+        "bold",
+        "bullets",
+        "format",
+        "freeze_panes",
+        "header_row",
+        "headers",
+        "href",
+        "italic",
+        "items",
+        "level",
+        "name",
+        "ordered",
+        "rows",
+        "runs",
+        "sheets",
+        "slides",
+        "source",
+        "subject",
+        "subtitle",
+        "text",
+        "title",
+        "type",
+        "underline",
+        "width_px",
+    }
+)
 
 
 def load_schema() -> dict[str, Any]:
@@ -61,35 +96,63 @@ def write_office_document(
 ) -> Path:
     """Render and atomically publish an Office file without overwrite races."""
 
+    if type(overwrite) is not bool:
+        raise TypeError("overwrite must be a boolean")
+
     rendered = render_office_document(payload)
     path = Path(output_path)
     if path.suffix.lower() != rendered.extension:
-        raise OfficeDocumentError(
-            f"output extension must be {rendered.extension}, got {path.suffix or '<none>'}"
-        )
-    if path.exists() and not overwrite:
-        raise FileExistsError(f"output already exists: {path}")
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with NamedTemporaryFile(
-        mode="wb",
-        prefix=f".{path.name}.",
-        suffix=".tmp",
-        dir=path.parent,
-        delete=False,
-    ) as handle:
-        handle.write(rendered.data)
-        temporary = Path(handle.name)
+        raise OfficeDocumentError(f"output extension must be {rendered.extension}")
     try:
+        output_exists = path.exists()
+    except (OSError, ValueError) as exc:
+        raise OSError("output could not be written") from exc
+    if output_exists and not overwrite:
+        raise FileExistsError("output already exists")
+
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_handle = NamedTemporaryFile(
+            mode="wb",
+            prefix=".inkspan-office-",
+            suffix=".tmp",
+            dir=path.parent,
+            delete=False,
+        )
+    except (OSError, ValueError) as exc:
+        raise OSError("output could not be written") from exc
+
+    temporary = Path(temporary_handle.name)
+    try:
+        try:
+            with temporary_handle as handle:
+                handle.write(rendered.data)
+        except OSError as exc:
+            raise OSError("output could not be written") from exc
+
         if overwrite:
-            temporary.replace(path)
+            try:
+                temporary.replace(path)
+            except (OSError, ValueError) as exc:
+                raise OSError("output could not be written") from exc
         else:
             try:
                 os.link(temporary, path)
             except FileExistsError as exc:
-                raise FileExistsError(f"output already exists: {path}") from exc
-    finally:
+                raise FileExistsError("output already exists") from exc
+            except (OSError, ValueError) as exc:
+                raise OSError("output could not be written") from exc
+    except BaseException:
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+
+    try:
         temporary.unlink(missing_ok=True)
+    except OSError as exc:
+        raise OSError("output was written but temporary cleanup failed") from exc
     return path
 
 
@@ -123,11 +186,33 @@ def _normalize_core_properties(content: bytes) -> bytes:
 
 
 def _validate_request(payload: Any) -> None:
-    """Apply cross-format text safety and XLSX storage-bound validation."""
+    """Apply cross-format text safety and bounded format-specific validation."""
 
-    if isinstance(payload, Mapping) and payload.get("format") == "xlsx":
-        _validate_xlsx(payload)
+    if isinstance(payload, Mapping):
+        format_name = payload.get("format")
+        if format_name == "xlsx":
+            _validate_xlsx(payload)
+        elif format_name == "docx":
+            _validate_docx_rich_run_counts(payload)
     _validate_xml_tree(payload, "payload", set())
+
+
+def _validate_docx_rich_run_counts(payload: Mapping[str, Any]) -> None:
+    """Reject impossible rich-run sequences before recursive safety traversal."""
+
+    blocks = payload.get("blocks")
+    if not isinstance(blocks, Sequence) or isinstance(blocks, (str, bytes, bytearray)):
+        return
+    for block_index, block in enumerate(blocks):
+        if not isinstance(block, Mapping) or block.get("type") != "rich_paragraph":
+            continue
+        runs = block.get("runs")
+        if not isinstance(runs, Sequence) or isinstance(runs, (str, bytes, bytearray)):
+            continue
+        if len(runs) > _DOCX_MAX_RICH_RUNS:
+            raise OfficeDocumentError(
+                f"blocks[{block_index}].runs must contain at most {_DOCX_MAX_RICH_RUNS} runs"
+            )
 
 
 def _validate_xml_tree(
@@ -151,8 +236,16 @@ def _validate_xml_tree(
             raise OfficeDocumentError(f"{path} contains a cyclic object reference")
         active.add(identity)
         try:
-            for key, child in value.items():
-                child_path = f"{path}.{key}" if isinstance(key, str) else path
+            for field_index, (key, child) in enumerate(value.items(), start=1):
+                if field_index > _MAX_MAPPING_FIELDS:
+                    raise OfficeDocumentError(
+                        f"{path} must contain at most {_MAX_MAPPING_FIELDS} fields"
+                    )
+                child_path = (
+                    f"{path}.{key}"
+                    if isinstance(key, str) and key in _DIAGNOSTIC_SCHEMA_KEYS
+                    else path
+                )
                 _validate_xml_tree(child, child_path, active, depth + 1)
         finally:
             active.remove(identity)
@@ -226,7 +319,7 @@ def _validate_sheet_name_compatibility(value: Any, path: str) -> None:
         or value.endswith("'")
         or value.casefold() == "history"
     ):
-        raise OfficeDocumentError(f"{path}.name is invalid for Excel: {value!r}")
+        raise OfficeDocumentError(f"{path}.name is invalid for Excel")
 
 
 def _validate_freeze_panes(value: str, path: str) -> None:
