@@ -159,14 +159,19 @@ describe('editor theme token catalog', () => {
     expect(() => contrastRatioFromHex('not-a-hex', '#ffffff')).not.toThrow(/not-a-hex/u);
   });
 
-  it('emits a DTCG 2025.10 group that hosts can copy into a theme file', () => {
+  it('emits DTCG 2025.10-native color and dimension values hosts can copy into a theme file', () => {
     const group = toDesignTokenFormatGroup();
     const foreground = group.cwl.fg;
 
     expect(foreground.$type).toBe('color');
-    expect(foreground.$value).toBe('#1f2328');
+    expect(foreground.$value).toEqual({
+      colorSpace: 'srgb',
+      components: [31 / 255, 35 / 255, 40 / 255],
+      hex: '#1f2328',
+    });
     expect(foreground.$description).toContain('Override --cwl-fg on .cwl-editor');
     expect(group.cwl.radius.$type).toBe('dimension');
+    expect(group.cwl.radius.$value).toEqual({ value: 8, unit: 'px' });
     expect(group.cwl.font.$type).toBe('fontFamily');
     expect(Array.isArray(group.cwl.font.$value)).toBe(true);
   });
