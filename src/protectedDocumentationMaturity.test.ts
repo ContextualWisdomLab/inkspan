@@ -40,4 +40,40 @@ describe('protected capability documentation maturity', () => {
       '| `@contextualwisdomlab/cwl-editor/markdown` | `implemented_on_active_pr`',
     );
   });
+
+  it('does not describe the protected Markdown package as proposed architecture', () => {
+    const architecture = repositoryFile('ARCHITECTURE.md');
+    const manifest = JSON.parse(repositoryFile('package.json')) as {
+      exports?: Record<string, unknown>;
+    };
+    const adr = repositoryFile(
+      'docs/adr/0020-framework-neutral-markdown-package-boundary.md',
+    );
+
+    expect(manifest.exports).toHaveProperty('./markdown');
+    expect(adr).toContain('Status: Accepted');
+    expect(architecture).toContain('Markdown[Protected markdown subpath');
+    expect(architecture).toContain('Accepted ADR 0020');
+    expect(architecture).not.toContain('Proposed markdown subpath');
+    expect(architecture).not.toContain('active PR #114');
+    expect(architecture).not.toContain(
+      'Until that PR or a verified successor integrates',
+    );
+  });
+
+  it('does not describe the protected print stylesheet as proposed architecture', () => {
+    const architecture = repositoryFile('ARCHITECTURE.md');
+    const stylesheet = repositoryFile('src/styles.css');
+    const adr = repositoryFile(
+      'docs/adr/0021-css-paged-media-print-boundary.md',
+    );
+
+    expect(stylesheet).toContain('@media print');
+    expect(adr).toContain('Status: Accepted');
+    expect(architecture).toContain('Accepted ADR 0021');
+    expect(architecture).toContain('protected PR #116');
+    expect(architecture).not.toContain('Proposed ADR 0021');
+    expect(architecture).not.toContain('active PR #116');
+    expect(architecture).not.toContain('Until #116 integrates');
+  });
 });
