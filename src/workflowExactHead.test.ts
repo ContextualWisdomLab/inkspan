@@ -33,6 +33,37 @@ describe('exact-head CI workflow contract', () => {
     expect(workflow.match(/persist-credentials: false/g)).toHaveLength(3);
   });
 
+  it('runs exact-head CI for pull requests regardless of stacked base branch', () => {
+    expect(workflow).toContain('  push:\n    branches: [main]');
+    expect(workflow).toContain('  pull_request:\n');
+    expect(workflow).not.toContain('  pull_request:\n    branches: [main]');
+  });
+
+  it('keeps ordinary jobs bounded while allowing slow browser dependency mirrors to finish', () => {
+    expect(workflow.match(/timeout-minutes: 30/g)).toHaveLength(2);
+    expect(workflow.match(/timeout-minutes: 60/g)).toHaveLength(1);
+
+    const browserStart = workflow.indexOf('  browser-release-evidence:');
+    const officeStart = workflow.indexOf('  office:', browserStart);
+    expect(browserStart).toBeGreaterThan(-1);
+    expect(officeStart).toBeGreaterThan(browserStart);
+    const browserJob = workflow.slice(browserStart, officeStart);
+    expect(browserJob).toContain('timeout-minutes: 60');
+  });
+
+  it('verifies the runtime checkout SHA before any job consumes repository code', () => {
+    const verificationStep = [
+      '- name: Verify exact checkout',
+      '        env:',
+      '          INKSPAN_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}',
+      '        run: |',
+      '          actual_head="$(git rev-parse HEAD)"',
+      '          test "$actual_head" = "$INKSPAN_EXPECTED_HEAD_SHA"',
+    ].join('\n');
+
+    expect(workflow.split(verificationStep)).toHaveLength(4);
+  });
+
   it('keeps the workflow read-only and hash-pins every third-party action', () => {
     expect(workflow).toContain('permissions:\n  contents: read');
     expect(workflow).not.toContain('contents: write');
