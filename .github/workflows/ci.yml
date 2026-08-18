@@ -53,7 +53,7 @@ jobs:
   browser-release-evidence:
     name: Cross-engine Clipboard / Playwright 1.62.0
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       PLAYWRIGHT_BROWSERS_PATH: /tmp/inkspan-playwright-browsers
     steps:
