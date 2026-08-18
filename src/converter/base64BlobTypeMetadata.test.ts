@@ -61,6 +61,15 @@ describe('blobToDataUri platform MIME metadata authority', () => {
     }
   });
 
+  it('preserves an explicit MIME override without consulting irrelevant oversized Blob metadata', async () => {
+    const oversizedType = 'a'.repeat(1_025);
+    const blob = new Blob([], { type: oversizedType });
+
+    await expect(
+      blobToDataUri(blob, { mimeType: 'image/png' }),
+    ).resolves.toBe('data:image/png;base64,');
+  });
+
   it('preserves a platform MIME type at the local resource ceiling', async () => {
     const exactBoundaryType = 'a'.repeat(1_024);
     const blob = new Blob([], { type: exactBoundaryType });
