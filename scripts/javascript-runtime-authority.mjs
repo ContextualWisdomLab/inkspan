@@ -34,6 +34,7 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
   }
 
   const findings = [];
+  const consumedBoundCalls = new WeakSet();
 
   /** Return a literal module specifier without evaluating computed expressions. */
   function literalSpecifier(expression) {
@@ -185,6 +186,7 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
       return null;
     }
     return {
+      bindCall,
       hasArgument: bindCall.arguments.length > 1,
       argument: bindCall.arguments[1],
     };
@@ -192,6 +194,7 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
 
   /** Preserve an explicitly bound package argument even when it is computed. */
   function commonJsBoundArgument(boundExpression, fallbackArgument) {
+    consumedBoundCalls.add(boundExpression.bindCall);
     return boundExpression.hasArgument
       ? boundExpression.argument
       : fallbackArgument;
@@ -481,6 +484,34 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
               offset: node.getStart(sourceFile),
               specifier: literalSpecifier(invocation.argument),
             });
+          } else if (!consumedBoundCalls.has(node)) {
+            const boundResolver = commonJsBoundExpression(
+              node,
+              isCommonJsResolverExpression,
+            );
+            if (boundResolver) {
+              findings.push({
+                kind: 'commonjs-resolve',
+                offset: node.getStart(sourceFile),
+                specifier: literalSpecifier(
+                  boundResolver.hasArgument ? boundResolver.argument : undefined,
+                ),
+              });
+            } else {
+              const boundLoader = commonJsBoundExpression(
+                node,
+                isCommonJsLoaderExpression,
+              );
+              if (boundLoader) {
+                findings.push({
+                  kind: 'commonjs-require',
+                  offset: node.getStart(sourceFile),
+                  specifier: literalSpecifier(
+                    boundLoader.hasArgument ? boundLoader.argument : undefined,
+                  ),
+                });
+              }
+            }
           }
         }
       }
