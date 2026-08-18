@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { blobToDataUri } from './base64.js';
 
 describe('blobToDataUri platform MIME metadata authority', () => {
@@ -26,7 +26,20 @@ describe('blobToDataUri platform MIME metadata authority', () => {
   it('rejects oversized platform MIME metadata before reading Blob bytes', async () => {
     const oversizedType = 'a'.repeat(1_025);
     const blob = new Blob([], { type: oversizedType });
-    const arrayBufferRead = vi.spyOn(Blob.prototype, 'arrayBuffer');
+    const platformArrayBufferDescriptor = Object.getOwnPropertyDescriptor(
+      Blob.prototype,
+      'arrayBuffer',
+    );
+    let payloadReadCount = 0;
+
+    Object.defineProperty(Blob.prototype, 'arrayBuffer', {
+      configurable: true,
+      writable: true,
+      value(): Promise<ArrayBuffer> {
+        payloadReadCount += 1;
+        return Promise.reject(new Error('Blob payload read sentinel.'));
+      },
+    });
 
     try {
       await expect(blobToDataUri(blob)).rejects.toThrow(
@@ -34,9 +47,17 @@ describe('blobToDataUri platform MIME metadata authority', () => {
           'Blob MIME type must not exceed 1024 UTF-16 code units.',
         ),
       );
-      expect(arrayBufferRead).not.toHaveBeenCalled();
+      expect(payloadReadCount).toBe(0);
     } finally {
-      arrayBufferRead.mockRestore();
+      if (platformArrayBufferDescriptor === undefined) {
+        Reflect.deleteProperty(Blob.prototype, 'arrayBuffer');
+      } else {
+        Object.defineProperty(
+          Blob.prototype,
+          'arrayBuffer',
+          platformArrayBufferDescriptor,
+        );
+      }
     }
   });
 
