@@ -31,6 +31,7 @@ _EXCEL_MAX_TEXT_LENGTH = 32_767
 _EXCEL_MAX_SIGNIFICANT_DIGITS = 15
 _DOCX_MAX_RICH_RUNS = 4_096
 _MAX_CONTAINER_DEPTH = 128
+_MAX_MAPPING_FIELDS = 64
 _CANONICAL_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 _CANONICAL_CORE_TIMESTAMP = b"1980-01-01T00:00:00Z"
 _DIAGNOSTIC_SCHEMA_KEYS = frozenset(
@@ -235,7 +236,11 @@ def _validate_xml_tree(
             raise OfficeDocumentError(f"{path} contains a cyclic object reference")
         active.add(identity)
         try:
-            for key, child in value.items():
+            for field_index, (key, child) in enumerate(value.items(), start=1):
+                if field_index > _MAX_MAPPING_FIELDS:
+                    raise OfficeDocumentError(
+                        f"{path} must contain at most {_MAX_MAPPING_FIELDS} fields"
+                    )
                 child_path = (
                     f"{path}.{key}"
                     if isinstance(key, str) and key in _DIAGNOSTIC_SCHEMA_KEYS
