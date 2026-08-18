@@ -2,7 +2,7 @@
 
 Status: Active PR / Proposed
 
-Run `pnpm storybook` to preview repeating Inkspan chrome before you override tokens in a host. **Shipped defaults require no host override for the inventoried active-toolbar contrast pair.** Override tokens only when re-theming, and re-check the resulting host palette. The button-state story is a class-level chrome sample. **Editor Chrome / Live Toolbar** mounts the shipped Toolbar so a token change is visible on the same objects buyers ship. These stories do not mount `CwlEditor`.
+Run `pnpm storybook` to preview repeating Inkspan chrome before you override tokens in a host. **Active-PR repaired defaults require no host override for the inventoried active-toolbar contrast pair; protected main remains the pre-repair shipped baseline until integration.** Override tokens only when re-theming, and re-check the resulting host palette. The button-state story is a class-level chrome sample. **Editor Chrome / Live Toolbar** mounts the shipped Toolbar component so a token change is visible on the same object buyers already use; the Storybook story and repaired accent remain Active PR / Proposed. These stories do not mount `CwlEditor`.
 
 | Story | Repeating object | Host next action |
 | --- | --- | --- |
