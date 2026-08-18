@@ -18,6 +18,16 @@ import { SafeClipboard } from './SafeClipboardExtension.js';
 import { SafeLink, isSafeLinkHref } from './SafeLink.js';
 import type { ImageConfig } from '../types.js';
 
+const BUILD_EXTENSIONS_OPTION_KEYS = [
+  'placeholder',
+  'image',
+  'clipboard',
+  'onImageError',
+  'onClipboardError',
+  'disableHistory',
+  'additionalExtensions',
+] as const;
+
 /** Options for constructing the shared Inkspan extension collection. */
 export interface BuildExtensionsOptions {
   /** Static or lazily resolved visual empty-editor guidance. */
@@ -37,12 +47,192 @@ export interface BuildExtensionsOptions {
   additionalExtensions?: Extensions;
 }
 
+/** Fail closed without reflecting caller-controlled top-level configuration. */
+function invalidBuildExtensionsConfiguration(): never {
+  throw new RangeError('Build extensions configuration is invalid.');
+}
+
+/** Classify top-level option arrays without leaking hostile proxy failures. */
+function isBuildExtensionsOptionsArray(value: object): boolean {
+  try {
+    return Array.isArray(value);
+  } catch {
+    invalidBuildExtensionsConfiguration();
+  }
+}
+
+/**
+ * Copy only exact own data properties from the public runtime options object.
+ *
+ * TypeScript callers normally satisfy this shape at compile time, but JavaScript,
+ * deserialized, or otherwise untyped hosts can still pass arbitrary values. The
+ * detached copy prevents accessors, inherited values, symbols, and misspelled
+ * options from changing extension configuration implicitly.
+ */
+function resolveRuntimeBuildExtensionsOptions(
+  value: unknown,
+): BuildExtensionsOptions {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    isBuildExtensionsOptionsArray(value)
+  ) {
+    invalidBuildExtensionsConfiguration();
+  }
+
+  let keys: PropertyKey[];
+  try {
+    keys = Reflect.ownKeys(value);
+  } catch {
+    invalidBuildExtensionsConfiguration();
+  }
+
+  const resolved: BuildExtensionsOptions = {};
+  for (const key of keys) {
+    if (
+      typeof key !== 'string' ||
+      !BUILD_EXTENSIONS_OPTION_KEYS.includes(
+        key as (typeof BUILD_EXTENSIONS_OPTION_KEYS)[number],
+      )
+    ) {
+      invalidBuildExtensionsConfiguration();
+    }
+
+    let descriptor: PropertyDescriptor | undefined;
+    try {
+      descriptor = Object.getOwnPropertyDescriptor(value, key);
+    } catch {
+      invalidBuildExtensionsConfiguration();
+    }
+    if (
+      descriptor === undefined ||
+      !descriptor.enumerable ||
+      !Object.prototype.hasOwnProperty.call(descriptor, 'value')
+    ) {
+      invalidBuildExtensionsConfiguration();
+    }
+
+    Object.defineProperty(resolved, key, {
+      value: descriptor.value,
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    });
+  }
+  return resolved;
+}
+
+/** Fail closed without reflecting caller-controlled image configuration. */
+function invalidImageConfiguration(): never {
+  throw new RangeError('Image configuration is invalid.');
+}
+
+/** Classify image configuration arrays without leaking hostile proxy failures. */
+function isImageConfigurationArray(value: object): boolean {
+  try {
+    return Array.isArray(value);
+  } catch {
+    invalidImageConfiguration();
+  }
+}
+
+/** Reject unknown own keys without evaluating any configuration property. */
+function validateImageConfigurationKeys(image: object): void {
+  let keys: PropertyKey[];
+  try {
+    keys = Reflect.ownKeys(image);
+  } catch {
+    invalidImageConfiguration();
+  }
+
+  for (const key of keys) {
+    if (
+      key !== 'maxSizeBytes' &&
+      key !== 'maxDimension' &&
+      key !== 'quality'
+    ) {
+      invalidImageConfiguration();
+    }
+  }
+}
+
+/** Read one own enumerable data property without invoking accessors. */
+function readImageConfigurationProperty(
+  image: object,
+  key: keyof ImageConfig,
+): unknown {
+  let descriptor: PropertyDescriptor | undefined;
+  try {
+    descriptor = Object.getOwnPropertyDescriptor(image, key);
+  } catch {
+    invalidImageConfiguration();
+  }
+
+  if (descriptor === undefined) {
+    return undefined;
+  }
+  if (!descriptor.enumerable || !('value' in descriptor)) {
+    invalidImageConfiguration();
+  }
+  return descriptor.value;
+}
+
+/** Reject malformed runtime image configuration containers before property reads. */
+function resolveRuntimeImageConfiguration(value: unknown): ImageConfig {
+  if (value === undefined) {
+    return {};
+  }
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    isImageConfigurationArray(value)
+  ) {
+    invalidImageConfiguration();
+  }
+
+  validateImageConfigurationKeys(value);
+  const maxSizeBytes = readImageConfigurationProperty(value, 'maxSizeBytes');
+  const maxDimension = readImageConfigurationProperty(value, 'maxDimension');
+  const quality = readImageConfigurationProperty(value, 'quality');
+
+  validateImageNonNegativeSafeInteger('maxSizeBytes', maxSizeBytes);
+  validateImageNonNegativeSafeInteger('maxDimension', maxDimension);
+  validateImageQuality(quality);
+
+  return {
+    maxSizeBytes: maxSizeBytes as number | undefined,
+    maxDimension: maxDimension as number | undefined,
+    quality: quality as number | undefined,
+  };
+}
+
+/** Reject invalid runtime size/dimension configuration before extension setup. */
+function validateImageNonNegativeSafeInteger(
+  key: 'maxSizeBytes' | 'maxDimension',
+  value: unknown,
+): void {
+  if (value !== undefined && (!Number.isSafeInteger(value) || (value as number) < 0)) {
+    throw new RangeError(`Image ${key} configuration is invalid.`);
+  }
+}
+
+/** Reject non-finite or out-of-range runtime image quality configuration. */
+function validateImageQuality(value: unknown): void {
+  if (
+    value !== undefined &&
+    (!Number.isFinite(value) || (value as number) < 0 || (value as number) > 1)
+  ) {
+    throw new RangeError('Image quality configuration is invalid.');
+  }
+}
+
 /** Build the full extension list for an Inkspan editor surface. */
 export function buildExtensions(
   options: BuildExtensionsOptions = {},
 ): Extensions {
-  const image = options.image ?? {};
-  const historyConfiguration = options.disableHistory
+  const resolvedOptions = resolveRuntimeBuildExtensionsOptions(options);
+  const image = resolveRuntimeImageConfiguration(resolvedOptions.image);
+  const historyConfiguration = resolvedOptions.disableHistory
     ? { history: false as const }
     : {};
 
@@ -62,11 +252,11 @@ export function buildExtensions(
       HTMLAttributes: { rel: 'noopener noreferrer nofollow' },
     }),
     SafeClipboard.configure({
-      config: options.clipboard,
-      onError: options.onClipboardError,
+      config: resolvedOptions.clipboard,
+      onError: resolvedOptions.onClipboardError,
     }),
     Placeholder.configure({
-      placeholder: options.placeholder ?? 'Start writing…',
+      placeholder: resolvedOptions.placeholder ?? 'Start writing…',
     }),
     Table.configure({ resizable: true }),
     TableRow,
@@ -76,8 +266,8 @@ export function buildExtensions(
       maxSizeBytes: image.maxSizeBytes ?? 10 * 1024 * 1024,
       maxDimension: image.maxDimension ?? 1600,
       quality: image.quality ?? 0.85,
-      onError: options.onImageError,
+      onError: resolvedOptions.onImageError,
     }),
-    ...(options.additionalExtensions ?? []),
+    ...(resolvedOptions.additionalExtensions ?? []),
   ];
 }
