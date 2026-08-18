@@ -23,6 +23,8 @@ const requiredAdrHeadings = [
   /^## Rollback or supersession(?:\b|\s|$)/mu,
 ] as const;
 
+const ADR_STATUS = /^Status: (Proposed|Accepted|Superseded)$/mu;
+
 describe('ADR quality documentation contract', () => {
   it('preserves the canonical ADR quality requirements on every reconciliation branch', () => {
     const adrIndex = repositoryFile('docs/adr/README.md');
@@ -35,6 +37,25 @@ describe('ADR quality documentation contract', () => {
     expect(adrIndex).toContain('compatibility and migration behavior');
     expect(adrIndex).toContain('verification/acceptance evidence');
     expect(adrIndex).toContain('rollback or explicit supersession conditions');
+  });
+
+  it('indexes every detailed ADR with its exact file and status', () => {
+    const adrIndex = repositoryFile('docs/adr/README.md');
+    const adrFiles = detailedAdrFiles();
+
+    expect(adrFiles.length).toBeGreaterThan(0);
+
+    for (const adrFile of adrFiles) {
+      const adr = repositoryFile(`docs/adr/${adrFile}`);
+      const status = adr.match(ADR_STATUS)?.[1];
+      const adrNumber = adrFile.slice(0, 4);
+
+      expect(status, `${adrFile} has no canonical status`).toBeDefined();
+      expect(
+        adrIndex,
+        `${adrFile} is missing from the ADR index or has a stale status`,
+      ).toContain(`| [${adrNumber}](${adrFile}) | ${status} |`);
+    }
   });
 
   it('applies the canonical quality sections to every detailed ADR', () => {
