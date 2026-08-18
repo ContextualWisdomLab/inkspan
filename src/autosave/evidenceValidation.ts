@@ -61,15 +61,8 @@ function readExactFrozenDataRecord(
     if (!Object.isFrozen(value)) return null;
 
     const ownKeys = Reflect.ownKeys(value);
-    if (
-      ownKeys.length !== expectedKeys.length ||
-      ownKeys.some(
-        (key) =>
-          typeof key !== 'string' || !expectedKeys.includes(key),
-      )
-    ) {
-      return null;
-    }
+    if (ownKeys.length !== expectedKeys.length) return null;
+
     const record: ExactDataRecord = {};
     for (const expectedKey of expectedKeys) {
       const descriptor = Object.getOwnPropertyDescriptor(value, expectedKey);
