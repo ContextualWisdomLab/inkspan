@@ -139,6 +139,7 @@ interface InternalQueueAdapter {
 
 const STRONG_HTTP_ENTITY_TAG =
   /^"[\u0021\u0023-\u007e\u0080-\u00ff]*"$/u;
+const MAX_STRONG_HTTP_ENTITY_TAG_CODE_UNITS = 64 * 1024;
 const DOCUMENT_AUTOSAVE_SESSION_OPTION_KEYS = [
   'initialStrongEntityTag',
   'save',
@@ -146,17 +147,21 @@ const DOCUMENT_AUTOSAVE_SESSION_OPTION_KEYS = [
 ] as const;
 
 /**
- * Determine whether a value is one RFC 9110 strong entity tag.
+ * Determine whether a value is one resource-bounded RFC 9110 strong entity tag.
  *
- * The check accepts exactly one quoted opaque tag, rejects the `W/` weak prefix,
- * whitespace, control characters, Unicode outside the HTTP `obs-text` range,
- * lists, wildcards, and unquoted values, and never trims or repairs input.
+ * The check accepts exactly one quoted opaque tag up to Inkspan's 64 Ki complete
+ * validator ceiling, rejects oversized values before regex evaluation, and then
+ * rejects the `W/` weak prefix, whitespace, control characters, Unicode outside
+ * the HTTP `obs-text` range, lists, wildcards, and unquoted values. The size
+ * ceiling is Inkspan local resource policy rather than an RFC field-size claim;
+ * accepted input is never trimmed or repaired.
  *
  * @param candidate - Unknown value obtained from a durable service boundary.
- * @returns `true` only for one syntactically strong entity tag.
+ * @returns `true` only for one in-bound syntactically strong entity tag.
  */
 export function isStrongHttpEntityTag(candidate: unknown): candidate is string {
   if (typeof candidate !== 'string') return false;
+  if (candidate.length > MAX_STRONG_HTTP_ENTITY_TAG_CODE_UNITS) return false;
   return STRONG_HTTP_ENTITY_TAG.test(candidate);
 }
 
@@ -260,42 +265,45 @@ function readDurableSaveResult(
 ): DocumentAutosaveDurableSaveResult | null {
   try {
     if (typeof value !== 'object' || value === null) return null;
-    const keys = Reflect.ownKeys(value);
     const statusDescriptor = Object.getOwnPropertyDescriptor(value, 'status');
     if (
       statusDescriptor === undefined ||
-      !Object.prototype.hasOwnProperty.call(statusDescriptor, 'value')
+      !statusDescriptor.enumerable ||
+      !Object.prototype.hasOwnProperty.call(statusDescriptor, 'value') ||
+      (statusDescriptor.value !== 'conflict' && statusDescriptor.value !== 'saved')
     ) {
       return null;
     }
-    if (statusDescriptor.value === 'conflict') {
-      return keys.length === 1 && keys[0] === 'status'
-        ? Object.freeze({ status: 'conflict' })
-        : null;
+    if (statusDescriptor.value === 'saved') {
+      const nextDescriptor = Object.getOwnPropertyDescriptor(
+        value,
+        'nextStrongEntityTag',
+      );
+      if (
+        nextDescriptor === undefined ||
+        !nextDescriptor.enumerable ||
+        !Object.prototype.hasOwnProperty.call(nextDescriptor, 'value') ||
+        !isStrongHttpEntityTag(nextDescriptor.value)
+      ) {
+        return null;
+      }
+      const keys = Reflect.ownKeys(value);
+      if (
+        keys.length !== 2 ||
+        !keys.includes('status') ||
+        !keys.includes('nextStrongEntityTag')
+      ) {
+        return null;
+      }
+      return Object.freeze({
+        status: 'saved',
+        nextStrongEntityTag: nextDescriptor.value,
+      });
     }
-    if (
-      statusDescriptor.value !== 'saved' ||
-      keys.length !== 2 ||
-      !keys.includes('status') ||
-      !keys.includes('nextStrongEntityTag')
-    ) {
-      return null;
-    }
-    const nextDescriptor = Object.getOwnPropertyDescriptor(
-      value,
-      'nextStrongEntityTag',
-    );
-    if (
-      nextDescriptor === undefined ||
-      !Object.prototype.hasOwnProperty.call(nextDescriptor, 'value') ||
-      !isStrongHttpEntityTag(nextDescriptor.value)
-    ) {
-      return null;
-    }
-    return Object.freeze({
-      status: 'saved',
-      nextStrongEntityTag: nextDescriptor.value,
-    });
+    const keys = Reflect.ownKeys(value);
+    return keys.length === 1 && keys[0] === 'status'
+      ? Object.freeze({ status: 'conflict' })
+      : null;
   } catch {
     return null;
   }
