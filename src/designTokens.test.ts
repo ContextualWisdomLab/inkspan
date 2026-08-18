@@ -119,6 +119,7 @@ describe('editor theme token catalog', () => {
     expect(darkActive.meetsNonTextContrast).toBe(true);
     expect(darkActive.hostAction).toContain('--cwl-accent');
     expect(darkActive.hostAction).toContain('--cwl-accent-soft');
+    expect(darkActive.hostAction).toContain('contrastRatioFromHex');
     expect(darkActive.hostAction).not.toContain('below 4.5:1');
     expect(printActive.meetsTextContrast).toBe(true);
     expect(accentOnBackground.meetsTextContrast).toBe(true);
