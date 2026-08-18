@@ -40,10 +40,12 @@ const DATA_VIEW_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
   DataView.prototype,
   'byteLength',
 )!.get!;
+const BLOB_PROTOTYPE =
+  typeof Blob === 'undefined' ? undefined : Blob.prototype;
 const BLOB_SIZE_GETTER =
-  typeof Blob === 'undefined'
+  BLOB_PROTOTYPE === undefined
     ? undefined
-    : Object.getOwnPropertyDescriptor(Blob.prototype, 'size')?.get;
+    : Object.getOwnPropertyDescriptor(BLOB_PROTOTYPE, 'size')?.get;
 
 interface ArrayBufferViewRange {
   readonly buffer: ArrayBufferLike;
@@ -71,7 +73,6 @@ function readBlobSize(blob: Blob): number {
 
 /** Identify a genuine Blob and read its size without prototype traversal. */
 function tryReadBlobSize(value: unknown): number | undefined {
-  if (typeof Blob === 'undefined') return undefined;
   try {
     return readBlobSize(value as Blob);
   } catch {
@@ -79,13 +80,12 @@ function tryReadBlobSize(value: unknown): number | undefined {
   }
 }
 
-/** Read the current platform Blob byte-reader only when it is a data capability. */
+/** Read the captured platform Blob byte-reader only when it is a data capability. */
 function readBlobArrayBufferCapability():
   | ((this: Blob) => Promise<ArrayBuffer>)
   | undefined {
-  if (typeof Blob === 'undefined') return undefined;
   const descriptor = Object.getOwnPropertyDescriptor(
-    Blob.prototype,
+    BLOB_PROTOTYPE as object,
     'arrayBuffer',
   );
   if (
