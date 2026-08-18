@@ -123,6 +123,7 @@ def write_office_document(
 
     temporary = Path(temporary_handle.name)
     cleanup_failure_message = "output could not be written"
+    primary_failure: BaseException | None = None
     try:
         try:
             with temporary_handle as handle:
@@ -143,11 +144,15 @@ def write_office_document(
             except (OSError, ValueError) as exc:
                 raise OSError("output could not be written") from exc
         cleanup_failure_message = "output was written but temporary cleanup failed"
+    except BaseException as exc:
+        primary_failure = exc
+        raise
     finally:
         try:
             temporary.unlink(missing_ok=True)
         except OSError as exc:
-            raise OSError(cleanup_failure_message) from exc
+            if primary_failure is None:
+                raise OSError(cleanup_failure_message) from exc
     return path
 
 
