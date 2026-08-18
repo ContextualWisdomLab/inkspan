@@ -167,6 +167,36 @@ def test_cleanup_failure_reports_committed_output_without_reflecting_private_det
         real_unlink(temporary)
 
 
+def test_cleanup_failure_does_not_mask_existing_target_conflict(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "customer-private-output.docx"
+    real_unlink = Path.unlink
+
+    def fail_publication_link(_source: Path, _target: Path) -> None:
+        raise FileExistsError("private target-conflict detail")
+
+    def fail_temporary_cleanup(self: Path, missing_ok: bool = False) -> None:
+        if self.name.startswith(".inkspan-office-") and self.suffix == ".tmp":
+            raise OSError("private cleanup failure detail")
+        real_unlink(self, missing_ok=missing_ok)
+
+    monkeypatch.setattr(safe_renderer.os, "link", fail_publication_link)
+    monkeypatch.setattr(Path, "unlink", fail_temporary_cleanup)
+
+    with pytest.raises(FileExistsError, match=r"^output already exists$") as error:
+        write_office_document(_docx_payload(), output)
+
+    assert "private target-conflict detail" not in str(error.value)
+    assert "private cleanup failure detail" not in str(error.value)
+    assert not output.exists()
+    temporary_files = list(tmp_path.glob(".inkspan-office-*.tmp"))
+    assert len(temporary_files) == 1
+    for temporary in temporary_files:
+        real_unlink(temporary)
+
+
 def test_invalid_output_path_uses_stable_redacted_publication_error(
     tmp_path: Path,
 ) -> None:
