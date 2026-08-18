@@ -12,6 +12,7 @@ const normalize = (value: string): string => value.replace(/\s+/gu, ' ').trim();
 
 describe('editor design-token documentation contract', () => {
   it('tells hosts how to re-theme repeating chrome without editing internals', () => {
+    const readme = normalize(repositoryFile('README.md'));
     const operatorGuide = normalize(repositoryFile('docs/design-tokens.md'));
     const inventory = normalize(repositoryFile('docs/storybook-inventory.md'));
     const doctoring = repositoryFile('docs/doctoring/editor-design-tokens.md');
@@ -37,9 +38,15 @@ describe('editor design-token documentation contract', () => {
     expect(operatorGuide).not.toContain('shipped dark active-toolbar pair now uses');
     expect(operatorGuide).toContain('getEditorThemeTokenContrast');
     expect(operatorGuide).toContain("getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'dark')");
+    expect(operatorGuide).toContain('getEditorThemeTokenContrast() checks only Inkspan catalog values');
+    expect(operatorGuide).toContain(
+      'contrastRatioFromHex(actualForegroundHex, actualBackgroundHex)',
+    );
     expect(operatorGuide).toContain('meetsTextContrast');
     expect(operatorGuide).toContain('contrastRatioFromHex');
     expect(operatorGuide).toContain('Do not edit Inkspan internals');
+    expect(readme).toContain('catalog baseline');
+    expect(readme).toContain('contrastRatioFromHex');
     expect(inventory).toContain('Editor Chrome / Toolbar Button States');
     expect(inventory).toContain('Editor Chrome / Live Toolbar');
     expect(inventory).toContain('shipped Toolbar');
@@ -55,6 +62,10 @@ describe('editor design-token documentation contract', () => {
     expect(doctoring).not.toContain('host-facing catalog of the nine shipped chrome tokens');
     expect(doctoring).toContain('producing about 5.06:1');
     expect(doctoring).toContain('Host overrides must still re-check their own resulting pairs');
+    expect(doctoring).toContain('contrastRatioFromHex');
+    expect(doctoring).not.toContain(
+      "Hosts must still call `getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'dark')` after overriding either token",
+    );
     expect(doctoring).toContain('Design Tokens Format Module 2025.10');
     expect(doctoring).toContain(
       'https://www.w3.org/community/reports/design-tokens/CG-FINAL-format-20251028/',
