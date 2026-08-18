@@ -102,4 +102,16 @@ describe('autosave detached evidence array resource preflight', () => {
     expect(createDetachedAutosaveRevisionEvidence(proxiedEvidence)).toBeNull();
     expect(ownKeysCalls).toBe(0);
   });
+
+  it('rejects unexpected record members after required-key preflight', () => {
+    const evidenceWithExtraMember = Object.freeze({
+      envelope: null,
+      revision: null,
+      unexpected: null,
+    });
+
+    expect(
+      createDetachedAutosaveRevisionEvidence(evidenceWithExtraMember),
+    ).toBeNull();
+  });
 });
