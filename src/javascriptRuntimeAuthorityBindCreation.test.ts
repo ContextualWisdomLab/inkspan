@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -43,5 +44,15 @@ describe('packed JavaScript retained CommonJS bind authority', () => {
       { kind: 'commonjs-require', specifier: 'main-bound-package' },
       { kind: 'commonjs-require', specifier: undefined },
     ]);
+  });
+
+  it('keeps doctoring aligned with retained bound capabilities', () => {
+    const doctoring = readFileSync(
+      resolve(process.cwd(), 'docs/doctoring/commonjs-runtime-authority.md'),
+      'utf8',
+    );
+
+    expect(doctoring).toContain('retained `.bind` capabilities');
+    expect(doctoring).toContain('before later invocation');
   });
 });
