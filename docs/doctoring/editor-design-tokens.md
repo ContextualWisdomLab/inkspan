@@ -18,7 +18,7 @@ If contrast fails after a re-theme, override only the named tokens on `.cwl-edit
 If integrated:
 
 1. Keep `src/styles.css` as runtime presentation authority.
-2. Publish `listEditorThemeTokens()` / `getEditorThemeToken()` / `getEditorThemeTokenContrast()` / `contrastRatioFromHex()` / `toDesignTokenFormatGroup()` as host-facing theme evidence: the name-based contrast helper evaluates the catalog baseline, while the hex helper evaluates actual resolved host colors.
+2. Publish `listEditorThemeTokens()` / `getEditorThemeToken()` / `getEditorThemeTokenContrast()` / `contrastRatioFromHex()` / `toDesignTokenFormatGroup()` as a host-facing catalog of the nine inventoried chrome tokens and theme evidence: the name-based contrast helper evaluates the catalog baseline, while the hex helper evaluates actual resolved host colors.
 3. Keep the catalog light/dark/print values synchronized with the stylesheet and require the inventoried active-toolbar text pair to meet the WCAG 2.2 4.5:1 threshold in Inkspan's own default themes.
 4. Reject unknown token names with a stable payload-redacted `EditorThemeTokenError`.
 5. Preview repeating `.cwl-tb-btn` states, the shipped Toolbar component, and token swatches in Storybook.
