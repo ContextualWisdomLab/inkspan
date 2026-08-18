@@ -291,7 +291,7 @@ export function getEditorThemeTokenContrast(
     meetsTextContrast,
     meetsNonTextContrast,
     hostAction: meetsTextContrast
-      ? `Catalog ${scheme} contrast is ${ratio.toFixed(2)}:1. ${resolvedOverrideAction} Override ${pairNames} only on .cwl-editor; do not edit Inkspan internals.`
+      ? `Catalog ${scheme} contrast is ${ratio.toFixed(2)}:1. ${resolvedOverrideAction} Override ${pairNames} on .cwl-editor only; do not edit Inkspan internals.`
       : `Catalog ${scheme} text contrast is below 4.5:1. Override ${pairNames} on .cwl-editor and ${resolvedOverrideAction} Do not edit Inkspan internals.`,
   });
 }
