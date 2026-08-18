@@ -40,6 +40,14 @@ const DATA_VIEW_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
   DataView.prototype,
   'byteLength',
 )!.get!;
+const BLOB_SIZE_GETTER =
+  typeof Blob === 'undefined'
+    ? undefined
+    : Object.getOwnPropertyDescriptor(Blob.prototype, 'size')?.get;
+const BLOB_ARRAY_BUFFER =
+  typeof Blob === 'undefined'
+    ? undefined
+    : Object.getOwnPropertyDescriptor(Blob.prototype, 'arrayBuffer')?.value;
 
 interface ArrayBufferViewRange {
   readonly buffer: ArrayBufferLike;
@@ -57,10 +65,12 @@ function isIntrinsicArrayBuffer(value: unknown): value is ArrayBuffer {
   }
 }
 
-/** Read Blob size through the platform prototype without invoking caller overrides. */
+/** Read Blob size through the captured platform intrinsic without invoking caller overrides. */
 function readBlobSize(blob: Blob): number {
-  const getter = Object.getOwnPropertyDescriptor(Blob.prototype, 'size')!.get!;
-  return getter.call(blob) as number;
+  if (BLOB_SIZE_GETTER === undefined) {
+    throw new DocxImportError('invalid_source');
+  }
+  return BLOB_SIZE_GETTER.call(blob) as number;
 }
 
 /** Identify a genuine Blob and read its size without prototype traversal. */
@@ -80,9 +90,8 @@ async function readBlobBytes(blob: Blob): Promise<Uint8Array> {
     ownArrayBuffer !== undefined &&
     'value' in ownArrayBuffer &&
     ownArrayBuffer.value === undefined;
-  const platformArrayBuffer = Blob.prototype.arrayBuffer;
-  if (!ownUndefinedArrayBuffer && typeof platformArrayBuffer === 'function') {
-    return new Uint8Array(await platformArrayBuffer.call(blob));
+  if (!ownUndefinedArrayBuffer && typeof BLOB_ARRAY_BUFFER === 'function') {
+    return new Uint8Array(await BLOB_ARRAY_BUFFER.call(blob));
   }
   if (typeof FileReader === 'undefined') {
     throw new DocxImportError('invalid_source');
