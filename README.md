@@ -122,9 +122,11 @@ embed accepted images as inline data URIs.
 ### Theme the repeating chrome
 
 Override the named `--cwl-*` custom properties on `.cwl-editor` after checking
-WCAG 2.2 contrast for body text and active toolbar text
-(`getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'dark')`). Do not
-edit Inkspan internals. See
+WCAG 2.2 contrast for body text and active toolbar text. Use
+`getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'dark')` to inspect
+Inkspan's catalog baseline. After overriding CSS, pass the actual resolved
+foreground/background hex values to `contrastRatioFromHex()` before shipping the
+host theme. Do not edit Inkspan internals. See
 [`docs/design-tokens.md`](docs/design-tokens.md) for the token catalog and
 [`docs/storybook-inventory.md`](docs/storybook-inventory.md) for the Storybook
 preview of toolbar and editor chrome.
