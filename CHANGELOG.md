@@ -6,6 +6,10 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Added
+
+- Active PR / Proposed: local XLS/XLSX worksheet insertion into the current document. A toolbar control reads a user-selected `.xls` or `.xlsx` file in memory, projects only visible displayed cell text into a heading and table, and announces the imported worksheet/row/cell counts. Formulas, macros, hyperlinks, and hidden sheets receive no editor authority. This is not protected-main behavior until the branch merges.
+
 ## [0.6.0] — 2026-08-10
 
 ### Release

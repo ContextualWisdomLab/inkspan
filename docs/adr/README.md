@@ -32,6 +32,7 @@ This index records durable architectural decisions. Protected-main implementatio
 | [0024](0024-bounded-docx-paragraph-alignment.md) | Accepted | Bounded paragraph alignment in deterministic DOCX output |
 | [0025](0025-bounded-docx-heading-alignment.md) | Accepted | Bounded heading alignment in deterministic DOCX output |
 | [0026](0026-bounded-docx-external-hyperlinks.md) | Accepted | Bounded external hyperlinks in deterministic DOCX rich text |
+| [0032](0032-bounded-local-spreadsheet-body-import.md) | Proposed | Bounded local XLS/XLSX worksheet insertion into the editor body |
 
 ## Decision discipline
 

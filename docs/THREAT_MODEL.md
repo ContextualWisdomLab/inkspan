@@ -33,6 +33,10 @@ Untrusted clipboard HTML can attempt script execution, external resource fetches
 
 URLs or image-like content can exfiltrate document context, induce unexpected network access, or smuggle executable/active payloads. Inkspan validates only supported local semantics and does not grant network authority. Hosts remain responsible for downstream CSP, fetch policy, proxy/egress controls, content serving, and tenant authorization.
 
+### Local spreadsheet body import
+
+Untrusted local XLS/XLSX bytes can carry macros, formulas, hyperlinks, hidden sheets, and hostile object graphs. Active-PR import (ADR 0032) must parse only after ZIP/OLE preflight, insert only visible displayed/cached cell text, and keep parser exceptions, file names, formulas, and hidden values out of ordinary status text. Missing `File.arrayBuffer` is not a reason to reject a genuine local workbook when `FileReader` or `Response` can read the same Blob. The parser still has no network, credential, persistence, or model authority.
+
 ### Spreadsheet formula injection
 
 XLSX cell values beginning with formula-significant prefixes can become executable spreadsheet formulas when opened by a user. Deterministic Office rendering must preserve the documented formula-injection neutralization boundary and never silently convert untrusted strings into formulas. No macro, network, or Desktop Office execution is part of the renderer contract.

@@ -40,6 +40,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       onBlur,
       onSelectionChange,
       onImageError,
+      onSpreadsheetError,
       clipboard,
       onClipboardError,
       placeholder = 'Start writing…',
@@ -243,6 +244,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         image={image}
         className={className}
         onImageError={onImageError}
+        onSpreadsheetError={onSpreadsheetError}
         formFieldName={formFieldName}
         formId={formId}
         formFieldDisabled={formFieldDisabled}
