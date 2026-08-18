@@ -50,6 +50,7 @@ describe('canonical release artifact inventory consistency', () => {
     for (const document of [
       changelog,
       contracts,
+      releaseSecurity,
       testStrategy,
       operability,
       releaseDoctoring,
