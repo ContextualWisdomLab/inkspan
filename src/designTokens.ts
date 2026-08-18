@@ -254,11 +254,12 @@ function colorValueForScheme(
 }
 
 /**
- * Return the WCAG 2.2 contrast ratio for two shipped color tokens.
+ * Return the WCAG 2.2 contrast ratio for two shipped catalog color tokens.
  *
- * Use this after a host override to decide whether an inventoried pair still
- * meets 4.5:1 text contrast, including `--cwl-accent` on `--cwl-accent-soft`.
- * The ratio is not a host WCAG certification.
+ * This helper evaluates Inkspan's catalog values for the requested scheme; it
+ * cannot observe host CSS overrides. After overriding a pair on `.cwl-editor`,
+ * pass the resolved `#rrggbb` values to `contrastRatioFromHex()` instead. The
+ * ratio is not a host WCAG certification.
  *
  * @throws {EditorThemeTokenError} When either name is not a shipped token.
  * @throws {EditorThemeTokenContrastError} When either token is not a color.
@@ -280,6 +281,8 @@ export function getEditorThemeTokenContrast(
   const meetsTextContrast = ratio >= WCAG_TEXT_CONTRAST_RATIO;
   const meetsNonTextContrast = ratio >= WCAG_NON_TEXT_CONTRAST_RATIO;
   const pairNames = `--${foreground.name} and --${background.name}`;
+  const resolvedOverrideAction =
+    'For host overrides, pass the resolved #rrggbb pair to contrastRatioFromHex(actualForegroundHex, actualBackgroundHex) before shipping.';
   return Object.freeze({
     foreground: foreground.name,
     background: background.name,
@@ -288,8 +291,8 @@ export function getEditorThemeTokenContrast(
     meetsTextContrast,
     meetsNonTextContrast,
     hostAction: meetsTextContrast
-      ? `Override ${pairNames} on .cwl-editor after checking WCAG 2.2 contrast. Do not edit Inkspan internals.`
-      : `Override ${pairNames} on .cwl-editor; shipped ${scheme} text contrast is below 4.5:1. Do not edit Inkspan internals.`,
+      ? `Catalog ${scheme} contrast is ${ratio.toFixed(2)}:1. ${resolvedOverrideAction} Override ${pairNames} only on .cwl-editor; do not edit Inkspan internals.`
+      : `Catalog ${scheme} text contrast is below 4.5:1. Override ${pairNames} on .cwl-editor and ${resolvedOverrideAction} Do not edit Inkspan internals.`,
   });
 }
 
