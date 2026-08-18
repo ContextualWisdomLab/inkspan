@@ -50,13 +50,16 @@ function readExactFrozenDataRecord(
   expectedKeys: readonly string[],
 ): ExactDataRecord | null {
   try {
-    if (
-      typeof value !== 'object' ||
-      value === null ||
-      !Object.isFrozen(value)
-    ) {
-      return null;
+    if (typeof value !== 'object' || value === null) return null;
+
+    for (const expectedKey of expectedKeys) {
+      if (Object.getOwnPropertyDescriptor(value, expectedKey) === undefined) {
+        return null;
+      }
     }
+
+    if (!Object.isFrozen(value)) return null;
+
     const ownKeys = Reflect.ownKeys(value);
     if (
       ownKeys.length !== expectedKeys.length ||
