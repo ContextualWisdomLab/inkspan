@@ -11,6 +11,8 @@ export default defineConfig({
       include: [
         'src/text-position-selector',
         'src/textPositionSelectorEvidence.ts',
+        'src/writingDiagnosticProjection.ts',
+        'src/graphemeBoundary.ts',
       ],
       exclude: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'src/**/*.spec.ts'],
       rollupTypes: false,
