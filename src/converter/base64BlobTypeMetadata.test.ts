@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { blobToDataUri } from './base64.js';
 
 describe('blobToDataUri platform MIME metadata authority', () => {
@@ -21,5 +21,31 @@ describe('blobToDataUri platform MIME metadata authority', () => {
 
     expect(typeAccessorRead).toBe(false);
     expect(uri).toBe('data:application/octet-stream;base64,AQID');
+  });
+
+  it('rejects oversized platform MIME metadata before reading Blob bytes', async () => {
+    const oversizedType = 'a'.repeat(1_025);
+    const blob = new Blob([], { type: oversizedType });
+    const arrayBufferRead = vi.spyOn(Blob.prototype, 'arrayBuffer');
+
+    try {
+      await expect(blobToDataUri(blob)).rejects.toThrow(
+        new RangeError(
+          'Blob MIME type must not exceed 1024 UTF-16 code units.',
+        ),
+      );
+      expect(arrayBufferRead).not.toHaveBeenCalled();
+    } finally {
+      arrayBufferRead.mockRestore();
+    }
+  });
+
+  it('preserves a platform MIME type at the local resource ceiling', async () => {
+    const exactBoundaryType = 'a'.repeat(1_024);
+    const blob = new Blob([], { type: exactBoundaryType });
+
+    await expect(blobToDataUri(blob)).resolves.toBe(
+      `data:${exactBoundaryType};base64,`,
+    );
   });
 });
