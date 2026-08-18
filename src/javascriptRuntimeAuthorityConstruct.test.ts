@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -52,5 +53,16 @@ describe('packed JavaScript CommonJS constructor authority', () => {
     );
 
     expect(result).toBe('true');
+  });
+
+  it('keeps doctoring aligned with constructor and Reflect.construct authority', () => {
+    const doctoring = readFileSync(
+      resolve(process.cwd(), 'docs/doctoring/commonjs-runtime-authority.md'),
+      'utf8',
+    );
+
+    expect(doctoring).toContain('constructor invocation');
+    expect(doctoring).toContain('Reflect.construct');
+    expect(doctoring).toContain('no-execution/no-alias-evaluation invariant');
   });
 });
