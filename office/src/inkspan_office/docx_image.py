@@ -66,11 +66,12 @@ def _decode_inline_png(source: str, path: str) -> bytes:
         raise DocxImageContractError(
             f"{path}.source must be an inline data:image/png;base64 URL"
         )
-    encoded = source[len(_DATA_URL_PREFIX) :]
-    if not encoded or len(encoded) > _MAX_BASE64_CHARACTERS:
+    payload_length = len(source) - len(_DATA_URL_PREFIX)
+    if payload_length <= 0 or payload_length > _MAX_BASE64_CHARACTERS:
         raise DocxImageContractError(
             f"{path}.source PNG payload exceeds the supported image boundary"
         )
+    encoded = source[len(_DATA_URL_PREFIX) :]
     try:
         image_bytes = base64.b64decode(encoded, validate=True)
     except (binascii.Error, ValueError) as exc:

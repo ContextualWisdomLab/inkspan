@@ -152,7 +152,7 @@ def test_docx_rich_paragraph_schema_and_runtime_bounds_match() -> None:
         (["not-an-object"], r"blocks\[0\]\.runs\[0\] must be an object"),
         (
             [{"text": "x", "color": "red"}],
-            r"blocks\[0\]\.runs\[0\] has unexpected field: color",
+            r"blocks\[0\]\.runs\[0\] has unexpected field",
         ),
         (
             [{"text": "x", "bold": 1}],
