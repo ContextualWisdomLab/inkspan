@@ -85,7 +85,7 @@ describe('editor theme token catalog', () => {
     expect(() => getEditorThemeToken('not-a-theme-token')).not.toThrow(/not-a-theme-token/u);
   });
 
-  it('reports WCAG 2.2 contrast for shipped color pairs so hosts can check overrides', () => {
+  it('reports WCAG 2.2 contrast for catalog color pairs so hosts can check overrides', () => {
     const light = getEditorThemeTokenContrast('cwl-fg', 'cwl-bg', 'light');
     const dark = getEditorThemeTokenContrast('cwl-fg', 'cwl-bg', 'dark');
     const print = getEditorThemeTokenContrast('cwl-fg', 'cwl-bg', 'print');
@@ -102,7 +102,8 @@ describe('editor theme token catalog', () => {
     expect(light.hostAction).toContain('Override --cwl-fg and --cwl-bg on .cwl-editor');
     expect(light.hostAction).toContain('WCAG 2.2');
     expect(lowContrast.meetsTextContrast).toBe(false);
-    expect(lowContrast.hostAction).toContain('shipped light text contrast is below 4.5:1');
+    expect(lowContrast.hostAction).toContain('Catalog light text contrast is below 4.5:1');
+    expect(lowContrast.hostAction).toContain('WCAG 2.2');
     expect(lowContrast.hostAction).toContain('Override --cwl-border and --cwl-bg on .cwl-editor');
   });
 

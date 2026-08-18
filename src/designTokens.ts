@@ -282,7 +282,7 @@ export function getEditorThemeTokenContrast(
   const meetsNonTextContrast = ratio >= WCAG_NON_TEXT_CONTRAST_RATIO;
   const pairNames = `--${foreground.name} and --${background.name}`;
   const resolvedOverrideAction =
-    'For host overrides, pass the resolved #rrggbb pair to contrastRatioFromHex(actualForegroundHex, actualBackgroundHex) before shipping.';
+    'For host overrides, re-check WCAG 2.2 using the resolved #rrggbb pair with contrastRatioFromHex(actualForegroundHex, actualBackgroundHex) before shipping.';
   return Object.freeze({
     foreground: foreground.name,
     background: background.name,

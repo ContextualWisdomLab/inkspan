@@ -38,7 +38,7 @@ describe('editor design-token documentation contract', () => {
     expect(operatorGuide).not.toContain('shipped dark active-toolbar pair now uses');
     expect(operatorGuide).toContain('getEditorThemeTokenContrast');
     expect(operatorGuide).toContain("getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'dark')");
-    expect(operatorGuide).toContain('getEditorThemeTokenContrast() checks only Inkspan catalog values');
+    expect(operatorGuide).toContain('`getEditorThemeTokenContrast()` checks only Inkspan catalog values');
     expect(operatorGuide).toContain(
       'contrastRatioFromHex(actualForegroundHex, actualBackgroundHex)',
     );
