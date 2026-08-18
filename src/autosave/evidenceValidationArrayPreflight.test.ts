@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { isDeeplyFrozenDocumentJson } from './evidenceValidation.js';
+import {
+  createDetachedAutosaveRevisionEvidence,
+  isDeeplyFrozenDocumentJson,
+} from './evidenceValidation.js';
 
 describe('autosave detached evidence array resource preflight', () => {
   it('rejects an impossible array length before explicit own-key enumeration', () => {
@@ -84,5 +87,19 @@ describe('autosave detached evidence array resource preflight', () => {
     }
 
     expect(isDeeplyFrozenDocumentJson(root)).toBe(true);
+  });
+
+  it('rejects missing record members before whole-record key enumeration', () => {
+    const incompleteEvidence = Object.freeze({ envelope: null });
+    let ownKeysCalls = 0;
+    const proxiedEvidence = new Proxy(incompleteEvidence, {
+      ownKeys(target) {
+        ownKeysCalls += 1;
+        return Reflect.ownKeys(target);
+      },
+    });
+
+    expect(createDetachedAutosaveRevisionEvidence(proxiedEvidence)).toBeNull();
+    expect(ownKeysCalls).toBe(0);
   });
 });
