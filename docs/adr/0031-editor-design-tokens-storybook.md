@@ -18,15 +18,15 @@ Inventorying the actual active-toolbar foreground/background pair also exposed a
 
 ## Decision
 
-If integrated, Inkspan will publish a host-facing theme-token catalog for nine inventoried chrome tokens, a Design Tokens Format Module 2025.10 interchange snapshot, and a Storybook inventory of repeating toolbar/editor objects. Inkspan's inventoried normal-text pairs will be required to meet the WCAG 2.2 4.5:1 threshold in the resulting protected light/dark/print defaults; the active-PR candidate therefore uses `#58a6ff` on `#163356` for dark active-toolbar text, about 5.06:1. Hosts overriding `--cwl-*` on `.cwl-editor` must re-check contrast for their resulting body and active-toolbar pairs. Unknown token names fail closed. No Figma, network, persistence, credential, or model authority is added.
+If integrated, Inkspan will publish a host-facing theme-token catalog for nine inventoried chrome tokens, a Design Tokens Format Module 2025.10 interchange snapshot, and a Storybook inventory of repeating toolbar/editor objects. Inkspan's inventoried normal-text pairs will be required to meet the WCAG 2.2 4.5:1 threshold in the resulting protected light/dark/print defaults; the active-PR candidate therefore uses `#58a6ff` on `#163356` for dark active-toolbar text, about 5.06:1. `getEditorThemeTokenContrast()` evaluates only the catalog values for a named scheme. Hosts overriding `--cwl-*` on `.cwl-editor` must pass their actual resolved foreground/background hex values to `contrastRatioFromHex()` and re-check their resulting body and active-toolbar pairs. Unknown token names fail closed. No Figma, network, persistence, credential, or model authority is added.
 
 ## Consequences and ownership trade-offs
 
-After integration, hosts gain a copyable token list and a Storybook preview. Inkspan keeps CSS as the runtime source and owns accessibility defects in its default token combinations. naruon and other CWL hosts can apply their own overrides through host-owned brand CSS and then use the same contrast helpers to validate those custom values. Complete DTCG conformance, Figma Variables, host-theme WCAG certification, and automated remediation of arbitrary host palettes remain out of scope.
+After integration, hosts gain a copyable token list and a Storybook preview. Inkspan keeps CSS as the runtime source and owns accessibility defects in its default token combinations. naruon and other CWL hosts can apply their own overrides through host-owned brand CSS, use `getEditorThemeTokenContrast()` to inspect the Inkspan catalog baseline, and use `contrastRatioFromHex()` to validate their actual resolved custom values. Complete DTCG conformance, Figma Variables, host-theme WCAG certification, and automated remediation of arbitrary host palettes remain out of scope.
 
 ## Failure and recovery
 
-An unknown token name throws `EditorThemeTokenError` without reflecting caller input. A protected default pair that fails an applicable repository contrast contract must be repaired in Inkspan's token catalog and stylesheet together before integration or release. A host override that fails contrast is recovered by changing only the named host tokens, not by editing Inkspan internals or disabling forced-colors.
+An unknown token name throws `EditorThemeTokenError` without reflecting caller input. A protected default pair that fails an applicable repository contrast contract must be repaired in Inkspan's token catalog and stylesheet together before integration or release. A host override that fails contrast is recovered by changing only the named host tokens, measuring the actual resolved custom pair with `contrastRatioFromHex()`, and rechecking the applicable WCAG threshold; do not edit Inkspan internals or disable forced-colors.
 
 ## Security and privacy impact
 
@@ -34,11 +34,11 @@ The proposed catalog contains only public presentation values. It does not carry
 
 ## Compatibility and migration
 
-The catalog is additive if integrated. Existing CSS overrides on `.cwl-editor` continue to work. The active-PR candidate changes the dark default accent from `#4493f8` to `#58a6ff`; hosts that already override `--cwl-accent` are unaffected by that candidate default-value change but remain responsible for validating their custom pair. A later CSS token addition or default-value change must update the catalog, directly affected documentation/tests, and this ADR together.
+The catalog is additive if integrated. Existing CSS overrides on `.cwl-editor` continue to work. The active-PR candidate changes the dark default accent from `#4493f8` to `#58a6ff`; hosts that already override `--cwl-accent` are unaffected by that candidate default-value change but remain responsible for validating their actual custom pair. A later CSS token addition or default-value change must update the catalog, directly affected documentation/tests, and this ADR together.
 
 ## Verification and acceptance evidence
 
-Required evidence includes token-catalog tests against `src/styles.css`, deterministic contrast assertions for inventoried normal-text pairs, documentation-contract tests, Storybook inventory stories for toolbar button states and token swatches, and exact-head CI/coverage/package/security gates on the unchanged head. The accessibility regression must fail against protected main's `#4493f8`/`#163356` dark active pair and pass against the active-PR `#58a6ff`/`#163356` pair. This ADR stays Proposed until protected integration.
+Required evidence includes token-catalog tests against `src/styles.css`, deterministic contrast assertions for inventoried normal-text pairs, resolved-hex override guidance tests, documentation-contract tests, Storybook inventory stories for toolbar button states and token swatches, and exact-head CI/coverage/package/security gates on the unchanged head. The accessibility regression must fail against protected main's `#4493f8`/`#163356` dark active pair and pass against the active-PR `#58a6ff`/`#163356` pair. This ADR stays Proposed until protected integration.
 
 ## Rollback or supersession
 
