@@ -3,6 +3,8 @@ import { useEffect, useRef } from 'react';
 import type { EditorMode } from '../types.js';
 import { editorHtmlToValue } from './editorSerialization.js';
 
+const MAX_FORM_IDENTITY_CODE_UNITS = 65_536;
+
 /** Props for the hidden native-form field maintained by an editor instance. */
 export interface EditorFormFieldProps {
   editor: Editor | null;
@@ -118,6 +120,36 @@ export function EditorFormField({
       pendingResetTasks.clear();
     };
   }, [formId, name, onFormReset]);
+
+  if (name !== undefined && typeof name !== 'string') {
+    throw new RangeError(
+      'native form field name must be a string when provided',
+    );
+  }
+  if (
+    typeof name === 'string' &&
+    name.length > MAX_FORM_IDENTITY_CODE_UNITS
+  ) {
+    throw new RangeError(
+      'native form field name must not exceed 65536 UTF-16 code units',
+    );
+  }
+  if (formId !== undefined && typeof formId !== 'string') {
+    throw new RangeError('native form id must be a string when provided');
+  }
+  if (
+    typeof formId === 'string' &&
+    formId.length > MAX_FORM_IDENTITY_CODE_UNITS
+  ) {
+    throw new RangeError(
+      'native form id must not exceed 65536 UTF-16 code units',
+    );
+  }
+  if (disabled !== undefined && typeof disabled !== 'boolean') {
+    throw new RangeError(
+      'native form field disabled state must be a boolean when provided',
+    );
+  }
 
   if (name === undefined && onFormReset === undefined) return null;
 
