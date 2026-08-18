@@ -60,7 +60,7 @@ Release publication occurs only from an exact integrated protected head. The rel
 Before publication:
 
 1. fetch the current protected `main` ref and require the release tag event commit SHA to equal that exact integration tip, not merely be an ancestor of it;
-2. build exactly four regular top-level release files: exactly one npm tarball, exactly one Inkspan Office wheel, `inkspan.spdx.json`, and `SHA256SUMS`;
+2. build exactly three regular top-level release files: exactly one npm tarball, exactly one Inkspan Office wheel, and `SHA256SUMS`;
 3. reject missing, duplicate, non-regular, stale, or unexpected local entries and verify the local digests;
 4. after upload, query the authenticated paginated GitHub Releases API and require the resumed remote draft asset-name set to equal the local release directory exactly;
 5. require every remote asset state to be uploaded and every GitHub-reported `sha256:` digest to equal the exact transferred local file digest;
