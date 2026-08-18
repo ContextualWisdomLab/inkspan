@@ -7,19 +7,161 @@ import type {
 } from '../types.js';
 import { editorHtmlToValue } from './editorSerialization.js';
 
+interface FreezeDocumentJsonFrame {
+  value: object;
+  exiting: boolean;
+}
+
+const INVALID_EDITOR_MODE_MESSAGE = 'Editor mode must be markdown or html.';
+const INVALID_DOCUMENT_JSON_CONTAINER_MESSAGE =
+  'Editor document JSON must contain plain objects and arrays only.';
+const INVALID_DOCUMENT_JSON_PROPERTY_MESSAGE =
+  'Editor document JSON must contain data properties only.';
+const INVALID_DOCUMENT_JSON_VALUE_MESSAGE =
+  'Editor document JSON must contain JSON-compatible values only.';
+const INVALID_DOCUMENT_JSON_ARRAY_MESSAGE =
+  'Editor document JSON arrays must contain dense elements only.';
+const JSON_SCALAR_TYPES = new Set(['string', 'boolean']);
+
+function assertEditorMode(mode: EditorMode): void {
+  if (mode !== 'markdown' && mode !== 'html') {
+    throw new RangeError(INVALID_EDITOR_MODE_MESSAGE);
+  }
+}
+
+function isJsonArray(value: object): boolean {
+  try {
+    return Array.isArray(value);
+  } catch {
+    throw new RangeError(INVALID_DOCUMENT_JSON_CONTAINER_MESSAGE);
+  }
+}
+
+function assertPlainJsonContainer(value: object): void {
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== null && Object.getPrototypeOf(prototype) !== null) {
+      throw new RangeError(INVALID_DOCUMENT_JSON_CONTAINER_MESSAGE);
+    }
+  } catch {
+    throw new RangeError(INVALID_DOCUMENT_JSON_CONTAINER_MESSAGE);
+  }
+}
+
+function ownJsonKeys(value: object): (string | symbol)[] {
+  try {
+    return Reflect.ownKeys(value);
+  } catch {
+    throw new RangeError(INVALID_DOCUMENT_JSON_PROPERTY_MESSAGE);
+  }
+}
+
+function ownJsonArrayLength(value: object): number {
+  try {
+    return Object.getOwnPropertyDescriptor(value, 'length')!.value as number;
+  } catch {
+    throw new RangeError(INVALID_DOCUMENT_JSON_ARRAY_MESSAGE);
+  }
+}
+
+function assertDenseJsonArrayKeys(
+  keys: (string | symbol)[],
+  length: number,
+): void {
+  if (keys.length !== length + 1) {
+    throw new RangeError(INVALID_DOCUMENT_JSON_ARRAY_MESSAGE);
+  }
+  for (let index = 0; index < length; index += 1) {
+    if (keys[index] !== String(index)) {
+      throw new RangeError(INVALID_DOCUMENT_JSON_ARRAY_MESSAGE);
+    }
+  }
+}
+
+function ownJsonDataProperty(
+  value: object,
+  key: string | symbol,
+): PropertyDescriptor {
+  let descriptor: PropertyDescriptor | undefined;
+  try {
+    descriptor = Object.getOwnPropertyDescriptor(value, key);
+  } catch {
+    throw new RangeError(INVALID_DOCUMENT_JSON_PROPERTY_MESSAGE);
+  }
+  if (
+    descriptor === undefined ||
+    typeof key !== 'string' ||
+    !descriptor.enumerable ||
+    !('value' in descriptor)
+  ) {
+    throw new RangeError(INVALID_DOCUMENT_JSON_PROPERTY_MESSAGE);
+  }
+  return descriptor;
+}
+
+function assertJsonCompatiblePrimitive(value: unknown): void {
+  const valueType = typeof value;
+  if (value === null || JSON_SCALAR_TYPES.has(valueType)) return;
+  if (valueType === 'number' && Number.isFinite(value)) return;
+  throw new RangeError(INVALID_DOCUMENT_JSON_VALUE_MESSAGE);
+}
+
+function freezeJsonContainer(value: object): void {
+  try {
+    Object.freeze(value);
+  } catch {
+    throw new RangeError(INVALID_DOCUMENT_JSON_PROPERTY_MESSAGE);
+  }
+}
+
 /** Deep-freeze a detached TipTap JSON tree without recursive stack growth. */
 function freezeDocumentJson(
   documentJson: JSONContent,
 ): Readonly<JSONContent> {
-  const pendingObjects: object[] = [documentJson];
-  for (let objectIndex = 0; objectIndex < pendingObjects.length; objectIndex += 1) {
-    const currentObject = pendingObjects[objectIndex]!;
-    for (const nestedValue of Object.values(currentObject)) {
+  const activeObjects = new WeakSet<object>();
+  const frozenObjects = new WeakSet<object>();
+  const pendingFrames: FreezeDocumentJsonFrame[] = [
+    { value: documentJson, exiting: false },
+  ];
+
+  while (pendingFrames.length > 0) {
+    const frame = pendingFrames.pop()!;
+    if (frame.exiting) {
+      activeObjects.delete(frame.value);
+      freezeJsonContainer(frame.value);
+      frozenObjects.add(frame.value);
+      continue;
+    }
+    if (frozenObjects.has(frame.value)) {
+      continue;
+    }
+    if (activeObjects.has(frame.value)) {
+      throw new RangeError('Editor document JSON must be acyclic.');
+    }
+
+    const isArray = isJsonArray(frame.value);
+    if (!isArray) {
+      assertPlainJsonContainer(frame.value);
+    }
+    const keys = ownJsonKeys(frame.value);
+    if (isArray) {
+      assertDenseJsonArrayKeys(keys, ownJsonArrayLength(frame.value));
+    }
+
+    activeObjects.add(frame.value);
+    pendingFrames.push({ value: frame.value, exiting: true });
+    for (const key of keys) {
+      if (isArray && key === 'length') {
+        continue;
+      }
+      const descriptor = ownJsonDataProperty(frame.value, key);
+      const nestedValue = descriptor.value as unknown;
       if (nestedValue !== null && typeof nestedValue === 'object') {
-        pendingObjects.push(nestedValue);
+        pendingFrames.push({ value: nestedValue, exiting: false });
+      } else {
+        assertJsonCompatiblePrimitive(nestedValue);
       }
     }
-    Object.freeze(currentObject);
   }
   return documentJson;
 }
@@ -31,11 +173,21 @@ function freezeDocumentJson(
  * destination-free plain-text projection. TipTap JSON is detached by
  * `Editor.getJSON()` and iteratively frozen together with the outer snapshot so
  * host persistence, indexing, and AI workflows cannot mutate shared state.
+ * Cyclic custom-extension metadata is rejected before an active object is
+ * traversed again. Only dense arrays and plain/null-prototype objects containing
+ * enumerable string data properties and lossless JSON-compatible primitive
+ * values are accepted, including plain objects from another JavaScript realm;
+ * sparse arrays, extra array metadata, exotic containers, accessors, symbol
+ * keys, hidden custom metadata, unsupported primitive values, non-finite
+ * numbers, and hostile reflection traps cannot escape the same deterministic
+ * payload-redacted JSON snapshot boundary. Shared acyclic references remain
+ * supported.
  */
 export function createEditorDocumentSnapshot(
   editor: Editor | null,
   mode: EditorMode,
 ): CwlEditorDocumentSnapshot {
+  assertEditorMode(mode);
   if (!editor) {
     return Object.freeze({
       mode,
