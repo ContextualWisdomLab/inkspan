@@ -10,7 +10,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Named the repeating editor chrome as a host-facing theme-token catalog and Storybook inventory so hosts can override `--cwl-*` custom properties on `.cwl-editor` after checking WCAG 2.2 contrast, without editing Inkspan internals. Color catalog values now distinguish light, dark, and `@media print` remaps; forced-colors mode is not treated as a token assignment. Hosts can call `getEditorThemeTokenContrast()` to compare inventoried pairs, including `--cwl-accent` on `--cwl-accent-soft`, against the 4.5:1 text threshold via `meetsTextContrast`.
 
 ### Accessibility
-- Raised the shipped dark active-toolbar accent from `#4493f8` to `#58a6ff`, increasing `--cwl-accent` text on `--cwl-accent-soft: #163356` from about 4.13:1 to about 5.06:1 so Inkspan's default 13px active-button text meets the WCAG 2.2 4.5:1 normal-text threshold while host overrides remain explicitly re-checkable through `getEditorThemeTokenContrast()`.
+- Prepared the active-PR dark active-toolbar accent change from protected-main `#4493f8` to `#58a6ff`, increasing `--cwl-accent` text on `--cwl-accent-soft: #163356` from about 4.13:1 to about 5.06:1 so the candidate default 13px active-button text meets the WCAG 2.2 4.5:1 normal-text threshold; this remains active-PR evidence until protected integration, and host overrides remain explicitly re-checkable through `getEditorThemeTokenContrast()`.
 
 ## [0.6.0] — 2026-08-10
 
@@ -21,7 +21,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Added the selected standalone Markdown or HTML value to an explicitly configured SSR native form field, preserving controlled-value precedence, external form association, React attribute escaping, and the synchronous post-hydration TipTap transaction mirror
 
 ### Security
-- Added a fail-closed draft release asset inventory gate that requires exactly one npm tarball, one Office wheel, and `SHA256SUMS`, rejects stale or unexpected draft assets before immutable publication, and verifies every GitHub-reported `sha256:` asset digest against the transferred local file
+- Added a fail-closed draft release asset inventory gate that requires exactly one npm tarball, one Office wheel, `inkspan.spdx.json`, and `SHA256SUMS`, rejects stale or unexpected draft assets before immutable publication, and verifies every GitHub-reported `sha256:` asset digest against the transferred local file
 - Kept SSR document disclosure opt-in through `formFieldName`; hidden-field values remain client-controlled submission data and do not replace host authentication, authorization, tenant isolation, CSRF defenses, server validation, durable concurrency, or persistence controls
 - Kept collaborative Yjs document content out of server markup until the host-owned client collaboration lifecycle is bound
 - Added packed headless Markdown authority verification that rejects external runtime imports, dynamic module loaders, ambient network/environment credential access, React/TipTap/Yjs runtime coupling, CWL host coupling, and model credential references from the dedicated conversion artifact
