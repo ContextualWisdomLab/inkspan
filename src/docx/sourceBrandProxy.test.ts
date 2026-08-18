@@ -70,7 +70,15 @@ describe('DOCX binary source branding', () => {
       });
       expect(hostileArrayBuffer).not.toHaveBeenCalled();
     } finally {
-      Object.defineProperty(Blob.prototype, 'arrayBuffer', originalArrayBuffer!);
+      if (originalArrayBuffer === undefined) {
+        Reflect.deleteProperty(Blob.prototype, 'arrayBuffer');
+      } else {
+        Object.defineProperty(
+          Blob.prototype,
+          'arrayBuffer',
+          originalArrayBuffer,
+        );
+      }
     }
   });
 
