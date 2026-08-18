@@ -48,9 +48,28 @@ export const WCAG_TEXT_CONTRAST_RATIO = 4.5;
 /** WCAG 2.2 Success Criterion 1.4.11 minimum contrast for UI components. */
 export const WCAG_NON_TEXT_CONTRAST_RATIO = 3;
 
+/** DTCG 2025.10 sRGB color value used by the interchange snapshot. */
+export interface DesignTokenFormatColorValue {
+  readonly colorSpace: 'srgb';
+  readonly components: readonly [number, number, number];
+  readonly hex: string;
+}
+
+/** DTCG 2025.10 dimension value used by the interchange snapshot. */
+export interface DesignTokenFormatDimensionValue {
+  readonly value: number;
+  readonly unit: 'px' | 'rem';
+}
+
+export type DesignTokenFormatValue =
+  | DesignTokenFormatColorValue
+  | DesignTokenFormatDimensionValue
+  | string
+  | readonly string[];
+
 export interface DesignTokenFormatNode {
   readonly $type: 'color' | 'dimension' | 'fontFamily';
-  readonly $value: string | readonly string[];
+  readonly $value: DesignTokenFormatValue;
   readonly $description: string;
 }
 
@@ -274,11 +293,38 @@ export function getEditorThemeTokenContrast(
   });
 }
 
-function formatTokenValue(token: EditorThemeToken): string | readonly string[] {
-  if (token.role !== 'fontFamily') {
-    return token.lightValue;
+function formatColorTokenValue(value: string): DesignTokenFormatColorValue {
+  const integer = Number.parseInt(value.slice(1), 16);
+  return Object.freeze({
+    colorSpace: 'srgb',
+    components: Object.freeze([
+      ((integer >> 16) & 0xff) / 255,
+      ((integer >> 8) & 0xff) / 255,
+      (integer & 0xff) / 255,
+    ] as const),
+    hex: value,
+  });
+}
+
+function formatDimensionTokenValue(value: string): DesignTokenFormatDimensionValue {
+  const [, numericValue, unit] = /^(-?(?:\d+(?:\.\d+)?|\.\d+))(px|rem)$/u.exec(value)!;
+  return Object.freeze({
+    value: Number.parseFloat(numericValue),
+    unit: unit as DesignTokenFormatDimensionValue['unit'],
+  });
+}
+
+function formatTokenValue(token: EditorThemeToken): DesignTokenFormatValue {
+  switch (token.role) {
+    case 'color':
+      return formatColorTokenValue(token.lightValue);
+    case 'dimension':
+      return formatDimensionTokenValue(token.lightValue);
+    case 'fontFamily':
+      return token.lightValue
+        .split(',')
+        .map((family) => family.trim().replace(/^['"]|['"]$/gu, ''));
   }
-  return token.lightValue.split(',').map((family) => family.trim().replace(/^['"]|['"]$/gu, ''));
 }
 
 function toFormatNode(token: EditorThemeToken): DesignTokenFormatNode {
@@ -292,8 +338,9 @@ function toFormatNode(token: EditorThemeToken): DesignTokenFormatNode {
 /**
  * Return a Design Tokens Format Module 2025.10 group for the shipped chrome.
  *
- * This is an interchange snapshot of Inkspan's CSS custom properties. It is not
- * a claim of complete DTCG conformance, Figma Variables sync, or WCAG contrast
+ * The light/default snapshot emits DTCG-native color, dimension, and font-family
+ * value shapes. Dark and print CSS schemes remain available from the token
+ * catalog and stylesheet authority. This is not Figma Variables sync or a WCAG
  * certification for host overrides.
  */
 export function toDesignTokenFormatGroup(): DesignTokenFormatGroup {
