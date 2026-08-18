@@ -10,6 +10,7 @@ function repositoryFile(path: string): string {
 
 describe('canonical release artifact inventory consistency', () => {
   it('keeps canonical release documents aligned with the protected four-file boundary', () => {
+    const changelog = repositoryFile('CHANGELOG.md');
     const contracts = repositoryFile('docs/CONTRACTS.md');
     const operability = repositoryFile('docs/OPERABILITY.md');
     const releaseDoctoring = repositoryFile(
@@ -42,10 +43,21 @@ describe('canonical release artifact inventory consistency', () => {
     );
     expect(releaseDoctoring).toContain('`inkspan.spdx.json`');
 
-    for (const document of [contracts, testStrategy, operability, releaseDoctoring]) {
+    expect(changelog).toContain(
+      'one npm tarball, one Office wheel, `inkspan.spdx.json`, and `SHA256SUMS`',
+    );
+
+    for (const document of [
+      changelog,
+      contracts,
+      testStrategy,
+      operability,
+      releaseDoctoring,
+    ]) {
       expect(document).not.toContain('exactly three regular top-level files');
       expect(document).not.toContain('exact three-file draft inventory');
       expect(document).not.toContain('exactly three top-level entries');
+      expect(document).not.toContain('one npm tarball, one Office wheel, and `SHA256SUMS`');
     }
   });
 });
