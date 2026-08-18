@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { createDocx } from '../../test/docxFixture.js';
 import { importDocx } from './index.js';
 
 describe('DOCX binary source branding', () => {
@@ -19,6 +20,51 @@ describe('DOCX binary source branding', () => {
       message: 'DOCX input must be a supported binary source.',
     });
     expect(getPrototypeOf).not.toHaveBeenCalled();
+  });
+
+  it('does not execute post-load Blob size getter interposition', async () => {
+    const source = new Blob([createDocx()]);
+    const originalSize = Object.getOwnPropertyDescriptor(Blob.prototype, 'size');
+    const hostileSize = vi.fn(() => {
+      throw new Error('private Blob size sentinel');
+    });
+
+    Object.defineProperty(Blob.prototype, 'size', {
+      configurable: true,
+      get: hostileSize,
+    });
+    try {
+      await expect(importDocx(source)).resolves.toMatchObject({
+        documentJson: { type: 'doc' },
+      });
+      expect(hostileSize).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(Blob.prototype, 'size', originalSize!);
+    }
+  });
+
+  it('does not execute post-load Blob byte-reader interposition', async () => {
+    const source = new Blob([createDocx()]);
+    const originalArrayBuffer = Object.getOwnPropertyDescriptor(
+      Blob.prototype,
+      'arrayBuffer',
+    );
+    const hostileArrayBuffer = vi.fn(() => {
+      throw new Error('private Blob arrayBuffer sentinel');
+    });
+
+    Object.defineProperty(Blob.prototype, 'arrayBuffer', {
+      configurable: true,
+      get: hostileArrayBuffer,
+    });
+    try {
+      await expect(importDocx(source)).resolves.toMatchObject({
+        documentJson: { type: 'doc' },
+      });
+      expect(hostileArrayBuffer).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(Blob.prototype, 'arrayBuffer', originalArrayBuffer!);
+    }
   });
 
   it('rejects hostile FileReader results without invoking prototype traps', async () => {
