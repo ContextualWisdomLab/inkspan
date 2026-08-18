@@ -43,7 +43,7 @@ flowchart TB
   Selector[Protected text-position-selector subpath]
   Autosave[Protected autosave subpath]
   Converter[Protected converter subpath]
-  Markdown[Proposed markdown subpath\nactive PR #114]
+  Markdown[Protected markdown subpath\nAccepted ADR 0020]
   SharedPolicy[Shared deterministic URI / inline-image policy]
   Serializers[Shared deterministic serializers]
 
@@ -58,7 +58,7 @@ flowchart TB
   Markdown --> Serializers
 ```
 
-The active `@contextualwisdomlab/cwl-editor/markdown` work in PR #114 is governed by Proposed ADR 0020. Its purpose is dependency isolation, not a second serializer authority. Until that PR or a verified successor integrates, the proposed subpath is unshipped and the protected root package remains the public authority for those serializers.
+The protected `@contextualwisdomlab/cwl-editor/markdown` package subpath is governed by Accepted ADR 0020. Protected PR #114 integrated this dependency-isolation boundary without creating a second serializer authority: the root package and the headless subpath share the same deterministic serializers and framework-neutral safe-link/inline-raster policy. The subpath is shipped on protected `main`; release candidates must regenerate its packed-artifact ESM, CommonJS, strict TypeScript, and runtime-authority evidence on the exact candidate head.
 
 A framework-independent subpath must prove its declared dependency boundary from the packed npm artifact under ESM, CommonJS, and strict TypeScript consumers. Source-level import shape alone is insufficient release evidence.
 
@@ -66,15 +66,15 @@ A framework-independent subpath must prove its declared dependency boundary from
 
 Inkspan owns the CSS rules it ships for its editor. It does not own the operating system print spooler, printer, browser's pagination implementation, downstream PDF storage, or host disclosure policy.
 
-Protected `main` currently remains the stylesheet authority. Proposed ADR 0021 and active PR #116 define a CSS-only `@media print` boundary intended to:
+Protected `main` includes the CSS-only `@media print` boundary defined by Accepted ADR 0021 and integrated by protected PR #116. It:
 
-- remove Inkspan-owned screen-only scroll/max-height clipping;
-- hide toolbar, collaboration status, remote caret/cursor-label, and placeholder UI from printed document output;
-- preserve authored document structures and links;
-- use conservative paged-fragmentation hints; and
-- keep links distinguishable without relying on color alone.
+- removes Inkspan-owned screen-only scroll/max-height clipping;
+- hides toolbar, collaboration status, remote caret/cursor-label, and placeholder UI from printed document output;
+- preserves authored document structures and links;
+- uses conservative paged-fragmentation hints; and
+- keeps links distinguishable without relying on color alone.
 
-This proposed presentation line does **not** create a JavaScript print mode, PDF service, page-number/header/footer authority, timestamp/signature claim, persistence layer, network requirement, credential, or model dependency. Until #116 integrates, the new print behavior is not shipped.
+This protected presentation line does **not** create a JavaScript print mode, PDF service, page-number/header/footer authority, timestamp/signature claim, persistence layer, network requirement, credential, or model dependency. Browser/user-agent pagination and any durable print/PDF artifact remain host/user authority even though Inkspan's own print CSS is shipped.
 
 ## Modular MSA composition
 
