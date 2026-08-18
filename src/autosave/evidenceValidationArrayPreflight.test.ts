@@ -103,6 +103,17 @@ describe('autosave detached evidence array resource preflight', () => {
     expect(ownKeysCalls).toBe(0);
   });
 
+  it('rejects a complete unfrozen record before whole-record key enumeration', () => {
+    const unfrozenEvidence = { envelope: null, revision: null };
+    const ownKeys = vi.spyOn(Reflect, 'ownKeys');
+    try {
+      expect(createDetachedAutosaveRevisionEvidence(unfrozenEvidence)).toBeNull();
+      expect(ownKeys).not.toHaveBeenCalledWith(unfrozenEvidence);
+    } finally {
+      ownKeys.mockRestore();
+    }
+  });
+
   it('rejects unexpected record members after required-key preflight', () => {
     const evidenceWithExtraMember = Object.freeze({
       envelope: null,
