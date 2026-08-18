@@ -97,6 +97,22 @@ describe('document envelope resource limits', () => {
     ).toThrow('nesting depth');
   });
 
+  it('enforces raw object-name ceilings during JSON preflight', () => {
+    const oversizedName = 'x'.repeat(65);
+    const source = JSON.stringify({
+      schemaId: DOCUMENT_ENVELOPE_SCHEMA_ID,
+      schemaVersion: DOCUMENT_ENVELOPE_SCHEMA_VERSION,
+      documentJson: {
+        type: 'doc',
+        attrs: { [oversizedName]: true },
+      },
+    });
+
+    expect(() =>
+      parseDocumentEnvelope(source, { maxStringCodeUnits: 64 }),
+    ).toThrow('strings exceed');
+  });
+
   it('rejects object and array expansion past the JSON-value ceiling', () => {
     expect(() =>
       createDocumentEnvelope(
