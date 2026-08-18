@@ -262,9 +262,15 @@ function readBlobSize(input: unknown): number {
   }
 }
 
-/** Return platform Blob MIME metadata without invoking caller overrides. */
+/** Return bounded platform Blob MIME metadata without invoking caller overrides. */
 function readBlobType(input: Blob): string {
-  return BLOB_TYPE_GETTER.call(input) as string;
+  const mimeType = BLOB_TYPE_GETTER.call(input) as string;
+  if (mimeType.length > MAX_MIME_TYPE_CODE_UNITS) {
+    throw new RangeError(
+      'Blob MIME type must not exceed 1024 UTF-16 code units.',
+    );
+  }
+  return mimeType;
 }
 
 /** Convert only declared binary inputs to a `Uint8Array` without coercion. */
@@ -554,9 +560,9 @@ export async function blobToDataUri(
 ): Promise<string> {
   const { mimeType, maxBytes } = resolveEncodeOptions(options);
   assertSize(readBlobSize(blob), maxBytes);
+  const blobType = readBlobType(blob);
   const bytes = await readBlobBytes(blob);
   assertSize(bytes.byteLength, maxBytes);
-  const blobType = readBlobType(blob);
   const mime =
     mimeType ||
     (blobType.length > 0 ? blobType : undefined) ||
