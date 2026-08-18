@@ -560,7 +560,8 @@ export async function blobToDataUri(
 ): Promise<string> {
   const { mimeType, maxBytes } = resolveEncodeOptions(options);
   assertSize(readBlobSize(blob), maxBytes);
-  const blobType = readBlobType(blob);
+  const blobType =
+    mimeType !== undefined && mimeType.length > 0 ? '' : readBlobType(blob);
   const bytes = await readBlobBytes(blob);
   assertSize(bytes.byteLength, maxBytes);
   const mime =
