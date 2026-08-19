@@ -23,4 +23,23 @@ describe('Node built-in runtime module authority', () => {
       { kind: 'node-builtin-module', specifier: undefined },
     ]);
   });
+
+  it('reports direct Function.prototype.call invocation of the ambient loader', () => {
+    const source = [
+      "const fs = process.getBuiltinModule.call(undefined, 'node:fs');",
+      'const path = globalThis.process.getBuiltinModule.call(null, runtimeBuiltinName);',
+      'const object = { getBuiltinModule() { return "method-only"; } };',
+      'const benign = object.getBuiltinModule.call(null, "node:crypto");',
+      'void [fs, path, benign];',
+    ].join('\n');
+
+    expect(
+      findRuntimeModuleAuthority(source, 'node-builtins-call.js').map(
+        ({ kind, specifier }) => ({ kind, specifier }),
+      ),
+    ).toEqual([
+      { kind: 'node-builtin-module', specifier: 'node:fs' },
+      { kind: 'node-builtin-module', specifier: undefined },
+    ]);
+  });
 });
