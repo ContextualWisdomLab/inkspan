@@ -258,9 +258,10 @@ export function renderCollaborationCursor(
   user: Record<string, unknown>,
 ): HTMLElement {
   const color = collaborationCursorColor(user);
+  const remoteName = ownEnumerableDataValue(user, 'name');
   const name =
-    typeof user.name === 'string' && user.name.trim() !== ''
-      ? truncateCursorLabel(user.name)
+    typeof remoteName === 'string' && remoteName.trim() !== ''
+      ? truncateCursorLabel(remoteName)
       : 'Collaborator';
 
   const caret = document.createElement('span');
@@ -312,8 +313,9 @@ export function contrastingTextColor(hexColor: string): '#000000' | '#ffffff' {
 
 /** Normalize untrusted remote awareness colors to a strict CSS-safe token. */
 function collaborationCursorColor(user: Record<string, unknown>): string {
-  return typeof user.color === 'string' &&
-    CURSOR_COLOR_PATTERN.test(user.color)
-    ? user.color.toLowerCase()
+  const remoteColor = ownEnumerableDataValue(user, 'color');
+  return typeof remoteColor === 'string' &&
+    CURSOR_COLOR_PATTERN.test(remoteColor)
+    ? remoteColor.toLowerCase()
     : FALLBACK_CURSOR_COLOR;
 }
