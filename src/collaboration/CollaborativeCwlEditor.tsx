@@ -37,6 +37,17 @@ const COLLABORATION_FIELD_MAX_CODE_UNITS = 1_024;
 const INVALID_COLLABORATION_FIELD_MESSAGE =
   'Collaboration field must be a string within the supported length.';
 
+/** Read host-owned awareness for presentation without leaking getter failures. */
+function readProviderAwareness(
+  provider: CollaborativeCwlEditorProps['provider'],
+) {
+  try {
+    return provider?.awareness;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Provider-neutral collaborative Inkspan surface backed exclusively by a
  * host-owned Yjs document. Inkspan owns neither network nor persistence
@@ -307,10 +318,10 @@ export const CollaborativeCwlEditor = forwardRef<
   ]);
 
   const [remoteCollaborators, setRemoteCollaborators] = useState(() =>
-    countRemoteCollaborators(provider?.awareness),
+    countRemoteCollaborators(readProviderAwareness(provider)),
   );
   useEffect(() => {
-    const awareness = provider?.awareness;
+    const awareness = readProviderAwareness(provider);
     const updateCount = () => {
       setRemoteCollaborators(countRemoteCollaborators(awareness));
     };
