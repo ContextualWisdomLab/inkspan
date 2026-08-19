@@ -16,6 +16,8 @@ const DECOMPRESSION_STREAM_CONSTRUCTOR: typeof DecompressionStream | undefined =
   typeof DecompressionStream === 'undefined' ? undefined : DecompressionStream;
 const READABLE_STREAM_CONSTRUCTOR: typeof ReadableStream | undefined =
   typeof ReadableStream === 'undefined' ? undefined : ReadableStream;
+const UINT8_ARRAY_CONSTRUCTOR = Uint8Array;
+const UINT8_ARRAY_FROM = Uint8Array.from;
 
 interface ZipEntry {
   readonly name: string;
@@ -129,7 +131,9 @@ async function inflateRaw(
   }
   const input = new READABLE_STREAM_CONSTRUCTOR<BufferSource>({
     start(controller) {
-      controller.enqueue(Uint8Array.from(compressed));
+      controller.enqueue(
+        UINT8_ARRAY_FROM.call(UINT8_ARRAY_CONSTRUCTOR, compressed),
+      );
       controller.close();
     },
   });
