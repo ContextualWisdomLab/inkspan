@@ -43,4 +43,28 @@ describe('collaboration provider capability access', () => {
       ),
     );
   });
+
+  it('normalizes private structural awareness access failures', () => {
+    const privateFailure = new Error('sensitive-awareness-internal');
+    const awareness = Object.defineProperty({}, 'clientID', {
+      enumerable: true,
+      get() {
+        throw privateFailure;
+      },
+    }) as CollaborationAwareness;
+    const provider = { awareness } as CollaborationProviderLike;
+
+    let observed: unknown;
+    try {
+      assertCollaborationConfiguration(provider, undefined);
+    } catch (error) {
+      observed = error;
+    }
+
+    expect(observed).toBeInstanceOf(Error);
+    expect(observed).not.toBe(privateFailure);
+    expect((observed as Error).message).toBe(
+      'collaboration provider must expose a compatible Yjs awareness instance',
+    );
+  });
 });
