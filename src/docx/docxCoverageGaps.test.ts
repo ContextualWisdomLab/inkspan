@@ -298,14 +298,25 @@ describe('DOCX ZIP safety coverage', () => {
     const compressed = buildZip({ 'a.txt': 'abc' }, 8);
 
     try {
+      vi.resetModules();
       vi.stubGlobal('DecompressionStream', undefined);
-      await expectAsyncCode(ZipArchive.parse(compressed, limits).read('a.txt'), 'decompression_unavailable');
+      vi.stubGlobal('ReadableStream', originalReadableStream);
+      const { ZipArchive: MissingDecompressionZipArchive } = await import('./zip.js');
+      await expectAsyncCode(
+        MissingDecompressionZipArchive.parse(compressed, limits).read('a.txt'),
+        'decompression_unavailable',
+      );
 
+      vi.resetModules();
       vi.stubGlobal('DecompressionStream', originalDecompressionStream);
       vi.stubGlobal('ReadableStream', undefined);
-      await expectAsyncCode(ZipArchive.parse(compressed, limits).read('a.txt'), 'decompression_unavailable');
+      const { ZipArchive: MissingReadableZipArchive } = await import('./zip.js');
+      await expectAsyncCode(
+        MissingReadableZipArchive.parse(compressed, limits).read('a.txt'),
+        'decompression_unavailable',
+      );
 
-      vi.stubGlobal('ReadableStream', originalReadableStream);
+      vi.resetModules();
       vi.stubGlobal(
         'DecompressionStream',
         class {
@@ -314,10 +325,15 @@ describe('DOCX ZIP safety coverage', () => {
           }
         },
       );
-      await expectAsyncCode(ZipArchive.parse(compressed, limits).read('a.txt'), 'decompression_unavailable');
-    } finally {
-      vi.stubGlobal('DecompressionStream', originalDecompressionStream);
       vi.stubGlobal('ReadableStream', originalReadableStream);
+      const { ZipArchive: UnsupportedZipArchive } = await import('./zip.js');
+      await expectAsyncCode(
+        UnsupportedZipArchive.parse(compressed, limits).read('a.txt'),
+        'decompression_unavailable',
+      );
+    } finally {
+      vi.unstubAllGlobals();
+      vi.resetModules();
     }
 
     for (const expectedBytes of [1, 5]) {
@@ -341,46 +357,84 @@ describe('DOCX source and editor boundary coverage', () => {
 
   it('uses the bounded FileReader fallback without trusting malformed reader results', async () => {
     const bytes = createDocx({ method: 0 });
-    const fallbackBlob = new Blob([blobPart(bytes)]);
-    Object.defineProperty(fallbackBlob, 'arrayBuffer', { value: undefined });
-    const originalFileReader = globalThis.FileReader;
+    const originalBlobArrayBuffer = Object.getOwnPropertyDescriptor(
+      Blob.prototype,
+      'arrayBuffer',
+    );
+
+    class SuccessfulReader {
+      result: ArrayBuffer | string | null = null;
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      readAsArrayBuffer(): void {
+        this.result = blobPart(bytes);
+        this.onload?.();
+      }
+    }
+
+    class WrongResultReader extends SuccessfulReader {
+      override readAsArrayBuffer(): void {
+        this.result = 'not-an-array-buffer';
+        this.onload?.();
+      }
+    }
+
+    class ErrorReader extends SuccessfulReader {
+      override readAsArrayBuffer(): void {
+        this.onerror?.();
+      }
+    }
+
+    const importWithReader = async (
+      reader: typeof SuccessfulReader | typeof WrongResultReader | typeof ErrorReader | undefined,
+    ) => {
+      vi.resetModules();
+      Object.defineProperty(Blob.prototype, 'arrayBuffer', {
+        configurable: true,
+        writable: true,
+        value: undefined,
+      });
+      vi.stubGlobal('FileReader', reader);
+      return import('./importDocx.js');
+    };
 
     try {
-      class SuccessfulReader {
-        result: ArrayBuffer | string | null = null;
-        onload: (() => void) | null = null;
-        onerror: (() => void) | null = null;
-        readAsArrayBuffer(): void {
-          this.result = blobPart(bytes);
-          this.onload?.();
-        }
-      }
-      vi.stubGlobal('FileReader', SuccessfulReader);
-      await expect(importDocx(fallbackBlob)).resolves.toMatchObject({
+      const { importDocx: importWithSuccessfulReader } = await importWithReader(SuccessfulReader);
+      await expect(
+        importWithSuccessfulReader(new Blob([blobPart(bytes)])),
+      ).resolves.toMatchObject({
         documentJson: { type: 'doc' },
       });
 
-      class WrongResultReader extends SuccessfulReader {
-        override readAsArrayBuffer(): void {
-          this.result = 'not-an-array-buffer';
-          this.onload?.();
-        }
-      }
-      vi.stubGlobal('FileReader', WrongResultReader);
-      await expectAsyncCode(importDocx(fallbackBlob), 'invalid_source');
+      const { importDocx: importWithWrongResultReader } = await importWithReader(WrongResultReader);
+      await expectAsyncCode(
+        importWithWrongResultReader(new Blob([blobPart(bytes)])),
+        'invalid_source',
+      );
 
-      class ErrorReader extends SuccessfulReader {
-        override readAsArrayBuffer(): void {
-          this.onerror?.();
-        }
-      }
-      vi.stubGlobal('FileReader', ErrorReader);
-      await expectAsyncCode(importDocx(fallbackBlob), 'invalid_source');
+      const { importDocx: importWithErrorReader } = await importWithReader(ErrorReader);
+      await expectAsyncCode(
+        importWithErrorReader(new Blob([blobPart(bytes)])),
+        'invalid_source',
+      );
 
-      vi.stubGlobal('FileReader', undefined);
-      await expectAsyncCode(importDocx(fallbackBlob), 'invalid_source');
+      const { importDocx: importWithoutFileReader } = await importWithReader(undefined);
+      await expectAsyncCode(
+        importWithoutFileReader(new Blob([blobPart(bytes)])),
+        'invalid_source',
+      );
     } finally {
-      vi.stubGlobal('FileReader', originalFileReader);
+      if (originalBlobArrayBuffer === undefined) {
+        Reflect.deleteProperty(Blob.prototype, 'arrayBuffer');
+      } else {
+        Object.defineProperty(
+          Blob.prototype,
+          'arrayBuffer',
+          originalBlobArrayBuffer,
+        );
+      }
+      vi.unstubAllGlobals();
+      vi.resetModules();
     }
   });
 
