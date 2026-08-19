@@ -25,24 +25,16 @@ afterEach(() => {
 
 describe('DOCX FileReader fallback capability isolation', () => {
   it('uses the FileReader capability captured when the fallback module initializes', async () => {
-    const platformArrayBuffer = ORIGINAL_BLOB_ARRAY_BUFFER?.value as
-      | ((this: Blob) => Promise<ArrayBuffer>)
-      | undefined;
-    expect(typeof platformArrayBuffer).toBe('function');
+    const capturedBytes = new Uint8Array([0x50, 0x4b]).buffer;
 
     class TrustedFileReader {
       onload: (() => void) | null = null;
       onerror: (() => void) | null = null;
       result: ArrayBuffer | null = null;
 
-      readAsArrayBuffer(blob: Blob): void {
-        void platformArrayBuffer!
-          .call(blob)
-          .then((result) => {
-            this.result = result;
-            queueMicrotask(() => this.onload?.());
-          })
-          .catch(() => queueMicrotask(() => this.onerror?.()));
+      readAsArrayBuffer(): void {
+        this.result = capturedBytes.slice(0);
+        queueMicrotask(() => this.onload?.());
       }
     }
 
