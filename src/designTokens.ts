@@ -206,6 +206,9 @@ function srgbChannel(value: number): number {
 }
 
 function relativeLuminance(hex: string): number {
+  if (typeof hex !== 'string') {
+    throw new EditorThemeTokenContrastError();
+  }
   const match = /^#([0-9a-f]{6})$/iu.exec(hex);
   if (!match) {
     throw new EditorThemeTokenContrastError();
