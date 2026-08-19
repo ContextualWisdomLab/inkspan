@@ -13,6 +13,7 @@ const ARRAY_BUFFER_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
   ArrayBuffer.prototype,
   'byteLength',
 )!.get!;
+const ARRAY_BUFFER_IS_VIEW = ArrayBuffer.isView;
 const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(
   Uint8Array.prototype,
 ) as object;
@@ -144,7 +145,7 @@ async function snapshotSource(
     let view: Uint8Array;
     if (isIntrinsicArrayBuffer(source)) {
       view = new Uint8Array(source);
-    } else if (ArrayBuffer.isView(source)) {
+    } else if (ARRAY_BUFFER_IS_VIEW(source)) {
       const { buffer, byteOffset, byteLength } = readArrayBufferViewRange(source);
       if (!isIntrinsicArrayBuffer(buffer)) {
         throw new DocxImportError('invalid_source');
