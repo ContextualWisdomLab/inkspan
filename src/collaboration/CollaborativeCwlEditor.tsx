@@ -33,6 +33,21 @@ import {
 } from './awareness.js';
 import type { CollaborativeCwlEditorProps } from './types.js';
 
+const COLLABORATION_FIELD_MAX_CODE_UNITS = 1_024;
+const INVALID_COLLABORATION_FIELD_MESSAGE =
+  'Collaboration field must be a string within the supported length.';
+
+/** Read host-owned awareness for presentation without leaking getter failures. */
+function readProviderAwareness(
+  provider: CollaborativeCwlEditorProps['provider'],
+) {
+  try {
+    return provider?.awareness;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Provider-neutral collaborative Inkspan surface backed exclusively by a
  * host-owned Yjs document. Inkspan owns neither network nor persistence
@@ -97,8 +112,23 @@ export const CollaborativeCwlEditor = forwardRef<
     ariaRequired,
   } = props;
 
+  if (typeof editable !== 'boolean') {
+    throw new RangeError('editor editable state must be a boolean when provided');
+  }
+  if (typeof hideToolbar !== 'boolean') {
+    throw new RangeError(
+      'editor toolbar visibility state must be a boolean when provided',
+    );
+  }
   assertCollaborationConfiguration(provider, user);
-  if (field.trim() === '') {
+  if (
+    typeof field !== 'string' ||
+    field.length > COLLABORATION_FIELD_MAX_CODE_UNITS
+  ) {
+    throw new RangeError(INVALID_COLLABORATION_FIELD_MESSAGE);
+  }
+  const normalizedField = field.trim();
+  if (normalizedField === '') {
     throw new Error('collaboration field must not be empty');
   }
   if (
@@ -108,7 +138,6 @@ export const CollaborativeCwlEditor = forwardRef<
     throw new Error('collaboration document must be a Y.Doc instance');
   }
 
-  const normalizedField = field.trim();
   const normalizedPlaceholder = useMemo(
     () => normalizeEditorPlaceholder(placeholder),
     [placeholder],
@@ -289,17 +318,27 @@ export const CollaborativeCwlEditor = forwardRef<
   ]);
 
   const [remoteCollaborators, setRemoteCollaborators] = useState(() =>
-    countRemoteCollaborators(provider?.awareness),
+    countRemoteCollaborators(readProviderAwareness(provider)),
   );
   useEffect(() => {
-    const awareness = provider?.awareness;
+    const awareness = readProviderAwareness(provider);
     const updateCount = () => {
       setRemoteCollaborators(countRemoteCollaborators(awareness));
     };
     updateCount();
     if (!awareness) return;
-    awareness.on('change', updateCount);
-    return () => awareness.off('change', updateCount);
+    try {
+      awareness.on('change', updateCount);
+    } catch {
+      return;
+    }
+    return () => {
+      try {
+        awareness.off('change', updateCount);
+      } catch {
+        // Host-owned listener cleanup failure is contained at unmount.
+      }
+    };
   }, [provider]);
 
   const collaboratorLabel =
