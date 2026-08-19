@@ -16,6 +16,10 @@ const DECOMPRESSION_STREAM_CONSTRUCTOR: typeof DecompressionStream | undefined =
   typeof DecompressionStream === 'undefined' ? undefined : DecompressionStream;
 const READABLE_STREAM_CONSTRUCTOR: typeof ReadableStream | undefined =
   typeof ReadableStream === 'undefined' ? undefined : ReadableStream;
+const READABLE_STREAM_PIPE_THROUGH =
+  READABLE_STREAM_CONSTRUCTOR === undefined
+    ? undefined
+    : READABLE_STREAM_CONSTRUCTOR.prototype.pipeThrough;
 const UINT8_ARRAY_CONSTRUCTOR = Uint8Array;
 const UINT8_ARRAY_FROM = Uint8Array.from;
 
@@ -119,7 +123,8 @@ async function inflateRaw(
 ): Promise<Uint8Array> {
   if (
     DECOMPRESSION_STREAM_CONSTRUCTOR === undefined ||
-    READABLE_STREAM_CONSTRUCTOR === undefined
+    READABLE_STREAM_CONSTRUCTOR === undefined ||
+    READABLE_STREAM_PIPE_THROUGH === undefined
   ) {
     throw new DocxImportError('decompression_unavailable');
   }
@@ -137,7 +142,11 @@ async function inflateRaw(
       controller.close();
     },
   });
-  const reader = input.pipeThrough(transform).getReader();
+  const decompressed = READABLE_STREAM_PIPE_THROUGH.call(
+    input,
+    transform,
+  ) as ReadableStream<Uint8Array>;
+  const reader = decompressed.getReader();
   const output = new Uint8Array(expectedBytes);
   let offset = 0;
   try {
