@@ -3,6 +3,8 @@ import type { DocxImportLimits } from './types.js';
 
 const XML_NAMESPACE = 'http://www.w3.org/XML/1998/namespace';
 const XMLNS_NAMESPACE = 'http://www.w3.org/2000/xmlns/';
+const XML_UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
+const TEXT_DECODER_DECODE = TextDecoder.prototype.decode;
 
 /** Minimal inert XML tree used only for bounded OOXML interpretation. */
 export interface XmlElement {
@@ -235,7 +237,7 @@ export function parseXml(
   }
   let source: string;
   try {
-    source = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    source = TEXT_DECODER_DECODE.call(XML_UTF8_DECODER, bytes);
   } catch (error) {
     throw normalizeDocxImportError(error, 'invalid_xml');
   }
