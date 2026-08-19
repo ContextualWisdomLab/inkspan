@@ -81,6 +81,36 @@ describe('CwlEditor imperative history control', () => {
     expect(handle.canRedo()).toBe(true);
   });
 
+  it('rejects non-string imperative text values before caller-controlled access', async () => {
+    const editorRef = createRef<CwlEditorHandle>();
+    render(<CwlEditor ref={editorRef} defaultValue="Original" />);
+    await waitFor(() => expect(editorRef.current?.getEditor()).toBeTruthy());
+
+    const handle = editorRef.current!;
+    let trapCount = 0;
+    const hostileValue = new Proxy(
+      {},
+      {
+        get() {
+          trapCount += 1;
+          throw new Error('private imperative-value sentinel');
+        },
+      },
+    ) as unknown as string;
+
+    expect(() => handle.setValue(hostileValue)).toThrowError(
+      new TypeError('editor value must be a string.'),
+    );
+    expect(trapCount).toBe(0);
+    expect(handle.getMarkdown()).toBe('Original');
+
+    expect(() => handle.insertValue(hostileValue)).toThrowError(
+      new TypeError('editor value must be a string.'),
+    );
+    expect(trapCount).toBe(0);
+    expect(handle.getMarkdown()).toBe('Original');
+  });
+
   it('fails closed when the shared handle has no active editor instance', () => {
     const editorRef = createRef<CwlEditorHandle>();
     render(<NullEditorHandleHarness ref={editorRef} />);
