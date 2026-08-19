@@ -78,6 +78,7 @@ const INVALID_BINARY_INPUT_MESSAGE = 'converter binary input is invalid.';
 const INVALID_BLOB_INPUT_MESSAGE = 'converter Blob input is invalid.';
 const INVALID_BASE64_INPUT_MESSAGE = 'base64 input must be a string.';
 const MAX_MIME_TYPE_CODE_UNITS = 1_024;
+const ARRAY_BUFFER_IS_VIEW = ArrayBuffer.isView;
 const ARRAY_BUFFER_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
   ArrayBuffer.prototype,
   'byteLength',
@@ -280,7 +281,7 @@ function readBlobType(input: Blob): string {
 export function toUint8Array(
   input: ArrayBuffer | ArrayBufferView | Uint8Array,
 ): Uint8Array {
-  if (ArrayBuffer.isView(input)) {
+  if (ARRAY_BUFFER_IS_VIEW(input)) {
     if (TYPED_ARRAY_TAG_GETTER.call(input) === 'Uint8Array') {
       readUint8ArraySlots(input);
       return input as Uint8Array;
