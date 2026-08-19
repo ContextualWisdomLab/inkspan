@@ -277,9 +277,9 @@ export function toUint8Array(
   input: ArrayBuffer | ArrayBufferView | Uint8Array,
 ): Uint8Array {
   if (ArrayBuffer.isView(input)) {
-    if (input instanceof Uint8Array) {
+    if (TYPED_ARRAY_TAG_GETTER.call(input) === 'Uint8Array') {
       readUint8ArraySlots(input);
-      return input;
+      return input as Uint8Array;
     }
     const { buffer, byteOffset, byteLength } = readArrayBufferViewSlots(input);
     return new Uint8Array(buffer, byteOffset, byteLength);
