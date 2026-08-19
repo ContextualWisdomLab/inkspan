@@ -94,6 +94,31 @@ describe('readBlobBytes environment fallbacks', () => {
     });
   });
 
+  it('does not let a later Blob.prototype.arrayBuffer replacement become payload authority', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      Blob.prototype,
+      'arrayBuffer',
+    );
+    if (typeof descriptor?.value !== 'function') {
+      throw new Error('Blob.prototype.arrayBuffer is required by this regression.');
+    }
+
+    const blob = new Blob([BYTES], { type: 'application/octet-stream' });
+    Object.defineProperty(Blob.prototype, 'arrayBuffer', {
+      configurable: true,
+      writable: true,
+      value(): Promise<ArrayBuffer> {
+        return Promise.resolve(new Uint8Array([9, 9, 9, 9]).buffer);
+      },
+    });
+    try {
+      const uri = await blobToDataUri(blob);
+      expect(uri).toBe('data:application/octet-stream;base64,AQIDBA==');
+    } finally {
+      Object.defineProperty(Blob.prototype, 'arrayBuffer', descriptor);
+    }
+  });
+
   it('falls back to application/octet-stream for a typeless, unsniffable blob', async () => {
     const blob = new Blob([new Uint8Array([0, 1, 2, 3])]);
     const uri = await blobToDataUri(blob);
