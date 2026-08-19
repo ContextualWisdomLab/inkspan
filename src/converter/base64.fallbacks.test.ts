@@ -99,23 +99,37 @@ describe('readBlobBytes environment fallbacks', () => {
       Blob.prototype,
       'arrayBuffer',
     );
-    if (typeof descriptor?.value !== 'function') {
-      throw new Error('Blob.prototype.arrayBuffer is required by this regression.');
-    }
-
-    const blob = new Blob([BYTES], { type: 'application/octet-stream' });
     Object.defineProperty(Blob.prototype, 'arrayBuffer', {
       configurable: true,
       writable: true,
-      value(): Promise<ArrayBuffer> {
-        return Promise.resolve(new Uint8Array([9, 9, 9, 9]).buffer);
+      value(this: Blob): Promise<ArrayBuffer> {
+        void this;
+        return Promise.resolve(BYTES.buffer.slice(0));
       },
     });
+
     try {
-      const uri = await blobToDataUri(blob);
+      vi.resetModules();
+      const { blobToDataUri: isolatedBlobToDataUri } = await import('./base64.js');
+      const blob = new Blob([BYTES], { type: 'application/octet-stream' });
+
+      Object.defineProperty(Blob.prototype, 'arrayBuffer', {
+        configurable: true,
+        writable: true,
+        value(): Promise<ArrayBuffer> {
+          return Promise.resolve(new Uint8Array([9, 9, 9, 9]).buffer);
+        },
+      });
+
+      const uri = await isolatedBlobToDataUri(blob);
       expect(uri).toBe('data:application/octet-stream;base64,AQIDBA==');
     } finally {
-      Object.defineProperty(Blob.prototype, 'arrayBuffer', descriptor);
+      if (descriptor === undefined) {
+        Reflect.deleteProperty(Blob.prototype, 'arrayBuffer');
+      } else {
+        Object.defineProperty(Blob.prototype, 'arrayBuffer', descriptor);
+      }
+      vi.resetModules();
     }
   });
 
