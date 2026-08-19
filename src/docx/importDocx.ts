@@ -57,6 +57,12 @@ const BLOB_ARRAY_BUFFER =
   typeof BLOB_ARRAY_BUFFER_DESCRIPTOR.value === 'function'
     ? (BLOB_ARRAY_BUFFER_DESCRIPTOR.value as (this: Blob) => Promise<ArrayBuffer>)
     : undefined;
+const FILE_READER_CONSTRUCTOR =
+  typeof FileReader === 'undefined' ? undefined : FileReader;
+const FILE_READER_READ_AS_ARRAY_BUFFER =
+  FILE_READER_CONSTRUCTOR === undefined
+    ? undefined
+    : FILE_READER_CONSTRUCTOR.prototype.readAsArrayBuffer;
 
 interface ArrayBufferViewRange {
   readonly buffer: ArrayBufferLike;
@@ -96,11 +102,14 @@ async function readBlobBytes(blob: Blob): Promise<Uint8Array> {
   if (BLOB_ARRAY_BUFFER !== undefined) {
     return new Uint8Array(await BLOB_ARRAY_BUFFER.call(blob));
   }
-  if (typeof FileReader === 'undefined') {
+  if (
+    FILE_READER_CONSTRUCTOR === undefined ||
+    FILE_READER_READ_AS_ARRAY_BUFFER === undefined
+  ) {
     throw new DocxImportError('invalid_source');
   }
   return new Promise<Uint8Array>((resolve, reject) => {
-    const reader = new FileReader();
+    const reader = new FILE_READER_CONSTRUCTOR();
     reader.onload = () => {
       const result = reader.result;
       if (!isIntrinsicArrayBuffer(result)) {
@@ -110,7 +119,7 @@ async function readBlobBytes(blob: Blob): Promise<Uint8Array> {
       resolve(new Uint8Array(result));
     };
     reader.onerror = () => reject(new DocxImportError('invalid_source'));
-    reader.readAsArrayBuffer(blob);
+    FILE_READER_READ_AS_ARRAY_BUFFER.call(reader, blob);
   });
 }
 
