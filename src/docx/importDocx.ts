@@ -93,12 +93,7 @@ function tryReadBlobSize(value: unknown): number | undefined {
 
 /** Read one proven Blob without requiring Blob.arrayBuffer() in older DOMs. */
 async function readBlobBytes(blob: Blob): Promise<Uint8Array> {
-  const ownArrayBuffer = Object.getOwnPropertyDescriptor(blob, 'arrayBuffer');
-  const ownUndefinedArrayBuffer =
-    ownArrayBuffer !== undefined &&
-    'value' in ownArrayBuffer &&
-    ownArrayBuffer.value === undefined;
-  if (!ownUndefinedArrayBuffer && BLOB_ARRAY_BUFFER !== undefined) {
+  if (BLOB_ARRAY_BUFFER !== undefined) {
     return new Uint8Array(await BLOB_ARRAY_BUFFER.call(blob));
   }
   if (typeof FileReader === 'undefined') {
