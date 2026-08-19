@@ -24,6 +24,29 @@ describe('Node built-in runtime module authority', () => {
     ]);
   });
 
+  it('reports comma-indirected ambient built-in loaders without promoting ordinary object methods', () => {
+    const source = [
+      "const fs = (0, process.getBuiltinModule)('node:fs');",
+      "const path = (0, globalThis.process.getBuiltinModule)('node:path');",
+      'const unknown = (0, process.getBuiltinModule)(runtimeBuiltinName);',
+      "const util = (0, globalThis['process']['getBuiltinModule'])('node:util');",
+      'const object = { getBuiltinModule() { return "method-only"; } };',
+      'const benign = (0, object.getBuiltinModule)("node:crypto");',
+      'void [fs, path, unknown, util, benign];',
+    ].join('\n');
+
+    expect(
+      findRuntimeModuleAuthority(source, 'node-builtins-comma-indirect.js').map(
+        ({ kind, specifier }) => ({ kind, specifier }),
+      ),
+    ).toEqual([
+      { kind: 'node-builtin-module', specifier: 'node:fs' },
+      { kind: 'node-builtin-module', specifier: 'node:path' },
+      { kind: 'node-builtin-module', specifier: undefined },
+      { kind: 'node-builtin-module', specifier: 'node:util' },
+    ]);
+  });
+
   it('reports Function.prototype call/apply and Reflect.apply invocation of the ambient loader', () => {
     const source = [
       "const fs = process.getBuiltinModule.call(undefined, 'node:fs');",
