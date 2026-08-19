@@ -12,6 +12,10 @@ const SUPPORTED_FLAGS = UTF8_FLAG | DATA_DESCRIPTOR_FLAG;
 const UTF8_ENTRY_NAME_DECODER = new TextDecoder('utf-8', { fatal: true });
 const ASCII_ENTRY_NAME_DECODER = new TextDecoder('ascii', { fatal: true });
 const TEXT_DECODER_DECODE = TextDecoder.prototype.decode;
+const DECOMPRESSION_STREAM_CONSTRUCTOR: typeof DecompressionStream | undefined =
+  typeof DecompressionStream === 'undefined' ? undefined : DecompressionStream;
+const READABLE_STREAM_CONSTRUCTOR: typeof ReadableStream | undefined =
+  typeof ReadableStream === 'undefined' ? undefined : ReadableStream;
 
 interface ZipEntry {
   readonly name: string;
@@ -112,18 +116,18 @@ async function inflateRaw(
   expectedBytes: number,
 ): Promise<Uint8Array> {
   if (
-    typeof DecompressionStream === 'undefined' ||
-    typeof ReadableStream === 'undefined'
+    DECOMPRESSION_STREAM_CONSTRUCTOR === undefined ||
+    READABLE_STREAM_CONSTRUCTOR === undefined
   ) {
     throw new DocxImportError('decompression_unavailable');
   }
   let transform: DecompressionStream;
   try {
-    transform = new DecompressionStream('deflate-raw');
+    transform = new DECOMPRESSION_STREAM_CONSTRUCTOR('deflate-raw');
   } catch {
     throw new DocxImportError('decompression_unavailable');
   }
-  const input = new ReadableStream<BufferSource>({
+  const input = new READABLE_STREAM_CONSTRUCTOR<BufferSource>({
     start(controller) {
       controller.enqueue(Uint8Array.from(compressed));
       controller.close();
