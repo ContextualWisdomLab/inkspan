@@ -218,6 +218,14 @@ describe('collaboration awareness presentation', () => {
     expect(collaborationConnectionLabel(status)).toBe(label);
   });
 
+  it('rejects a runtime connection status outside the public states', () => {
+    expect(() => collaborationConnectionLabel('failed' as never)).toThrowError(
+      new RangeError(
+        'Collaboration connection status must be connecting, connected, disconnected, or offline.',
+      ),
+    );
+  });
+
   it('renders a text-only high-contrast cursor for valid remote data', () => {
     const cursor = renderCollaborationCursor({
       name: 'Remote Alice',
