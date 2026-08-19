@@ -66,7 +66,7 @@ export interface ParsedDataUri {
   payload: string;
 }
 
-const DATA_URI_RE = /^data:([^;,]*)?((?:;[^;,]+)*)?,([\s\S]*)$/;
+const DATA_URI_RE = /^\s*data:([^;,]*)?((?:;[^;,]+)*)?,([\s\S]*)$/;
 const CANONICAL_BASE64_RE =
   /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const FORGIVING_BASE64_ALPHABET_RE = /^[A-Za-z0-9+/]*$/;
@@ -663,7 +663,7 @@ export function parseDataUri(dataUri: string): ParsedDataUri {
   if (typeof dataUri !== 'string') {
     throw new DataUriParseError('String is not a valid data URI.');
   }
-  const match = DATA_URI_RE.exec(dataUri.trimStart());
+  const match = DATA_URI_RE.exec(dataUri);
   if (!match) {
     throw new DataUriParseError('String is not a valid data URI.');
   }
@@ -678,7 +678,7 @@ export function parseDataUri(dataUri: string): ParsedDataUri {
 
 /** `true` when the string is a syntactically valid data URI. */
 export function isDataUri(value: string): boolean {
-  return typeof value === 'string' && DATA_URI_RE.test(value.trimStart());
+  return typeof value === 'string' && DATA_URI_RE.test(value);
 }
 
 export interface DecodedDataUri {
