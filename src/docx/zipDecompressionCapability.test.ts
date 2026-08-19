@@ -42,4 +42,33 @@ describe('DOCX ZIP decompression capability isolation', () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it('does not let later Uint8Array.from replacement redirect deflate input copies', async () => {
+    const archiveBytes = buildZip(
+      { 'compressed.txt': 'trusted compressed payload' },
+      8,
+    );
+    const fromDescriptor = Object.getOwnPropertyDescriptor(Uint8Array, 'from');
+    expect(fromDescriptor).toBeDefined();
+    let hostileFromCalls = 0;
+
+    Object.defineProperty(Uint8Array, 'from', {
+      configurable: true,
+      writable: true,
+      value() {
+        hostileFromCalls += 1;
+        throw new Error('private Uint8Array.from sentinel');
+      },
+    });
+
+    try {
+      const archive = ZipArchive.parse(archiveBytes, DEFAULT_DOCX_IMPORT_LIMITS);
+      await expect(
+        archive.read('compressed.txt').then((bytes) => new TextDecoder().decode(bytes)),
+      ).resolves.toBe('trusted compressed payload');
+      expect(hostileFromCalls).toBe(0);
+    } finally {
+      Object.defineProperty(Uint8Array, 'from', fromDescriptor!);
+    }
+  });
 });
