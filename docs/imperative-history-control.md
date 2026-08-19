@@ -29,6 +29,8 @@ A newly created editor with no history reports both capabilities as `false`. Aft
 
 When the editor surface is read-only (`editable={false}`), all four history operations return `false` and no history entry is consumed. Restoring `editable={true}` exposes the same still-available history again. This read-only guard applies specifically to user-facing history commands; explicit host-control mutators such as `setValue()` and `restoreDocumentEnvelope()` retain their existing programmatic authority so a host can update a read-only presentation from its own trusted state transition.
 
+The imperative text mutators `setValue()` and `insertValue()` accept strings at the public TypeScript boundary and enforce that boundary at runtime whenever an active editor exists. A JavaScript caller that supplies a non-string value receives the stable payload-redacted `TypeError` `editor value must be a string.` before Inkspan attempts to parse, reflect over, coerce, or insert that caller-controlled value. The retained-handle lifecycle guard remains first: before an editor exists or after it is destroyed, these mutators remain inert rather than turning stale handles into an input-validation oracle.
+
 ## Lifecycle safety
 
 A retained host handle must not keep a destroyed TipTap editor authoritative. Before an editor exists or after its editor has been destroyed, all four history methods return `false` without throwing. The same active-editor guard is used by the rest of the retained-handle read, mutation, envelope, revision, selection, and restore surface so stale destroyed-editor state cannot be presented as current Inkspan state.
@@ -53,6 +55,7 @@ The implementing branch is expected to prove:
 
 - initial, post-edit, post-undo, and post-redo capability transitions on a real editor;
 - read-only history commands are inert without consuming history and become available again when editability is restored;
+- active-editor imperative text mutators reject non-string JavaScript values with stable payload-redacted failure before caller-controlled access;
 - no-active-editor and destroyed-editor fail-closed behavior;
 - collaborative convergence through two in-memory `Y.Doc` editors without duplicate local history;
 - unchanged package consumers, accessibility/browser evidence, Office evidence, security scans, and exact 100% owned-production statement/branch/function/line coverage.
