@@ -71,4 +71,40 @@ describe('DOCX ZIP decompression capability isolation', () => {
       Object.defineProperty(Uint8Array, 'from', fromDescriptor!);
     }
   });
+
+  it('does not let later ReadableStream.pipeThrough replacement redirect deflate reads', async () => {
+    const archiveBytes = buildZip(
+      { 'compressed.txt': 'trusted compressed payload' },
+      8,
+    );
+    const pipeThroughDescriptor = Object.getOwnPropertyDescriptor(
+      ReadableStream.prototype,
+      'pipeThrough',
+    );
+    expect(pipeThroughDescriptor).toBeDefined();
+    let hostilePipeThroughCalls = 0;
+
+    Object.defineProperty(ReadableStream.prototype, 'pipeThrough', {
+      configurable: true,
+      writable: true,
+      value() {
+        hostilePipeThroughCalls += 1;
+        throw new Error('private pipeThrough sentinel');
+      },
+    });
+
+    try {
+      const archive = ZipArchive.parse(archiveBytes, DEFAULT_DOCX_IMPORT_LIMITS);
+      await expect(
+        archive.read('compressed.txt').then((bytes) => new TextDecoder().decode(bytes)),
+      ).resolves.toBe('trusted compressed payload');
+      expect(hostilePipeThroughCalls).toBe(0);
+    } finally {
+      Object.defineProperty(
+        ReadableStream.prototype,
+        'pipeThrough',
+        pipeThroughDescriptor!,
+      );
+    }
+  });
 });
