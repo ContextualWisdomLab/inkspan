@@ -82,6 +82,39 @@ describe('DOCX binary source branding', () => {
     }
   });
 
+  it('does not execute a replaced Blob byte-reader value after platform capture', async () => {
+    const source = createDocxBlob();
+    const originalArrayBuffer = Object.getOwnPropertyDescriptor(
+      Blob.prototype,
+      'arrayBuffer',
+    );
+    const hostileArrayBuffer = vi.fn(() => {
+      throw new Error('private Blob arrayBuffer value sentinel');
+    });
+
+    Object.defineProperty(Blob.prototype, 'arrayBuffer', {
+      configurable: true,
+      writable: true,
+      value: hostileArrayBuffer,
+    });
+    try {
+      await expect(importDocx(source)).resolves.toMatchObject({
+        documentJson: { type: 'doc' },
+      });
+      expect(hostileArrayBuffer).not.toHaveBeenCalled();
+    } finally {
+      if (originalArrayBuffer === undefined) {
+        Reflect.deleteProperty(Blob.prototype, 'arrayBuffer');
+      } else {
+        Object.defineProperty(
+          Blob.prototype,
+          'arrayBuffer',
+          originalArrayBuffer,
+        );
+      }
+    }
+  });
+
   it('does not consult a replaced global Blob after platform capture', async () => {
     const source = createDocxBlob();
     const originalBlob = globalThis.Blob;
