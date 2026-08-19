@@ -72,8 +72,7 @@ const CANONICAL_BASE64_RE =
 const FORGIVING_BASE64_ALPHABET_RE = /^[A-Za-z0-9+/]*$/;
 const FORGIVING_BASE64_RAW_RE =
   /^[A-Za-z0-9+/\t\n\f\r ]*(?:=[\t\n\f\r ]*){0,2}$/;
-const CANONICAL_PERCENT_ENCODED_ASCII_RE =
-  /^(?:[\x00-\x24\x26-\x7f]|%[0-7][0-9a-f])*$/i;
+const HEX_BYTE_RE = /^[0-9a-f]{2}$/i;
 const INVALID_OPTIONS_MESSAGE = 'converter options are invalid.';
 const INVALID_BINARY_INPUT_MESSAGE = 'converter binary input is invalid.';
 const INVALID_BLOB_INPUT_MESSAGE = 'converter Blob input is invalid.';
@@ -484,18 +483,94 @@ function forgivingBase64DecodedByteLength(payload: string): number | undefined {
   return Math.floor(((normalizedLength - padding) * 3) / 4);
 }
 
-function canonicalPercentEncodedAsciiDecodedByteLength(
-  payload: string,
-): number | undefined {
-  if (!CANONICAL_PERCENT_ENCODED_ASCII_RE.test(payload)) return undefined;
-  let escapeCount = 0;
+/** Return the UTF-8 byte width used for one Unicode scalar value. */
+function utf8ByteLength(codePoint: number): number {
+  if (codePoint <= 0x7f) return 1;
+  if (codePoint <= 0x7ff) return 2;
+  if (codePoint <= 0xffff) return 3;
+  return 4;
+}
+
+/** Normalize lone UTF-16 surrogates the same way as `TextEncoder`. */
+function scalarValue(codePoint: number): number {
+  return codePoint >= 0xd800 && codePoint <= 0xdfff ? 0xfffd : codePoint;
+}
+
+/**
+ * Validate percent escapes and compute exact decoded bytes without allocating
+ * the decoded payload. RFC 2397 percent escapes represent octets directly;
+ * unescaped Unicode text is encoded as UTF-8 for the public string API.
+ */
+function percentEncodedDataUriByteLength(payload: string): number {
+  let byteLength = 0;
   for (let index = 0; index < payload.length; index += 1) {
     if (payload.charCodeAt(index) === 0x25) {
-      escapeCount += 1;
+      const encodedByte = payload.slice(index + 1, index + 3);
+      if (!HEX_BYTE_RE.test(encodedByte)) {
+        throw new DataUriParseError(
+          'Data URI payload has malformed percent-encoding.',
+        );
+      }
+      byteLength += 1;
       index += 2;
+      continue;
     }
+
+    const codePoint = payload.codePointAt(index)!;
+    if (codePoint > 0xffff) index += 1;
+    byteLength += utf8ByteLength(scalarValue(codePoint));
   }
-  return payload.length - escapeCount * 2;
+  return byteLength;
+}
+
+/** Write one Unicode scalar value as UTF-8 and return the next output offset. */
+function writeUtf8CodePoint(
+  output: Uint8Array,
+  offset: number,
+  codePoint: number,
+): number {
+  if (codePoint <= 0x7f) {
+    output[offset] = codePoint;
+    return offset + 1;
+  }
+  if (codePoint <= 0x7ff) {
+    output[offset] = 0xc0 | (codePoint >> 6);
+    output[offset + 1] = 0x80 | (codePoint & 0x3f);
+    return offset + 2;
+  }
+  if (codePoint <= 0xffff) {
+    output[offset] = 0xe0 | (codePoint >> 12);
+    output[offset + 1] = 0x80 | ((codePoint >> 6) & 0x3f);
+    output[offset + 2] = 0x80 | (codePoint & 0x3f);
+    return offset + 3;
+  }
+  output[offset] = 0xf0 | (codePoint >> 18);
+  output[offset + 1] = 0x80 | ((codePoint >> 12) & 0x3f);
+  output[offset + 2] = 0x80 | ((codePoint >> 6) & 0x3f);
+  output[offset + 3] = 0x80 | (codePoint & 0x3f);
+  return offset + 4;
+}
+
+/** Decode a validated non-base64 data-URI payload into exact octets. */
+function percentEncodedDataUriToBytes(
+  payload: string,
+  byteLength: number,
+): Uint8Array {
+  const output = new Uint8Array(byteLength);
+  let offset = 0;
+  for (let index = 0; index < payload.length; index += 1) {
+    if (payload.charCodeAt(index) === 0x25) {
+      output[offset] = Number.parseInt(payload.slice(index + 1, index + 3), 16);
+      offset += 1;
+      index += 2;
+      continue;
+    }
+
+    const codePoint = payload.codePointAt(index)!;
+    if (codePoint > 0xffff) index += 1;
+    offset = writeUtf8CodePoint(output, offset, scalarValue(codePoint));
+  }
+  return output;
 }
 
 /**
@@ -634,25 +709,9 @@ export function dataUriToBytes(
     }
     bytes = base64ToBytes(payload);
   } else {
-    if (maxBytes !== undefined) {
-      const decodedLength = canonicalPercentEncodedAsciiDecodedByteLength(payload);
-      if (decodedLength !== undefined) {
-        assertSize(decodedLength, maxBytes);
-      }
-    }
-    // Non-base64 data URIs carry percent-encoded text. `decodeURIComponent`
-    // throws a raw `URIError` on malformed escapes (e.g. `%`, `%ZZ`); surface
-    // the module's documented `DataUriParseError` instead so callers guarding
-    // the parse contract handle adversarial input rather than crash.
-    let decoded: string;
-    try {
-      decoded = decodeURIComponent(payload);
-    } catch {
-      throw new DataUriParseError(
-        'Data URI payload has malformed percent-encoding.',
-      );
-    }
-    bytes = new TextEncoder().encode(decoded);
+    const decodedLength = percentEncodedDataUriByteLength(payload);
+    assertSize(decodedLength, maxBytes);
+    bytes = percentEncodedDataUriToBytes(payload, decodedLength);
   }
   assertSize(bytes.byteLength, maxBytes);
   return { mimeType, bytes };
