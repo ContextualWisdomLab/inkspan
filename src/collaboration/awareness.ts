@@ -24,7 +24,7 @@ const NUMERIC_IDENTIFIER_PATTERN = /^\d+$/;
 const FALLBACK_CURSOR_COLOR = '#475569';
 const MAX_CURSOR_LABEL_LENGTH = 80;
 const MAX_PUBLIC_IDENTIFIER_LENGTH = 80;
-const MAX_REMOTE_IDENTIFIER_SOURCE_LENGTH = 1_024;
+const MAX_REMOTE_FIELD_SOURCE_LENGTH = 1_024;
 const MAX_LOCAL_FIELD_SOURCE_LENGTH = 1_024;
 
 /** Reject malformed or oversized local identity fields before normalization. */
@@ -157,7 +157,7 @@ export function createScopedCollaborationProvider(
       source.setLocalStateField(field, value),
     on: (event, listener) => {
       if (listenerWrappers[event].has(listener)) return;
-      const wrapper = (...args: unknown[]) => listener(...args);
+      const wrapper = (...args: unknown[]) => void listener(...args);
       listenerWrappers[event].set(listener, wrapper);
       source.on(event, wrapper);
     },
@@ -214,7 +214,7 @@ export function countRemoteCollaborators(
     if (typeof user !== 'object' || user === null) continue;
     const id = ownEnumerableDataValue(user, 'id');
     if (typeof id !== 'string') continue;
-    if (id.length > MAX_REMOTE_IDENTIFIER_SOURCE_LENGTH) continue;
+    if (id.length > MAX_REMOTE_FIELD_SOURCE_LENGTH) continue;
     const normalizedId = id.trim();
     if (
       normalizedId === '' ||
@@ -260,7 +260,9 @@ export function renderCollaborationCursor(
   const color = collaborationCursorColor(user);
   const remoteName = ownEnumerableDataValue(user, 'name');
   const name =
-    typeof remoteName === 'string' && remoteName.trim() !== ''
+    typeof remoteName === 'string' &&
+    remoteName.length <= MAX_REMOTE_FIELD_SOURCE_LENGTH &&
+    remoteName.trim() !== ''
       ? truncateCursorLabel(remoteName)
       : 'Collaborator';
 
