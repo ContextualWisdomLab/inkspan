@@ -187,13 +187,21 @@ export function createScopedCollaborationProvider(
     on: (event, listener) => {
       if (listenerWrappers[event].has(listener)) return;
       const wrapper = (...args: unknown[]) => listener(...args);
+      try {
+        source.on(event, wrapper);
+      } catch {
+        throw new Error('collaboration awareness listener registration failed');
+      }
       listenerWrappers[event].set(listener, wrapper);
-      source.on(event, wrapper);
     },
     off: (event, listener) => {
       const wrapper = listenerWrappers[event].get(listener);
       if (!wrapper) return;
-      source.off(event, wrapper);
+      try {
+        source.off(event, wrapper);
+      } catch {
+        throw new Error('collaboration awareness listener removal failed');
+      }
       listenerWrappers[event].delete(listener);
     },
   };
