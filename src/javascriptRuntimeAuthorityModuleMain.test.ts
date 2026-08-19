@@ -11,7 +11,7 @@ function scanWithRepositoryAuthority(source: string): unknown {
   const program = [
     `import { findRuntimeModuleAuthority } from ${JSON.stringify(scannerUrl)};`,
     `const source = ${JSON.stringify(source)};`,
-    "const findings = findRuntimeModuleAuthority(source, 'module-main-authority.js').map(({ kind, specifier }) => ({ kind, specifier }));",
+    "const findings = findRuntimeModuleAuthority(source, 'main-module-authority.js').map(({ kind, specifier }) => ({ kind, specifier }));",
     'process.stdout.write(JSON.stringify(findings));',
   ].join('\n');
   return JSON.parse(
@@ -21,21 +21,22 @@ function scanWithRepositoryAuthority(source: string): unknown {
   ) as unknown;
 }
 
-describe('packed JavaScript module.main CommonJS authority', () => {
-  it('reports statically recognizable module.main loaders without promoting arbitrary object members', () => {
+describe('packed JavaScript CommonJS main-module authority', () => {
+  it('recognizes require.main loaders without inventing a module.main authority surface', () => {
     const source = [
-      "const direct = module.main.require('module-main-package');",
-      "const element = module['main']['require']('module-main-element-package');",
-      "const called = module.main.require.call(module.main, 'module-main-call-package');",
+      "const direct = require.main.require('require-main-package');",
+      "const element = require['main']['require']('require-main-element-package');",
+      "const called = require.main.require.call(require.main, 'require-main-call-package');",
+      "const nonexistentNodeSurface = module.main.require('not-node-commonjs-authority');",
       'const object = { main: { require() {} } };',
       "const benign = object.main.require('not-commonjs');",
-      'void [direct, element, called, benign];',
+      'void [direct, element, called, nonexistentNodeSurface, benign];',
     ].join('\n');
 
     expect(scanWithRepositoryAuthority(source)).toEqual([
-      { kind: 'commonjs-require', specifier: 'module-main-package' },
-      { kind: 'commonjs-require', specifier: 'module-main-element-package' },
-      { kind: 'commonjs-require', specifier: 'module-main-call-package' },
+      { kind: 'commonjs-require', specifier: 'require-main-package' },
+      { kind: 'commonjs-require', specifier: 'require-main-element-package' },
+      { kind: 'commonjs-require', specifier: 'require-main-call-package' },
     ]);
   });
 });
