@@ -24,20 +24,25 @@ describe('Node built-in runtime module authority', () => {
     ]);
   });
 
-  it('reports direct Function.prototype.call invocation of the ambient loader', () => {
+  it('reports Function.prototype call/apply and Reflect.apply invocation of the ambient loader', () => {
     const source = [
       "const fs = process.getBuiltinModule.call(undefined, 'node:fs');",
       'const path = globalThis.process.getBuiltinModule.call(null, runtimeBuiltinName);',
       "const util = process['getBuiltinModule']['call'](undefined, 'node:util');",
       "const os = globalThis['process']['getBuiltinModule'].call(null, 'node:os');",
+      "const crypto = process.getBuiltinModule.apply(undefined, ['node:crypto']);",
+      'const unknownApply = globalThis.process.getBuiltinModule.apply(null, [runtimeBuiltinName]);',
+      "const url = Reflect.apply(process.getBuiltinModule, undefined, ['node:url']);",
+      'const unknownReflect = Reflect.apply(globalThis.process.getBuiltinModule, null, runtimeBuiltinArgs);',
       'const object = { getBuiltinModule() { return "method-only"; } };',
-      'const benign = object.getBuiltinModule.call(null, "node:crypto");',
-      'const benignComputed = object["getBuiltinModule"]["call"](null, "node:url");',
-      'void [fs, path, util, os, benign, benignComputed];',
+      'const benignCall = object.getBuiltinModule.call(null, "node:buffer");',
+      'const benignApply = object.getBuiltinModule.apply(null, ["node:assert"]);',
+      'const benignReflect = Reflect.apply(object.getBuiltinModule, null, ["node:zlib"]);',
+      'void [fs, path, util, os, crypto, unknownApply, url, unknownReflect, benignCall, benignApply, benignReflect];',
     ].join('\n');
 
     expect(
-      findRuntimeModuleAuthority(source, 'node-builtins-call.js').map(
+      findRuntimeModuleAuthority(source, 'node-builtins-indirect.js').map(
         ({ kind, specifier }) => ({ kind, specifier }),
       ),
     ).toEqual([
@@ -45,6 +50,33 @@ describe('Node built-in runtime module authority', () => {
       { kind: 'node-builtin-module', specifier: undefined },
       { kind: 'node-builtin-module', specifier: 'node:util' },
       { kind: 'node-builtin-module', specifier: 'node:os' },
+      { kind: 'node-builtin-module', specifier: 'node:crypto' },
+      { kind: 'node-builtin-module', specifier: undefined },
+      { kind: 'node-builtin-module', specifier: 'node:url' },
+      { kind: 'node-builtin-module', specifier: undefined },
+    ]);
+  });
+
+  it('reports retained and immediately invoked bound ambient loaders', () => {
+    const source = [
+      "const fsLoader = process.getBuiltinModule.bind(undefined, 'node:fs');",
+      'const unknownLoader = globalThis.process.getBuiltinModule.bind(null, runtimeBuiltinName);',
+      "const path = process.getBuiltinModule.bind(undefined)('node:path');",
+      'const unknown = globalThis.process.getBuiltinModule.bind(null)(runtimeBuiltinName);',
+      'const object = { getBuiltinModule() { return "method-only"; } };',
+      'const benign = object.getBuiltinModule.bind(null, "node:crypto");',
+      'void [fsLoader, unknownLoader, path, unknown, benign];',
+    ].join('\n');
+
+    expect(
+      findRuntimeModuleAuthority(source, 'node-builtins-bind.js').map(
+        ({ kind, specifier }) => ({ kind, specifier }),
+      ),
+    ).toEqual([
+      { kind: 'node-builtin-module', specifier: 'node:fs' },
+      { kind: 'node-builtin-module', specifier: undefined },
+      { kind: 'node-builtin-module', specifier: 'node:path' },
+      { kind: 'node-builtin-module', specifier: undefined },
     ]);
   });
 });
