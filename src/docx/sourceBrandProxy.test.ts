@@ -29,6 +29,24 @@ describe('DOCX binary source branding', () => {
     expect(getPrototypeOf).not.toHaveBeenCalled();
   });
 
+  it('does not consult replaced ArrayBuffer.isView after platform capture', async () => {
+    const source = createDocx();
+    const hostileIsView = vi
+      .spyOn(ArrayBuffer, 'isView')
+      .mockImplementation(() => {
+        throw new Error('private ArrayBuffer.isView sentinel');
+      });
+
+    try {
+      await expect(importDocx(source)).resolves.toMatchObject({
+        documentJson: { type: 'doc' },
+      });
+      expect(hostileIsView).not.toHaveBeenCalled();
+    } finally {
+      hostileIsView.mockRestore();
+    }
+  });
+
   it('does not execute post-load Blob size getter interposition', async () => {
     const source = createDocxBlob();
     const originalSize = Object.getOwnPropertyDescriptor(Blob.prototype, 'size');
