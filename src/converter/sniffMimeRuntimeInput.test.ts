@@ -39,4 +39,21 @@ describe('MIME sniffing runtime binary boundary', () => {
     expect(readLength).not.toHaveBeenCalled();
     expect(callSubarray).not.toHaveBeenCalled();
   });
+
+  it('does not let a later TextDecoder replacement become MIME classification authority', () => {
+    const privateSentinel = new Error('private TextDecoder sentinel');
+    class HostileTextDecoder {
+      constructor() {
+        throw privateSentinel;
+      }
+    }
+
+    vi.stubGlobal('TextDecoder', HostileTextDecoder);
+    try {
+      const svg = new Uint8Array([0x3c, 0x73, 0x76, 0x67, 0x3e]);
+      expect(sniffMimeType(svg)).toBe('image/svg+xml');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
