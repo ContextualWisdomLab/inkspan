@@ -588,7 +588,7 @@ export function parseDataUri(dataUri: string): ParsedDataUri {
   if (typeof dataUri !== 'string') {
     throw new DataUriParseError('String is not a valid data URI.');
   }
-  const match = DATA_URI_RE.exec(dataUri.trim());
+  const match = DATA_URI_RE.exec(dataUri.trimStart());
   if (!match) {
     throw new DataUriParseError('String is not a valid data URI.');
   }
@@ -603,7 +603,7 @@ export function parseDataUri(dataUri: string): ParsedDataUri {
 
 /** `true` when the string is a syntactically valid data URI. */
 export function isDataUri(value: string): boolean {
-  return typeof value === 'string' && DATA_URI_RE.test(value.trim());
+  return typeof value === 'string' && DATA_URI_RE.test(value.trimStart());
 }
 
 export interface DecodedDataUri {
