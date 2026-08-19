@@ -72,6 +72,12 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
   function isNodeBuiltinModuleExpression(expression) {
     const current = unwrapParentheses(expression);
     if (
+      ts.isBinaryExpression(current) &&
+      current.operatorToken.kind === ts.SyntaxKind.CommaToken
+    ) {
+      return isNodeBuiltinModuleExpression(current.right);
+    }
+    if (
       (!ts.isPropertyAccessExpression(current) &&
         !ts.isElementAccessExpression(current)) ||
       staticMemberName(current) !== 'getBuiltinModule'
