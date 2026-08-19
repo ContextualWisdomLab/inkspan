@@ -24,6 +24,28 @@ function awarenessWithListenerRegistrationFailure(): {
   return { awareness, registrationAttempts: () => attempts };
 }
 
+function awarenessWithListenerRemovalFailure(): {
+  awareness: CollaborationAwareness;
+  removalAttempts: () => number;
+} {
+  const states = new Map<number, Record<string, unknown>>();
+  let attempts = 0;
+  const privateFailure = new Error('private provider listener removal failure');
+  const awareness: CollaborationAwareness = {
+    clientID: 11,
+    states,
+    getLocalState: () => null,
+    getStates: () => states,
+    setLocalStateField: () => undefined,
+    on: () => undefined,
+    off: () => {
+      attempts += 1;
+      if (attempts === 1) throw privateFailure;
+    },
+  };
+  return { awareness, removalAttempts: () => attempts };
+}
+
 describe('scoped collaboration provider listener containment', () => {
   it('redacts a rejected listener registration and permits a clean retry', () => {
     const source = awarenessWithListenerRegistrationFailure();
@@ -37,5 +59,20 @@ describe('scoped collaboration provider listener containment', () => {
 
     expect(() => scoped.awareness.on('change', listener)).not.toThrow();
     expect(source.registrationAttempts()).toBe(2);
+  });
+
+  it('redacts a rejected listener removal and retains state for retry', () => {
+    const source = awarenessWithListenerRemovalFailure();
+    const scoped = createScopedCollaborationProvider({ awareness: source.awareness });
+    const listener = vi.fn();
+
+    scoped.awareness.on('change', listener);
+    expect(() => scoped.awareness.off('change', listener)).toThrowError(
+      new Error('collaboration awareness listener removal failed'),
+    );
+    expect(source.removalAttempts()).toBe(1);
+
+    expect(() => scoped.awareness.off('change', listener)).not.toThrow();
+    expect(source.removalAttempts()).toBe(2);
   });
 });
