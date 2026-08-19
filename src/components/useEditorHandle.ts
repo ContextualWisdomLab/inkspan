@@ -42,6 +42,24 @@ function createCurrentDocumentEnvelope(
   return createDocumentEnvelope(editor.getJSON(), limits);
 }
 
+/** Return the current usable editor instance, if one still exists. */
+function activeEditor(editor: Editor | null): Editor | null {
+  return editor && !editor.isDestroyed ? editor : null;
+}
+
+/** Return an editor that currently permits user-facing history commands. */
+function editableHistoryEditor(editor: Editor | null): Editor | null {
+  const current = activeEditor(editor);
+  return current?.isEditable ? current : null;
+}
+
+/** Validate host-provided imperative text before parser or editor access. */
+function assertEditorTextValue(value: unknown): asserts value is string {
+  if (typeof value !== 'string') {
+    throw new TypeError('editor value must be a string.');
+  }
+}
+
 /** Expose the stable host-control contract shared by editor surfaces. */
 export function useEditorHandle(
   ref: ForwardedRef<CwlEditorHandle>,
@@ -51,55 +69,74 @@ export function useEditorHandle(
   useImperativeHandle(
     ref,
     (): CwlEditorHandle => ({
-      getEditor: () => editor,
+      getEditor: () => activeEditor(editor),
       focus: () => {
-        editor?.chain().focus().run();
+        activeEditor(editor)?.chain().focus().run();
       },
       blur: () => {
-        editor?.commands.blur();
+        activeEditor(editor)?.commands.blur();
       },
+      canUndo: () => editableHistoryEditor(editor)?.can().undo() ?? false,
+      undo: () =>
+        editableHistoryEditor(editor)?.chain().focus().undo().run() ?? false,
+      canRedo: () => editableHistoryEditor(editor)?.can().redo() ?? false,
+      redo: () =>
+        editableHistoryEditor(editor)?.chain().focus().redo().run() ?? false,
       getValue: () => {
-        if (!editor) return '';
-        return editorHtmlToValue(editor.getHTML(), modeRef.current);
+        const current = activeEditor(editor);
+        if (!current) return '';
+        return editorHtmlToValue(current.getHTML(), modeRef.current);
       },
-      getHTML: () => editor?.getHTML() ?? '',
+      getHTML: () => activeEditor(editor)?.getHTML() ?? '',
       getMarkdown: () => {
-        if (!editor) return '';
-        return editorHtmlToValue(editor.getHTML(), 'markdown');
+        const current = activeEditor(editor);
+        if (!current) return '';
+        return editorHtmlToValue(current.getHTML(), 'markdown');
       },
       getSnapshot: () =>
-        createEditorDocumentSnapshot(editor, modeRef.current),
-      getDocumentEnvelope: (limits) =>
-        editor ? createCurrentDocumentEnvelope(editor, limits) : null,
-      getDocumentEnvelopeJson: (limits) =>
-        editor
+        createEditorDocumentSnapshot(activeEditor(editor), modeRef.current),
+      getDocumentEnvelope: (limits) => {
+        const current = activeEditor(editor);
+        return current ? createCurrentDocumentEnvelope(current, limits) : null;
+      },
+      getDocumentEnvelopeJson: (limits) => {
+        const current = activeEditor(editor);
+        return current
           ? serializeValidatedDocumentEnvelope(
-              createCurrentDocumentEnvelope(editor, limits),
+              createCurrentDocumentEnvelope(current, limits),
             )
-          : '',
-      getDocumentEnvelopeBytes: (limits) =>
-        editor
+          : '';
+      },
+      getDocumentEnvelopeBytes: (limits) => {
+        const current = activeEditor(editor);
+        return current
           ? encodeValidatedDocumentEnvelope(
-              createCurrentDocumentEnvelope(editor, limits),
+              createCurrentDocumentEnvelope(current, limits),
             )
-          : new Uint8Array(),
-      getDocumentEnvelopeRevision: (limits, digestProvider) =>
-        editor
+          : new Uint8Array();
+      },
+      getDocumentEnvelopeRevision: (limits, digestProvider) => {
+        const current = activeEditor(editor);
+        return current
           ? createValidatedDocumentEnvelopeRevision(
-              createCurrentDocumentEnvelope(editor, limits),
+              createCurrentDocumentEnvelope(current, limits),
               digestProvider,
             )
-          : Promise.resolve(null),
-      getDocumentEnvelopeRevisionEvidence: (limits, digestProvider) =>
-        editor
+          : Promise.resolve(null);
+      },
+      getDocumentEnvelopeRevisionEvidence: (limits, digestProvider) => {
+        const current = activeEditor(editor);
+        return current
           ? createValidatedDocumentEnvelopeRevisionEvidence(
-              createCurrentDocumentEnvelope(editor, limits),
+              createCurrentDocumentEnvelope(current, limits),
               digestProvider,
             )
-          : Promise.resolve(null),
+          : Promise.resolve(null);
+      },
       getSelectionRevisionEvidence: async (limits, digestProvider) => {
-        if (!editor) return null;
-        const state = editor.state;
+        const current = activeEditor(editor);
+        if (!current) return null;
+        const state = current.state;
         const selection = Object.freeze({
           anchor: state.selection.anchor,
           head: state.selection.head,
@@ -115,8 +152,9 @@ export function useEditorHandle(
         return Object.freeze({ revision, selection });
       },
       getTextPositionSelectorEvidence: async (limits, digestProvider) => {
-        if (!editor) return null;
-        const state = editor.state;
+        const current = activeEditor(editor);
+        if (!current) return null;
+        const state = current.state;
         const { selector, textProjection } = createTextPositionSelector(
           state.doc,
           state.selection,
@@ -129,77 +167,99 @@ export function useEditorHandle(
         return Object.freeze({ revision, selector, textProjection });
       },
       setValue: (next: string) => {
-        if (!editor) return;
-        editor.commands.setContent(
+        const current = activeEditor(editor);
+        if (!current) return;
+        assertEditorTextValue(next);
+        current.commands.setContent(
           editorValueToHtml(next, modeRef.current),
           false,
         );
       },
-      validateDocumentEnvelope: (source, limits) =>
-        editor
-          ? validateDocumentEnvelopeForEditor(editor, source, limits)
-          : false,
-      validateDocumentEnvelopeBytes: (source, limits) =>
-        editor
-          ? validateDocumentEnvelopeBytesForEditor(editor, source, limits)
-          : false,
-      restoreDocumentEnvelope: (source, limits) =>
-        editor ? restoreDocumentEnvelope(editor, source, limits) : null,
-      restoreDocumentEnvelopeBytes: (source, limits) =>
-        editor ? restoreDocumentEnvelopeBytes(editor, source, limits) : null,
+      validateDocumentEnvelope: (source, limits) => {
+        const current = activeEditor(editor);
+        return current
+          ? validateDocumentEnvelopeForEditor(current, source, limits)
+          : false;
+      },
+      validateDocumentEnvelopeBytes: (source, limits) => {
+        const current = activeEditor(editor);
+        return current
+          ? validateDocumentEnvelopeBytesForEditor(current, source, limits)
+          : false;
+      },
+      restoreDocumentEnvelope: (source, limits) => {
+        const current = activeEditor(editor);
+        return current ? restoreDocumentEnvelope(current, source, limits) : null;
+      },
+      restoreDocumentEnvelopeBytes: (source, limits) => {
+        const current = activeEditor(editor);
+        return current
+          ? restoreDocumentEnvelopeBytes(current, source, limits)
+          : null;
+      },
       restoreDocumentEnvelopeIfMatch: (
         expectedStrongEntityTag,
         source,
         limits,
         digestProvider,
-      ) =>
-        editor
+      ) => {
+        const current = activeEditor(editor);
+        return current
           ? restoreDocumentEnvelopeIfMatch(
-              editor,
+              current,
               expectedStrongEntityTag,
               source,
               limits,
               digestProvider,
             )
-          : Promise.resolve(null),
+          : Promise.resolve(null);
+      },
       restoreDocumentEnvelopeBytesIfMatch: (
         expectedStrongEntityTag,
         source,
         limits,
         digestProvider,
-      ) =>
-        editor
+      ) => {
+        const current = activeEditor(editor);
+        return current
           ? restoreDocumentEnvelopeBytesIfMatch(
-              editor,
+              current,
               expectedStrongEntityTag,
               source,
               limits,
               digestProvider,
             )
-          : Promise.resolve(null),
-      validateDocumentJson: (documentJson) =>
-        editor ? validateDocumentJson(editor, documentJson) : false,
+          : Promise.resolve(null);
+      },
+      validateDocumentJson: (documentJson) => {
+        const current = activeEditor(editor);
+        return current ? validateDocumentJson(current, documentJson) : false;
+      },
       setDocumentJson: (documentJson) => {
-        if (!editor) return;
-        const documentNode = parseDocumentJsonForEditor(editor, documentJson);
-        editor.commands.setContent(documentNode, false);
+        const current = activeEditor(editor);
+        if (!current) return;
+        const documentNode = parseDocumentJsonForEditor(current, documentJson);
+        current.commands.setContent(documentNode, false);
       },
       insertValue: (next: string) => {
-        if (!editor) return;
-        editor
+        const current = activeEditor(editor);
+        if (!current) return;
+        assertEditorTextValue(next);
+        current
           .chain()
           .focus()
           .insertContent(editorValueToHtml(next, modeRef.current))
           .run();
       },
       insertDocumentJson: (documentJson) => {
-        if (!editor) return;
-        editor.chain().focus().insertContent(documentJson).run();
+        const current = activeEditor(editor);
+        if (!current) return;
+        current.chain().focus().insertContent(documentJson).run();
       },
       clear: () => {
-        editor?.commands.clearContent(true);
+        activeEditor(editor)?.commands.clearContent(true);
       },
-      isEmpty: () => editor?.isEmpty ?? true,
+      isEmpty: () => activeEditor(editor)?.isEmpty ?? true,
     }),
     [editor, modeRef],
   );

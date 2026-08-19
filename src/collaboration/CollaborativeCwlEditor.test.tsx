@@ -262,7 +262,7 @@ describe('CollaborativeCwlEditor contract', () => {
 });
 
 describe('CollaborativeCwlEditor convergence and lifecycle', () => {
-  it('converges rich text, shares undo, merges concurrent edits, and preserves host-owned documents across remount', async () => {
+  it('converges rich text, shares imperative undo/redo, merges concurrent edits, and preserves host-owned documents across remount', async () => {
     const leftDocument = new Y.Doc();
     const rightDocument = new Y.Doc();
     let disconnect = connectDocuments(leftDocument, rightDocument);
@@ -307,7 +307,18 @@ describe('CollaborativeCwlEditor convergence and lifecycle', () => {
     await waitFor(() =>
       expect(rightRef.current!.getHTML()).toContain('Undo this sentence'),
     );
-    act(() => leftRef.current!.getEditor()!.commands.undo());
+    expect(leftRef.current!.canUndo()).toBe(true);
+    act(() => expect(leftRef.current!.undo()).toBe(true));
+    await waitFor(() =>
+      expect(rightRef.current!.getHTML()).not.toContain('Undo this sentence'),
+    );
+    expect(leftRef.current!.canRedo()).toBe(true);
+    act(() => expect(leftRef.current!.redo()).toBe(true));
+    await waitFor(() =>
+      expect(rightRef.current!.getHTML()).toContain('Undo this sentence'),
+    );
+    expect(leftRef.current!.canUndo()).toBe(true);
+    act(() => expect(leftRef.current!.undo()).toBe(true));
     await waitFor(() =>
       expect(rightRef.current!.getHTML()).not.toContain('Undo this sentence'),
     );

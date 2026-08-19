@@ -200,6 +200,10 @@ const expectedStrongEntityTag = '"sha256-' + '0'.repeat(64) + '"';
 const currentSnapshot: CwlEditorDocumentSnapshot = editorHandle.getSnapshot();
 const currentRevision: Promise<CwlEditorDocumentRevision | null> =
   editorHandle.getDocumentEnvelopeRevision(undefined, digestProvider);
+const canUndo: boolean = editorHandle.canUndo();
+const undoResult: boolean = editorHandle.undo();
+const canRedo: boolean = editorHandle.canRedo();
+const redoResult: boolean = editorHandle.redo();
 const conditionalRestore: Promise<CwlEditorIfMatchRestoreResult | null> =
   editorHandle.restoreDocumentEnvelopeIfMatch(
     expectedStrongEntityTag,
@@ -272,6 +276,10 @@ void [
   documentSnapshot,
   currentSnapshot,
   currentRevision,
+  canUndo,
+  undoResult,
+  canRedo,
+  redoResult,
   conditionalRestore,
   conditionalEvidence,
   conditionalByteRestoreResult,
