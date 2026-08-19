@@ -327,8 +327,18 @@ export const CollaborativeCwlEditor = forwardRef<
     };
     updateCount();
     if (!awareness) return;
-    awareness.on('change', updateCount);
-    return () => awareness.off('change', updateCount);
+    try {
+      awareness.on('change', updateCount);
+    } catch {
+      return;
+    }
+    return () => {
+      try {
+        awareness.off('change', updateCount);
+      } catch {
+        // Host-owned listener cleanup failure is contained at unmount.
+      }
+    };
   }, [provider]);
 
   const collaboratorLabel =
