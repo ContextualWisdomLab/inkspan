@@ -53,6 +53,13 @@ function editableHistoryEditor(editor: Editor | null): Editor | null {
   return current?.isEditable ? current : null;
 }
 
+/** Validate host-provided imperative text before parser or editor access. */
+function assertEditorTextValue(value: unknown): asserts value is string {
+  if (typeof value !== 'string') {
+    throw new TypeError('editor value must be a string.');
+  }
+}
+
 /** Expose the stable host-control contract shared by editor surfaces. */
 export function useEditorHandle(
   ref: ForwardedRef<CwlEditorHandle>,
@@ -162,6 +169,7 @@ export function useEditorHandle(
       setValue: (next: string) => {
         const current = activeEditor(editor);
         if (!current) return;
+        assertEditorTextValue(next);
         current.commands.setContent(
           editorValueToHtml(next, modeRef.current),
           false,
@@ -236,6 +244,7 @@ export function useEditorHandle(
       insertValue: (next: string) => {
         const current = activeEditor(editor);
         if (!current) return;
+        assertEditorTextValue(next);
         current
           .chain()
           .focus()
