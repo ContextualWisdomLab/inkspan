@@ -192,18 +192,21 @@ export async function openDocx(
 ): Promise<DocxImportResult> {
   const result = await importDocx(source, options);
   try {
+    if (typeof target !== 'object' || target === null) {
+      throw new DocxImportError('editor_rejected_document');
+    }
+    const validateDocumentJson = target.validateDocumentJson;
+    const setDocumentJson = target.setDocumentJson;
     if (
-      typeof target !== 'object' ||
-      target === null ||
-      typeof target.validateDocumentJson !== 'function' ||
-      typeof target.setDocumentJson !== 'function'
+      typeof validateDocumentJson !== 'function' ||
+      typeof setDocumentJson !== 'function'
     ) {
       throw new DocxImportError('editor_rejected_document');
     }
-    if (target.validateDocumentJson(result.documentJson) !== true) {
+    if (validateDocumentJson.call(target, result.documentJson) !== true) {
       throw new DocxImportError('incompatible_editor_schema');
     }
-    target.setDocumentJson(result.documentJson);
+    setDocumentJson.call(target, result.documentJson);
     return result;
   } catch (error) {
     throw normalizeDocxImportError(error, 'editor_rejected_document');
