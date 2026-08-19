@@ -195,18 +195,16 @@ describe('DOCX binary source branding', () => {
   });
 
   it('rejects hostile FileReader results without invoking prototype traps', async () => {
-    const source = new Blob([new Uint8Array([1])]);
-    Object.defineProperty(source, 'arrayBuffer', {
-      configurable: true,
-      value: undefined,
-    });
+    const originalArrayBuffer = Object.getOwnPropertyDescriptor(
+      Blob.prototype,
+      'arrayBuffer',
+    );
     const getPrototypeOf = vi.fn(() => {
       throw new Error('private FileReader result sentinel');
     });
     const hostileResult = new Proxy(Object.create(null) as object, {
       getPrototypeOf,
     });
-    const originalFileReader = globalThis.FileReader;
 
     class HostileResultReader {
       result: ArrayBuffer | string | null = hostileResult as unknown as ArrayBuffer;
@@ -218,16 +216,35 @@ describe('DOCX binary source branding', () => {
       }
     }
 
+    Object.defineProperty(Blob.prototype, 'arrayBuffer', {
+      configurable: true,
+      writable: true,
+      value: undefined,
+    });
     vi.stubGlobal('FileReader', HostileResultReader);
+    vi.resetModules();
+    const { importDocx: importWithHostileReader } = await import('./importDocx.js');
+
     try {
-      await expect(importDocx(source)).rejects.toMatchObject({
+      const source = new Blob([new Uint8Array([1])]);
+      await expect(importWithHostileReader(source)).rejects.toMatchObject({
         name: 'DocxImportError',
         code: 'invalid_source',
         message: 'DOCX input must be a supported binary source.',
       });
       expect(getPrototypeOf).not.toHaveBeenCalled();
     } finally {
-      vi.stubGlobal('FileReader', originalFileReader);
+      if (originalArrayBuffer === undefined) {
+        Reflect.deleteProperty(Blob.prototype, 'arrayBuffer');
+      } else {
+        Object.defineProperty(
+          Blob.prototype,
+          'arrayBuffer',
+          originalArrayBuffer,
+        );
+      }
+      vi.unstubAllGlobals();
+      vi.resetModules();
     }
   });
 
