@@ -94,6 +94,24 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
     return false;
   }
 
+  /** Return the module argument for direct or `.call` ambient built-in loading. */
+  function nodeBuiltinModuleInvocation(node) {
+    if (isNodeBuiltinModuleExpression(node.expression)) {
+      return { argument: node.arguments[0] };
+    }
+
+    const callee = unwrapParentheses(node.expression);
+    if (
+      (ts.isPropertyAccessExpression(callee) ||
+        ts.isElementAccessExpression(callee)) &&
+      staticMemberName(callee) === 'call' &&
+      isNodeBuiltinModuleExpression(callee.expression)
+    ) {
+      return { argument: node.arguments[1] };
+    }
+    return null;
+  }
+
   /** Identify direct CommonJS loader values without resolving aliases or scope. */
   function isCommonJsLoaderExpression(expression) {
     const current = unwrapParentheses(expression);
@@ -495,54 +513,57 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
           offset: node.getStart(sourceFile),
           specifier: literalSpecifier(node.arguments[0]),
         });
-      } else if (isNodeBuiltinModuleExpression(node.expression)) {
-        findings.push({
-          kind: 'node-builtin-module',
-          offset: node.getStart(sourceFile),
-          specifier: literalSpecifier(node.arguments[0]),
-        });
       } else {
-        const resolverInvocation = commonJsResolverInvocation(node);
-        if (resolverInvocation) {
+        const nodeBuiltinInvocation = nodeBuiltinModuleInvocation(node);
+        if (nodeBuiltinInvocation) {
           findings.push({
-            kind: 'commonjs-resolve',
+            kind: 'node-builtin-module',
             offset: node.getStart(sourceFile),
-            specifier: literalSpecifier(resolverInvocation.argument),
+            specifier: literalSpecifier(nodeBuiltinInvocation.argument),
           });
         } else {
-          const invocation = commonJsInvocation(node);
-          if (invocation) {
+          const resolverInvocation = commonJsResolverInvocation(node);
+          if (resolverInvocation) {
             findings.push({
-              kind: 'commonjs-require',
+              kind: 'commonjs-resolve',
               offset: node.getStart(sourceFile),
-              specifier: literalSpecifier(invocation.argument),
+              specifier: literalSpecifier(resolverInvocation.argument),
             });
-          } else if (!consumedBoundCalls.has(node)) {
-            const boundResolver = commonJsBoundExpression(
-              node,
-              isCommonJsResolverExpression,
-            );
-            if (boundResolver) {
+          } else {
+            const invocation = commonJsInvocation(node);
+            if (invocation) {
               findings.push({
-                kind: 'commonjs-resolve',
+                kind: 'commonjs-require',
                 offset: node.getStart(sourceFile),
-                specifier: literalSpecifier(
-                  boundResolver.hasArgument ? boundResolver.argument : undefined,
-                ),
+                specifier: literalSpecifier(invocation.argument),
               });
-            } else {
-              const boundLoader = commonJsBoundExpression(
+            } else if (!consumedBoundCalls.has(node)) {
+              const boundResolver = commonJsBoundExpression(
                 node,
-                isCommonJsLoaderExpression,
+                isCommonJsResolverExpression,
               );
-              if (boundLoader) {
+              if (boundResolver) {
                 findings.push({
-                  kind: 'commonjs-require',
+                  kind: 'commonjs-resolve',
                   offset: node.getStart(sourceFile),
                   specifier: literalSpecifier(
-                    boundLoader.hasArgument ? boundLoader.argument : undefined,
+                    boundResolver.hasArgument ? boundResolver.argument : undefined,
                   ),
                 });
+              } else {
+                const boundLoader = commonJsBoundExpression(
+                  node,
+                  isCommonJsLoaderExpression,
+                );
+                if (boundLoader) {
+                  findings.push({
+                    kind: 'commonjs-require',
+                    offset: node.getStart(sourceFile),
+                    specifier: literalSpecifier(
+                      boundLoader.hasArgument ? boundLoader.argument : undefined,
+                    ),
+                  });
+                }
               }
             }
           }
