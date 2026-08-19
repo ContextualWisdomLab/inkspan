@@ -127,7 +127,11 @@ const BLOB_ARRAY_BUFFER_METHOD = Object.getOwnPropertyDescriptor(
   'arrayBuffer',
 )?.value as unknown;
 const NODE_BUFFER = globalThis.Buffer;
-const hasBuffer = typeof NODE_BUFFER !== 'undefined';
+const NODE_BUFFER_FROM =
+  typeof NODE_BUFFER === 'undefined'
+    ? undefined
+    : NODE_BUFFER.from.bind(NODE_BUFFER);
+const hasBuffer = typeof NODE_BUFFER_FROM === 'function';
 
 interface Uint8ArraySlots {
   buffer: ArrayBufferLike;
@@ -200,7 +204,7 @@ export function bytesToBase64(bytes: Uint8Array): string {
     return btoa(binary);
   }
   /* v8 ignore stop */
-  return NODE_BUFFER.from(buffer, byteOffset, byteLength).toString('base64');
+  return NODE_BUFFER_FROM!(buffer, byteOffset, byteLength).toString('base64');
 }
 
 /**
@@ -246,7 +250,7 @@ export function base64ToBytes(base64: string): Uint8Array {
     return out;
   }
   /* v8 ignore stop */
-  return new Uint8Array(NODE_BUFFER.from(normalized, 'base64'));
+  return new Uint8Array(NODE_BUFFER_FROM!(normalized, 'base64'));
 }
 
 /** Return whether a value carries the platform ArrayBuffer internal slot. */
