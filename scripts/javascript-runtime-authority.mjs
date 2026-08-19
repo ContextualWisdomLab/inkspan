@@ -88,17 +88,12 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
       if (ts.isIdentifier(receiver) && receiver.text === 'module') {
         return true;
       }
-      if (
+      return (
         (ts.isPropertyAccessExpression(receiver) ||
           ts.isElementAccessExpression(receiver)) &&
-        staticMemberName(receiver) === 'main'
-      ) {
-        const mainReceiver = unwrapParentheses(receiver.expression);
-        return (
-          (ts.isIdentifier(mainReceiver) && mainReceiver.text === 'module') ||
-          isCommonJsLoaderExpression(mainReceiver)
-        );
-      }
+        staticMemberName(receiver) === 'main' &&
+        isCommonJsLoaderExpression(receiver.expression)
+      );
     }
     return false;
   }
