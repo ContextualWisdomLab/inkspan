@@ -46,6 +46,16 @@ const BLOB_SIZE_GETTER =
   BLOB_PROTOTYPE === undefined
     ? undefined
     : Object.getOwnPropertyDescriptor(BLOB_PROTOTYPE, 'size')?.get;
+const BLOB_ARRAY_BUFFER_DESCRIPTOR =
+  BLOB_PROTOTYPE === undefined
+    ? undefined
+    : Object.getOwnPropertyDescriptor(BLOB_PROTOTYPE, 'arrayBuffer');
+const BLOB_ARRAY_BUFFER =
+  BLOB_ARRAY_BUFFER_DESCRIPTOR !== undefined &&
+  'value' in BLOB_ARRAY_BUFFER_DESCRIPTOR &&
+  typeof BLOB_ARRAY_BUFFER_DESCRIPTOR.value === 'function'
+    ? (BLOB_ARRAY_BUFFER_DESCRIPTOR.value as (this: Blob) => Promise<ArrayBuffer>)
+    : undefined;
 
 interface ArrayBufferViewRange {
   readonly buffer: ArrayBufferLike;
@@ -80,24 +90,6 @@ function tryReadBlobSize(value: unknown): number | undefined {
   }
 }
 
-/** Read the captured platform Blob byte-reader only when it is a data capability. */
-function readBlobArrayBufferCapability():
-  | ((this: Blob) => Promise<ArrayBuffer>)
-  | undefined {
-  const descriptor = Object.getOwnPropertyDescriptor(
-    BLOB_PROTOTYPE as object,
-    'arrayBuffer',
-  );
-  if (
-    descriptor === undefined ||
-    !('value' in descriptor) ||
-    typeof descriptor.value !== 'function'
-  ) {
-    return undefined;
-  }
-  return descriptor.value as (this: Blob) => Promise<ArrayBuffer>;
-}
-
 /** Read one proven Blob without requiring Blob.arrayBuffer() in older DOMs. */
 async function readBlobBytes(blob: Blob): Promise<Uint8Array> {
   const ownArrayBuffer = Object.getOwnPropertyDescriptor(blob, 'arrayBuffer');
@@ -105,9 +97,8 @@ async function readBlobBytes(blob: Blob): Promise<Uint8Array> {
     ownArrayBuffer !== undefined &&
     'value' in ownArrayBuffer &&
     ownArrayBuffer.value === undefined;
-  const platformArrayBuffer = readBlobArrayBufferCapability();
-  if (!ownUndefinedArrayBuffer && platformArrayBuffer !== undefined) {
-    return new Uint8Array(await platformArrayBuffer.call(blob));
+  if (!ownUndefinedArrayBuffer && BLOB_ARRAY_BUFFER !== undefined) {
+    return new Uint8Array(await BLOB_ARRAY_BUFFER.call(blob));
   }
   if (typeof FileReader === 'undefined') {
     throw new DocxImportError('invalid_source');
