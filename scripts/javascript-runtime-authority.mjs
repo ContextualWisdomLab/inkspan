@@ -6,10 +6,11 @@ import ts from 'typescript';
  * Parsing the artifact instead of scanning raw text deliberately ignores comments,
  * string literals, and template text that merely mention `require()` or `import()`.
  * Actual static imports/re-exports, statically recognizable CommonJS loader and
- * resolver calls, and dynamic `import()` calls remain fail-closed findings.
- * Literal module specifiers are preserved in diagnostics so a verifier failure
- * identifies the dependency edge that escaped bundling; computed specifiers remain
- * `undefined` and therefore do not acquire an invented interpretation.
+ * resolver calls, Node built-in module loads, and dynamic `import()` calls remain
+ * fail-closed findings. Literal module specifiers are preserved in diagnostics so a
+ * verifier failure identifies the dependency edge that escaped bundling; computed
+ * specifiers remain `undefined` and therefore do not acquire an invented
+ * interpretation.
  *
  * @param {string} source JavaScript source emitted into the packed artifact.
  * @param {string} [filename='bundle.js'] Diagnostic filename for parse failures.
@@ -65,6 +66,32 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
       return expression.argumentExpression.text;
     }
     return undefined;
+  }
+
+  /** Identify Node's ambient synchronous built-in module loader syntax. */
+  function isNodeBuiltinModuleExpression(expression) {
+    const current = unwrapParentheses(expression);
+    if (
+      (!ts.isPropertyAccessExpression(current) &&
+        !ts.isElementAccessExpression(current)) ||
+      staticMemberName(current) !== 'getBuiltinModule'
+    ) {
+      return false;
+    }
+
+    const receiver = unwrapParentheses(current.expression);
+    if (ts.isIdentifier(receiver) && receiver.text === 'process') {
+      return true;
+    }
+    if (
+      (ts.isPropertyAccessExpression(receiver) ||
+        ts.isElementAccessExpression(receiver)) &&
+      staticMemberName(receiver) === 'process'
+    ) {
+      const root = unwrapParentheses(receiver.expression);
+      return ts.isIdentifier(root) && root.text === 'globalThis';
+    }
+    return false;
   }
 
   /** Identify direct CommonJS loader values without resolving aliases or scope. */
@@ -465,6 +492,12 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
       if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
         findings.push({
           kind: 'dynamic-import',
+          offset: node.getStart(sourceFile),
+          specifier: literalSpecifier(node.arguments[0]),
+        });
+      } else if (isNodeBuiltinModuleExpression(node.expression)) {
+        findings.push({
+          kind: 'node-builtin-module',
           offset: node.getStart(sourceFile),
           specifier: literalSpecifier(node.arguments[0]),
         });
