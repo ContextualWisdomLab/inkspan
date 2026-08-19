@@ -65,6 +65,35 @@ function exceedsPublicIdentifierLength(value: string): boolean {
   return false;
 }
 
+/** Read and validate the host-owned awareness capability without leaking failures. */
+function readCompatibleCollaborationAwareness(
+  provider: CollaborationProviderLike,
+): CollaborationAwareness {
+  try {
+    const awareness = provider.awareness as
+      | Partial<CollaborationAwareness>
+      | undefined;
+    if (
+      awareness !== undefined &&
+      typeof awareness.clientID === 'number' &&
+      awareness.states instanceof Map &&
+      typeof awareness.getLocalState === 'function' &&
+      typeof awareness.getStates === 'function' &&
+      typeof awareness.setLocalStateField === 'function' &&
+      typeof awareness.on === 'function' &&
+      typeof awareness.off === 'function'
+    ) {
+      return awareness as CollaborationAwareness;
+    }
+  } catch {
+    // Normalize host capability access failures at the public Inkspan boundary.
+  }
+
+  throw new Error(
+    'collaboration provider must expose a compatible Yjs awareness instance',
+  );
+}
+
 /** Validate and serialize the only public fields permitted in awareness. */
 export function serializeCollaborationUser(
   user: CollaborationUser,
@@ -109,29 +138,7 @@ export function assertCollaborationConfiguration(
   }
   if (!provider) return;
 
-  let isCompatibleAwareness = false;
-  try {
-    const awareness = provider.awareness as
-      | Partial<CollaborationAwareness>
-      | undefined;
-    isCompatibleAwareness =
-      awareness !== undefined &&
-      typeof awareness.clientID === 'number' &&
-      awareness.states instanceof Map &&
-      typeof awareness.getLocalState === 'function' &&
-      typeof awareness.getStates === 'function' &&
-      typeof awareness.setLocalStateField === 'function' &&
-      typeof awareness.on === 'function' &&
-      typeof awareness.off === 'function';
-  } catch {
-    isCompatibleAwareness = false;
-  }
-
-  if (!isCompatibleAwareness) {
-    throw new Error(
-      'collaboration provider must expose a compatible Yjs awareness instance',
-    );
-  }
+  readCompatibleCollaborationAwareness(provider);
 }
 
 /**
@@ -141,7 +148,7 @@ export function assertCollaborationConfiguration(
 export function createScopedCollaborationProvider(
   provider: CollaborationProviderLike,
 ): ScopedCollaborationProvider {
-  const source = provider.awareness;
+  const source = readCompatibleCollaborationAwareness(provider);
   const listenerWrappers: Record<
     CollaborationAwarenessEvent,
     Map<(...args: unknown[]) => void, (...args: unknown[]) => void>
