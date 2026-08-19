@@ -119,6 +119,10 @@ const BLOB_TYPE_GETTER = Object.getOwnPropertyDescriptor(
   Blob.prototype,
   'type',
 )!.get!;
+const BLOB_ARRAY_BUFFER_METHOD = Object.getOwnPropertyDescriptor(
+  Blob.prototype,
+  'arrayBuffer',
+)?.value as unknown;
 
 const hasBuffer = typeof globalThis.Buffer !== 'undefined';
 
@@ -595,17 +599,20 @@ export const arrayBufferToDataUri = bytesToDataUri;
 
 /**
  * Read a Blob's bytes across environments without consulting caller-owned
- * instance members. Prefer the platform `Blob.prototype.arrayBuffer` method,
- * falling back to `FileReader` and then `Response` when that platform
- * capability is unavailable.
+ * instance members. Prefer the module-captured `Blob.prototype.arrayBuffer`
+ * capability when that platform method is still present, falling back to
+ * `FileReader` and then `Response` when the platform capability is unavailable.
  */
 async function readBlobBytes(blob: Blob): Promise<Uint8Array> {
-  const platformArrayBuffer = Object.getOwnPropertyDescriptor(
+  const currentPlatformArrayBuffer = Object.getOwnPropertyDescriptor(
     Blob.prototype,
     'arrayBuffer',
   )?.value as unknown;
-  if (typeof platformArrayBuffer === 'function') {
-    const buffer = await (platformArrayBuffer as (
+  if (
+    typeof BLOB_ARRAY_BUFFER_METHOD === 'function' &&
+    typeof currentPlatformArrayBuffer === 'function'
+  ) {
+    const buffer = await (BLOB_ARRAY_BUFFER_METHOD as (
       this: Blob,
     ) => Promise<ArrayBuffer>).call(blob);
     return new Uint8Array(buffer);
