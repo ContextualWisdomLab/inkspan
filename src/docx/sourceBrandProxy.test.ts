@@ -47,6 +47,28 @@ describe('DOCX binary source branding', () => {
     }
   });
 
+  it('does not consult a replaced global TextDecoder after platform capture', async () => {
+    const source = createDocx();
+    const hostileConstructor = vi.fn();
+
+    class HostileTextDecoder {
+      constructor() {
+        hostileConstructor();
+        throw new Error('private TextDecoder sentinel');
+      }
+    }
+
+    vi.stubGlobal('TextDecoder', HostileTextDecoder);
+    try {
+      await expect(importDocx(source)).resolves.toMatchObject({
+        documentJson: { type: 'doc' },
+      });
+      expect(hostileConstructor).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('does not execute post-load Blob size getter interposition', async () => {
     const source = createDocxBlob();
     const originalSize = Object.getOwnPropertyDescriptor(Blob.prototype, 'size');
