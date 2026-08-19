@@ -16,6 +16,29 @@ describe('toUint8Array with a non-Uint8Array view', () => {
     expect(out).toBeInstanceOf(Uint8Array);
     expect(Array.from(out)).toEqual([8, 7, 6]);
   });
+
+  it('does not let a later ArrayBuffer.isView replacement become classification authority', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(ArrayBuffer, 'isView');
+    if (descriptor === undefined) {
+      throw new Error('ArrayBuffer.isView descriptor is unavailable.');
+    }
+    const privateSentinel = new Error('private ArrayBuffer.isView sentinel');
+    Object.defineProperty(ArrayBuffer, 'isView', {
+      ...descriptor,
+      value(): boolean {
+        throw privateSentinel;
+      },
+    });
+
+    try {
+      const src = new Uint8Array([9, 8, 7, 6, 5]);
+      const view = new Int8Array(src.buffer, 1, 3);
+      const out = toUint8Array(view);
+      expect(Array.from(out)).toEqual([8, 7, 6]);
+    } finally {
+      Object.defineProperty(ArrayBuffer, 'isView', descriptor);
+    }
+  });
 });
 
 // Note: the `btoa`/`atob` fallback in bytesToBase64/base64ToBytes only runs in
