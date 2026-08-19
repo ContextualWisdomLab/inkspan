@@ -2,7 +2,7 @@
 
 Status: Active PR / Proposed
 
-Writing diagnostics are a host-supplied, revision-bound review surface for local Inkspan authoring. This document describes the active writing-diagnostics stack only; it is not protected-main authority until the owning stack integrates under then-live governance.
+Writing diagnostics are a host-supplied, revision-bound review surface for local Inkspan authoring. This document describes the active writing-diagnostics stack only; it is not protected-main authority until the owning stack integrates under then-live governance. The same deterministic boundary covers collaborative editing and remains safe for server rendering without acquiring host authority.
 
 ## Authority model
 
