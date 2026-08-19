@@ -109,19 +109,25 @@ export function assertCollaborationConfiguration(
   }
   if (!provider) return;
 
-  const awareness = provider.awareness as
-    | Partial<CollaborationAwareness>
-    | undefined;
-  if (
-    !awareness ||
-    typeof awareness.clientID !== 'number' ||
-    !(awareness.states instanceof Map) ||
-    typeof awareness.getLocalState !== 'function' ||
-    typeof awareness.getStates !== 'function' ||
-    typeof awareness.setLocalStateField !== 'function' ||
-    typeof awareness.on !== 'function' ||
-    typeof awareness.off !== 'function'
-  ) {
+  let isCompatibleAwareness = false;
+  try {
+    const awareness = provider.awareness as
+      | Partial<CollaborationAwareness>
+      | undefined;
+    isCompatibleAwareness =
+      awareness !== undefined &&
+      typeof awareness.clientID === 'number' &&
+      awareness.states instanceof Map &&
+      typeof awareness.getLocalState === 'function' &&
+      typeof awareness.getStates === 'function' &&
+      typeof awareness.setLocalStateField === 'function' &&
+      typeof awareness.on === 'function' &&
+      typeof awareness.off === 'function';
+  } catch {
+    isCompatibleAwareness = false;
+  }
+
+  if (!isCompatibleAwareness) {
     throw new Error(
       'collaboration provider must expose a compatible Yjs awareness instance',
     );
