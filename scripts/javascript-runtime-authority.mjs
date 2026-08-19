@@ -94,20 +94,68 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
     return false;
   }
 
-  /** Return the module argument for direct or `.call` ambient built-in loading. */
+  /** Return the module argument for recognizable ambient built-in loading. */
   function nodeBuiltinModuleInvocation(node) {
     if (isNodeBuiltinModuleExpression(node.expression)) {
       return { argument: node.arguments[0] };
     }
 
+    const boundInvocation = commonJsBoundInvocation(
+      node,
+      isNodeBuiltinModuleExpression,
+    );
+    if (boundInvocation) {
+      return boundInvocation;
+    }
+
+    if (isReflectApplyExpression(node.expression)) {
+      const target = node.arguments[0];
+      if (target && isNodeBuiltinModuleExpression(target)) {
+        return { argument: commonJsApplyArgument(node, 2) };
+      }
+      if (target) {
+        const boundTarget = commonJsBoundExpression(
+          target,
+          isNodeBuiltinModuleExpression,
+        );
+        if (boundTarget) {
+          return {
+            argument: commonJsBoundArgument(
+              boundTarget,
+              commonJsApplyArgument(node, 2),
+            ),
+          };
+        }
+      }
+    }
+
     const callee = unwrapParentheses(node.expression);
     if (
-      (ts.isPropertyAccessExpression(callee) ||
-        ts.isElementAccessExpression(callee)) &&
-      staticMemberName(callee) === 'call' &&
-      isNodeBuiltinModuleExpression(callee.expression)
+      ts.isPropertyAccessExpression(callee) ||
+      ts.isElementAccessExpression(callee)
     ) {
-      return { argument: node.arguments[1] };
+      const invocationMethod = staticMemberName(callee);
+      if (invocationMethod === 'call' || invocationMethod === 'apply') {
+        const fallbackArgument =
+          invocationMethod === 'call'
+            ? node.arguments[1]
+            : commonJsApplyArgument(node);
+        if (isNodeBuiltinModuleExpression(callee.expression)) {
+          return { argument: fallbackArgument };
+        }
+        const boundReceiver = commonJsBoundExpression(
+          callee.expression,
+          isNodeBuiltinModuleExpression,
+        );
+        if (boundReceiver) {
+          return {
+            argument: commonJsBoundArgument(
+              boundReceiver,
+              fallbackArgument,
+            ),
+          };
+        }
+      }
     }
     return null;
   }
@@ -538,31 +586,51 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
                 specifier: literalSpecifier(invocation.argument),
               });
             } else if (!consumedBoundCalls.has(node)) {
-              const boundResolver = commonJsBoundExpression(
+              const boundNodeBuiltin = commonJsBoundExpression(
                 node,
-                isCommonJsResolverExpression,
+                isNodeBuiltinModuleExpression,
               );
-              if (boundResolver) {
+              if (boundNodeBuiltin) {
                 findings.push({
-                  kind: 'commonjs-resolve',
+                  kind: 'node-builtin-module',
                   offset: node.getStart(sourceFile),
                   specifier: literalSpecifier(
-                    boundResolver.hasArgument ? boundResolver.argument : undefined,
+                    boundNodeBuiltin.hasArgument
+                      ? boundNodeBuiltin.argument
+                      : undefined,
                   ),
                 });
               } else {
-                const boundLoader = commonJsBoundExpression(
+                const boundResolver = commonJsBoundExpression(
                   node,
-                  isCommonJsLoaderExpression,
+                  isCommonJsResolverExpression,
                 );
-                if (boundLoader) {
+                if (boundResolver) {
                   findings.push({
-                    kind: 'commonjs-require',
+                    kind: 'commonjs-resolve',
                     offset: node.getStart(sourceFile),
                     specifier: literalSpecifier(
-                      boundLoader.hasArgument ? boundLoader.argument : undefined,
+                      boundResolver.hasArgument
+                        ? boundResolver.argument
+                        : undefined,
                     ),
                   });
+                } else {
+                  const boundLoader = commonJsBoundExpression(
+                    node,
+                    isCommonJsLoaderExpression,
+                  );
+                  if (boundLoader) {
+                    findings.push({
+                      kind: 'commonjs-require',
+                      offset: node.getStart(sourceFile),
+                      specifier: literalSpecifier(
+                        boundLoader.hasArgument
+                          ? boundLoader.argument
+                          : undefined,
+                      ),
+                    });
+                  }
                 }
               }
             }
