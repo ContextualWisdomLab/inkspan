@@ -121,7 +121,7 @@ describe('DOCX open/import contract', () => {
     expect(arrayBufferGetter).not.toHaveBeenCalled();
   });
 
-  it('uses a callable platform Blob byte reader without caller method lookup', async () => {
+  it('uses a callable platform Blob byte reader captured at module initialization', async () => {
     const bytes = createDocx();
     const source = new Blob([Uint8Array.from(bytes)]);
     const originalDescriptor = Object.getOwnPropertyDescriptor(
@@ -139,13 +139,17 @@ describe('DOCX open/import contract', () => {
       value: platformArrayBuffer,
       writable: true,
     });
+    vi.resetModules();
+    const { importDocx: importWithCapturedPlatformReader } = await import(
+      './importDocx.js'
+    );
     Object.defineProperty(source, 'arrayBuffer', {
       configurable: true,
       value: callerOverride,
     });
 
     try {
-      const result = await importDocx(source);
+      const result = await importWithCapturedPlatformReader(source);
 
       expect(result.documentJson.type).toBe('doc');
       expect(platformArrayBuffer).toHaveBeenCalledTimes(1);
@@ -160,6 +164,7 @@ describe('DOCX open/import contract', () => {
           originalDescriptor,
         );
       }
+      vi.resetModules();
     }
   });
 
