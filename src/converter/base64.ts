@@ -594,7 +594,7 @@ export function parseDataUri(dataUri: string): ParsedDataUri {
   }
   const mimeType = match[1] && match[1].length > 0 ? match[1] : 'text/plain';
   const params = match[2] ?? '';
-  const isBase64 = /;base64/i.test(params);
+  const isBase64 = /;base64$/i.test(params);
   // Capture group 3 always matches (possibly empty), so `?? ''` is defensive.
   /* v8 ignore next */
   const payload = match[3] ?? '';
