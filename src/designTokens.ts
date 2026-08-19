@@ -327,9 +327,11 @@ function formatTokenValue(token: EditorThemeToken): DesignTokenFormatValue {
     case 'dimension':
       return formatDimensionTokenValue(token.lightValue);
     case 'fontFamily':
-      return token.lightValue
-        .split(',')
-        .map((family) => family.trim().replace(/^['"]|['"]$/gu, ''));
+      return Object.freeze(
+        token.lightValue
+          .split(',')
+          .map((family) => family.trim().replace(/^['"]|['"]$/gu, '')),
+      );
   }
 }
 
