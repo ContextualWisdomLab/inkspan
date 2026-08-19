@@ -78,6 +78,8 @@ const INVALID_BINARY_INPUT_MESSAGE = 'converter binary input is invalid.';
 const INVALID_BLOB_INPUT_MESSAGE = 'converter Blob input is invalid.';
 const INVALID_BASE64_INPUT_MESSAGE = 'base64 input must be a string.';
 const MAX_MIME_TYPE_CODE_UNITS = 1_024;
+const TEXT_DECODER = new TextDecoder();
+const TEXT_DECODER_DECODE = TextDecoder.prototype.decode;
 const ARRAY_BUFFER_IS_VIEW = ArrayBuffer.isView;
 const ARRAY_BUFFER_BYTE_LENGTH_GETTER = Object.getOwnPropertyDescriptor(
   ArrayBuffer.prototype,
@@ -358,9 +360,10 @@ export function sniffMimeType(bytes: Uint8Array): string | undefined {
     return 'application/pdf';
   }
   // SVG / XML: look for "<svg" or "<?xml" near the start (skipping BOM/space).
-  const head = new TextDecoder()
-    .decode(b.subarray(0, Math.min(b.length, 64)))
-    .trimStart();
+  const head = TEXT_DECODER_DECODE.call(
+    TEXT_DECODER,
+    b.subarray(0, Math.min(b.length, 64)),
+  ).trimStart();
   if (head.startsWith('<svg') || (head.startsWith('<?xml') && head.includes('<svg'))) {
     return 'image/svg+xml';
   }
