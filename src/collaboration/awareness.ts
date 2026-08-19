@@ -231,30 +231,35 @@ function ownEnumerableDataValue(
   }
 }
 
-/** Count remote awareness clients carrying a valid public user identifier. */
+/** Count valid remote collaborators without leaking host awareness failures. */
 export function countRemoteCollaborators(
   awareness: CollaborationAwareness | undefined,
 ): number {
   if (!awareness) return 0;
-  let count = 0;
-  for (const [clientId, state] of awareness.getStates()) {
-    if (clientId === awareness.clientID) continue;
-    const user = ownEnumerableDataValue(state, 'user');
-    if (typeof user !== 'object' || user === null) continue;
-    const id = ownEnumerableDataValue(user, 'id');
-    if (typeof id !== 'string') continue;
-    if (id.length > MAX_REMOTE_FIELD_SOURCE_LENGTH) continue;
-    const normalizedId = id.trim();
-    if (
-      normalizedId === '' ||
-      NUMERIC_IDENTIFIER_PATTERN.test(normalizedId) ||
-      exceedsPublicIdentifierLength(normalizedId)
-    ) {
-      continue;
+  try {
+    const localClientId = awareness.clientID;
+    let count = 0;
+    for (const [clientId, state] of awareness.getStates()) {
+      if (clientId === localClientId) continue;
+      const user = ownEnumerableDataValue(state, 'user');
+      if (typeof user !== 'object' || user === null) continue;
+      const id = ownEnumerableDataValue(user, 'id');
+      if (typeof id !== 'string') continue;
+      if (id.length > MAX_REMOTE_FIELD_SOURCE_LENGTH) continue;
+      const normalizedId = id.trim();
+      if (
+        normalizedId === '' ||
+        NUMERIC_IDENTIFIER_PATTERN.test(normalizedId) ||
+        exceedsPublicIdentifierLength(normalizedId)
+      ) {
+        continue;
+      }
+      count += 1;
     }
-    count += 1;
+    return count;
+  } catch {
+    return 0;
   }
-  return count;
 }
 
 /** Convert a host connection state into concise status-region text. */
