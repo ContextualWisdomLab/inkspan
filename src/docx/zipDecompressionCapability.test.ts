@@ -49,7 +49,6 @@ describe('DOCX ZIP decompression capability isolation', () => {
       8,
     );
     const fromDescriptor = Object.getOwnPropertyDescriptor(Uint8Array, 'from');
-    expect(fromDescriptor).toBeDefined();
     let hostileFromCalls = 0;
 
     Object.defineProperty(Uint8Array, 'from', {
@@ -68,7 +67,11 @@ describe('DOCX ZIP decompression capability isolation', () => {
       ).resolves.toBe('trusted compressed payload');
       expect(hostileFromCalls).toBe(0);
     } finally {
-      Object.defineProperty(Uint8Array, 'from', fromDescriptor!);
+      if (fromDescriptor === undefined) {
+        Reflect.deleteProperty(Uint8Array, 'from');
+      } else {
+        Object.defineProperty(Uint8Array, 'from', fromDescriptor);
+      }
     }
   });
 
