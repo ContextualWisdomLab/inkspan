@@ -54,6 +54,21 @@ describe('converter binary-view runtime boundary', () => {
     expect(readCallerAccessor).not.toHaveBeenCalled();
   });
 
+  it('does not traverse a caller-controlled prototype while classifying a genuine Uint8Array', () => {
+    const view = new Uint8Array([1, 2, 3]);
+    const privateSentinel = new Error('private typed-array prototype sentinel');
+    const getPrototypeOf = vi.fn((): never => {
+      throw privateSentinel;
+    });
+    const hostilePrototype = new Proxy(Uint8Array.prototype, {
+      getPrototypeOf,
+    });
+    Object.setPrototypeOf(view, hostilePrototype);
+
+    expect(toUint8Array(view)).toBe(view);
+    expect(getPrototypeOf).not.toHaveBeenCalled();
+  });
+
   it('normalizes detached DataView failures before range reconstruction', () => {
     const buffer = new ArrayBuffer(4);
     const view = new DataView(buffer, 1, 2);
