@@ -206,7 +206,12 @@ export function createScopedCollaborationProvider(
       disposed = true;
       for (const event of ['change', 'update'] as const) {
         for (const wrapper of listenerWrappers[event].values()) {
-          source.off(event, wrapper);
+          try {
+            source.off(event, wrapper);
+          } catch {
+            // Host-owned listener teardown must not abort remaining cleanup or
+            // leak a private provider failure through React effect disposal.
+          }
         }
         listenerWrappers[event].clear();
       }
