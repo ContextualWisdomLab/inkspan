@@ -9,6 +9,9 @@ const UTF8_FLAG = 0x0800;
 const DATA_DESCRIPTOR_FLAG = 0x0008;
 const ENCRYPTION_FLAGS = 0x2041;
 const SUPPORTED_FLAGS = UTF8_FLAG | DATA_DESCRIPTOR_FLAG;
+const UTF8_ENTRY_NAME_DECODER = new TextDecoder('utf-8', { fatal: true });
+const ASCII_ENTRY_NAME_DECODER = new TextDecoder('ascii', { fatal: true });
+const TEXT_DECODER_DECODE = TextDecoder.prototype.decode;
 
 interface ZipEntry {
   readonly name: string;
@@ -45,14 +48,14 @@ function decodeEntryName(nameBytes: Uint8Array, flags: number): string {
   if (nameBytes.byteLength === 0) throw new DocxImportError('invalid_zip');
   try {
     if ((flags & UTF8_FLAG) !== 0) {
-      return new TextDecoder('utf-8', { fatal: true }).decode(nameBytes);
+      return TEXT_DECODER_DECODE.call(UTF8_ENTRY_NAME_DECODER, nameBytes);
     }
     for (const byte of nameBytes) {
       if (byte < 0x20 || byte > 0x7e) {
         throw new DocxImportError('unsupported_archive');
       }
     }
-    return new TextDecoder('ascii', { fatal: true }).decode(nameBytes);
+    return TEXT_DECODER_DECODE.call(ASCII_ENTRY_NAME_DECODER, nameBytes);
   } catch (error) {
     throw normalizeDocxImportError(error, 'invalid_zip');
   }
