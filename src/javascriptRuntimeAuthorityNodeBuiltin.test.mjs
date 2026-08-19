@@ -28,9 +28,12 @@ describe('Node built-in runtime module authority', () => {
     const source = [
       "const fs = process.getBuiltinModule.call(undefined, 'node:fs');",
       'const path = globalThis.process.getBuiltinModule.call(null, runtimeBuiltinName);',
+      "const util = process['getBuiltinModule']['call'](undefined, 'node:util');",
+      "const os = globalThis['process']['getBuiltinModule'].call(null, 'node:os');",
       'const object = { getBuiltinModule() { return "method-only"; } };',
       'const benign = object.getBuiltinModule.call(null, "node:crypto");',
-      'void [fs, path, benign];',
+      'const benignComputed = object["getBuiltinModule"]["call"](null, "node:url");',
+      'void [fs, path, util, os, benign, benignComputed];',
     ].join('\n');
 
     expect(
@@ -40,6 +43,8 @@ describe('Node built-in runtime module authority', () => {
     ).toEqual([
       { kind: 'node-builtin-module', specifier: 'node:fs' },
       { kind: 'node-builtin-module', specifier: undefined },
+      { kind: 'node-builtin-module', specifier: 'node:util' },
+      { kind: 'node-builtin-module', specifier: 'node:os' },
     ]);
   });
 });
