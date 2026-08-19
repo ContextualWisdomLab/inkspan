@@ -26,10 +26,11 @@ const MAX_CURSOR_LABEL_LENGTH = 80;
 const MAX_PUBLIC_IDENTIFIER_LENGTH = 80;
 const MAX_REMOTE_FIELD_SOURCE_LENGTH = 1_024;
 const MAX_LOCAL_FIELD_SOURCE_LENGTH = 1_024;
+type CollaborationUserField = 'userId' | 'displayName' | 'cursorColor';
 
 /** Reject malformed or oversized local identity fields before normalization. */
 function assertCollaborationUserStringField(
-  field: 'userId' | 'displayName' | 'cursorColor',
+  field: CollaborationUserField,
   value: unknown,
 ): asserts value is string {
   if (typeof value !== 'string') {
@@ -40,6 +41,21 @@ function assertCollaborationUserStringField(
       `collaboration ${field} must be at most ${MAX_LOCAL_FIELD_SOURCE_LENGTH} UTF-16 code units before normalization`,
     );
   }
+}
+
+/** Read one host-owned local identity field without leaking getter failures. */
+function readCollaborationUserStringField(
+  user: CollaborationUser,
+  field: CollaborationUserField,
+): string {
+  let value: unknown;
+  try {
+    value = user[field];
+  } catch {
+    throw new Error(`collaboration ${field} must be a string`);
+  }
+  assertCollaborationUserStringField(field, value);
+  return value;
 }
 
 /** Trim and bound a public cursor label without splitting Unicode code points. */
@@ -98,12 +114,12 @@ function readCompatibleCollaborationAwareness(
 export function serializeCollaborationUser(
   user: CollaborationUser,
 ): CollaborationCursorUser {
-  assertCollaborationUserStringField('userId', user.userId);
-  assertCollaborationUserStringField('displayName', user.displayName);
-  assertCollaborationUserStringField('cursorColor', user.cursorColor);
-  const id = user.userId.trim();
-  const name = truncateCursorLabel(user.displayName);
-  const color = user.cursorColor.trim();
+  const sourceId = readCollaborationUserStringField(user, 'userId');
+  const sourceName = readCollaborationUserStringField(user, 'displayName');
+  const sourceColor = readCollaborationUserStringField(user, 'cursorColor');
+  const id = sourceId.trim();
+  const name = truncateCursorLabel(sourceName);
+  const color = sourceColor.trim();
 
   if (id === '') {
     throw new Error('collaboration userId must not be empty');
