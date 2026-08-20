@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  isClipboardSanitizationError,
   sanitizeRichClipboardHtml,
   type ClipboardConfig,
 } from './SafeClipboard.js';
@@ -10,6 +11,12 @@ import {
  * Unknown thrown values must be normalized without prototype inspection.
  */
 describe('SafeClipboard sanitizer hostile thrown-value containment', () => {
+  it('rejects primitive values without consulting the WeakSet', () => {
+    expect(isClipboardSanitizationError('private primitive sentinel')).toBe(false);
+    expect(isClipboardSanitizationError(1)).toBe(false);
+    expect(isClipboardSanitizationError(null)).toBe(false);
+  });
+
   it('normalizes hostile configuration failures without prototype inspection', () => {
     const privateSentinel = new Error('private sanitizer prototype sentinel');
     const getPrototypeOf = vi.fn(() => {

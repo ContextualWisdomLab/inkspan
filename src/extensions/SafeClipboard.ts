@@ -78,7 +78,9 @@ export class ClipboardSanitizationError extends Error {
 export function isClipboardSanitizationError(
   value: unknown,
 ): value is ClipboardSanitizationError {
-  return CLIPBOARD_SANITIZATION_ERRORS.has(value as object);
+  return (
+    (typeof value === 'object' && value !== null) || typeof value === 'function'
+  ) && CLIPBOARD_SANITIZATION_ERRORS.has(value as object);
 }
 
 interface ResolvedClipboardConfig {
