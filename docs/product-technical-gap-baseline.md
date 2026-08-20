@@ -1,6 +1,6 @@
 # Inkspan product-technical gap baseline
 
-Status: Dated operational baseline — 2026-08-20; live snapshot refetched at `2026-08-20T11:04:38Z`
+Status: Dated operational baseline — 2026-08-20; live snapshot refetched at `2026-08-20T11:10:24Z`
 
 This record turns the current protected-main product boundary, live pull-request
 queue, release evidence, and buyer-visible gaps into an executable maintenance
@@ -14,11 +14,12 @@ implementation authority; an active PR is not a shipped capability.
 | --- | --- | --- |
 | Protected source | `main@3b38ead2d00f44eb578d0689087b9293b3dabe1e` | The only source head used for shipped-product claims. |
 | Repository state | `ContextualWisdomLab/inkspan`, default branch `main` | This is the correct repository for Inkspan-owned editor, conversion, evidence, accessibility, package, and provider-neutral adapter work. |
-| Open PR queue | 59 open PRs from the REST/search endpoint; 3 Ready and 56 Draft at the refetch above | The queue is active work, not protected implementation. |
+| Open PR queue | 59 open PRs from the REST pull-request endpoint; 3 Ready and 56 Draft at the refetch above | The queue is active work, not protected implementation. |
 | Current source versions | npm `0.6.0`; Office manifest `0.6.0` | Version alignment exists in source, but it does not prove registry publication. |
-| Public release evidence | Latest GitHub release is `v0.3.1`; no `v0.6.0` release is present | Stable `0.6.0` publication remains an operational gap. |
+| Public release evidence | Latest GitHub release is `v0.3.1`; no `v0.6.0` release is present; public npm lookup for `@contextualwisdomlab/cwl-editor` returns `404` | Stable `0.6.0` publication remains an operational gap. |
 | Protected governance | Active `CWL Central required workflows` ruleset; one approval, last-push approval, resolved review threads, and required workflows | No self-approval or governance bypass is valid. Code-owner review is disabled by policy. |
 | Main checks | Latest protected-main CI run `31996429786` is terminal success: `build-and-test`, Office Python 3.11, and Chromium/Firefox/WebKit evidence all completed successfully | This does not transfer to active PR heads or prove release publication. |
+| Protected-main dependency alerts | Four Dependabot alerts remain open for `fast-uri` and `postcss`; PR #373 targets the patched floors and also repairs the audited `nanoid` tree | Security status remains open until the exact PR is reviewed, checks pass, and the protected merge is verified. |
 
 The queue count and status must be refreshed with:
 
@@ -40,7 +41,10 @@ gh api 'repos/ContextualWisdomLab/inkspan/commits/3b38ead2d00f44eb578d0689087b92
 gh release list --repo ContextualWisdomLab/inkspan --limit 1
 jq -r '.version' package.json
 rg -n '^version\\s*=' office/pyproject.toml
-for pr_number in 285 299 362 372 373; do
+npm view @contextualwisdomlab/cwl-editor version || true
+gh api repos/ContextualWisdomLab/inkspan/dependabot/alerts \
+  --jq '.[] | select(.state == "open") | [.number,.dependency.package.name,.security_advisory.severity,.security_vulnerability.first_patched_version.identifier] | @tsv'
+for pr_number in 285 290 299 362 372 373; do
   gh api "repos/ContextualWisdomLab/inkspan/pulls/$pr_number" \
     --jq '[.number,.draft,.head.sha,.base.sha,.head.ref,.base.ref,.updated_at] | @tsv'
 done
