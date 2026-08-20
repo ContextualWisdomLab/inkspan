@@ -100,18 +100,40 @@ import {
   INKSPAN_REVIEW_CONTRACT_VERSION,
   TEXT_POSITION_PROJECTION_ID,
   TEXT_POSITION_PROJECTION_VERSION,
+  CwlReviewTargetError,
   DocumentEnvelopeRevisionError,
   TextPositionSelectorEvidenceError,
   createDocumentEnvelopeRevision,
+  createReviewTarget,
   createTextPositionSelector,
 } from '${packageJson.name}/review';
 assert.equal(INKSPAN_REVIEW_CONTRACT_VERSION, 1);
 assert.equal(TEXT_POSITION_PROJECTION_ID, 'inkspan-prosemirror-text');
 assert.equal(TEXT_POSITION_PROJECTION_VERSION, 1);
+assert.equal(typeof CwlReviewTargetError, 'function');
 assert.equal(typeof DocumentEnvelopeRevisionError, 'function');
 assert.equal(typeof TextPositionSelectorEvidenceError, 'function');
 assert.equal(typeof createDocumentEnvelopeRevision, 'function');
+assert.equal(typeof createReviewTarget, 'function');
 assert.equal(typeof createTextPositionSelector, 'function');
+const digestHex = 'a'.repeat(64);
+const target = createReviewTarget({
+  contractVersion: 1,
+  revision: {
+    algorithm: 'SHA-256',
+    digestHex,
+    strongEntityTag: '\"sha256-' + digestHex + '\"',
+  },
+  selector: { type: 'TextPositionSelector', start: 1, end: 2 },
+  projection: { id: 'inkspan-prosemirror-text', version: 1 },
+});
+assert.equal(target.revision.digestHex, digestHex);
+assert.equal(target.selector.start, 1);
+assert.equal(Object.isFrozen(target), true);
+assert.throws(
+  () => createReviewTarget({ ...target, contractVersion: 2 }),
+  CwlReviewTargetError,
+);
 `,
     'utf8',
   );
@@ -123,8 +145,23 @@ const review = require('${packageJson.name}/review');
 assert.equal(review.INKSPAN_REVIEW_CONTRACT_VERSION, 1);
 assert.equal(review.TEXT_POSITION_PROJECTION_ID, 'inkspan-prosemirror-text');
 assert.equal(review.TEXT_POSITION_PROJECTION_VERSION, 1);
+assert.equal(typeof review.CwlReviewTargetError, 'function');
 assert.equal(typeof review.createDocumentEnvelopeRevision, 'function');
+assert.equal(typeof review.createReviewTarget, 'function');
 assert.equal(typeof review.createTextPositionSelector, 'function');
+const digestHex = 'b'.repeat(64);
+const target = review.createReviewTarget({
+  contractVersion: 1,
+  revision: {
+    algorithm: 'SHA-256',
+    digestHex,
+    strongEntityTag: '\"sha256-' + digestHex + '\"',
+  },
+  selector: { type: 'TextPositionSelector', start: 0, end: 0 },
+  projection: { id: 'inkspan-prosemirror-text', version: 1 },
+});
+assert.equal(target.revision.digestHex, digestHex);
+assert.equal(Object.isFrozen(target.projection), true);
 `,
     'utf8',
   );
@@ -139,7 +176,10 @@ function verifyDeclarationConsumer() {
     sourcePath,
     `import {
   INKSPAN_REVIEW_CONTRACT_VERSION,
+  CwlReviewTargetError,
+  createReviewTarget,
   type CwlReviewTarget,
+  type CwlReviewTargetErrorCode,
   type CwlEditorDocumentRevision,
   type CwlEditorTextPositionSelector,
   type CwlEditorTextProjectionIdentity,
@@ -153,7 +193,15 @@ const target: CwlReviewTarget = {
   selector,
   projection,
 };
-void [target.revision, target.selector.start, target.selector.end, target.projection.id];
+const detachedTarget: CwlReviewTarget = createReviewTarget(target);
+const code: CwlReviewTargetErrorCode = new CwlReviewTargetError().code;
+void [
+  detachedTarget.revision,
+  detachedTarget.selector.start,
+  detachedTarget.selector.end,
+  detachedTarget.projection.id,
+  code,
+];
 `,
     'utf8',
   );
