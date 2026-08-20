@@ -1,10 +1,13 @@
 import { Doc } from 'yjs';
 
 const MAX_CONTEXT_CODE_UNITS = 256;
+const INITIALIZATION_FAILURE = 'collaboration lifecycle initialization failed.';
 const TEARDOWN_FAILURE = 'collaboration lifecycle teardown failed.';
 
 /** Marker used by repository contracts to keep this lifecycle example out of runtime authority. */
 export const REFERENCE_ONLY = true;
+
+class ResourceValidationError extends TypeError {}
 
 function requireContextString(value, label) {
   if (
@@ -50,7 +53,7 @@ function readOwnDataRecord(source, keys, message) {
 function findDataMethod(source, key, message) {
   try {
     if ((typeof source !== 'object' && typeof source !== 'function') || source === null) {
-      throw new TypeError(message);
+      throw new ResourceValidationError(message);
     }
     let cursor = source;
     while (cursor !== null) {
@@ -60,16 +63,18 @@ function findDataMethod(source, key, message) {
           !Object.prototype.hasOwnProperty.call(descriptor, 'value') ||
           typeof descriptor.value !== 'function'
         ) {
-          throw new TypeError(message);
+          throw new ResourceValidationError(message);
         }
         return descriptor.value;
       }
       cursor = Object.getPrototypeOf(cursor);
     }
-    throw new TypeError(message);
+    throw new ResourceValidationError(message);
   } catch (error) {
-    if (error instanceof TypeError && error.message === message) throw error;
-    throw new TypeError(message);
+    if (error instanceof ResourceValidationError && error.message === message) {
+      throw error;
+    }
+    throw new ResourceValidationError(message);
   }
 }
 
@@ -91,6 +96,10 @@ function requireProvider(value) {
   });
 }
 
+function initializationFailure() {
+  return new Error(INITIALIZATION_FAILURE);
+}
+
 function teardownFailure() {
   return new Error(TEARDOWN_FAILURE);
 }
@@ -102,8 +111,9 @@ function teardownFailure() {
  * context. Inkspan receives the resulting stable document/provider references;
  * it does not create, reconnect, disconnect, or destroy either resource. Option
  * fields and resource methods are captured from data descriptors so lifecycle
- * validation never executes accessor-backed host objects. Cleanup failures are
- * payload-redacted and do not prevent remaining teardown attempts.
+ * validation never executes accessor-backed host objects. Initial provider
+ * failures unwind an already-created document, and cleanup failures are
+ * payload-redacted without preventing remaining teardown attempts.
  */
 export function createHostCollaborationLifecycle(source) {
   const options = readOwnDataRecord(
@@ -204,7 +214,20 @@ export function createHostCollaborationLifecycle(source) {
     });
   }
 
-  makeProvider();
+  try {
+    makeProvider();
+  } catch (error) {
+    let cleanupFailed = false;
+    try {
+      documentResource.destroy.call(document);
+    } catch {
+      cleanupFailed = true;
+    }
+    if (error instanceof ResourceValidationError && !cleanupFailed) {
+      throw error;
+    }
+    throw initializationFailure();
+  }
 
   return Object.freeze({
     document,
@@ -361,6 +384,39 @@ function runHostileAccessorSelfTest() {
   );
 }
 
+function runInitializationFailureSelfTest() {
+  const privateCause = 'private-provider-construction-cause';
+  const events = [];
+  let error = null;
+  try {
+    createHostCollaborationLifecycle({
+      documentFactory() {
+        events.push('document:create');
+        return {
+          destroy() {
+            events.push('document:destroy');
+          },
+        };
+      },
+      providerFactory() {
+        events.push('provider:create');
+        throw new Error(privateCause);
+      },
+      roomId: 'reference-room',
+      actorId: 'reference-actor',
+    });
+  } catch (failure) {
+    error = failure instanceof Error ? failure.message : 'unexpected error';
+  }
+  process.stdout.write(
+    `${JSON.stringify({
+      error,
+      events,
+      leakedPrivateCause: typeof error === 'string' && error.includes(privateCause),
+    })}\n`,
+  );
+}
+
 function runCleanupFailureSelfTest() {
   const privateCause = 'private-provider-disconnect-cause';
   const events = [];
@@ -408,6 +464,8 @@ function runCleanupFailureSelfTest() {
 
 if (process.argv.includes('--cleanup-failure-self-test')) {
   runCleanupFailureSelfTest();
+} else if (process.argv.includes('--initialization-failure-self-test')) {
+  runInitializationFailureSelfTest();
 } else if (process.argv.includes('--hostile-accessor-self-test')) {
   runHostileAccessorSelfTest();
 } else if (process.argv.includes('--self-test')) {
