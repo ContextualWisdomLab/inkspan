@@ -37,4 +37,22 @@ describe('reference-host delayed proposal contract', () => {
       staleStatus: 'conflict',
     });
   });
+
+  it('rejects accessor-backed untrusted proposal inputs without invoking them', () => {
+    if (!existsSync(fixturePath)) return;
+    const output = execFileSync(
+      process.execPath,
+      [fixturePath, '--hostile-accessor-self-test'],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      applicationError: 'proposal application is invalid.',
+      applicationGetterCalls: 0,
+      creationError: 'proposal creation is invalid.',
+      creationGetterCalls: 0,
+      proposalError: 'proposal application is invalid.',
+      proposalGetterCalls: 0,
+    });
+  });
 });
