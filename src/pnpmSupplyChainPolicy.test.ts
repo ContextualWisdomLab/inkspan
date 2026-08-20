@@ -10,11 +10,12 @@ const workspacePolicy = readFileSync(
 );
 const workspacePolicyLines = workspacePolicy.split(/\r?\n/u);
 
-function readScalar(name: string): string | undefined {
+function readScalar(
+  name: string,
+  lines: readonly string[] = workspacePolicyLines,
+): string | undefined {
   const prefix = `${name}:`;
-  const line = workspacePolicyLines.find((candidate) =>
-    candidate.startsWith(prefix),
-  );
+  const line = lines.find((candidate) => candidate.startsWith(prefix));
   if (line === undefined) return undefined;
   return line.slice(prefix.length).split('#', 1)[0]?.trim();
 }
@@ -25,5 +26,14 @@ describe('pnpm supply-chain policy', () => {
     expect(readScalar('minimumReleaseAge')).toBe('10080');
     expect(readScalar('trustPolicy')).toBe('no-downgrade');
     expect(readScalar('trustPolicyIgnoreAfter')).toBe('43200');
+  });
+
+  it('rejects duplicate root policy scalars instead of accepting the first declaration', () => {
+    expect(
+      readScalar('trustPolicy', [
+        'trustPolicy: no-downgrade',
+        'trustPolicy: always',
+      ]),
+    ).toBeUndefined();
   });
 });
