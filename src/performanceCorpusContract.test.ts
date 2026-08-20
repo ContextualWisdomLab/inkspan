@@ -70,6 +70,17 @@ describe('deterministic synthetic performance corpus', () => {
         expect(firstBytes.equals(secondBytes)).toBe(true);
         expect(firstBytes.byteLength).toBe(expected.profiles[profile].bytes);
       }
+
+      const smallBody = readFileSync(join(first, 'small.md'), 'utf8');
+      expect(smallBody).toContain(
+        'Mixed-script: Inkspan review 검증은 日本語と中文 그리고 Tiếng Việt를 한 문단에서 deterministic하게 다룹니다.',
+      );
+      for (const dimensions of ['1x1', '16x16', '64x64']) {
+        expect(smallBody).toContain(`![synthetic raster ${dimensions} 0001](`);
+      }
+      expect(new Set(smallBody.match(/data:image\/png;base64,[A-Za-z0-9+/=]+/g))).toHaveLength(
+        3,
+      );
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
