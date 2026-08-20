@@ -7,12 +7,14 @@ export const MAXIMUM_HTML_TO_MARKDOWN_MAX_BYTES = 67_108_864;
 /** Stable redacted resource-bound failures from standalone HTML conversion. */
 export type HtmlToMarkdownResourceErrorCode =
   | 'input_too_large'
+  | 'invalid_input'
   | 'invalid_configuration';
 
 const ERROR_MESSAGES: Readonly<Record<HtmlToMarkdownResourceErrorCode, string>> =
   Object.freeze({
     input_too_large:
       'HTML-to-Markdown input exceeds the configured byte limit.',
+    invalid_input: 'HTML-to-Markdown input must be a string.',
     invalid_configuration:
       'HTML-to-Markdown resource configuration is invalid.',
   });
@@ -44,11 +46,15 @@ export function resolveHtmlToMarkdownMaxBytes(candidate: unknown): number {
   return candidate;
 }
 
-/** Reject oversized HTML before any parser/DOM materialization. */
+/** Reject invalid or oversized HTML before any parser/DOM materialization. */
 export function assertHtmlToMarkdownInputSize(
   html: string,
   maxHtmlBytes: number,
 ): void {
+  if (typeof html !== 'string') {
+    throw new HtmlToMarkdownResourceError('invalid_input');
+  }
+
   // Every UTF-16 code unit contributes at least one UTF-8 byte. This lower
   // bound avoids allocating a complete TextEncoder result when oversize is
   // already certain.
