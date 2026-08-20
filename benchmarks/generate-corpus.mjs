@@ -2,14 +2,30 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const PIXEL_BASE64 =
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+const RASTER_FIXTURES = Object.freeze([
+  Object.freeze({
+    dimensions: '1x1',
+    base64:
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNQcEj4DwADBAHAX3ZiygAAAABJRU5ErkJggg==',
+  }),
+  Object.freeze({
+    dimensions: '16x16',
+    base64:
+      'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR42mNQcEj4TwlmGDVg1IBRA4aLAQDSpr8QG8NsyQAAAABJRU5ErkJggg==',
+  }),
+  Object.freeze({
+    dimensions: '64x64',
+    base64:
+      'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAZklEQVR42u3QQREAAAQAMFFEEUX/EuRw9liBRVbPZyFAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgTct/Bk8ZbOy3oMAAAAAElFTkSuQmCC',
+  }),
+]);
 const SCRIPT_PARAGRAPHS = [
   'English: Deterministic authoring keeps document state explicit and reviewable.',
   '한국어: 결정적 작성 흐름은 문서 상태와 변경 근거를 명확하게 유지합니다.',
   '日本語: 決定的な編集フローは文書状態と変更根拠を明示的に保ちます。',
   '中文: 确定性的编辑流程会明确保留文档状态与变更依据。',
   'Tiếng Việt: Luồng biên soạn xác định giữ trạng thái tài liệu và bằng chứng thay đổi rõ ràng.',
+  'Mixed-script: Inkspan review 검증은 日本語と中文 그리고 Tiếng Việt를 한 문단에서 deterministic하게 다룹니다.',
 ];
 const PROFILE_SECTIONS = Object.freeze({
   small: 1,
@@ -32,6 +48,10 @@ function buildSection(index) {
     const row = String(rowIndex + 1).padStart(2, '0');
     return `| ${id}-r${row}c01 | ${id}-r${row}c02 | ${id}-r${row}c03 | ${id}-r${row}c04 | ${id}-r${row}c05 | ${id}-r${row}c06 |`;
   });
+  const rasterRows = RASTER_FIXTURES.map(
+    ({ dimensions, base64 }) =>
+      `![synthetic raster ${dimensions} ${id}](data:image/png;base64,${base64})`,
+  );
   return [
     `# Synthetic section ${id}`,
     '',
@@ -55,7 +75,7 @@ function buildSection(index) {
     '| --- | --- | --- | --- | --- | --- |',
     ...tableRows,
     '',
-    `![synthetic 1x1 raster ${id}](data:image/png;base64,${PIXEL_BASE64})`,
+    ...rasterRows,
     '',
     '---',
     '',
