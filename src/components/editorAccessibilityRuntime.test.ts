@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { buildEditorAccessibilityAttributes } from './editorAccessibility.js';
+import {
+  buildEditorAccessibilityAttributes,
+  type EditorAccessibilityOptions,
+} from './editorAccessibility.js';
 
 describe('editor accessibility runtime contracts', () => {
   it.each(['ltr', 'rtl', 'auto'] as const)(
@@ -25,6 +28,24 @@ describe('editor accessibility runtime contracts', () => {
     ).toThrowError(
       new RangeError('Editor text direction must be ltr, rtl, or auto.'),
     );
+  });
+
+  it('snapshots text direction once before validation and emission', () => {
+    const options: EditorAccessibilityOptions = {
+      defaultLabel: 'Editor',
+      editable: true,
+    };
+    let reads = 0;
+    Object.defineProperty(options, 'textDirection', {
+      enumerable: true,
+      get() {
+        reads += 1;
+        return reads === 1 ? 'ltr' : 'sideways';
+      },
+    });
+
+    expect(buildEditorAccessibilityAttributes(options).dir).toBe('ltr');
+    expect(reads).toBe(1);
   });
 
   it.each([false, true, 'grammar', 'spelling'] as const)(
@@ -54,6 +75,26 @@ describe('editor accessibility runtime contracts', () => {
     );
   });
 
+  it('snapshots aria-invalid once before validation and emission', () => {
+    const options: EditorAccessibilityOptions = {
+      defaultLabel: 'Editor',
+      editable: true,
+    };
+    let reads = 0;
+    Object.defineProperty(options, 'ariaInvalid', {
+      enumerable: true,
+      get() {
+        reads += 1;
+        return reads === 1 ? false : 'unknown';
+      },
+    });
+
+    expect(buildEditorAccessibilityAttributes(options)['aria-invalid']).toBe(
+      'false',
+    );
+    expect(reads).toBe(1);
+  });
+
   it.each([false, true] as const)(
     'preserves the valid %s aria-required state',
     (ariaRequired) => {
@@ -77,5 +118,25 @@ describe('editor accessibility runtime contracts', () => {
     ).toThrowError(
       new RangeError('Editor aria-required must be false or true.'),
     );
+  });
+
+  it('snapshots aria-required once before validation and emission', () => {
+    const options: EditorAccessibilityOptions = {
+      defaultLabel: 'Editor',
+      editable: true,
+    };
+    let reads = 0;
+    Object.defineProperty(options, 'ariaRequired', {
+      enumerable: true,
+      get() {
+        reads += 1;
+        return reads === 1 ? false : 'maybe';
+      },
+    });
+
+    expect(buildEditorAccessibilityAttributes(options)['aria-required']).toBe(
+      'false',
+    );
+    expect(reads).toBe(1);
   });
 });
