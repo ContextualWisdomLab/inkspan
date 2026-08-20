@@ -26,7 +26,7 @@ describe('reference-host collaboration lifecycle contract', () => {
     expect(source).toContain('dispose');
   });
 
-  it('disconnects and destroys replaced providers and tears down the host document exactly once', () => {
+  it('reuses one real host-created Y.Doc across provider reconnects and tears it down exactly once', () => {
     if (!existsSync(fixturePath)) return;
     const output = execFileSync(process.execPath, [fixturePath, '--self-test'], {
       encoding: 'utf8',
@@ -45,8 +45,11 @@ describe('reference-host collaboration lifecycle contract', () => {
         'provider:destroy:2',
         'document:destroy',
       ],
+      hostDocumentIsYjs: true,
       providerGeneration: 2,
+      sameDocumentAcrossReconnect: true,
       status: 'disposed',
+      yjsText: 'Buyer draft',
     });
   });
 
