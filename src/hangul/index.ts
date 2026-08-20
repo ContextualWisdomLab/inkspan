@@ -149,6 +149,9 @@ function freeHangulDocument(
 
 const TEXT_ALIGNMENTS = new Set(['left', 'center', 'right', 'justify']);
 const DEFAULT_MAX_DOCUMENT_BYTES = 64 * 1024 * 1024;
+const MAX_HANGUL_SECTION_COUNT = 4096;
+const MAX_HANGUL_PARAGRAPH_COUNT = 1_000_000;
+const MAX_HANGUL_PARAGRAPH_LENGTH = 16 * 1024 * 1024;
 const HANGUL_IMPORT_FAILURE_MESSAGE = 'The Hangul engine failed during import.';
 const HANGUL_EXPORT_FAILURE_MESSAGE = 'The Hangul engine failed during export.';
 const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(
@@ -179,9 +182,13 @@ function resolveHangulByteLimit(limit: number | undefined): number {
   return resolved;
 }
 
-/** Validate host-engine traversal metadata before using it as an index or bound. */
-function resolveHangulEngineCount(value: number, failureMessage: string): number {
-  if (!Number.isSafeInteger(value) || value < 0) {
+/** Validate host-engine structural metadata against bounded Inkspan work/index ceilings. */
+function resolveHangulEngineCount(
+  value: number,
+  maxInclusive: number,
+  failureMessage: string,
+): number {
+  if (!Number.isSafeInteger(value) || value < 0 || value > maxInclusive) {
     throw new HangulDocumentError('ENGINE_OPERATION_FAILED', failureMessage);
   }
   return value;
@@ -515,16 +522,19 @@ export async function openHangulDocument(source: Uint8Array, options: OpenHangul
       const html: string[] = [];
       const sectionCount = resolveHangulEngineCount(
         document.getSectionCount(),
+        MAX_HANGUL_SECTION_COUNT,
         HANGUL_IMPORT_FAILURE_MESSAGE,
       );
       for (let section = 0; section < sectionCount; section += 1) {
         const count = resolveHangulEngineCount(
           document.getParagraphCount(section),
+          MAX_HANGUL_PARAGRAPH_COUNT,
           HANGUL_IMPORT_FAILURE_MESSAGE,
         );
         if (count > 0) {
           const paragraphLength = resolveHangulEngineCount(
             document.getParagraphLength(section, count - 1),
+            MAX_HANGUL_PARAGRAPH_LENGTH,
             HANGUL_IMPORT_FAILURE_MESSAGE,
           );
           html.push(
@@ -583,6 +593,7 @@ export async function exportHangulDocument(documentJson: HangulDocumentJson, opt
       document.beginBatch?.();
       const length = resolveHangulEngineCount(
         document.getParagraphLength(0, 0),
+        MAX_HANGUL_PARAGRAPH_LENGTH,
         HANGUL_EXPORT_FAILURE_MESSAGE,
       );
       if (length > 0) document.deleteText(0, 0, 0, length);
