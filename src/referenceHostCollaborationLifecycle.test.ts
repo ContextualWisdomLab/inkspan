@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -50,6 +51,72 @@ describe('reference-host collaboration lifecycle contract', () => {
       sameDocumentAcrossReconnect: true,
       status: 'disposed',
       yjsText: 'Buyer draft',
+    });
+  });
+
+  it('retains a provider whose destroy failed so reconnect can retry cleanup before replacement', () => {
+    if (!existsSync(fixturePath)) return;
+    const moduleUrl = JSON.stringify(pathToFileURL(fixturePath).href);
+    const script = `
+      import { createHostCollaborationLifecycle } from ${moduleUrl};
+      const events = [];
+      let generation = 0;
+      let firstDestroyAttempts = 0;
+      const lifecycle = createHostCollaborationLifecycle({
+        documentFactory() {
+          return { destroy() { events.push('document:destroy'); } };
+        },
+        providerFactory() {
+          generation += 1;
+          const current = generation;
+          events.push('provider:create:' + current);
+          return {
+            connect() { events.push('provider:connect:' + current); },
+            disconnect() { events.push('provider:disconnect:' + current); },
+            destroy() {
+              events.push('provider:destroy:' + current);
+              if (current === 1 && firstDestroyAttempts === 0) {
+                firstDestroyAttempts += 1;
+                throw new Error('private transient destroy failure');
+              }
+            },
+          };
+        },
+        roomId: 'reference-room',
+        actorId: 'reference-actor',
+      });
+      lifecycle.connect();
+      let firstError = null;
+      try {
+        lifecycle.reconnect();
+      } catch (error) {
+        firstError = error instanceof Error ? error.message : 'unexpected error';
+      }
+      lifecycle.reconnect();
+      process.stdout.write(JSON.stringify({
+        events,
+        firstError,
+        snapshot: lifecycle.getSnapshot(),
+      }));
+    `;
+    const output = execFileSync(
+      process.execPath,
+      ['--input-type=module', '--eval', script],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      events: [
+        'provider:create:1',
+        'provider:connect:1',
+        'provider:disconnect:1',
+        'provider:destroy:1',
+        'provider:destroy:1',
+        'provider:create:2',
+        'provider:connect:2',
+      ],
+      firstError: 'collaboration lifecycle teardown failed.',
+      snapshot: { providerGeneration: 2, status: 'connected' },
     });
   });
 
