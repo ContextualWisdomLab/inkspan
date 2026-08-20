@@ -46,4 +46,18 @@ describe('reference-host autosave presentation contract', () => {
       saving: 'saving',
     });
   });
+
+  it('rejects accessor-backed lifecycle snapshots without invoking them', () => {
+    if (!existsSync(fixturePath)) return;
+    const output = execFileSync(
+      process.execPath,
+      [fixturePath, '--hostile-accessor-self-test'],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      error: 'autosave snapshot is invalid.',
+      getterCalls: 0,
+    });
+  });
 });
