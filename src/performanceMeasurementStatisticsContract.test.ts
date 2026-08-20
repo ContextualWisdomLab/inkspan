@@ -1,0 +1,126 @@
+import { execFileSync, spawnSync } from 'node:child_process';
+import {
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { describe, expect, it } from 'vitest';
+
+interface BenchmarkSummary {
+  readonly contractVersion: 1;
+  readonly benchmarkId: string;
+  readonly unit: string;
+  readonly sampleCount: number;
+  readonly percentileMethod: 'nearest-rank';
+  readonly minimum: number;
+  readonly p50: number;
+  readonly p75: number;
+  readonly p95: number;
+  readonly maximum: number;
+}
+
+const script = resolve(process.cwd(), 'benchmarks/summarize-samples.mjs');
+
+function writeInput(path: string, samples: readonly number[]): void {
+  writeFileSync(
+    path,
+    `${JSON.stringify(
+      {
+        contractVersion: 1,
+        benchmarkId: 'markdown-serialization-large',
+        unit: 'ms',
+        samples,
+      },
+      null,
+      2,
+    )}\n`,
+    'utf8',
+  );
+}
+
+function runSummary(inputPath: string, outputDirectory: string): BenchmarkSummary {
+  execFileSync(
+    process.execPath,
+    [script, '--input', inputPath, '--output', outputDirectory],
+    {
+      cwd: process.cwd(),
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
+  return JSON.parse(
+    readFileSync(join(outputDirectory, 'summary.json'), 'utf8'),
+  ) as BenchmarkSummary;
+}
+
+describe('deterministic benchmark sample statistics', () => {
+  it('writes reproducible nearest-rank JSON and human-readable summaries', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-summary-'));
+    const input = join(root, 'samples.json');
+    const first = join(root, 'first');
+    const second = join(root, 'second');
+    try {
+      writeInput(input, [20, 10, 40, 30, 50]);
+
+      const firstSummary = runSummary(input, first);
+      const secondSummary = runSummary(input, second);
+      expect(firstSummary).toEqual(secondSummary);
+      expect(firstSummary).toEqual({
+        contractVersion: 1,
+        benchmarkId: 'markdown-serialization-large',
+        unit: 'ms',
+        sampleCount: 5,
+        percentileMethod: 'nearest-rank',
+        minimum: 10,
+        p50: 30,
+        p75: 40,
+        p95: 50,
+        maximum: 50,
+      });
+
+      const expectedText = [
+        'benchmark=markdown-serialization-large',
+        'unit=ms',
+        'samples=5',
+        'percentile_method=nearest-rank',
+        'minimum=10',
+        'p50=30',
+        'p75=40',
+        'p95=50',
+        'maximum=50',
+        '',
+      ].join('\n');
+      expect(readFileSync(join(first, 'summary.txt'), 'utf8')).toBe(expectedText);
+      expect(readFileSync(join(second, 'summary.txt'), 'utf8')).toBe(expectedText);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails closed on invalid measurement samples without coercion', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-summary-invalid-'));
+    const input = join(root, 'samples.json');
+    const output = join(root, 'output');
+    try {
+      writeInput(input, [1, -1, 3]);
+      const result = spawnSync(
+        process.execPath,
+        [script, '--input', input, '--output', output],
+        {
+          cwd: process.cwd(),
+          encoding: 'utf8',
+        },
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(
+        'Benchmark samples must be finite non-negative numbers.',
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
