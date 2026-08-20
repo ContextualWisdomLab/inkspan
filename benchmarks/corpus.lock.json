@@ -12,23 +12,23 @@
   "profiles": {
     "small": {
       "sections": 1,
-      "bytes": 1577,
-      "sha256": "768c220ae809f29fd9e20234f55de93f05a532fe3a6844a083b8d9d1d80af2e7"
+      "bytes": 2152,
+      "sha256": "420d18f2bb9e42d7e7e2cb5f74e67c90dfe15c3748b5d22875b4a6dc38ecbdea"
     },
     "medium": {
       "sections": 8,
-      "bytes": 11112,
-      "sha256": "5d1cebaf4e87374d2627a629dc7afc80cbc67e94f7ca447702eb3f836c6f4f50"
+      "bytes": 15712,
+      "sha256": "921092809cc19be790c7a29a5457a7113e75aa7c76642d4ec09784b6096e045c"
     },
     "large": {
       "sections": 32,
-      "bytes": 43799,
-      "sha256": "24bd29e0f4860d7a3ce44aaef74ddf4e0c6e747254b683000136500fd93487ed"
+      "bytes": 62199,
+      "sha256": "6ea32c0c8d2b58bf958dd28424a0b6139954fcefe8850943966be9e67a13b392"
     },
     "stress": {
       "sections": 128,
-      "bytes": 174552,
-      "sha256": "ae486d9257ca3c227233833feef1d4a2a7f1e0110dd4e1973d5748f7873c53db"
+      "bytes": 248152,
+      "sha256": "5139848dc240863acb95ffdcf549fe7f151451a1002befc39c2d9c3395826928"
     }
   }
 }
