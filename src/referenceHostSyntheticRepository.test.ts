@@ -8,6 +8,7 @@ const fixturePath = resolve(
   process.cwd(),
   'examples/reference-host/synthetic-document-repository.mjs',
 );
+const guidePath = resolve(process.cwd(), 'examples/reference-host/README.md');
 
 describe('reference-host synthetic durable repository contract', () => {
   it('ships one executable reference-only repository fixture outside the published runtime', () => {
@@ -63,5 +64,19 @@ describe('reference-host synthetic durable repository contract', () => {
       requestErrorCode: 'invalid_request',
       requestGetterCalls: 0,
     });
+  });
+
+  it('keeps the buyer guide code-current for retry, restore, and independent fork semantics', () => {
+    const guide = readFileSync(guidePath, 'utf8');
+
+    expect(guide).toContain(
+      'A confirmed failure can be retried with the unchanged current validator.',
+    );
+    expect(guide).toContain(
+      'A restore is a normal confirmed save against the current validator and advances it only after success.',
+    );
+    expect(guide).toContain(
+      'A fork requires the current validator, copies the current document into an independent reference repository, and starts that fork at a fresh validator.',
+    );
   });
 });
