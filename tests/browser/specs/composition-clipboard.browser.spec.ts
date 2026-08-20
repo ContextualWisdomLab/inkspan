@@ -190,3 +190,47 @@ test('tracks a synthetic composition lifecycle without inventing OS IME evidence
     ),
   ).toContain('한글');
 });
+
+test('preserves multilingual committed input in a narrow emulated viewport', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const editable = page.locator('.ProseMirror');
+  await editable.click();
+
+  const text = '한글 日本語 简体中文 繁體中文 Tiếng Việt 👩🏽‍💻';
+  await page.keyboard.insertText(text);
+
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.inkspanInputHarness as InputHarness).getText(),
+      ),
+    )
+    .toBe(text);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
+});
+
+test('keeps the active insertion point across an emulated orientation resize', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const editable = page.locator('.ProseMirror');
+  await editable.click();
+  await page.keyboard.insertText('한글');
+
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.keyboard.insertText(' 日本語');
+
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.inkspanInputHarness as InputHarness).getText(),
+      ),
+    )
+    .toBe('한글 日本語');
+});
