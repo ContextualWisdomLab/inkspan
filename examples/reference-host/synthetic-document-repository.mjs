@@ -25,6 +25,13 @@ function requireBoundedString(value, maximumCodeUnits, code) {
   return value;
 }
 
+function requireBoundedDocument(value, code) {
+  if (typeof value !== 'string' || value.length > MAX_DOCUMENT_CODE_UNITS) {
+    throw new ReferencePersistenceError(code);
+  }
+  return value;
+}
+
 function readPlainDataRecord(source, requiredKeys, optionalKeys, code) {
   try {
     if (
@@ -99,9 +106,8 @@ export function createSyntheticDocumentRepository(options) {
     MAX_DOCUMENT_ID_CODE_UNITS,
     'invalid_document_id',
   );
-  let document = requireBoundedString(
+  let document = requireBoundedDocument(
     configuration.initialDocument,
-    MAX_DOCUMENT_CODE_UNITS,
     'invalid_document',
   );
   let version = 1;
@@ -127,9 +133,8 @@ export function createSyntheticDocumentRepository(options) {
     );
 
     assertDocumentId(candidate.documentId);
-    const nextDocument = requireBoundedString(
+    const nextDocument = requireBoundedDocument(
       candidate.document,
-      MAX_DOCUMENT_CODE_UNITS,
       'invalid_document',
     );
     const ifMatch = requireBoundedString(
@@ -331,6 +336,49 @@ function runSelfTest() {
   );
 }
 
+function runEmptyDocumentSelfTest() {
+  const emptyRepository = createSyntheticDocumentRepository({
+    documentId: 'buyer-empty',
+    initialDocument: '',
+  });
+  const initialEmptyDocument = emptyRepository.read('buyer-empty').document;
+
+  const repository = createSyntheticDocumentRepository({
+    documentId: 'buyer-document',
+    initialDocument: 'Not empty',
+  });
+  const initial = repository.read('buyer-document');
+  const cleared = repository.save({
+    documentId: 'buyer-document',
+    document: '',
+    ifMatch: initial.validator,
+  });
+  if (cleared.status !== 'saved') {
+    throw new Error('Synthetic empty-document save did not report success.');
+  }
+  const afterClear = repository.read('buyer-document');
+
+  let emptyDocumentIdError = null;
+  try {
+    createSyntheticDocumentRepository({
+      documentId: '',
+      initialDocument: '',
+    });
+  } catch (error) {
+    emptyDocumentIdError =
+      error instanceof ReferencePersistenceError ? error.code : 'unexpected_error';
+  }
+
+  process.stdout.write(
+    `${JSON.stringify({
+      clearedDocument: afterClear.document,
+      clearedValidator: afterClear.validator,
+      emptyDocumentIdError,
+      initialEmptyDocument,
+    })}\n`,
+  );
+}
+
 function runHostileAccessorSelfTest() {
   let optionGetterCalls = 0;
   let optionErrorCode = null;
@@ -406,7 +454,9 @@ function runHostileAccessorSelfTest() {
   );
 }
 
-if (process.argv.includes('--hostile-accessor-self-test')) {
+if (process.argv.includes('--empty-document-self-test')) {
+  runEmptyDocumentSelfTest();
+} else if (process.argv.includes('--hostile-accessor-self-test')) {
   runHostileAccessorSelfTest();
 } else if (process.argv.includes('--self-test')) {
   runSelfTest();
