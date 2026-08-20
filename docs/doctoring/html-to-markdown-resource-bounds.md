@@ -7,10 +7,10 @@ Status: Implemented on active PR
 Inkspan's standalone `htmlToMarkdown()` boundary accepts caller-provided HTML and
 parses it through either a detached browser template or Turndown's browserless
 parser. Protected shipped truth is currently
-`main@3b38ead2d00f44eb578d0689087b9293b3dabe1e`; this active PR carries the next-
-release bounded reliability contract and remains unintegrated. The contract does
-not change transport, persistence, credentials, models, tenancy, authorization,
-collaboration-provider, or network authority.
+`main@3b38ead2d00f44eb578d0689087b9293b3dabe1e`; this active PR carries the
+next-release bounded reliability contract and remains unintegrated. The contract
+does not change transport, persistence, credentials, models, tenancy,
+authorization, collaboration-provider, or network authority.
 
 ## Active-PR contract
 
