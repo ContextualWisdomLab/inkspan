@@ -6,7 +6,6 @@ const AUTOSAVE_STATES = new Set([
   'closed',
 ]);
 const BLOCKED_REASONS = new Set(['conflict', 'failure']);
-const RECOVERY_PHASES = new Set(['none', 'retrying', 'recovered']);
 
 /** Marker used by repository contracts to prevent this host fixture becoming runtime authority. */
 export const REFERENCE_ONLY = true;
@@ -54,48 +53,63 @@ function readSnapshot(snapshot) {
   });
 }
 
-function readRecoveryPhase(recoveryPhase) {
-  if (!RECOVERY_PHASES.has(recoveryPhase)) {
-    throw new TypeError('recoveryPhase is invalid.');
-  }
-  return recoveryPhase;
-}
-
 function presentation(viewState) {
   return Object.freeze({
     viewState,
     messageKey: `referenceHost.autosave.${viewState}`,
-    busy: viewState === 'saving' || viewState === 'queued' || viewState === 'retrying',
+    busy:
+      viewState === 'saving' ||
+      viewState === 'queued' ||
+      viewState === 'retrying',
+    blocked: viewState === 'conflict' || viewState === 'failed',
     canRetry: viewState === 'conflict' || viewState === 'failed',
   });
 }
 
 /**
- * Convert one Inkspan autosave lifecycle snapshot into host-owned presentation metadata.
+ * Create one host-owned projection of Inkspan autosave lifecycle transitions.
  *
- * The result intentionally excludes local and durable validators. Hosts localize
- * `messageKey` and keep authenticated recovery controls outside Inkspan.
+ * `observe()` consumes only programmatic queue/session snapshots. A blocked to
+ * saving transition is presented as retrying, and its next idle transition is
+ * presented as recovered. The projection never returns local or durable
+ * validators; hosts localize `messageKey` and keep authenticated recovery
+ * controls outside Inkspan.
  */
-export function createAutosaveViewModel({ snapshot, recoveryPhase = 'none' }) {
-  const current = readSnapshot(snapshot);
-  const phase = readRecoveryPhase(recoveryPhase);
+export function createAutosaveViewModel() {
+  let recovering = false;
 
-  if (current.state === 'blocked') {
-    return presentation(
-      current.blockedReason === 'conflict' ? 'conflict' : 'failed',
-    );
+  function observe(snapshot) {
+    const current = readSnapshot(snapshot);
+
+    if (current.state === 'blocked') {
+      recovering = true;
+      return presentation(
+        current.blockedReason === 'conflict' ? 'conflict' : 'failed',
+      );
+    }
+    if (current.state === 'closing') {
+      recovering = false;
+      return presentation('closing');
+    }
+    if (current.state === 'closed') {
+      recovering = false;
+      return presentation('closed');
+    }
+    if (current.state === 'saving' && recovering) {
+      return presentation('retrying');
+    }
+    if (current.state === 'saving' && current.pendingStrongEntityTag !== null) {
+      return presentation('queued');
+    }
+    if (current.state === 'saving') return presentation('saving');
+    if (recovering) {
+      recovering = false;
+      return presentation('recovered');
+    }
+    return presentation('clean');
   }
-  if (current.state === 'closing') return presentation('closing');
-  if (current.state === 'closed') return presentation('closed');
-  if (current.state === 'saving' && phase === 'retrying') {
-    return presentation('retrying');
-  }
-  if (current.state === 'saving' && current.pendingStrongEntityTag !== null) {
-    return presentation('queued');
-  }
-  if (current.state === 'saving') return presentation('saving');
-  if (phase === 'recovered') return presentation('recovered');
-  return presentation('clean');
+
+  return Object.freeze({ observe });
 }
 
 function snapshot({
@@ -115,51 +129,62 @@ function snapshot({
 }
 
 function runSelfTest() {
-  const states = {
-    clean: createAutosaveViewModel({
-      snapshot: snapshot({ state: 'idle' }),
-    }).viewState,
-    saving: createAutosaveViewModel({
-      snapshot: snapshot({
-        state: 'saving',
-        activeStrongEntityTag: '"local-active"',
-      }),
-    }).viewState,
-    queued: createAutosaveViewModel({
-      snapshot: snapshot({
-        state: 'saving',
-        activeStrongEntityTag: '"local-active"',
-        pendingStrongEntityTag: '"local-pending"',
-      }),
-    }).viewState,
-    conflict: createAutosaveViewModel({
-      snapshot: snapshot({ state: 'blocked', blockedReason: 'conflict' }),
-    }).viewState,
-    failed: createAutosaveViewModel({
-      snapshot: snapshot({ state: 'blocked', blockedReason: 'failure' }),
-    }).viewState,
-    retrying: createAutosaveViewModel({
-      snapshot: snapshot({
-        state: 'saving',
-        activeStrongEntityTag: '"local-retry"',
-      }),
-      recoveryPhase: 'retrying',
-    }).viewState,
-    recovered: createAutosaveViewModel({
-      snapshot: snapshot({
-        state: 'idle',
-        lastSavedStrongEntityTag: '"local-saved"',
-      }),
-      recoveryPhase: 'recovered',
-    }).viewState,
-    closing: createAutosaveViewModel({
-      snapshot: snapshot({ state: 'closing' }),
-    }).viewState,
-    closed: createAutosaveViewModel({
-      snapshot: snapshot({ state: 'closed' }),
-    }).viewState,
-  };
-  process.stdout.write(`${JSON.stringify(states)}\n`);
+  const steady = createAutosaveViewModel();
+  const clean = steady.observe(snapshot({ state: 'idle' })).viewState;
+  const saving = steady.observe(
+    snapshot({
+      state: 'saving',
+      activeStrongEntityTag: '"local-active"',
+    }),
+  ).viewState;
+  const queued = steady.observe(
+    snapshot({
+      state: 'saving',
+      activeStrongEntityTag: '"local-active"',
+      pendingStrongEntityTag: '"local-pending"',
+    }),
+  ).viewState;
+
+  const recovery = createAutosaveViewModel();
+  const conflict = recovery.observe(
+    snapshot({ state: 'blocked', blockedReason: 'conflict' }),
+  ).viewState;
+  const retrying = recovery.observe(
+    snapshot({
+      state: 'saving',
+      activeStrongEntityTag: '"local-retry"',
+    }),
+  ).viewState;
+  const recovered = recovery.observe(
+    snapshot({
+      state: 'idle',
+      lastSavedStrongEntityTag: '"local-saved"',
+    }),
+  ).viewState;
+
+  const failed = createAutosaveViewModel().observe(
+    snapshot({ state: 'blocked', blockedReason: 'failure' }),
+  ).viewState;
+  const closing = createAutosaveViewModel().observe(
+    snapshot({ state: 'closing' }),
+  ).viewState;
+  const closed = createAutosaveViewModel().observe(
+    snapshot({ state: 'closed' }),
+  ).viewState;
+
+  process.stdout.write(
+    `${JSON.stringify({
+      clean,
+      closed,
+      closing,
+      conflict,
+      failed,
+      queued,
+      recovered,
+      retrying,
+      saving,
+    })}\n`,
+  );
 }
 
 if (process.argv.includes('--self-test')) {
