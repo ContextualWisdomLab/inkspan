@@ -262,7 +262,6 @@ function verifyRevisionEvidenceEsmRuntime(packageDirectory) {
 import { realpathSync } from 'node:fs';
 import { isAbsolute, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as editor from '${packageJson.name}';
 
 const consumerDirectory = realpathSync(${JSON.stringify(verificationDirectory)});
 const packedPackageDirectory = realpathSync(${JSON.stringify(packageDirectory)});
@@ -284,6 +283,7 @@ assert.equal(
   packageRelative === '..' || packageRelative.startsWith('..' + sep),
   false,
 );
+const editor = await import('${packageJson.name}');
 assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidence, 'function');
 assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
 const sourceEnvelope = {
@@ -334,17 +334,29 @@ function verifyRevisionEvidenceCommonJsRuntime(packageDirectory) {
     `const assert = require('node:assert/strict');
 const { realpathSync } = require('node:fs');
 const { isAbsolute, relative, sep } = require('node:path');
-const editor = require('${packageJson.name}');
 
 void (async () => {
+  const consumerDirectory = realpathSync(${JSON.stringify(verificationDirectory)});
   const packedPackageDirectory = realpathSync(${JSON.stringify(packageDirectory)});
+  function assertInsideConsumer(resolvedPath, description) {
+    const canonicalResolvedPath = realpathSync(resolvedPath);
+    const resolvedRelative = relative(consumerDirectory, canonicalResolvedPath);
+    assert.equal(isAbsolute(resolvedRelative), false, description);
+    assert.equal(
+      resolvedRelative === '..' || resolvedRelative.startsWith('..' + sep),
+      false,
+      description,
+    );
+  }
   const resolvedEntry = realpathSync(require.resolve('${packageJson.name}'));
-  const resolvedRelative = relative(packedPackageDirectory, resolvedEntry);
-  assert.equal(isAbsolute(resolvedRelative), false);
+  assertInsideConsumer(resolvedEntry, 'packed CommonJS entry escaped consumer tree');
+  const packageRelative = relative(packedPackageDirectory, resolvedEntry);
+  assert.equal(isAbsolute(packageRelative), false);
   assert.equal(
-    resolvedRelative === '..' || resolvedRelative.startsWith('..' + sep),
+    packageRelative === '..' || packageRelative.startsWith('..' + sep),
     false,
   );
+  const editor = require('${packageJson.name}');
   assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidence, 'function');
   assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
   const sourceEnvelope = {
