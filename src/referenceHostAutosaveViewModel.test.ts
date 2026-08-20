@@ -14,7 +14,7 @@ describe('reference-host autosave presentation contract', () => {
     expect(existsSync(fixturePath)).toBe(true);
   });
 
-  it('maps programmatic lifecycle state to localization keys without exposing validators', () => {
+  it('maps programmatic lifecycle transitions to localization keys without exposing validators', () => {
     if (!existsSync(fixturePath)) return;
     const source = readFileSync(fixturePath, 'utf8');
 
@@ -23,6 +23,8 @@ describe('reference-host autosave presentation contract', () => {
     expect(source).toContain('REFERENCE_ONLY');
     expect(source).toContain('messageKey');
     expect(source).toContain('blockedReason');
+    expect(source).toContain('observe');
+    expect(source).not.toContain('recoveryPhase');
     expect(source).not.toContain('document body');
   });
 
