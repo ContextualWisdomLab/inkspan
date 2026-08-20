@@ -41,7 +41,7 @@
     --cwl-border: #3d444d;
     --cwl-bg: #0d1117;
     --cwl-surface: #161b22;
-    --cwl-accent: #4493f8;
+    --cwl-accent: #58a6ff;
     --cwl-accent-soft: #163356;
   }
 }
@@ -107,7 +107,8 @@
 }
 
 @media (forced-colors: active) {
-  .cwl-tb-btn:focus-visible {
+  .cwl-tb-btn:focus-visible,
+  .cwl-editor__content:focus-visible {
     outline-color: CanvasText;
   }
 }
@@ -125,8 +126,9 @@
   font-size: 15px;
 }
 
-.cwl-editor__content:focus {
-  outline: none;
+.cwl-editor__content:focus-visible {
+  outline: 2px solid var(--cwl-accent);
+  outline-offset: -2px;
 }
 
 .cwl-editor__content > * + * {
@@ -294,6 +296,10 @@
     padding: 0;
     orphans: 3;
     widows: 3;
+  }
+
+  .cwl-editor__content:focus-visible {
+    outline: none;
   }
 
   .cwl-editor__content .is-editor-empty:first-child::before {
