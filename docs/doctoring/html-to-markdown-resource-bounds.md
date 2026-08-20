@@ -18,10 +18,19 @@ authorization, collaboration-provider, or network authority.
 active implementation defaults to 16 MiB and rejects configured values above a
 64 MiB hard maximum. The public runtime option bag is snapshotted before source
 sizing or parser work: only ordinary/null-prototype enumerable data properties
-for `includeImageAlt` and `maxHtmlBytes` are accepted. Accessors, exotic
-prototypes, symbol or unknown keys, non-enumerable properties, malformed
-`includeImageAlt`, and hostile reflection traps fail closed without invoking
-caller code or reflecting private thrown values.
+for `includeImageAlt` and `maxHtmlBytes` are accepted. Accessor-backed options
+are rejected without invoking their getters. Exotic prototypes, symbol or
+unknown keys, non-enumerable properties, malformed `includeImageAlt`, and
+hostile reflection failures also fail closed through the stable resource error.
+
+JavaScript Proxy meta-object traps are a distinct boundary: inspecting an
+untrusted option object's prototype/descriptors necessarily performs language
+reflection and can execute a Proxy `getPrototypeOf`, `ownKeys`, or
+`getOwnPropertyDescriptor` trap. Inkspan does not claim otherwise. A thrown or
+malformed reflection result is normalized to the payload-redacted
+`HtmlToMarkdownResourceError` contract and is never reflected to diagnostics;
+callers that require a no-caller-code boundary must pass ordinary or
+null-prototype data objects rather than Proxies.
 
 The HTML source itself must be a primitive string. Non-string runtime input is
 rejected before reading caller properties, `TextEncoder` coercion, browser DOM
@@ -49,9 +58,11 @@ The active PR carries machine tests that prove:
   or parser work and without leaking caller-thrown values;
 - non-ASCII input still uses exact UTF-8 byte accounting;
 - exact-boundary input remains accepted;
+- accessor-backed option properties are rejected without executing their
+  getters, while a hostile Proxy prototype-reflection trap is explicitly proven
+  to execute once and its private thrown value is normalized/redacted;
 - malformed option bags and wrong-type, fractional, zero, and above-maximum
-  limits fail closed without executing accessors or reflecting input content;
-  and
+  limits fail closed without reflecting input content; and
 - the packed ESM runtime and strict TypeScript consumer exercise the public
   resource-bound surface while retaining the no-network/no-credential package
   authority check.
