@@ -83,5 +83,19 @@ describe('reference-host hostile reflection containment', () => {
         'module.createHostCollaborationLifecycle(hostileSource);',
       ),
     ).toBe('collaboration options are invalid.');
+    expect(
+      observeHostileReflectionFailure(
+        'examples/reference-host/collaboration-provider-lifecycle.mjs',
+        descriptorTrap,
+        `module.createHostCollaborationLifecycle({
+          documentFactory() { return hostileSource; },
+          providerFactory() {
+            return { connect() {}, disconnect() {}, destroy() {} };
+          },
+          roomId: 'reference-room',
+          actorId: 'reference-actor',
+        });`,
+      ),
+    ).toBe('documentFactory returned an invalid document.');
   });
 });
