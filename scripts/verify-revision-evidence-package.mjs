@@ -24,8 +24,8 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const packageJson = JSON.parse(
   readFileSync(join(repositoryRoot, 'package.json'), 'utf8'),
 );
-const verificationDirectory = mkdtempSync(
-  join(tmpdir(), 'inkspan-revision-evidence-'),
+const verificationDirectory = realpathSync(
+  mkdtempSync(join(tmpdir(), 'inkspan-revision-evidence-')),
 );
 const externalDependencyNames = Object.freeze([
   ...new Set([

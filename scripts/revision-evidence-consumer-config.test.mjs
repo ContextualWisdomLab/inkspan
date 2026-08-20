@@ -88,7 +88,10 @@ test('copies the locked pnpm dependency tree into the independent consumer', () 
       true,
     );
     const stagedPackage = realpathSync(join(targetNodeModules, 'example'));
-    assert.equal(relative(targetNodeModules, stagedPackage).startsWith('..'), false);
+    assert.equal(
+      relative(realpathSync(targetNodeModules), stagedPackage).startsWith('..'),
+      false,
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

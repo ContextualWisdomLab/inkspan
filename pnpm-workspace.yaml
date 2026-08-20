@@ -12,8 +12,9 @@ allowBuilds:
 #   - vite<6.4.3:   GHSA-fx2h-pf6j-xcff / GHSA-4w7w-66w2-5vf9 / GHSA-v6wh-96g9-6wx3
 #     (vitest's @vitest/mocker still resolves a transitive vite@5)
 #   - esbuild<0.25: GHSA-67mh-4wv8-2f99 (dragged in by the transitive vite@5)
-#   - fast-uri<3.1.4: GHSA-v2hh-gcrm-f6hx / CVE-2026-16221 (via ajv in vite-plugin-dts)
-#   - postcss<=8.5.17: GHSA-r28c-9q8g-f849 (source-map path traversal via vite)
+#   - fast-uri<3.1.5: GHSA-v2hh-gcrm-f6hx / GHSA-7p8r-x3mc-p8w7 (via ajv in vite-plugin-dts)
+#   - nanoid<3.3.18: GHSA-2v37-7h3g-55p8 (via postcss)
+#   - postcss<=8.5.22: GHSA-r28c-9q8g-f849 / GHSA-fxqj-rqcc-2cmp (source-map path traversal via vite)
 #   - brace-expansion<=5.0.7: GHSA-mh99-v99m-4gvg (unbounded-expansion DoS). The
 #     only patched line is >=5.0.8; minimatch@9 consumes brace-expansion@2.x and
 #     cannot take 5.x, so lift minimatch to ^10 (glob@10 / test-exclude@7 resolve
@@ -21,7 +22,8 @@ allowBuilds:
 overrides:
   vite: ^6.4.3
   esbuild: ^0.25.0
-  fast-uri: ^3.1.4
-  postcss: ^8.5.18
+  fast-uri: ^3.1.5
+  nanoid: ^3.3.18
+  postcss: ^8.5.23
   brace-expansion: ^5.0.8
   minimatch: ^10.0.0
