@@ -298,6 +298,10 @@
     widows: 3;
   }
 
+  .cwl-editor__content:focus-visible {
+    outline: none;
+  }
+
   .cwl-editor__content .is-editor-empty:first-child::before {
     content: none;
   }
