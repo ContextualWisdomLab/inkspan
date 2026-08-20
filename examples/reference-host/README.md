@@ -6,7 +6,7 @@ This directory is buyer-facing integration evidence for issue #377. It is intent
 
 The current slice contains four executable, deterministic fixtures plus two public-package presentation entrypoints:
 
-- `synthetic-document-repository.mjs` demonstrates host-owned strong-validator / `If-Match` persistence behavior. Ambiguous and failed writes do not mutate durable state or advance the validator; a stale validator returns a conflict.
+- `synthetic-document-repository.mjs` demonstrates host-owned strong-validator / `If-Match` persistence behavior. Ambiguous and failed writes do not mutate durable state or advance the validator; a stale validator returns a conflict. A confirmed failure can be retried with the unchanged current validator. A restore is a normal confirmed save against the current validator and advances it only after success. A fork requires the current validator, copies the current document into an independent reference repository, and starts that fork at a fresh validator.
 - `delayed-proposal.mjs` demonstrates a provider-free delayed proposal captured against one expected revision. If the current revision changes before application, the proposal returns a conflict instead of overwriting newer content.
 - `autosave-view-model.mjs` projects Inkspan autosave lifecycle snapshots into host-localizable `clean`, `saving`, `queued`, `conflict`, `failed`, `retrying`, `recovered`, `closing`, and `closed` presentation states. Recovery presentation is derived from observed blocked → saving → idle transitions, and validators are never returned as UI data.
 - `collaboration-provider-lifecycle.mjs` demonstrates that the embedding host creates one real `Y.Doc`, reuses that same document across provider reconnects, and owns provider/document teardown. The deterministic provider fixture has no provider SDK or network transport and does not treat room or actor identifiers as authorization evidence.
@@ -19,7 +19,7 @@ All executable fixtures are marked `REFERENCE_ONLY`, require no service, databas
 
 | Reference element | Buyer action |
 | --- | --- |
-| synthetic document repository | Replace with an authorized atomic durable store that enforces the host's RFC 9110 `If-Match` policy and returns a new strong validator only after confirmed success. |
+| synthetic document repository | Replace with an authorized atomic durable store that enforces the host's RFC 9110 `If-Match` policy, preserves validators across ambiguous/failed operations, supports explicit retry/restore/fork recovery under current-validator checks, isolates fork history, and returns a new strong validator only after confirmed success. |
 | deterministic delayed proposal | Replace proposal generation with a host-approved model gateway and data-use policy while preserving exact-revision conflict checks before applying untrusted proposal data. |
 | autosave presentation projection | Wire the packed Inkspan autosave session observer into localized host UI and authenticated recovery actions; do not display revision or durable validators as user-facing status. |
 | collaboration lifecycle fixture | Keep host-owned `Y.Doc` lifecycle control and replace the deterministic provider factory with the host's authorized Yjs transport provider while preserving reconnect, teardown, credential, and room-authorization policy. |
@@ -57,7 +57,7 @@ node examples/reference-host/autosave-view-model.mjs --self-test
 node examples/reference-host/collaboration-provider-lifecycle.mjs --self-test
 ```
 
-The root test suite independently invokes those commands and asserts the expected conflict, lifecycle, recovery, real host-created `Y.Doc`, reconnect, teardown, and public presentation-package behavior. These commands do **not** yet satisfy #377's complete packed-tarball application acceptance.
+The root test suite independently invokes those commands and asserts the expected stale-write conflict, failure-safe retry, restore, fork isolation, lifecycle recovery, real host-created `Y.Doc`, reconnect, teardown, and public presentation-package behavior. These commands do **not** yet satisfy #377's complete packed-tarball application acceptance.
 
 ## Deliberate omissions in this partial slice
 
