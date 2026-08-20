@@ -49,4 +49,22 @@ describe('reference-host collaboration lifecycle contract', () => {
       status: 'disposed',
     });
   });
+
+  it('rejects accessor-backed lifecycle options and resource methods without invoking them', () => {
+    if (!existsSync(fixturePath)) return;
+    const output = execFileSync(
+      process.execPath,
+      [fixturePath, '--hostile-accessor-self-test'],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      documentError: 'documentFactory returned an invalid document.',
+      documentGetterCalls: 0,
+      optionsError: 'collaboration options are invalid.',
+      optionsGetterCalls: 0,
+      providerError: 'providerFactory returned an invalid provider.',
+      providerGetterCalls: 0,
+    });
+  });
 });
