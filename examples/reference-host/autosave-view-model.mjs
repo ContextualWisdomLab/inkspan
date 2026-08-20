@@ -41,13 +41,7 @@ function snapshotData(source) {
       values[key] = descriptor.value;
     }
     return values;
-  } catch (error) {
-    if (
-      error instanceof TypeError &&
-      error.message === 'autosave snapshot is invalid.'
-    ) {
-      throw error;
-    }
+  } catch {
     throw new TypeError('autosave snapshot is invalid.');
   }
 }
