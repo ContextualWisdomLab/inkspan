@@ -3,6 +3,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   realpathSync,
   rmSync,
   symlinkSync,
@@ -200,4 +201,63 @@ test('exposes only declared direct dependencies from the staged lockfile tree', 
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('canonical containment detects a symlinked dependency that escapes the consumer tree', () => {
+  const root = realpathSync(
+    mkdtempSync(join(tmpdir(), 'inkspan-symlink-containment-')),
+  );
+  try {
+    const consumer = join(root, 'consumer');
+    const outside = join(root, 'outside');
+    const linkedPackage = join(consumer, 'node_modules', 'example');
+    mkdirSync(join(consumer, 'node_modules'), { recursive: true });
+    mkdirSync(outside, { recursive: true });
+    writeFileSync(join(outside, 'package.json'), '{}\n', 'utf8');
+    symlinkSync(outside, linkedPackage, 'dir');
+
+    assert.equal(relative(consumer, linkedPackage).startsWith('..'), false);
+    assert.equal(
+      relative(realpathSync(consumer), realpathSync(linkedPackage)).startsWith(
+        '..',
+      ),
+      true,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('generated ESM and CommonJS package checks canonicalize runtime resolution paths', () => {
+  const verifierSource = readFileSync(
+    new URL('./verify-revision-evidence-package.mjs', import.meta.url),
+    'utf8',
+  );
+
+  assert.equal(
+    verifierSource.includes("import { realpathSync } from 'node:fs';"),
+    true,
+  );
+  assert.equal(
+    verifierSource.includes('const consumerDirectory = realpathSync('),
+    true,
+  );
+  assert.equal(
+    verifierSource.includes(
+      "const resolvedEntry = realpathSync(fileURLToPath(import.meta.resolve('",
+    ),
+    true,
+  );
+  assert.equal(
+    verifierSource.includes(
+      "const { realpathSync } = require('node:fs');",
+    ),
+    true,
+  );
+  assert.equal(
+    verifierSource.includes(
+      "const resolvedEntry = realpathSync(require.resolve('",
+    ),
+    true,
+  );
 });
