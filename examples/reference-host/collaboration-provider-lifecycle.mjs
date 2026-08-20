@@ -3,11 +3,18 @@ import { Doc } from 'yjs';
 const MAX_CONTEXT_CODE_UNITS = 256;
 const INITIALIZATION_FAILURE = 'collaboration lifecycle initialization failed.';
 const TEARDOWN_FAILURE = 'collaboration lifecycle teardown failed.';
+const RESOURCE_VALIDATION_ERRORS = new WeakSet();
 
 /** Marker used by repository contracts to keep this lifecycle example out of runtime authority. */
 export const REFERENCE_ONLY = true;
 
-class ResourceValidationError extends TypeError {}
+class ResourceValidationError extends TypeError {
+  constructor(message) {
+    super(message);
+    this.name = 'ResourceValidationError';
+    RESOURCE_VALIDATION_ERRORS.add(this);
+  }
+}
 
 function requireContextString(value, label) {
   if (
@@ -44,8 +51,7 @@ function readOwnDataRecord(source, keys, message) {
       values[key] = descriptor.value;
     }
     return values;
-  } catch (error) {
-    if (error instanceof TypeError && error.message === message) throw error;
+  } catch {
     throw new TypeError(message);
   }
 }
@@ -70,10 +76,7 @@ function findDataMethod(source, key, message) {
       cursor = Object.getPrototypeOf(cursor);
     }
     throw new ResourceValidationError(message);
-  } catch (error) {
-    if (error instanceof ResourceValidationError && error.message === message) {
-      throw error;
-    }
+  } catch {
     throw new ResourceValidationError(message);
   }
 }
@@ -223,7 +226,7 @@ export function createHostCollaborationLifecycle(source) {
     } catch {
       cleanupFailed = true;
     }
-    if (error instanceof ResourceValidationError && !cleanupFailed) {
+    if (RESOURCE_VALIDATION_ERRORS.has(error) && !cleanupFailed) {
       throw error;
     }
     throw initializationFailure();
