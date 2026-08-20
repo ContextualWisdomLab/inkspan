@@ -120,7 +120,9 @@ The host engine is untrusted at every call boundary, including cleanup. Open/cre
 
 ## Security requirements
 
-Treat both formats as untrusted document containers. Production implementations must enforce bounded source and output bytes. A native HWPX implementation must additionally bound ZIP entry count, expanded bytes, expansion ratio, XML depth, XML node count, text size, relationships, and embedded payloads. DTD and external entity resolution must be disabled. External relationships are metadata only unless the host separately authorizes a resource.
+Treat both formats as untrusted document containers. Production implementations must enforce bounded source and output bytes. The bridge also rejects host structural metadata above 4,096 sections, 1,000,000 paragraphs per section, or 16,777,216 UTF-16 code units per paragraph before traversing or passing those values back to the host engine. These are Inkspan safety ceilings, not HWP/HWPX format maxima.
+
+A native HWPX implementation must additionally bound ZIP entry count, expanded bytes, expansion ratio, XML depth, XML node count, text size, relationships, and embedded payloads. DTD and external entity resolution must be disabled. External relationships are metadata only unless the host separately authorizes a resource.
 
 Passwords, cookies, credentials, filesystem paths, and secret values must never enter warnings, error strings, result objects, or deterministic snapshots.
 
