@@ -67,4 +67,25 @@ describe('reference-host collaboration lifecycle contract', () => {
       providerGetterCalls: 0,
     });
   });
+
+  it('attempts provider and document cleanup after teardown failure without leaking private causes', () => {
+    if (!existsSync(fixturePath)) return;
+    const output = execFileSync(
+      process.execPath,
+      [fixturePath, '--cleanup-failure-self-test'],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      error: 'collaboration lifecycle teardown failed.',
+      events: [
+        'provider:connect',
+        'provider:disconnect',
+        'provider:destroy',
+        'document:destroy',
+      ],
+      leakedPrivateCause: false,
+      status: 'disposed',
+    });
+  });
 });
