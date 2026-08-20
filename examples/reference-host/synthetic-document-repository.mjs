@@ -84,9 +84,11 @@ function frozenConflict(currentValidator) {
  *
  * This adapter is synthetic acquisition/support evidence only. Buyers must replace
  * it with an authorized atomic durable store. Ambiguous or failed operations never
- * mutate the document or advance the strong validator. Configuration and save
- * request fields are snapshotted from own data properties without invoking
- * caller-owned accessors.
+ * mutate the document or advance the strong validator. A confirmed fork requires
+ * the current strong validator and starts an independent repository at a fresh
+ * validator so source and fork cannot silently share revision authority.
+ * Configuration, save, and fork request fields are snapshotted from own data
+ * properties without invoking caller-owned accessors.
  */
 export function createSyntheticDocumentRepository(options) {
   const configuration = readPlainDataRecord(
@@ -163,7 +165,42 @@ export function createSyntheticDocumentRepository(options) {
     return frozenSave('saved', validator);
   }
 
-  return Object.freeze({ read, save });
+  function fork(request) {
+    const candidate = readPlainDataRecord(
+      request,
+      ['documentId', 'forkDocumentId', 'ifMatch'],
+      [],
+      'invalid_fork_request',
+    );
+
+    assertDocumentId(candidate.documentId);
+    const forkDocumentId = requireBoundedString(
+      candidate.forkDocumentId,
+      MAX_DOCUMENT_ID_CODE_UNITS,
+      'invalid_fork_document_id',
+    );
+    const ifMatch = requireBoundedString(
+      candidate.ifMatch,
+      256,
+      'invalid_if_match',
+    );
+    if (ifMatch !== validator) {
+      return frozenConflict(validator);
+    }
+    if (forkDocumentId === documentId) {
+      throw new ReferencePersistenceError('invalid_fork_document_id');
+    }
+
+    return Object.freeze({
+      status: 'forked',
+      repository: createSyntheticDocumentRepository({
+        documentId: forkDocumentId,
+        initialDocument: document,
+      }),
+    });
+  }
+
+  return Object.freeze({ fork, read, save });
 }
 
 function runSelfTest() {
@@ -216,15 +253,83 @@ function runSelfTest() {
     throw new Error('Synthetic stale If-Match write did not conflict.');
   }
 
-  const finalState = repository.read('buyer-document');
+  let failureObserved = false;
+  try {
+    repository.save({
+      documentId: 'buyer-document',
+      document: 'Buyer draft v3',
+      ifMatch: saved.validator,
+      outcome: 'failure',
+    });
+  } catch (error) {
+    failureObserved =
+      error instanceof ReferencePersistenceError && error.code === 'failure';
+  }
+  if (!failureObserved) {
+    throw new Error('Synthetic failure evidence was not observed.');
+  }
+
+  const afterFailure = repository.read('buyer-document');
+  if (
+    afterFailure.document !== 'Buyer draft v2' ||
+    afterFailure.validator !== saved.validator
+  ) {
+    throw new Error('Failure advanced synthetic durable state.');
+  }
+
+  const retried = repository.save({
+    documentId: 'buyer-document',
+    document: 'Buyer draft v3',
+    ifMatch: afterFailure.validator,
+  });
+  if (retried.status !== 'saved') {
+    throw new Error('Synthetic retry did not report success.');
+  }
+
+  const restored = repository.save({
+    documentId: 'buyer-document',
+    document: initial.document,
+    ifMatch: retried.validator,
+  });
+  if (restored.status !== 'saved') {
+    throw new Error('Synthetic restore did not report success.');
+  }
+
+  const forked = repository.fork({
+    documentId: 'buyer-document',
+    forkDocumentId: 'buyer-document-fork',
+    ifMatch: restored.validator,
+  });
+  if (forked.status !== 'forked') {
+    throw new Error('Synthetic fork did not report success.');
+  }
+  const forkInitial = forked.repository.read('buyer-document-fork');
+  const forkSaved = forked.repository.save({
+    documentId: 'buyer-document-fork',
+    document: 'Fork-only edit',
+    ifMatch: forkInitial.validator,
+  });
+  if (forkSaved.status !== 'saved') {
+    throw new Error('Synthetic fork save did not report success.');
+  }
+
+  const forkFinal = forked.repository.read('buyer-document-fork');
+  const sourceAfterFork = repository.read('buyer-document');
   process.stdout.write(
     `${JSON.stringify({
       afterAmbiguousValidator: afterAmbiguous.validator,
+      afterFailureValidator: afterFailure.validator,
       conflictCurrentValidator: conflict.currentValidator,
-      finalDocument: finalState.document,
-      finalValidator: finalState.validator,
+      forkDocument: forkInitial.document,
+      forkFinalDocument: forkFinal.document,
+      forkInitialValidator: forkInitial.validator,
+      forkSavedValidator: forkSaved.validator,
       initialValidator: initial.validator,
+      restoredValidator: restored.validator,
+      retrySavedValidator: retried.validator,
       savedValidator: saved.validator,
+      sourceDocumentAfterFork: sourceAfterFork.document,
+      sourceValidatorAfterFork: sourceAfterFork.validator,
     })}\n`,
   );
 }
@@ -272,8 +377,30 @@ function runHostileAccessorSelfTest() {
       error instanceof ReferencePersistenceError ? error.code : 'unexpected_error';
   }
 
+  let forkGetterCalls = 0;
+  let forkErrorCode = null;
+  const hostileFork = {
+    documentId: 'buyer-document',
+    ifMatch: initial.validator,
+  };
+  Object.defineProperty(hostileFork, 'forkDocumentId', {
+    enumerable: true,
+    get() {
+      forkGetterCalls += 1;
+      return 'buyer-document-fork';
+    },
+  });
+  try {
+    repository.fork(hostileFork);
+  } catch (error) {
+    forkErrorCode =
+      error instanceof ReferencePersistenceError ? error.code : 'unexpected_error';
+  }
+
   process.stdout.write(
     `${JSON.stringify({
+      forkErrorCode,
+      forkGetterCalls,
       optionErrorCode,
       optionGetterCalls,
       requestErrorCode,
