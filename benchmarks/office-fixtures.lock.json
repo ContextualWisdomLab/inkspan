@@ -1,0 +1,19 @@
+{
+  "contractVersion": 1,
+  "synthetic": true,
+  "format": "docx",
+  "profiles": {
+    "small": {
+      "pages": 2,
+      "blocks": 11,
+      "bytes": 2974,
+      "sha256": "9255bd3136bd5523169e495c365235a8b7bb7152092145ae41e2867f92dcc71a"
+    },
+    "page120": {
+      "pages": 120,
+      "blocks": 719,
+      "bytes": 169739,
+      "sha256": "4df660c5ad762a516457d3005537861acf7c17478269744fca747e84fcbed3f9"
+    }
+  }
+}
