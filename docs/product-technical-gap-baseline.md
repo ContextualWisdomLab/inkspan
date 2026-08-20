@@ -1,6 +1,6 @@
 # Inkspan product-technical gap baseline
 
-Status: Dated operational baseline — 2026-08-20; live snapshot refetched at `2026-08-20T10:48:01Z`
+Status: Dated operational baseline — 2026-08-20; live snapshot refetched at `2026-08-20T11:04:38Z`
 
 This record turns the current protected-main product boundary, live pull-request
 queue, release evidence, and buyer-visible gaps into an executable maintenance
@@ -14,7 +14,7 @@ implementation authority; an active PR is not a shipped capability.
 | --- | --- | --- |
 | Protected source | `main@3b38ead2d00f44eb578d0689087b9293b3dabe1e` | The only source head used for shipped-product claims. |
 | Repository state | `ContextualWisdomLab/inkspan`, default branch `main` | This is the correct repository for Inkspan-owned editor, conversion, evidence, accessibility, package, and provider-neutral adapter work. |
-| Open PR queue | 58 open PRs from the REST pull-request endpoint; 2 Ready and 56 Draft at the refetch above | The queue is active work, not protected implementation. |
+| Open PR queue | 59 open PRs from the REST/search endpoint; 3 Ready and 56 Draft at the refetch above | The queue is active work, not protected implementation. |
 | Current source versions | npm `0.6.0`; Office manifest `0.6.0` | Version alignment exists in source, but it does not prove registry publication. |
 | Public release evidence | Latest GitHub release is `v0.3.1`; no `v0.6.0` release is present | Stable `0.6.0` publication remains an operational gap. |
 | Protected governance | Active `CWL Central required workflows` ruleset; one approval, last-push approval, resolved review threads, and required workflows | No self-approval or governance bypass is valid. Code-owner review is disabled by policy. |
@@ -40,7 +40,7 @@ gh api 'repos/ContextualWisdomLab/inkspan/commits/3b38ead2d00f44eb578d0689087b92
 gh release list --repo ContextualWisdomLab/inkspan --limit 1
 jq -r '.version' package.json
 rg -n '^version\\s*=' office/pyproject.toml
-for pr_number in 285 299 362 372; do
+for pr_number in 285 299 362 372 373; do
   gh api "repos/ContextualWisdomLab/inkspan/pulls/$pr_number" \
     --jq '[.number,.draft,.head.sha,.base.sha,.head.ref,.base.ref,.updated_at] | @tsv'
 done
@@ -79,7 +79,8 @@ surface:
 
 | Lane | Current authority | Buyer impact | Gate / next action |
 | --- | --- | --- | --- |
-| [PR #362](https://github.com/ContextualWisdomLab/inkspan/pull/362) — editor contrast and keyboard focus | Ready active PR; exact head `11d5cfecdcc0949ec98e6ca110d482124bff00c4` | Shipped dark active-toolbar text is below the WCAG normal-text target, and the editable surface lacks a replacement focus indicator. | Inkspan CI, Security, SAST, package, Office, and browser checks are terminal-success on the exact head. Strix failed at `Run Strix (quick)`, OpenCode same-head review and qualifying approval are absent. Keep the release lane blocked; do not duplicate requests or self-approve. |
+| [PR #362](https://github.com/ContextualWisdomLab/inkspan/pull/362) — editor contrast and keyboard focus | Ready active PR; exact head `11d5cfecdcc0949ec98e6ca110d482124bff00c4` | Shipped dark active-toolbar text is below the WCAG normal-text target, and the editable surface lacks a replacement focus indicator. | Inkspan CI `32344528267`, Security Scan `32344528097`, and SAST Semgrep `32344528210` are terminal-success on the exact head; package, Office, browser, and 100% aggregate coverage evidence are included in CI. Current-head OpenCode receipt/formal review and a qualifying independent approval remain absent. Keep the release lane blocked and refetch all organization-required workflows before lifecycle action; do not duplicate requests or self-approve. |
+| [PR #373](https://github.com/ContextualWisdomLab/inkspan/pull/373) — patched transitive dependency floors | Ready active PR; exact head `724b45b8d824be9581f0f29cc6eb07e6aeceb70f` | Buyers need a clean, reproducible dependency audit without moving transport, credential, or runtime authority into Inkspan. | Exact-head CI `32361611250` is terminal-success, including 144 files / 829 tests, 100% aggregate coverage, package verification, Office jobs, and Chromium/Firefox/WebKit. Required OpenCode `32361611601`, Noema `32361611265`, Strix `32361611211`, Security Scan `32361611225`, SAST `32361611212`, and scheduler/close-empty evidence are queued/non-passing; no formal current-head review exists. Do not merge or rerun around the queue. |
 | [Issue #118](https://github.com/ContextualWisdomLab/inkspan/issues/118) — stable release acceptance | Open release issue | Buyers cannot install a verified protected `0.6.0` artifact through the promised release path. | Integrate #362 and its named release-workflow writer [PR #285](https://github.com/ContextualWisdomLab/inkspan/pull/285), then refetch exact protected evidence, create the supported release identity, and verify public npm/PyPI digests. |
 | [PR #285](https://github.com/ContextualWisdomLab/inkspan/pull/285) — hostile-input/browser assurance | Draft, stacked on `feat/writing-diagnostics-package`; branch is currently dirty relative to its base | Release browser evidence has a known 30-minute admission ceiling and the active branch proposes a five-file SBOM inventory. | Do not duplicate `.github/workflows/release.yml` ownership. Advance its stack only after the exact-head CI lane is executable; treat its five-file inventory as Proposed until protected. |
 | [PR #299](https://github.com/ContextualWisdomLab/inkspan/pull/299) — exact-head gates for stacked PRs | Draft, targets protected `main` | Stacked work can otherwise receive checks that do not prove the contributor head. | Resolve its own current-head workflow evidence and review gates; do not transfer predecessor checks. |
@@ -101,6 +102,7 @@ reason to merge, and a blocked lane is not a reason to stop unrelated safe work.
 | G-05 | Design-system discovery for repeating editor chrome | `implemented_on_active_pr` in #362 / ADR 0031 | Integrate the typed token catalog and Storybook inventory only after their accessibility, package, and documentation checks pass. The protected main currently has no Storybook inventory. |
 | G-06 | Broader deterministic Office import | `planned` / Draft PRs #323, #320, #318 | Close one bounded format contract at a time with realistic fixtures, fail-closed limits, package consumers, and Python support evidence. |
 | G-07 | Acquisition evidence freshness | `partial` | Refresh this dated baseline and the canonical doctoring records after every protected merge, release decision, or external control-plane change; never encode stale run IDs as timeless architecture. |
+| G-08 | Patched transitive development-tool dependency floor | `implemented_on_active_pr` in #373 | Preserve the narrow workspace overrides and realpath containment fix, then require terminal exact-head security/SAST/review/governance evidence before integration; do not treat queued required workflows as passing. |
 
 ### Figma and Storybook boundary
 
