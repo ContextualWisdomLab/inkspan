@@ -197,17 +197,21 @@ export function normalizeEditorPlaceholder(
  * that Inkspan can decide locally, including private-use, grandfathered,
  * extlang-position, variant-uniqueness, and extension-uniqueness constraints;
  * IANA registry-content validity remains a host policy concern. Runtime direction
- * and ARIA state values are checked against Inkspan's finite public contracts
- * before attribute emission. The trimmed caller spelling of accepted language
- * tags is preserved. Placeholder guidance remains supplemental and never replaces
- * the accessible name.
+ * and ARIA state values are each captured once and checked against Inkspan's finite
+ * public contracts before the same captured value is emitted. The trimmed caller
+ * spelling of accepted language tags is preserved. Placeholder guidance remains
+ * supplemental and never replaces the accessible name.
  */
 export function buildEditorAccessibilityAttributes(
   options: EditorAccessibilityOptions,
 ): Record<string, string> {
-  validateEditorTextDirection(options.textDirection);
-  validateEditorAriaInvalid(options.ariaInvalid);
-  validateEditorAriaRequired(options.ariaRequired);
+  const textDirection = options.textDirection;
+  const ariaInvalid = options.ariaInvalid;
+  const ariaRequired = options.ariaRequired;
+
+  validateEditorTextDirection(textDirection);
+  validateEditorAriaInvalid(ariaInvalid);
+  validateEditorAriaRequired(ariaRequired);
 
   const defaultLabel = validatedAccessibilityValue(options.defaultLabel);
   const placeholder = normalizeEditorPlaceholder(options.placeholder);
@@ -225,7 +229,7 @@ export function buildEditorAccessibilityAttributes(
 
   if (placeholder) attributes['aria-placeholder'] = placeholder;
   if (languageTag) attributes.lang = languageTag;
-  if (options.textDirection) attributes.dir = options.textDirection;
+  if (textDirection) attributes.dir = textDirection;
   if (labelledBy) {
     attributes['aria-labelledby'] = labelledBy;
   } else {
@@ -233,11 +237,11 @@ export function buildEditorAccessibilityAttributes(
   }
   if (describedBy) attributes['aria-describedby'] = describedBy;
   if (errorMessage) attributes['aria-errormessage'] = errorMessage;
-  if (options.ariaInvalid !== undefined) {
-    attributes['aria-invalid'] = String(options.ariaInvalid);
+  if (ariaInvalid !== undefined) {
+    attributes['aria-invalid'] = String(ariaInvalid);
   }
-  if (options.ariaRequired !== undefined) {
-    attributes['aria-required'] = String(options.ariaRequired);
+  if (ariaRequired !== undefined) {
+    attributes['aria-required'] = String(ariaRequired);
   }
 
   return attributes;
