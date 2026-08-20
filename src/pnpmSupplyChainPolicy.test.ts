@@ -8,12 +8,15 @@ const workspacePolicy = readFileSync(
   join(repositoryRoot, 'pnpm-workspace.yaml'),
   'utf8',
 );
+const workspacePolicyLines = workspacePolicy.split(/\r?\n/u);
 
 function readScalar(name: string): string | undefined {
-  const match = workspacePolicy.match(
-    new RegExp(`^${name}:\\s*([^#\\n]+?)\\s*$`, 'mu'),
+  const prefix = `${name}:`;
+  const line = workspacePolicyLines.find((candidate) =>
+    candidate.startsWith(prefix),
   );
-  return match?.[1];
+  if (line === undefined) return undefined;
+  return line.slice(prefix.length).split('#', 1)[0]?.trim();
 }
 
 describe('pnpm supply-chain policy', () => {
