@@ -107,7 +107,8 @@
 }
 
 @media (forced-colors: active) {
-  .cwl-tb-btn:focus-visible {
+  .cwl-tb-btn:focus-visible,
+  .cwl-editor__content:focus-visible {
     outline-color: CanvasText;
   }
 }
@@ -125,8 +126,9 @@
   font-size: 15px;
 }
 
-.cwl-editor__content:focus {
-  outline: none;
+.cwl-editor__content:focus-visible {
+  outline: 2px solid var(--cwl-accent);
+  outline-offset: -2px;
 }
 
 .cwl-editor__content > * + * {
