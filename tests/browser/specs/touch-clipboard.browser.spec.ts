@@ -11,6 +11,14 @@ const allowHarnessRequest = (requestUrl: string): boolean => {
 
 const rejectedRequestsByPage = new WeakMap<Page, string[]>();
 
+const expectNoHorizontalDocumentOverflow = async (page: Page): Promise<void> => {
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
+};
+
 test.use({
   hasTouch: true,
   viewport: { width: 390, height: 844 },
@@ -59,9 +67,23 @@ test('preserves multilingual committed input after emulated touch focus', async 
     )
     .toBe(text);
 
+  await expectNoHorizontalDocumentOverflow(page);
+
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expect(editable).toBeFocused();
   expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).getText(),
     ),
-  ).toBe(true);
+  ).toBe(text);
+  await expectNoHorizontalDocumentOverflow(page);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(editable).toBeFocused();
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).getText(),
+    ),
+  ).toBe(text);
+  await expectNoHorizontalDocumentOverflow(page);
 });
