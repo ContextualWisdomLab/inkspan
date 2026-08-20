@@ -8,10 +8,17 @@ const INVALID_CONFIGURATION = {
 };
 
 describe('HTML-to-Markdown runtime option bag boundary', () => {
-  it('rejects a non-object option bag through the stable resource error', () => {
-    expect(() => htmlToMarkdown('<p>safe</p>', null as never)).toThrowError(
-      expect.objectContaining(INVALID_CONFIGURATION),
-    );
+  it.each([
+    ['null', null],
+    ['array', []],
+    ['custom prototype', Object.create({ inherited: true })],
+    ['unknown key', { unexpectedPolicy: true }],
+    ['non-boolean image-alt mode', { includeImageAlt: 'false' }],
+    ['symbol key', { [Symbol('policy')]: true }],
+  ])('rejects %s option bags through the stable resource error', (_label, options) => {
+    expect(() =>
+      htmlToMarkdown('<p>safe</p>', options as HtmlToMarkdownOptions),
+    ).toThrowError(expect.objectContaining(INVALID_CONFIGURATION));
   });
 
   it('rejects accessor-backed options without executing caller code or parsing HTML', () => {
@@ -38,13 +45,23 @@ describe('HTML-to-Markdown runtime option bag boundary', () => {
     expect(String(failure)).not.toContain(privateFailure.message);
   });
 
-  it('rejects unknown option keys instead of silently accepting configuration drift', () => {
-    expect(() =>
-      htmlToMarkdown('<p>safe</p>', {
-        includeImageAlt: true,
-        unexpectedPolicy: true,
-      } as HtmlToMarkdownOptions),
-    ).toThrowError(expect.objectContaining(INVALID_CONFIGURATION));
+  it('normalizes hostile reflection traps without leaking caller failures', () => {
+    const privateFailure = new Error('private-reflection-sentinel');
+    const options = new Proxy({}, {
+      getPrototypeOf() {
+        throw privateFailure;
+      },
+    }) as HtmlToMarkdownOptions;
+    let failure: unknown;
+
+    try {
+      htmlToMarkdown('<p>private body</p>', options);
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(failure).toMatchObject(INVALID_CONFIGURATION);
+    expect(String(failure)).not.toContain(privateFailure.message);
   });
 
   it('preserves null-prototype data option bags and accepted conversion behavior', () => {
@@ -53,6 +70,11 @@ describe('HTML-to-Markdown runtime option bag boundary', () => {
       maxHtmlBytes: 1024,
     }) as HtmlToMarkdownOptions;
 
-    expect(htmlToMarkdown('<p><img alt="private alt" src="https://example.test/a.png">text</p>', options)).toBe('text');
+    expect(
+      htmlToMarkdown(
+        '<p><img alt="private alt" src="https://example.test/a.png">text</p>',
+        options,
+      ),
+    ).toBe('text');
   });
 });
