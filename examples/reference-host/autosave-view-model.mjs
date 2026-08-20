@@ -6,6 +6,13 @@ const AUTOSAVE_STATES = new Set([
   'closed',
 ]);
 const BLOCKED_REASONS = new Set(['conflict', 'failure']);
+const SNAPSHOT_KEYS = [
+  'state',
+  'blockedReason',
+  'activeStrongEntityTag',
+  'pendingStrongEntityTag',
+  'lastSavedStrongEntityTag',
+];
 
 /** Marker used by repository contracts to prevent this host fixture becoming runtime authority. */
 export const REFERENCE_ONLY = true;
@@ -17,10 +24,37 @@ function requireNullableString(value, label) {
   return value;
 }
 
-function readSnapshot(snapshot) {
+function snapshotData(source) {
+  try {
+    if (typeof source !== 'object' || source === null) {
+      throw new TypeError('autosave snapshot is invalid.');
+    }
+    const values = Object.create(null);
+    for (const key of SNAPSHOT_KEYS) {
+      const descriptor = Object.getOwnPropertyDescriptor(source, key);
+      if (
+        descriptor === undefined ||
+        !Object.prototype.hasOwnProperty.call(descriptor, 'value')
+      ) {
+        throw new TypeError('autosave snapshot is invalid.');
+      }
+      values[key] = descriptor.value;
+    }
+    return values;
+  } catch (error) {
+    if (
+      error instanceof TypeError &&
+      error.message === 'autosave snapshot is invalid.'
+    ) {
+      throw error;
+    }
+    throw new TypeError('autosave snapshot is invalid.');
+  }
+}
+
+function readSnapshot(source) {
+  const snapshot = snapshotData(source);
   if (
-    typeof snapshot !== 'object' ||
-    snapshot === null ||
     !AUTOSAVE_STATES.has(snapshot.state) ||
     (snapshot.blockedReason !== null &&
       !BLOCKED_REASONS.has(snapshot.blockedReason))
@@ -69,10 +103,11 @@ function presentation(viewState) {
 /**
  * Create one host-owned projection of Inkspan autosave lifecycle transitions.
  *
- * `observe()` consumes only programmatic queue/session snapshots. A blocked to
- * saving transition is presented as retrying, and its next idle transition is
- * presented as recovered. The projection never returns local or durable
- * validators; hosts localize `messageKey` and keep authenticated recovery
+ * `observe()` consumes only programmatic queue/session snapshots. Snapshot fields
+ * must be own data properties so presentation never invokes caller-owned accessors.
+ * A blocked to saving transition is presented as retrying, and its next idle
+ * transition is presented as recovered. The projection never returns local or
+ * durable validators; hosts localize `messageKey` and keep authenticated recovery
  * controls outside Inkspan.
  */
 export function createAutosaveViewModel() {
@@ -187,6 +222,32 @@ function runSelfTest() {
   );
 }
 
-if (process.argv.includes('--self-test')) {
+function runHostileAccessorSelfTest() {
+  let getterCalls = 0;
+  let error = null;
+  const hostile = {
+    blockedReason: null,
+    activeStrongEntityTag: null,
+    pendingStrongEntityTag: null,
+    lastSavedStrongEntityTag: null,
+  };
+  Object.defineProperty(hostile, 'state', {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      return 'idle';
+    },
+  });
+  try {
+    createAutosaveViewModel().observe(hostile);
+  } catch (failure) {
+    error = failure instanceof Error ? failure.message : 'unexpected error';
+  }
+  process.stdout.write(`${JSON.stringify({ error, getterCalls })}\n`);
+}
+
+if (process.argv.includes('--hostile-accessor-self-test')) {
+  runHostileAccessorSelfTest();
+} else if (process.argv.includes('--self-test')) {
   runSelfTest();
 }
