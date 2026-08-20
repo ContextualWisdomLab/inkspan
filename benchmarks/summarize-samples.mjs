@@ -114,19 +114,20 @@ function formatSummary(summary) {
 
 function main() {
   const { inputPath, outputDirectory } = resolveArguments(process.argv.slice(2));
+  const summaryJsonPath = resolve(outputDirectory, 'summary.json');
+  const summaryTextPath = resolve(outputDirectory, 'summary.txt');
+  if (inputPath === summaryJsonPath || inputPath === summaryTextPath) {
+    throw new Error('Benchmark output must not overwrite the sample input.');
+  }
   const input = validateInput(readBoundedJson(inputPath));
   const summary = summarize(input);
   mkdirSync(outputDirectory, { recursive: true });
   writeFileSync(
-    resolve(outputDirectory, 'summary.json'),
+    summaryJsonPath,
     `${JSON.stringify(summary, null, 2)}\n`,
     'utf8',
   );
-  writeFileSync(
-    resolve(outputDirectory, 'summary.txt'),
-    formatSummary(summary),
-    'utf8',
-  );
+  writeFileSync(summaryTextPath, formatSummary(summary), 'utf8');
 }
 
 try {
