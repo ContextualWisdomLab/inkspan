@@ -335,6 +335,36 @@ sequenceDiagram
 
 ProseMirror structural positions and W3C text positions are distinct coordinate systems. The selector remains valid only for the exact revision and named projection. Inkspan does not include selected quote text in ordinary evidence and does not own annotation identifiers/bodies, source-resource IRI policy, authentication, authorization, tenancy, durable persistence, audit, publication, or cross-revision re-anchoring. ADR 0018 governs this protected-main authority.
 
+## Provider-neutral review operation (Active PR / Proposed)
+
+```mermaid
+sequenceDiagram
+  participant Host
+  participant Review as Review contract
+  participant Editor as Immutable editor state
+  participant Revision as Transition evidence
+
+  Host->>Review: bounded thread/suggestion metadata
+  Review->>Review: validate revision, selector, projection, and lifecycle
+  Host->>Editor: accept or reject pending suggestion
+  Editor->>Editor: capture exact current state
+  alt expected revision is stale
+    Editor-->>Host: stale result; no re-anchor or mutation
+  else accept
+    Editor->>Editor: deterministic ProseMirror transaction
+    Editor->>Revision: bind previous/resulting envelopes
+    Revision-->>Host: accepted + revision-only transition evidence
+  else reject
+    Editor->>Revision: verify unchanged resulting envelope
+    Revision-->>Host: rejected + unchanged revision evidence
+  end
+  Host->>Host: authorize, persist, audit, notify, and re-anchor by host policy
+```
+
+The review package and this flow are active-PR evidence only. Comment bodies,
+durable identity, provider lifecycle, and cross-revision re-anchoring remain
+outside Inkspan.
+
 ## Provider-neutral Yjs collaboration sequence
 
 ```mermaid

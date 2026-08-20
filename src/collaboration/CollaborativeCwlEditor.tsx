@@ -18,6 +18,7 @@ import { createEditorDocumentSnapshot } from '../components/editorDocumentSnapsh
 import { applyEditorFormReset } from '../components/editorFormReset.js';
 import { editorHtmlToValue } from '../components/editorSerialization.js';
 import { useEditorHandle } from '../components/useEditorHandle.js';
+import { useReviewActions } from '../components/reviewOperations.js';
 import { useLatestRef } from '../components/useLatestRef.js';
 import type { ClipboardSanitizationError } from '../extensions/SafeClipboard.js';
 import { buildExtensions } from '../extensions/kit.js';
@@ -73,6 +74,7 @@ export const CollaborativeCwlEditor = forwardRef<
     onFocus,
     onBlur,
     onSelectionChange,
+    review,
     onImageError,
     clipboard,
     onClipboardError,
@@ -260,7 +262,8 @@ export const CollaborativeCwlEditor = forwardRef<
     [collaborationDocument, scopedProvider, normalizedField, presenceEnabled],
   );
 
-  useEditorHandle(ref, editor, modeRef);
+  const reviewActions = useReviewActions(editor, review);
+  useEditorHandle(ref, editor, modeRef, reviewActions.finalizedIdsRef);
 
   useEffect(() => {
     editor?.setEditable(editable);
@@ -346,6 +349,9 @@ export const CollaborativeCwlEditor = forwardRef<
       formFieldDisabled={formFieldDisabled}
       onFormReset={editor && onFormReset ? handleFormReset : undefined}
       status={status}
+      review={review}
+      onReviewAction={reviewActions.onReviewAction}
+      onReviewSelect={reviewActions.onReviewSelect}
     />
   );
 });

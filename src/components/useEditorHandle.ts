@@ -4,6 +4,7 @@ import {
   type ForwardedRef,
   type MutableRefObject,
 } from 'react';
+import { useRef } from 'react';
 import {
   createDocumentEnvelope,
   type CwlEditorDocumentEnvelope,
@@ -17,7 +18,10 @@ import {
   restoreDocumentEnvelopeBytesIfMatch,
   restoreDocumentEnvelopeIfMatch,
 } from '../documentEnvelopeIfMatch.js';
-import { createValidatedDocumentEnvelopeRevision } from '../documentEnvelopeRevision.js';
+import {
+  createValidatedDocumentEnvelopeRevision,
+  type DocumentEnvelopeDigestProvider,
+} from '../documentEnvelopeRevision.js';
 import { createValidatedDocumentEnvelopeRevisionEvidence } from '../documentRevisionEvidence.js';
 import {
   restoreDocumentEnvelope,
@@ -30,7 +34,15 @@ import {
   validateDocumentJson,
 } from '../documentSchema.js';
 import { createTextPositionSelector } from '../textPositionSelectorEvidence.js';
-import type { CwlEditorHandle, EditorMode } from '../types.js';
+import {
+  ReviewContractError,
+  type CwlEditorReviewSuggestion,
+} from '../review/contract.js';
+import type {
+  CwlEditorHandle,
+  EditorMode,
+} from '../types.js';
+import { applyReviewOperation } from './reviewOperations.js';
 import { createEditorDocumentSnapshot } from './editorDocumentSnapshot.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
 
@@ -47,7 +59,31 @@ export function useEditorHandle(
   ref: ForwardedRef<CwlEditorHandle>,
   editor: Editor | null,
   modeRef: MutableRefObject<EditorMode>,
+  finalizedReviewIdsRef?: MutableRefObject<Set<string>>,
 ): void {
+  const localFinalizedReviewIdsRef = useRef(new Set<string>());
+  const finalizedIdsRef = finalizedReviewIdsRef ?? localFinalizedReviewIdsRef;
+  const runReviewOperation = async (
+    suggestion: CwlEditorReviewSuggestion,
+    action: 'accept' | 'reject',
+    limits?: DocumentEnvelopeLimits,
+    digestProvider?: DocumentEnvelopeDigestProvider | null,
+  ) => {
+    if (!editor) return null;
+    if (finalizedIdsRef.current.has(suggestion.suggestionId)) {
+      throw new ReviewContractError('operation_already_final');
+    }
+    const result = await applyReviewOperation(
+      editor,
+      { suggestion, action },
+      limits,
+      digestProvider,
+    );
+    if (result.status !== 'stale') {
+      finalizedIdsRef.current.add(suggestion.suggestionId);
+    }
+    return result;
+  };
   useImperativeHandle(
     ref,
     (): CwlEditorHandle => ({
@@ -196,11 +232,15 @@ export function useEditorHandle(
         if (!editor) return;
         editor.chain().focus().insertContent(documentJson).run();
       },
+      acceptReviewSuggestion: (suggestion, limits, digestProvider) =>
+        runReviewOperation(suggestion, 'accept', limits, digestProvider),
+      rejectReviewSuggestion: (suggestion, limits, digestProvider) =>
+        runReviewOperation(suggestion, 'reject', limits, digestProvider),
       clear: () => {
         editor?.commands.clearContent(true);
       },
       isEmpty: () => editor?.isEmpty ?? true,
     }),
-    [editor, modeRef],
+    [editor, finalizedIdsRef, modeRef],
   );
 }

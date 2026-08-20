@@ -55,6 +55,11 @@ At minimum, maintain regressions for:
 - SSR client-controlled form values, escaping, hydration continuity, reset behavior, and absence of server editor construction;
 - autosave stale validators, conflict/failure recovery, ambiguous transport outcomes, duplicate/no-op lifecycle transitions, callback exceptions, queue bounds, flush/close behavior, and durable-validator coherence;
 - selection/revision races and document movement during asynchronous hashing;
+- review target/suggestion accessors and exotic prototypes, unsupported
+  projections, bounded text/counts, exact-once accept/reject semantics,
+  stale-revision fail-closed behavior, undo/redo, keyboard/screen-reader
+  review-panel states, print output, and packed `./review` ESM/CommonJS/strict
+  TypeScript consumers;
 - Office formula prefixes, invalid XML characters, malicious strings, path/publication races, invalid worksheet names, invalid freeze panes, cyclic input, pathological nesting, excessive container size, and partial write failure;
 - package/release stale draft assets, unexpected or non-regular local entries, exact three-file inventory violations, incomplete remote uploads, GitHub-vs-local digest mismatch, stale exact-head evidence, mutable provenance inputs, and isolated packed-consumer behavior.
 

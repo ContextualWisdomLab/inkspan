@@ -45,7 +45,10 @@ function run(command, argumentsList, cwd = repositoryRoot) {
 
 /** Assert that a resolved path remains inside the isolated consumer tree. */
 function assertInsideConsumer(resolvedPath, description) {
-  const relativePath = relative(consumerDirectory, realpathSync(resolvedPath));
+  const relativePath = relative(
+    realpathSync(consumerDirectory),
+    realpathSync(resolvedPath),
+  );
   assert.equal(isAbsolute(relativePath), false, description);
   assert.equal(
     relativePath === '..' || relativePath.startsWith(`..${sep}`),

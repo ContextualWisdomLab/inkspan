@@ -58,6 +58,7 @@ The product promise is: **author, convert, collaborate, and prove document chang
 - The producer derives the range from one valid ordered ProseMirror `Selection`; it does not accept arbitrary caller-supplied selector numbers. Any impossible emitted range violation is an internal defect and must not be normalized or published.
 - ProseMirror structural positions and W3C text positions are distinct coordinate systems even when numeric values happen to match for a simple document.
 - Text-position evidence remains revision-scoped and text-free. Hosts own annotation identifiers/bodies, source-resource identifiers, publication, durable persistence, authorization, tenant policy, and cross-revision re-anchoring.
+- **Active PR / Proposed review mode** adds bounded revision-scoped comment targets and deterministic insert/delete suggestions. Accept must change the document, reject must preserve the revision, and stale targets fail closed without implicit re-anchoring. The editor panel, callbacks, browser evidence, and full acceptance slice remain active work and are not protected-main product claims.
 - Autosave remains single-flight with bounded active/pending work and explicit conflict/failure recovery.
 - Durable saves use a host/server-selected strong validator; conflict or ambiguous failure never silently advances it.
 - Lifecycle observation emits only distinct externally visible document-free state transitions; construction and no-op operations do not manufacture notifications.
@@ -105,7 +106,7 @@ The product promise is: **author, convert, collaborate, and prove document chang
 
 ## Non-goals
 
-Inkspan is not an identity provider, tenant database, durable document store, collaboration authorization server, deployment platform, credential manager, retention engine, model router, durable audit service, application migration owner, annotation database, cross-revision annotation re-anchoring service, or merge/release authority for host products.
+Inkspan is not an identity provider, tenant database, durable document store, collaboration authorization server, deployment platform, credential manager, retention engine, model router, durable audit service, application migration owner, annotation database, cross-revision annotation re-anchoring service, or merge/release authority for host products. The active review contract does not change those non-goals.
 
 Inkspan does not promise universal HTML/Office round-trip fidelity, arbitrary executable document content, implicit network fetching, model-generated content as trusted source, silent migration of unknown document schemas, a security bounty, legal safe harbor, fixed vulnerability-response SLA, or certification from repository documentation alone.
 
@@ -146,3 +147,8 @@ Shareable acquisition evidence excludes production tenant content and credential
 Protected `main` is the sole implemented baseline. Open PRs may describe Proposed or Active work but are not shipped contracts until protected integration. Canonical documentation must state when a requirement is target architecture rather than current implementation.
 
 SafeClipboard, real Chromium/Firefox/WebKit release assurance, lifecycle observation, the root security disclosure lifecycle, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, W3C text-position selector evidence, document-transition evidence, and envelope identity migration routing are implemented on protected `main`.
+
+The revision-scoped review contract and `@contextualwisdomlab/cwl-editor/review`
+subpath are `implemented_on_active_pr` under Proposed ADR 0027. The interactive
+review panel, editor transaction integration, Storybook/equivalent states, and
+cross-engine interaction evidence are not shipped until protected integration.

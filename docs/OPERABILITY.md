@@ -10,6 +10,14 @@ This distinction controls incident ownership: an Inkspan incident is a determini
 
 Protected `main` is the shipped implementation authority. Open PRs are not operational authority until protected integration.
 
+The active review contract is an operationally bounded proposal. When its
+editor adapter is enabled, hosts must treat `stale` results as a refetch/review
+decision, not as permission to re-anchor or overwrite. Host callbacks must
+record durable thread/suggestion outcomes in the host system; Inkspan's local
+transition evidence is not a durable audit event. Review UI failure must leave
+the document editable or explicitly read-only according to host policy without
+inventing acceptance or rejection.
+
 ## Health and evidence
 
 Inkspan itself does not expose a network health endpoint. Operational health is proven through exact-head CI and package-consumer evidence, deterministic runtime outcomes, bounded public errors, security scans, package/release verification, and host-observable local state.

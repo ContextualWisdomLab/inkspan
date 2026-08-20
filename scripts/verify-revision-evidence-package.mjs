@@ -77,7 +77,10 @@ function readInstalledDependencyVersion(packageName) {
 
 /** Assert that a resolved path cannot escape the independent consumer tree. */
 function assertPathInsideConsumer(resolvedPath, description) {
-  const relativePath = relative(verificationDirectory, resolvedPath);
+  const relativePath = relative(
+    realpathSync(verificationDirectory),
+    realpathSync(resolvedPath),
+  );
   assert.equal(
     isAbsolute(relativePath),
     false,
@@ -258,7 +261,7 @@ import { isAbsolute, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as editor from '${packageJson.name}';
 
-const consumerDirectory = ${JSON.stringify(verificationDirectory)};
+const consumerDirectory = ${JSON.stringify(realpathSync(verificationDirectory))};
 function assertInsideConsumer(resolvedPath, description) {
   const resolvedRelative = relative(consumerDirectory, resolvedPath);
   assert.equal(isAbsolute(resolvedRelative), false, description);
@@ -270,7 +273,7 @@ function assertInsideConsumer(resolvedPath, description) {
 }
 const resolvedEntry = fileURLToPath(import.meta.resolve('${packageJson.name}'));
 assertInsideConsumer(resolvedEntry, 'packed ESM entry escaped consumer tree');
-const packageRelative = relative(${JSON.stringify(packageDirectory)}, resolvedEntry);
+const packageRelative = relative(${JSON.stringify(realpathSync(packageDirectory))}, resolvedEntry);
 assert.equal(isAbsolute(packageRelative), false);
 assert.equal(
   packageRelative === '..' || packageRelative.startsWith('..' + sep),
@@ -329,7 +332,7 @@ const editor = require('${packageJson.name}');
 
 void (async () => {
   const resolvedEntry = require.resolve('${packageJson.name}');
-  const resolvedRelative = relative(${JSON.stringify(packageDirectory)}, resolvedEntry);
+  const resolvedRelative = relative(${JSON.stringify(realpathSync(packageDirectory))}, resolvedEntry);
   assert.equal(isAbsolute(resolvedRelative), false);
   assert.equal(
     resolvedRelative === '..' || resolvedRelative.startsWith('..' + sep),

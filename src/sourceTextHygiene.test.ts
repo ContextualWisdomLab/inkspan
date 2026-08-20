@@ -6,6 +6,10 @@ const TEXT_HYGIENE_TARGETS = [
   ['root public entrypoint', 'src/index.ts'],
   ['revision-evidence entrypoint test', 'src/revision-evidence/index.test.ts'],
   ['revision-evidence build config', 'vite.revision-evidence.config.ts'],
+  ['review contract', 'src/review/contract.ts'],
+  ['review entrypoint', 'src/review/index.ts'],
+  ['review build config', 'vite.review.config.ts'],
+  ['review panel fixture', 'src/components/ReviewPanel.fixture.tsx'],
 ] as const;
 
 describe('source text hygiene', () => {

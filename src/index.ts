@@ -28,6 +28,7 @@ export type {
   CwlEditorFormResetEvent,
   CwlEditorHandle,
   CwlEditorProps,
+  CwlEditorReviewProps,
   CwlEditorSelectionEvent,
   CwlEditorSelectionRevisionEvidence,
   CwlEditorSelectionSnapshot,
@@ -49,6 +50,33 @@ export type {
   CwlEditorTextProjectionIdentity,
   TextPositionSelectorEvidenceErrorCode,
 } from './textPositionSelectorEvidence.js';
+
+// Provider-neutral revision-scoped review contract. Comment bodies, durable
+// identifiers, authorization, persistence, and collaboration transport remain
+// host-owned; this surface owns bounded deterministic target and operation
+// validation plus revision-only transition evidence.
+export {
+  DEFAULT_REVIEW_LIMITS,
+  REVIEW_CONTRACT_SCHEMA_ID,
+  REVIEW_CONTRACT_SCHEMA_VERSION,
+  ReviewContractError,
+  applyReviewSuggestionToTextProjection,
+  createReviewOperationResult,
+  validateReviewSuggestion,
+  validateReviewTarget,
+  validateReviewThread,
+} from './review/contract.js';
+export type {
+  CwlEditorDeleteSuggestion,
+  CwlEditorInsertSuggestion,
+  CwlEditorReviewOperation,
+  CwlEditorReviewOperationResult,
+  CwlEditorReviewSuggestion,
+  CwlEditorReviewTarget,
+  CwlEditorReviewThread,
+  ReviewContractErrorCode,
+  ReviewSuggestionState,
+} from './review/contract.js';
 
 // Versioned, lossless persistence boundary.
 export {

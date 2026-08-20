@@ -2,14 +2,19 @@ import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
-// React-free review contract build: deterministic revision/selector evidence only.
-// No React UI, network, credential, persistence, tenancy, model, or provider authority.
+// Framework-independent review contract build: ZERO React, TipTap, ProseMirror
+// view, Yjs, network, credential, persistence, or model imports.
 export default defineConfig({
   plugins: [
     dts({
       include: [
         'src/review',
+        'src/documentEnvelope.ts',
+        'src/documentEnvelopeLimits.ts',
+        'src/documentEnvelopeCanonical.ts',
         'src/documentEnvelopeRevision.ts',
+        'src/documentRevisionEvidence.ts',
+        'src/documentTransitionEvidence.ts',
         'src/textPositionSelectorEvidence.ts',
       ],
       exclude: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'src/**/*.spec.ts'],

@@ -1,7 +1,20 @@
 import { EditorContent, type Editor } from '@tiptap/react';
-import { useCallback, type KeyboardEvent, type ReactNode } from 'react';
-import type { EditorMode, ImageConfig } from '../types.js';
+import { useCallback, useEffect, type KeyboardEvent, type ReactNode } from 'react';
+import type {
+  CwlEditorReviewProps,
+  EditorMode,
+  ImageConfig,
+} from '../types.js';
+import type {
+  CwlEditorReviewSuggestion,
+  CwlEditorReviewTarget,
+} from '../review/contract.js';
 import { EditorFormField } from './EditorFormField.js';
+import {
+  createReviewMarkerPlugin,
+  REVIEW_MARKER_KEY,
+} from './reviewOperations.js';
+import { ReviewPanel } from './ReviewPanel.js';
 import { Toolbar } from './Toolbar.js';
 
 /** Props for the visual editor shell shared by every Inkspan editing mode. */
@@ -20,6 +33,12 @@ export interface EditorFrameProps {
   formFieldInitialValue?: string;
   onFormReset?: (event: Event) => void;
   status?: ReactNode;
+  review?: CwlEditorReviewProps;
+  onReviewAction?: (
+    suggestion: CwlEditorReviewSuggestion,
+    action: 'accept' | 'reject',
+  ) => Promise<void>;
+  onReviewSelect?: (target: CwlEditorReviewTarget) => void;
 }
 
 /**
@@ -40,6 +59,9 @@ export function EditorFrame({
   formFieldInitialValue,
   onFormReset,
   status,
+  review,
+  onReviewAction,
+  onReviewSelect,
 }: EditorFrameProps) {
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -68,6 +90,15 @@ export function EditorFrame({
     [editor],
   );
 
+  useEffect(() => {
+    if (!editor || !review) return;
+    const plugin = createReviewMarkerPlugin(review);
+    editor.registerPlugin(plugin);
+    return () => {
+      editor.unregisterPlugin(REVIEW_MARKER_KEY);
+    };
+  }, [editor, review]);
+
   return (
     <div
       className={`cwl-editor${className ? ` ${className}` : ''}`}
@@ -83,6 +114,13 @@ export function EditorFrame({
         onFormReset={onFormReset}
       />
       {status}
+      {review && onReviewAction && onReviewSelect ? (
+        <ReviewPanel
+          review={review}
+          onAction={onReviewAction}
+          onSelect={onReviewSelect}
+        />
+      ) : null}
       {!hideToolbar && editor && editable ? (
         <Toolbar
           editor={editor}

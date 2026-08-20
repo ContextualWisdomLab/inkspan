@@ -54,6 +54,25 @@ Selection, transition, and W3C text-position evidence are implemented on protect
 
 The React-free text-position-selector package surface is also protected-main behavior. It reuses the deterministic projection helper without claiming editor state capture, annotation identity, authorization, durable persistence, or cross-revision re-anchoring. Hosts retain those authorities.
 
+## Provider-neutral review contract
+
+The active review line adds Proposed ADR 0027 and the React-free `./review`
+subpath. Its v1 core validates bounded host-supplied thread/suggestion metadata
+against one immutable SHA-256 revision and the named W3C logical-text
+projection. Insert targets are empty ranges; delete targets are non-empty
+ranges. Accessors, exotic prototypes, unsupported projections, malformed
+revisions, and invalid lifecycle states fail closed.
+
+The planned editor adapter must apply accept/reject through the real
+ProseMirror transaction path, bind the before/after envelopes to transition
+evidence, and return `stale` when the expected revision no longer matches. An
+accepted operation must change the document; a rejected operation must preserve
+the revision. Comment bodies, durable identifiers, authorization, persistence,
+notifications, collaboration providers, audit, and cross-revision re-anchoring
+remain host-owned. The active package is not protected-main behavior until its
+editor, accessibility, browser, print, Storybook/equivalent, and packed-consumer
+acceptance evidence is current at the exact merge head.
+
 ## Autosave state machine and durable concurrency
 
 States are `idle`, `saving`, `blocked`, `closing`, and `closed`, with explicit blocked reasons. The local queue remains single-flight and retains bounded active/pending work and bounded flush waiters. Evidence supplied to a callback is immutable and validated before scheduling.

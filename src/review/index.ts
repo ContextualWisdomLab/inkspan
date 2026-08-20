@@ -336,3 +336,33 @@ export type {
   CwlEditorDocumentRevision,
   DocumentEnvelopeDigestProvider,
 } from '../documentEnvelopeRevision.js';
+/**
+ * Framework-independent Inkspan review contract.
+ *
+ * The package validates bounded revision-scoped target metadata and
+ * deterministic insert/delete operation results. Comment bodies, durable
+ * identifiers, authorization, persistence, and collaboration transport stay
+ * with the host.
+ */
+export {
+  DEFAULT_REVIEW_LIMITS,
+  REVIEW_CONTRACT_SCHEMA_ID,
+  REVIEW_CONTRACT_SCHEMA_VERSION,
+  ReviewContractError,
+  applyReviewSuggestionToTextProjection,
+  createReviewOperationResult,
+  validateReviewSuggestion,
+  validateReviewTarget,
+  validateReviewThread,
+} from './contract.js';
+export type {
+  CwlEditorDeleteSuggestion,
+  CwlEditorInsertSuggestion,
+  CwlEditorReviewOperation,
+  CwlEditorReviewOperationResult,
+  CwlEditorReviewSuggestion,
+  CwlEditorReviewTarget,
+  CwlEditorReviewThread,
+  ReviewContractErrorCode,
+  ReviewSuggestionState,
+} from './contract.js';

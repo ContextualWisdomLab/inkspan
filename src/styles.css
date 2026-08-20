@@ -228,6 +228,86 @@
   font-weight: 600;
 }
 
+.cwl-review-panel {
+  border-bottom: 1px solid var(--cwl-border);
+  background: var(--cwl-surface);
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.cwl-review-panel__heading,
+.cwl-review-panel h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.cwl-review-panel__section + .cwl-review-panel__section {
+  margin-top: 8px;
+}
+
+.cwl-review-panel ul {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cwl-review-panel li {
+  display: grid;
+  gap: 4px;
+}
+
+.cwl-review-panel__target {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--cwl-fg);
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.cwl-review-panel__target:focus-visible,
+.cwl-review-panel__actions button:focus-visible {
+  outline: 2px solid var(--cwl-accent);
+  outline-offset: 2px;
+}
+
+.cwl-review-panel__detail {
+  color: var(--cwl-muted);
+}
+
+.cwl-review-panel__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.cwl-review-panel__actions button {
+  min-height: 28px;
+  border: 1px solid var(--cwl-border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  background: var(--cwl-bg);
+  color: var(--cwl-fg);
+  cursor: pointer;
+}
+
+.cwl-review-panel__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.cwl-review-marker--thread {
+  border-bottom: 2px solid var(--cwl-accent);
+  background: var(--cwl-accent-soft);
+}
+
+.cwl-review-marker--suggestion {
+  border-bottom: 2px dotted var(--cwl-accent);
+  background: var(--cwl-accent-soft);
+}
+
 .collaboration-cursor__caret {
   position: relative;
   border-left: 2px solid;
@@ -278,10 +358,25 @@
   }
 
   .cwl-toolbar,
+  .cwl-review-panel,
   .cwl-collaboration-status,
   .collaboration-cursor__caret,
   .collaboration-cursor__label {
     display: none !important;
+  }
+
+  .cwl-review-marker--thread,
+  .cwl-review-marker--suggestion {
+    border-bottom: 0;
+    background: transparent;
+  }
+
+  .cwl-review-marker--widget {
+    display: none;
+  }
+
+  .cwl-review-marker--suggestion::before {
+    content: none;
   }
 
   .cwl-editor__surface {

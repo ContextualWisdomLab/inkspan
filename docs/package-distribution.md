@@ -17,7 +17,7 @@ integrations.
 | `@contextualwisdomlab/cwl-editor/envelope-identity` | Framework-independent identity-only envelope routing for bounded schema identity inspection; migration remains host-owned |
 | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent revision evidence and document-transition evidence for local content equality/lineage claims |
 | `@contextualwisdomlab/cwl-editor/text-position-selector` | `implemented_on_protected_main` — React-free text-position projection core implementing W3C `TextPositionSelector`; interactive capture, revision binding, authorization, persistence, and re-anchoring remain outside this subpath |
-| `@contextualwisdomlab/cwl-editor/review` | `implemented_on_active_pr` — React-free deterministic review-target validation bound to exact local SHA-256 revision evidence plus Inkspan's W3C text-position projection; durable review records and policy remain host-owned |
+| `@contextualwisdomlab/cwl-editor/review` | `implemented_on_active_pr` — framework-independent exact-revision targets, bounded insert/delete suggestions, and revision-only operation results; editor UI and host-owned comment persistence remain outside this subpath |
 | `@contextualwisdomlab/cwl-editor/markdown` | `implemented_on_active_pr` — headless deterministic Markdown/HTML/email/plain-text conversion with the same safe-link and strict inline-raster policies as the editor, without importing the React/TipTap editor graph |
 | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
 | `@contextualwisdomlab/cwl-editor/fonts.css` | Full offline KR/EN/JP/SC/TC/VI font bundle |
@@ -91,6 +91,10 @@ embedded in the npm tarball.
   actor identity, authorization, tenant boundary, persistence, retention,
   notification, audit occurrence, collaboration-provider admission, or
   cross-revision re-anchoring authority. Hosts retain all of those duties.
+- The review subpath is a bounded provider-neutral contract for revision-scoped
+  targets, insert/delete suggestion states, and compact operation results. It
+  contains no comment bodies, host authorization, database, network, provider
+  credentials, collaboration transport, or durable persistence authority.
 - Envelope identity output is routing metadata only. It does not accept an
   unsupported document generation as current semantics and does not move schema
   registry, migration, persistence, rollback, or authorization authority into

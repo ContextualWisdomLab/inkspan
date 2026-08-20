@@ -23,6 +23,7 @@ const browserHarness = repositoryFile('tests/browser/harness.ts');
 const browserEvidenceContract = repositoryFile('tests/browser/evidenceContract.ts');
 const browserSpec = repositoryFile('tests/browser/specs/clipboard.browser.spec.ts');
 const consensusSpec = repositoryFile('tests/browser/specs/clipboard.consensus.spec.ts');
+const reviewSpec = repositoryFile('tests/browser/specs/review.browser.spec.ts');
 
 describe('release cross-engine browser evidence contract', () => {
   it('requires the release tag commit to equal the current protected main tip', () => {
@@ -108,6 +109,7 @@ describe('release cross-engine browser evidence contract', () => {
 
   it('binds browser evidence to one fresh run, current lock, and packed package bytes', () => {
     expect(playwrightConfig).toContain("globalSetup: './globalSetup.ts'");
+    expect(playwrightConfig).toContain('clipboard|print|review');
     expect(browserHarness).toContain("from 'inkspan-browser-under-test'");
     expect(browserEvidenceContract).toContain("createReadStream(resolve(releaseDirectory");
     expect(browserEvidenceContract).toContain("entry.name.endsWith('.tgz')");
@@ -129,6 +131,9 @@ describe('release cross-engine browser evidence contract', () => {
     expect(consensusSpec).toContain('currentPackageSha256');
     expect(consensusSpec).toContain('item.packageSha256');
     expect(consensusSpec).toContain('packedPackageSha256(repositoryRoot)');
+    expect(reviewSpec).toContain('window.mountInkspanReviewProbe()');
+    expect(reviewSpec).toContain("data-review-status', 'stale'");
+    expect(reviewSpec).toContain("emulateMedia({ media: 'print' })");
   });
 
   it('makes immutable publication depend on both artifacts and tagged browser evidence', () => {

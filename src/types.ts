@@ -13,6 +13,12 @@ import type {
   ClipboardConfig,
   ClipboardSanitizationError,
 } from './extensions/SafeClipboard.js';
+import type {
+  CwlEditorReviewOperationResult,
+  CwlEditorReviewSuggestion,
+  CwlEditorReviewThread,
+  ReviewContractError,
+} from './review/contract.js';
 
 /** Which document surface the editor reads from and writes to. */
 export type EditorMode = 'markdown' | 'html';
@@ -253,6 +259,18 @@ export interface CwlEditorHandle {
    * safe-link, and inline-image transaction boundaries as other editor writes.
    */
   insertDocumentJson(documentJson: JSONContent | JSONContent[]): void;
+  /** Accept one pending host-supplied review suggestion at its exact revision. */
+  acceptReviewSuggestion(
+    suggestion: CwlEditorReviewSuggestion,
+    limits?: DocumentEnvelopeLimits,
+    digestProvider?: DocumentEnvelopeDigestProvider | null,
+  ): Promise<CwlEditorReviewOperationResult | null>;
+  /** Reject one pending host-supplied review suggestion without changing content. */
+  rejectReviewSuggestion(
+    suggestion: CwlEditorReviewSuggestion,
+    limits?: DocumentEnvelopeLimits,
+    digestProvider?: DocumentEnvelopeDigestProvider | null,
+  ): Promise<CwlEditorReviewOperationResult | null>;
   /** Empty the document. */
   clear(): void;
   /** `true` when the document has no meaningful content. */
@@ -291,6 +309,8 @@ export interface CwlEditorProps {
    * ephemeral document coordinates, not DOM offsets or durable identifiers.
    */
   onSelectionChange?: (selectionEvent: CwlEditorSelectionEvent) => void;
+  /** Controlled host-owned review metadata and deterministic operation callbacks. */
+  review?: CwlEditorReviewProps;
   /**
    * Fired when an image **paste, drop, or toolbar upload** fails (size guard,
    * decode error, etc.). Wired through both the toolbar file picker and the
@@ -375,4 +395,16 @@ export interface CwlEditorProps {
   ariaInvalid?: boolean | 'grammar' | 'spelling';
   /** Whether the host form requires editor input before submission. */
   ariaRequired?: boolean;
+}
+
+/** Host-controlled review metadata; comment bodies and persistence stay external. */
+export interface CwlEditorReviewProps {
+  /** Revision-scoped comment-thread presentation metadata without comment bodies. */
+  threads?: readonly CwlEditorReviewThread[];
+  /** Revision-scoped deterministic insert/delete suggestions. */
+  suggestions?: readonly CwlEditorReviewSuggestion[];
+  /** Receives one accepted, rejected, or stale local operation result. */
+  onOperation?: (result: CwlEditorReviewOperationResult) => void | Promise<void>;
+  /** Receives redacted validation, stale-selection, or operation failures. */
+  onError?: (error: ReviewContractError) => void;
 }

@@ -18,6 +18,7 @@ import { createEditorDocumentSnapshot } from './editorDocumentSnapshot.js';
 import { applyEditorFormReset } from './editorFormReset.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
 import { useEditorHandle } from './useEditorHandle.js';
+import { useReviewActions } from './reviewOperations.js';
 import { useLatestRef } from './useLatestRef.js';
 
 /**
@@ -39,6 +40,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       onFocus,
       onBlur,
       onSelectionChange,
+      review,
       onImageError,
       clipboard,
       onClipboardError,
@@ -190,7 +192,8 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       },
     });
 
-    useEditorHandle(ref, editor, modeRef);
+    const reviewActions = useReviewActions(editor, review);
+    useEditorHandle(ref, editor, modeRef, reviewActions.finalizedIdsRef);
 
     useEffect(() => {
       editor?.setEditable(editable);
@@ -248,6 +251,9 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         formFieldDisabled={formFieldDisabled}
         formFieldInitialValue={selectedDocumentValue}
         onFormReset={editor && observesFormReset ? handleFormReset : undefined}
+        review={review}
+        onReviewAction={reviewActions.onReviewAction}
+        onReviewSelect={reviewActions.onReviewSelect}
       />
     );
   },
