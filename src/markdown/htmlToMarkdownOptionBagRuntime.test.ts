@@ -9,12 +9,20 @@ const INVALID_CONFIGURATION = {
 
 describe('HTML-to-Markdown runtime option bag boundary', () => {
   it.each([
+    ['primitive', 42],
     ['null', null],
     ['array', []],
     ['custom prototype', Object.create({ inherited: true })],
     ['unknown key', { unexpectedPolicy: true }],
     ['non-boolean image-alt mode', { includeImageAlt: 'false' }],
     ['symbol key', { [Symbol('policy')]: true }],
+    [
+      'non-enumerable option',
+      Object.defineProperty({}, 'maxHtmlBytes', {
+        enumerable: false,
+        value: 1024,
+      }),
+    ],
   ])('rejects %s option bags through the stable resource error', (_label, options) => {
     expect(() =>
       htmlToMarkdown('<p>safe</p>', options as HtmlToMarkdownOptions),
