@@ -55,10 +55,7 @@ function readPlainDataRecord(source, requiredKeys, optionalKeys, code) {
       values[key] = descriptor.value;
     }
     return values;
-  } catch (error) {
-    if (error instanceof ReferencePersistenceError && error.code === code) {
-      throw error;
-    }
+  } catch {
     throw new ReferencePersistenceError(code);
   }
 }
