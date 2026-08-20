@@ -2,6 +2,32 @@ import { describe, expect, it } from 'vitest';
 import { buildEditorAccessibilityAttributes } from './editorAccessibility.js';
 
 describe('editor accessibility runtime contracts', () => {
+  it.each([
+    [true, 'false'],
+    [false, 'true'],
+  ] as const)(
+    'preserves editable=%s as aria-readonly=%s',
+    (editable, ariaReadonly) => {
+      expect(
+        buildEditorAccessibilityAttributes({
+          defaultLabel: 'Editor',
+          editable,
+        })['aria-readonly'],
+      ).toBe(ariaReadonly);
+    },
+  );
+
+  it('rejects a non-boolean runtime editable value before deriving aria-readonly', () => {
+    expect(() =>
+      buildEditorAccessibilityAttributes({
+        defaultLabel: 'Editor',
+        editable: 'false' as unknown as boolean,
+      }),
+    ).toThrowError(
+      new RangeError('Editor editable state must be false or true.'),
+    );
+  });
+
   it.each(['ltr', 'rtl', 'auto'] as const)(
     'preserves the valid %s text direction',
     (textDirection) => {
