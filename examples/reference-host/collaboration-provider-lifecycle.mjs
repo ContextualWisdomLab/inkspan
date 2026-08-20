@@ -21,28 +21,71 @@ function requireFactory(value, label) {
   return value;
 }
 
-function requireDocument(value) {
-  if (
-    typeof value !== 'object' ||
-    value === null ||
-    typeof value.destroy !== 'function'
-  ) {
-    throw new TypeError('documentFactory returned an invalid document.');
+function readOwnDataRecord(source, keys, message) {
+  try {
+    if (typeof source !== 'object' || source === null) {
+      throw new TypeError(message);
+    }
+    const values = Object.create(null);
+    for (const key of keys) {
+      const descriptor = Object.getOwnPropertyDescriptor(source, key);
+      if (
+        descriptor === undefined ||
+        !Object.prototype.hasOwnProperty.call(descriptor, 'value')
+      ) {
+        throw new TypeError(message);
+      }
+      values[key] = descriptor.value;
+    }
+    return values;
+  } catch (error) {
+    if (error instanceof TypeError && error.message === message) throw error;
+    throw new TypeError(message);
   }
-  return value;
+}
+
+function findDataMethod(source, key, message) {
+  try {
+    if ((typeof source !== 'object' && typeof source !== 'function') || source === null) {
+      throw new TypeError(message);
+    }
+    let cursor = source;
+    while (cursor !== null) {
+      const descriptor = Object.getOwnPropertyDescriptor(cursor, key);
+      if (descriptor !== undefined) {
+        if (
+          !Object.prototype.hasOwnProperty.call(descriptor, 'value') ||
+          typeof descriptor.value !== 'function'
+        ) {
+          throw new TypeError(message);
+        }
+        return descriptor.value;
+      }
+      cursor = Object.getPrototypeOf(cursor);
+    }
+    throw new TypeError(message);
+  } catch (error) {
+    if (error instanceof TypeError && error.message === message) throw error;
+    throw new TypeError(message);
+  }
+}
+
+function requireDocument(value) {
+  const message = 'documentFactory returned an invalid document.';
+  return Object.freeze({
+    value,
+    destroy: findDataMethod(value, 'destroy', message),
+  });
 }
 
 function requireProvider(value) {
-  if (
-    typeof value !== 'object' ||
-    value === null ||
-    typeof value.connect !== 'function' ||
-    typeof value.disconnect !== 'function' ||
-    typeof value.destroy !== 'function'
-  ) {
-    throw new TypeError('providerFactory returned an invalid provider.');
-  }
-  return value;
+  const message = 'providerFactory returned an invalid provider.';
+  return Object.freeze({
+    value,
+    connect: findDataMethod(value, 'connect', message),
+    disconnect: findDataMethod(value, 'disconnect', message),
+    destroy: findDataMethod(value, 'destroy', message),
+  });
 }
 
 /**
@@ -50,28 +93,31 @@ function requireProvider(value) {
  *
  * The host supplies the document/provider factories and authorized room/actor
  * context. Inkspan receives the resulting stable document/provider references;
- * it does not create, reconnect, disconnect, or destroy either resource.
+ * it does not create, reconnect, disconnect, or destroy either resource. Option
+ * fields and resource methods are captured from data descriptors so lifecycle
+ * validation never executes accessor-backed host objects.
  */
-export function createHostCollaborationLifecycle({
-  documentFactory,
-  providerFactory,
-  roomId,
-  actorId,
-}) {
-  const createDocument = requireFactory(documentFactory, 'documentFactory');
-  const createProvider = requireFactory(providerFactory, 'providerFactory');
-  const boundedRoomId = requireContextString(roomId, 'roomId');
-  const boundedActorId = requireContextString(actorId, 'actorId');
-  const document = requireDocument(createDocument());
+export function createHostCollaborationLifecycle(source) {
+  const options = readOwnDataRecord(
+    source,
+    ['documentFactory', 'providerFactory', 'roomId', 'actorId'],
+    'collaboration options are invalid.',
+  );
+  const createDocument = requireFactory(options.documentFactory, 'documentFactory');
+  const createProvider = requireFactory(options.providerFactory, 'providerFactory');
+  const boundedRoomId = requireContextString(options.roomId, 'roomId');
+  const boundedActorId = requireContextString(options.actorId, 'actorId');
+  const documentResource = requireDocument(createDocument());
+  const document = documentResource.value;
 
   let providerGeneration = 0;
-  let provider = null;
+  let providerResource = null;
   let connected = false;
   let disposed = false;
 
   function makeProvider() {
     providerGeneration += 1;
-    provider = requireProvider(
+    providerResource = requireProvider(
       createProvider({
         document,
         roomId: boundedRoomId,
@@ -91,19 +137,19 @@ export function createHostCollaborationLifecycle({
   function connect() {
     requireLive();
     if (connected) return false;
-    provider.connect();
+    providerResource.connect.call(providerResource.value);
     connected = true;
     return true;
   }
 
   function teardownProvider() {
-    if (provider === null) return;
+    if (providerResource === null) return;
     if (connected) {
-      provider.disconnect();
+      providerResource.disconnect.call(providerResource.value);
       connected = false;
     }
-    provider.destroy();
-    provider = null;
+    providerResource.destroy.call(providerResource.value);
+    providerResource = null;
   }
 
   function reconnect() {
@@ -117,7 +163,7 @@ export function createHostCollaborationLifecycle({
   function dispose() {
     if (disposed) return false;
     teardownProvider();
-    document.destroy();
+    documentResource.destroy.call(document);
     disposed = true;
     return true;
   }
@@ -182,6 +228,93 @@ function runSelfTest() {
   );
 }
 
-if (process.argv.includes('--self-test')) {
+function runHostileAccessorSelfTest() {
+  let optionsGetterCalls = 0;
+  let optionsError = null;
+  const hostileOptions = {
+    providerFactory() {
+      return { connect() {}, disconnect() {}, destroy() {} };
+    },
+    roomId: 'reference-room',
+    actorId: 'reference-actor',
+  };
+  Object.defineProperty(hostileOptions, 'documentFactory', {
+    enumerable: true,
+    get() {
+      optionsGetterCalls += 1;
+      return () => ({ destroy() {} });
+    },
+  });
+  try {
+    createHostCollaborationLifecycle(hostileOptions);
+  } catch (error) {
+    optionsError = error instanceof Error ? error.message : 'unexpected error';
+  }
+
+  let documentGetterCalls = 0;
+  let documentError = null;
+  try {
+    createHostCollaborationLifecycle({
+      documentFactory() {
+        const hostileDocument = {};
+        Object.defineProperty(hostileDocument, 'destroy', {
+          enumerable: true,
+          get() {
+            documentGetterCalls += 1;
+            return () => undefined;
+          },
+        });
+        return hostileDocument;
+      },
+      providerFactory() {
+        return { connect() {}, disconnect() {}, destroy() {} };
+      },
+      roomId: 'reference-room',
+      actorId: 'reference-actor',
+    });
+  } catch (error) {
+    documentError = error instanceof Error ? error.message : 'unexpected error';
+  }
+
+  let providerGetterCalls = 0;
+  let providerError = null;
+  try {
+    createHostCollaborationLifecycle({
+      documentFactory() {
+        return { destroy() {} };
+      },
+      providerFactory() {
+        const hostileProvider = { disconnect() {}, destroy() {} };
+        Object.defineProperty(hostileProvider, 'connect', {
+          enumerable: true,
+          get() {
+            providerGetterCalls += 1;
+            return () => undefined;
+          },
+        });
+        return hostileProvider;
+      },
+      roomId: 'reference-room',
+      actorId: 'reference-actor',
+    });
+  } catch (error) {
+    providerError = error instanceof Error ? error.message : 'unexpected error';
+  }
+
+  process.stdout.write(
+    `${JSON.stringify({
+      documentError,
+      documentGetterCalls,
+      optionsError,
+      optionsGetterCalls,
+      providerError,
+      providerGetterCalls,
+    })}\n`,
+  );
+}
+
+if (process.argv.includes('--hostile-accessor-self-test')) {
+  runHostileAccessorSelfTest();
+} else if (process.argv.includes('--self-test')) {
   runSelfTest();
 }
