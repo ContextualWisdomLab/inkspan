@@ -166,8 +166,8 @@ export function createHostCollaborationLifecycle(source) {
   function teardownProvider() {
     const resource = providerResource;
     if (resource === null) return;
-    providerResource = null;
     let failed = false;
+    let destroyFailed = false;
     if (connected) {
       connected = false;
       try {
@@ -180,6 +180,10 @@ export function createHostCollaborationLifecycle(source) {
       resource.destroy.call(resource.value);
     } catch {
       failed = true;
+      destroyFailed = true;
+    }
+    if (!destroyFailed) {
+      providerResource = null;
     }
     if (failed) throw teardownFailure();
   }
