@@ -3,6 +3,10 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const hangulGuide = readFileSync('docs/HANGUL.md', 'utf8');
+const hangulAdr = readFileSync(
+  'docs/adr/0030-hangul-document-authoring-boundary.md',
+  'utf8',
+);
 
 describe('Hangul compatibility documentation', () => {
   it('documents the structures exercised by the public round-trip contract', () => {
@@ -41,5 +45,15 @@ describe('Hangul compatibility documentation', () => {
     expect(hangulGuide).toContain('`exportFormats`');
     expect(hangulGuide).toContain('`recommendedExportFormat`');
     expect(hangulGuide).toContain('`supportedContent`');
+  });
+
+  it('documents the finite untrusted-engine traversal ceilings as Inkspan safety limits', () => {
+    for (const document of [hangulGuide, hangulAdr]) {
+      expect(document).toContain('4,096 sections');
+      expect(document).toContain('1,000,000 paragraphs per section');
+      expect(document).toContain('16,777,216 UTF-16 code units per paragraph');
+      expect(document).toContain('Inkspan safety ceilings');
+      expect(document).toContain('not HWP/HWPX format maxima');
+    }
   });
 });
