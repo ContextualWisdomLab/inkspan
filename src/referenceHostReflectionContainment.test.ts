@@ -6,7 +6,8 @@ import { describe, expect, it } from 'vitest';
 
 function observeHostileReflectionFailure(
   fixture: string,
-  invocation: string,
+  sourceTrap: string,
+  call: string,
 ): string {
   const fixtureUrl = pathToFileURL(resolve(process.cwd(), fixture)).href;
   const script = `
@@ -17,10 +18,10 @@ function observeHostileReflectionFailure(
         throw privateSentinel;
       },
     });
-    const hostileSource = new Proxy({}, ${invocation});
+    const hostileSource = new Proxy({}, ${sourceTrap});
     let observed = 'no-error';
     try {
-      module.runReflectionBoundarySelfTest(hostileSource);
+      ${call}
     } catch (error) {
       if (typeof error === 'object' && error !== null) {
         const descriptor = Object.getOwnPropertyDescriptor(error, 'message');
@@ -58,24 +59,28 @@ describe('reference-host hostile reflection containment', () => {
       observeHostileReflectionFailure(
         'examples/reference-host/synthetic-document-repository.mjs',
         prototypeTrap,
+        'module.createSyntheticDocumentRepository(hostileSource);',
       ),
     ).toBe('Reference persistence invalid_options.');
     expect(
       observeHostileReflectionFailure(
         'examples/reference-host/delayed-proposal.mjs',
         prototypeTrap,
+        'await module.createDelayedProposal(hostileSource);',
       ),
     ).toBe('proposal creation is invalid.');
     expect(
       observeHostileReflectionFailure(
         'examples/reference-host/autosave-view-model.mjs',
         descriptorTrap,
+        'module.createAutosaveViewModel().observe(hostileSource);',
       ),
     ).toBe('autosave snapshot is invalid.');
     expect(
       observeHostileReflectionFailure(
         'examples/reference-host/collaboration-provider-lifecycle.mjs',
         descriptorTrap,
+        'module.createHostCollaborationLifecycle(hostileSource);',
       ),
     ).toBe('collaboration options are invalid.');
   });
