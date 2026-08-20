@@ -24,7 +24,7 @@ describe('reference-host synthetic durable repository contract', () => {
     expect(source).toContain('If-Match');
   });
 
-  it('proves ambiguous failure cannot advance the validator and stale writes conflict', () => {
+  it('proves failure-safe retry, restore, fork isolation, and stale-write conflict semantics', () => {
     if (!existsSync(fixturePath)) return;
     const output = execFileSync(process.execPath, [fixturePath, '--self-test'], {
       encoding: 'utf8',
@@ -32,15 +32,22 @@ describe('reference-host synthetic durable repository contract', () => {
 
     expect(JSON.parse(output)).toEqual({
       afterAmbiguousValidator: '"v1"',
+      afterFailureValidator: '"v2"',
       conflictCurrentValidator: '"v2"',
-      finalDocument: 'Buyer draft v2',
-      finalValidator: '"v2"',
+      forkDocument: 'Buyer draft v1',
+      forkFinalDocument: 'Fork-only edit',
+      forkInitialValidator: '"v1"',
+      forkSavedValidator: '"v2"',
       initialValidator: '"v1"',
+      restoredValidator: '"v4"',
+      retrySavedValidator: '"v3"',
       savedValidator: '"v2"',
+      sourceDocumentAfterFork: 'Buyer draft v1',
+      sourceValidatorAfterFork: '"v4"',
     });
   });
 
-  it('fails closed without invoking caller-owned option or save-request accessors', () => {
+  it('fails closed without invoking caller-owned option, save, or fork-request accessors', () => {
     if (!existsSync(fixturePath)) return;
     const output = execFileSync(
       process.execPath,
@@ -49,6 +56,8 @@ describe('reference-host synthetic durable repository contract', () => {
     );
 
     expect(JSON.parse(output)).toEqual({
+      forkErrorCode: 'invalid_fork_request',
+      forkGetterCalls: 0,
       optionErrorCode: 'invalid_options',
       optionGetterCalls: 0,
       requestErrorCode: 'invalid_request',
