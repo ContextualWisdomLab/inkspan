@@ -44,7 +44,16 @@ gh api 'repos/ContextualWisdomLab/inkspan/commits/3b38ead2d00f44eb578d0689087b92
 gh release list --repo ContextualWisdomLab/inkspan --limit 1
 jq -r '.version' package.json
 rg -n '^version\s*=' office/pyproject.toml
-npm view @contextualwisdomlab/cwl-editor version || true
+npm_view_output="$(npm view @contextualwisdomlab/cwl-editor version 2>&1)"
+npm_view_status=$?
+if [ "$npm_view_status" -eq 0 ]; then
+  printf '%s\n' "$npm_view_output"
+else
+  case "$npm_view_output" in
+    *E404*|*"404 Not Found"*) printf '%s\n' "$npm_view_output" ;;
+    *) printf '%s\n' "$npm_view_output" >&2; exit "$npm_view_status" ;;
+  esac
+fi
 gh api repos/ContextualWisdomLab/inkspan/dependabot/alerts \
   --jq '.[] | select(.state == "open") | [.number,.dependency.package.name,.security_advisory.severity,.security_vulnerability.first_patched_version.identifier] | @tsv'
 for pr_number in 285 290 299 362 372 373; do
