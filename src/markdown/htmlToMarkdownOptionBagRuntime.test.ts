@@ -59,13 +59,12 @@ describe('HTML-to-Markdown runtime option bag boundary', () => {
     expect(String(failure)).not.toContain(privateFailure.message);
   });
 
-  it('normalizes hostile reflection traps without leaking caller failures', () => {
+  it('normalizes an executed hostile reflection trap without leaking caller failures', () => {
     const privateFailure = new Error('private-reflection-sentinel');
-    const options = new Proxy({}, {
-      getPrototypeOf() {
-        throw privateFailure;
-      },
-    }) as HtmlToMarkdownOptions;
+    const getPrototypeOf = vi.fn(() => {
+      throw privateFailure;
+    });
+    const options = new Proxy({}, { getPrototypeOf }) as HtmlToMarkdownOptions;
     let failure: unknown;
 
     try {
@@ -74,6 +73,7 @@ describe('HTML-to-Markdown runtime option bag boundary', () => {
       failure = error;
     }
 
+    expect(getPrototypeOf).toHaveBeenCalledOnce();
     expect(failure).toMatchObject(INVALID_CONFIGURATION);
     expect(String(failure)).not.toContain(privateFailure.message);
   });
