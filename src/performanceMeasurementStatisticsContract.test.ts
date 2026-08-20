@@ -1,5 +1,6 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
+  existsSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -119,6 +120,34 @@ describe('deterministic benchmark sample statistics', () => {
       expect(result.stderr.trim()).toBe(
         'Benchmark samples must be finite non-negative numbers.',
       );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses to overwrite the measurement input with generated evidence', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-summary-alias-'));
+    const input = join(root, 'summary.json');
+    const output = root;
+    try {
+      writeInput(input, [10, 20, 30]);
+      const originalInput = readFileSync(input, 'utf8');
+      const result = spawnSync(
+        process.execPath,
+        [script, '--input', input, '--output', output],
+        {
+          cwd: process.cwd(),
+          encoding: 'utf8',
+        },
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(
+        'Benchmark output must not overwrite the sample input.',
+      );
+      expect(readFileSync(input, 'utf8')).toBe(originalInput);
+      expect(existsSync(join(root, 'summary.txt'))).toBe(false);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
