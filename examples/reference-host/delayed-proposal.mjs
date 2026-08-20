@@ -37,8 +37,7 @@ function readPlainDataRecord(source, keys, message) {
       values[key] = descriptor.value;
     }
     return values;
-  } catch (error) {
-    if (error instanceof TypeError && error.message === message) throw error;
+  } catch {
     throw new TypeError(message);
   }
 }
