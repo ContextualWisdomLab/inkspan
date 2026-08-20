@@ -7,6 +7,12 @@ const INVALID_CONFIGURATION = {
   message: 'HTML-to-Markdown resource configuration is invalid.',
 };
 
+const INVALID_INPUT = {
+  name: 'HtmlToMarkdownResourceError',
+  code: 'invalid_input',
+  message: 'HTML-to-Markdown input must be a string.',
+};
+
 describe('HTML-to-Markdown runtime option bag boundary', () => {
   it.each([
     ['primitive', 42],
@@ -69,6 +75,29 @@ describe('HTML-to-Markdown runtime option bag boundary', () => {
     }
 
     expect(failure).toMatchObject(INVALID_CONFIGURATION);
+    expect(String(failure)).not.toContain(privateFailure.message);
+  });
+
+  it('rejects hostile non-string HTML before caller access, encoding, or parser work', () => {
+    const privateFailure = new Error('private-html-input-sentinel');
+    const inputAccess = vi.fn(() => {
+      throw privateFailure;
+    });
+    const html = new Proxy({}, { get: inputAccess });
+    const encode = vi.spyOn(TextEncoder.prototype, 'encode');
+    const createElement = vi.spyOn(document, 'createElement');
+    let failure: unknown;
+
+    try {
+      htmlToMarkdown(html as never);
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(inputAccess).not.toHaveBeenCalled();
+    expect(encode).not.toHaveBeenCalled();
+    expect(createElement).not.toHaveBeenCalledWith('template');
+    expect(failure).toMatchObject(INVALID_INPUT);
     expect(String(failure)).not.toContain(privateFailure.message);
   });
 
