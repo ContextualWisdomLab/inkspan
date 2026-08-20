@@ -6,6 +6,14 @@ onlyBuiltDependencies:
 allowBuilds:
   esbuild: true
 
+# Keep install-time supply-chain policy explicit instead of relying on pnpm's
+# mutable defaults. pnpm 11.5.3 supports all three settings: transitive exotic
+# sources stay blocked, newly published versions wait seven days, and package
+# trust may not silently downgrade relative to earlier releases.
+blockExoticSubdeps: true
+minimumReleaseAge: 10080
+trustPolicy: no-downgrade
+
 # Force patched transitive dependencies across the whole tree. pnpm 10+ reads
 # `overrides` from pnpm-workspace.yaml, NOT the deprecated package.json `pnpm`
 # field, so every security override must live here to actually take effect.
