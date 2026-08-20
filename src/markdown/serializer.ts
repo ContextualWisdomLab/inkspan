@@ -15,6 +15,7 @@ import { gfm } from 'turndown-plugin-gfm';
 import { validateInlineImageSource } from '../policy/inlineImagePolicy.js';
 import { isSafeLinkHref } from '../policy/safeLinkPolicy.js';
 import {
+  HtmlToMarkdownResourceError,
   assertHtmlToMarkdownInputSize,
   resolveHtmlToMarkdownMaxBytes,
 } from './htmlToMarkdownResourcePolicy.js';
@@ -254,25 +255,69 @@ export interface HtmlToMarkdownOptions {
   maxHtmlBytes?: number;
 }
 
+type ResolvedHtmlToMarkdownOptions = Record<string, unknown> & {
+  includeImageAlt?: boolean;
+  maxHtmlBytes?: unknown;
+};
+
+const HTML_TO_MARKDOWN_OPTION_KEYS = new Set(['includeImageAlt', 'maxHtmlBytes']);
+
+/** Snapshot one runtime option bag without invoking caller accessors or coercions. */
+function resolveHtmlToMarkdownOptions(options: unknown): ResolvedHtmlToMarkdownOptions {
+  try {
+    if (typeof options !== 'object' || options === null || Array.isArray(options)) {
+      throw new HtmlToMarkdownResourceError('invalid_configuration');
+    }
+    const prototype = Object.getPrototypeOf(options);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new HtmlToMarkdownResourceError('invalid_configuration');
+    }
+    const descriptors = Object.getOwnPropertyDescriptors(options);
+    const resolved = Object.create(null) as ResolvedHtmlToMarkdownOptions;
+    for (const key of Reflect.ownKeys(descriptors)) {
+      if (typeof key !== 'string' || !HTML_TO_MARKDOWN_OPTION_KEYS.has(key)) {
+        throw new HtmlToMarkdownResourceError('invalid_configuration');
+      }
+      const descriptor = descriptors[key];
+      if (!descriptor.enumerable || !('value' in descriptor)) {
+        throw new HtmlToMarkdownResourceError('invalid_configuration');
+      }
+      resolved[key] = descriptor.value;
+    }
+    if (
+      resolved.includeImageAlt !== undefined &&
+      typeof resolved.includeImageAlt !== 'boolean'
+    ) {
+      throw new HtmlToMarkdownResourceError('invalid_configuration');
+    }
+    return resolved;
+  } catch {
+    throw new HtmlToMarkdownResourceError('invalid_configuration');
+  }
+}
+
 /**
  * Convert an HTML string to Markdown through an inert, fail-closed boundary.
  *
- * The input byte ceiling is enforced before any browser DOM or browserless
- * Turndown parser materialization. In browsers, accepted raw input is parsed
- * only inside a detached `<template>` and sanitized before the resulting
- * `DocumentFragment` reaches Turndown. In browserless Node runtimes, Turndown 7
- * uses its non-fetching Domino parser. Both paths emit Markdown links only for
- * Inkspan-safe targets and Markdown images only for strict inline base64 raster
- * sources.
+ * The runtime option bag is snapshotted before source sizing or parser work so
+ * accessors, unknown keys, exotic prototypes, and malformed values cannot run
+ * caller code or silently alter policy. The input byte ceiling is then enforced
+ * before any browser DOM or browserless Turndown parser materialization. In
+ * browsers, accepted raw input is parsed only inside a detached `<template>` and
+ * sanitized before the resulting `DocumentFragment` reaches Turndown. In
+ * browserless Node runtimes, Turndown 7 uses its non-fetching Domino parser.
+ * Both paths emit Markdown links only for Inkspan-safe targets and Markdown
+ * images only for strict inline base64 raster sources.
  */
 export function htmlToMarkdown(
   html: string,
   options: HtmlToMarkdownOptions = {},
 ): string {
-  const maxHtmlBytes = resolveHtmlToMarkdownMaxBytes(options.maxHtmlBytes);
+  const resolvedOptions = resolveHtmlToMarkdownOptions(options);
+  const maxHtmlBytes = resolveHtmlToMarkdownMaxBytes(resolvedOptions.maxHtmlBytes);
   assertHtmlToMarkdownInputSize(html, maxHtmlBytes);
   const fragment = createInertBrowserFragment(html);
-  const turndown = options.includeImageAlt === false
+  const turndown = resolvedOptions.includeImageAlt === false
     ? turndownWithoutImageAlt
     : turndownWithImageAlt;
   /* v8 ignore next 3 -- packed Node consumer verification exercises this DOM-free fallback. */
