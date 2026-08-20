@@ -39,4 +39,20 @@ describe('reference-host synthetic durable repository contract', () => {
       savedValidator: '"v2"',
     });
   });
+
+  it('fails closed without invoking caller-owned option or save-request accessors', () => {
+    if (!existsSync(fixturePath)) return;
+    const output = execFileSync(
+      process.execPath,
+      [fixturePath, '--hostile-accessor-self-test'],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      optionErrorCode: 'invalid_options',
+      optionGetterCalls: 0,
+      requestErrorCode: 'invalid_request',
+      requestGetterCalls: 0,
+    });
+  });
 });
