@@ -8,9 +8,7 @@ const allowHarnessRequest = (requestUrl: string): boolean => {
   return url.hostname === '127.0.0.1' && url.port === '4173';
 };
 
-test('shows a packed-stylesheet focus indicator on the editable textbox', async ({
-  page,
-}) => {
+const mountEditableSurface = async (page: import('@playwright/test').Page) => {
   const rejectedExternalRequests: string[] = [];
   await page.route('**/*', async (route) => {
     if (allowHarnessRequest(route.request().url())) {
@@ -43,6 +41,13 @@ test('shows a packed-stylesheet focus indicator on the editable textbox', async 
   await page.keyboard.press('Tab');
   const content = page.getByRole('textbox', { name: 'Document' });
   await expect(content).toBeFocused();
+  return content;
+};
+
+test('shows a packed-stylesheet focus indicator on the editable textbox', async ({
+  page,
+}) => {
+  const content = await mountEditableSurface(page);
 
   const focusStyle = await content.evaluate((element) => {
     const style = getComputedStyle(element);
@@ -57,5 +62,24 @@ test('shows a packed-stylesheet focus indicator on the editable textbox', async 
     outlineStyle: 'solid',
     outlineWidth: '2px',
     outlineOffset: '-2px',
+  });
+});
+
+test('does not print the interactive focus indicator', async ({ page }) => {
+  const content = await mountEditableSurface(page);
+  await page.emulateMedia({ media: 'print' });
+  expect(await page.evaluate(() => matchMedia('print').matches)).toBe(true);
+
+  const printFocusStyle = await content.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      outlineStyle: style.outlineStyle,
+      outlineWidth: style.outlineWidth,
+    };
+  });
+
+  expect(printFocusStyle).toEqual({
+    outlineStyle: 'none',
+    outlineWidth: '0px',
   });
 });
