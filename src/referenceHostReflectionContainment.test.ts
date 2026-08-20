@@ -97,5 +97,17 @@ describe('reference-host hostile reflection containment', () => {
         });`,
       ),
     ).toBe('documentFactory returned an invalid document.');
+    expect(
+      observeHostileReflectionFailure(
+        'examples/reference-host/collaboration-provider-lifecycle.mjs',
+        descriptorTrap,
+        `module.createHostCollaborationLifecycle({
+          documentFactory() { return { destroy() {} }; },
+          providerFactory() { throw hostileError; },
+          roomId: 'reference-room',
+          actorId: 'reference-actor',
+        });`,
+      ),
+    ).toBe('collaboration lifecycle initialization failed.');
   });
 });
