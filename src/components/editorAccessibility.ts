@@ -131,13 +131,6 @@ function normalizedEditorLanguageTag(
   return normalized;
 }
 
-/** Reject runtime editability values outside Inkspan's boolean contract. */
-function validateEditorEditable(value: boolean): void {
-  if (value !== false && value !== true) {
-    throw new RangeError('Editor editable state must be false or true.');
-  }
-}
-
 /** Reject runtime direction values outside Inkspan's public finite contract. */
 function validateEditorTextDirection(
   value: EditorTextDirection | undefined,
@@ -197,16 +190,15 @@ export function normalizeEditorPlaceholder(
  * omitted when blank. Non-blank language metadata must satisfy RFC 5646 rules
  * that Inkspan can decide locally, including private-use, grandfathered,
  * extlang-position, variant-uniqueness, and extension-uniqueness constraints;
- * IANA registry-content validity remains a host policy concern. Runtime editable,
- * direction, and ARIA state values are checked against Inkspan's finite public
- * contracts before attribute emission. The trimmed caller spelling of accepted
- * language tags is preserved. Placeholder guidance remains supplemental and never
- * replaces the accessible name.
+ * IANA registry-content validity remains a host policy concern. Runtime direction
+ * and ARIA state values are checked against Inkspan's finite public contracts
+ * before attribute emission. The trimmed caller spelling of accepted language
+ * tags is preserved. Placeholder guidance remains supplemental and never replaces
+ * the accessible name.
  */
 export function buildEditorAccessibilityAttributes(
   options: EditorAccessibilityOptions,
 ): Record<string, string> {
-  validateEditorEditable(options.editable);
   validateEditorTextDirection(options.textDirection);
   validateEditorAriaInvalid(options.ariaInvalid);
   validateEditorAriaRequired(options.ariaRequired);
