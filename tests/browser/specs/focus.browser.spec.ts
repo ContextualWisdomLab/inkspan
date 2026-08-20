@@ -70,16 +70,13 @@ test('does not print the interactive focus indicator', async ({ page }) => {
   await page.emulateMedia({ media: 'print' });
   expect(await page.evaluate(() => matchMedia('print').matches)).toBe(true);
 
-  const printFocusStyle = await content.evaluate((element) => {
-    const style = getComputedStyle(element);
-    return {
-      outlineStyle: style.outlineStyle,
-      outlineWidth: style.outlineWidth,
-    };
-  });
+  const printOutlineStyle = await content.evaluate(
+    (element) => getComputedStyle(element).outlineStyle,
+  );
 
-  expect(printFocusStyle).toEqual({
-    outlineStyle: 'none',
-    outlineWidth: '0px',
-  });
+  // CSS `outline: none` suppresses painting via outline-style. Engines may
+  // still report the initial computed outline-width (`medium`, typically 3px),
+  // which is inert while outline-style is `none` and is therefore not evidence
+  // of printed focus chrome.
+  expect(printOutlineStyle).toBe('none');
 });
