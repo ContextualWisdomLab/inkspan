@@ -71,6 +71,21 @@ describe('reference-host collaboration lifecycle contract', () => {
     });
   });
 
+  it('unwinds the acquired host document when initial provider construction fails', () => {
+    if (!existsSync(fixturePath)) return;
+    const output = execFileSync(
+      process.execPath,
+      [fixturePath, '--initialization-failure-self-test'],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      error: 'collaboration lifecycle initialization failed.',
+      events: ['document:create', 'provider:create', 'document:destroy'],
+      leakedPrivateCause: false,
+    });
+  });
+
   it('attempts provider and document cleanup after teardown failure without leaking private causes', () => {
     if (!existsSync(fixturePath)) return;
     const output = execFileSync(
