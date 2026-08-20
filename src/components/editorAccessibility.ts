@@ -68,19 +68,24 @@ export interface EditorAccessibilityOptions {
   editable: boolean;
 }
 
-/** Normalize optional host metadata after enforcing Inkspan's local size boundary. */
-function normalizedAccessibilityValue(
-  value: string | undefined,
-): string | undefined {
-  if (value === undefined) return undefined;
+/** Enforce Inkspan's local type and resource boundary for accessibility text. */
+function validatedAccessibilityValue(value: string): string {
   if (
     typeof value !== 'string' ||
     value.length > ACCESSIBILITY_METADATA_MAX_CODE_UNITS
   ) {
     throw new RangeError(INVALID_ACCESSIBILITY_METADATA_MESSAGE);
   }
+  return value;
+}
 
-  const normalized = value.trim();
+/** Normalize optional host metadata after enforcing Inkspan's local size boundary. */
+function normalizedAccessibilityValue(
+  value: string | undefined,
+): string | undefined {
+  if (value === undefined) return undefined;
+
+  const normalized = validatedAccessibilityValue(value).trim();
   return normalized ? normalized : undefined;
 }
 
@@ -186,8 +191,9 @@ export function normalizeEditorPlaceholder(
  * collaborative editor surfaces.
  *
  * A non-blank `aria-labelledby` reference takes precedence over the fallback
- * string label. Optional placeholder, language, and ID-reference values are
- * omitted when blank. Non-blank language metadata must satisfy RFC 5646 rules
+ * string label. Required and optional accessibility strings are bounded before
+ * attribute emission; optional placeholder, language, and ID-reference values
+ * are omitted when blank. Non-blank language metadata must satisfy RFC 5646 rules
  * that Inkspan can decide locally, including private-use, grandfathered,
  * extlang-position, variant-uniqueness, and extension-uniqueness constraints;
  * IANA registry-content validity remains a host policy concern. Runtime direction
@@ -203,6 +209,7 @@ export function buildEditorAccessibilityAttributes(
   validateEditorAriaInvalid(options.ariaInvalid);
   validateEditorAriaRequired(options.ariaRequired);
 
+  const defaultLabel = validatedAccessibilityValue(options.defaultLabel);
   const placeholder = normalizeEditorPlaceholder(options.placeholder);
   const languageTag = normalizedEditorLanguageTag(options.languageTag);
   const labelledBy = normalizedAccessibilityValue(options.ariaLabelledBy);
@@ -222,7 +229,7 @@ export function buildEditorAccessibilityAttributes(
   if (labelledBy) {
     attributes['aria-labelledby'] = labelledBy;
   } else {
-    attributes['aria-label'] = explicitLabel ?? options.defaultLabel;
+    attributes['aria-label'] = explicitLabel ?? defaultLabel;
   }
   if (describedBy) attributes['aria-describedby'] = describedBy;
   if (errorMessage) attributes['aria-errormessage'] = errorMessage;
