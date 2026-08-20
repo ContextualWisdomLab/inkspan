@@ -15,6 +15,13 @@ function requireBoundedString(value, maximumCodeUnits, label) {
   return value;
 }
 
+function requireBoundedReplacement(value) {
+  if (typeof value !== 'string' || value.length > MAX_PROPOSAL_CODE_UNITS) {
+    throw new TypeError('replacement is invalid.');
+  }
+  return value;
+}
+
 function readPlainDataRecord(source, keys, message) {
   try {
     if (
@@ -61,11 +68,7 @@ export async function createDelayedProposal(source) {
     MAX_REVISION_CODE_UNITS,
     'expectedRevision',
   );
-  const boundedReplacement = requireBoundedString(
-    input.replacement,
-    MAX_PROPOSAL_CODE_UNITS,
-    'replacement',
-  );
+  const boundedReplacement = requireBoundedReplacement(input.replacement);
 
   await Promise.resolve();
   return Object.freeze({
@@ -103,11 +106,7 @@ export function applyDelayedProposal(source) {
     MAX_REVISION_CODE_UNITS,
     'expectedRevision',
   );
-  const replacement = requireBoundedString(
-    proposal.replacement,
-    MAX_PROPOSAL_CODE_UNITS,
-    'replacement',
-  );
+  const replacement = requireBoundedReplacement(proposal.replacement);
 
   if (expectedRevision !== boundedCurrentRevision) {
     return Object.freeze({ status: 'conflict' });
@@ -156,6 +155,40 @@ async function runSelfTest() {
       acceptedStatus: acceptedResult.status,
       staleDocument,
       staleStatus: staleResult.status,
+    })}\n`,
+  );
+}
+
+async function runEmptyProposalSelfTest() {
+  const proposal = await createDelayedProposal({
+    expectedRevision: 'revision-v1',
+    replacement: '',
+  });
+  let appliedDocument = 'Non-empty draft';
+  const result = applyDelayedProposal({
+    proposal,
+    currentRevision: 'revision-v1',
+    apply(replacement) {
+      appliedDocument = replacement;
+    },
+  });
+
+  let emptyRevisionError = null;
+  try {
+    await createDelayedProposal({
+      expectedRevision: '',
+      replacement: '',
+    });
+  } catch (error) {
+    emptyRevisionError = error instanceof Error ? error.message : 'unexpected error';
+  }
+
+  process.stdout.write(
+    `${JSON.stringify({
+      appliedDocument,
+      appliedStatus: result.status,
+      emptyRevisionError,
+      proposalReplacement: proposal.replacement,
     })}\n`,
   );
 }
@@ -232,7 +265,9 @@ async function runHostileAccessorSelfTest() {
   );
 }
 
-if (process.argv.includes('--hostile-accessor-self-test')) {
+if (process.argv.includes('--empty-proposal-self-test')) {
+  await runEmptyProposalSelfTest();
+} else if (process.argv.includes('--hostile-accessor-self-test')) {
   await runHostileAccessorSelfTest();
 } else if (process.argv.includes('--self-test')) {
   await runSelfTest();
