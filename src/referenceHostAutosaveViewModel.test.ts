@@ -47,6 +47,21 @@ describe('reference-host autosave presentation contract', () => {
     });
   });
 
+  it('rejects empty non-null validator fields instead of treating them as lifecycle evidence', () => {
+    if (!existsSync(fixturePath)) return;
+    const output = execFileSync(
+      process.execPath,
+      [fixturePath, '--invalid-validator-self-test'],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      activeError: 'activeStrongEntityTag is invalid.',
+      lastSavedError: 'lastSavedStrongEntityTag is invalid.',
+      pendingError: 'pendingStrongEntityTag is invalid.',
+    });
+  });
+
   it('rejects accessor-backed lifecycle snapshots without invoking them', () => {
     if (!existsSync(fixturePath)) return;
     const output = execFileSync(
