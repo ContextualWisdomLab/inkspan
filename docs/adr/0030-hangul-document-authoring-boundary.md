@@ -24,6 +24,8 @@ The host owns file selection, filesystem access, network access, WASM/module ini
 
 Unsupported structures are never silently asserted to be lossless. Import results carry warnings and a lossy flag. Export rejects editor structures that cannot be represented by the current bridge rather than dropping them silently.
 
+Host-returned structural metadata is untrusted work/index input. Before traversing or passing such metadata back into the host engine, Inkspan rejects values above 4,096 sections, 1,000,000 paragraphs per section, or 16,777,216 UTF-16 code units per paragraph. These are Inkspan safety ceilings, not HWP/HWPX format maxima; changing them is a resource-safety decision that requires corresponding regression evidence.
+
 ## Consequences
 
 - Existing `CwlEditorHandle.setDocumentJson()` remains the single editing ingress.
@@ -31,6 +33,7 @@ Unsupported structures are never silently asserted to be lossless. Import result
 - Parser/serializer upgrades do not require React changes.
 - Full visual round-trip fidelity is not claimed until covered by real-document compatibility fixtures.
 - HWPX can later gain a first-party native OWPML implementation without changing the public bridge contract.
+- A forged engine cannot turn a small input into effectively unbounded section traversal or oversized paragraph indexes/offsets merely by returning safe-integer metadata.
 
 ## Failure and recovery semantics
 
@@ -38,7 +41,7 @@ Malformed input, unsupported source identity, resource-limit breaches, engine fa
 
 ## Security and privacy impact
 
-HWP/HWPX bytes are untrusted input. The bridge has no remote-resource fetch path and no active-content execution path. Source and output byte bounds are enforced before publication. Credentials, cookies, filesystem paths, and document passwords are not part of result objects or telemetry contracts.
+HWP/HWPX bytes are untrusted input. The bridge has no remote-resource fetch path and no active-content execution path. Source and output byte bounds are enforced before publication. Host structural counts and paragraph lengths are bounded before traversal, indexing, deletion, or HTML projection. Credentials, cookies, filesystem paths, and document passwords are not part of result objects or telemetry contracts.
 
 A future native HWPX parser must additionally bound ZIP entries, expansion ratio, XML depth, XML node count, text length, relationship targets, embedded objects, and external references. DTD and external-entity resolution must remain disabled.
 
@@ -54,7 +57,7 @@ Acceptance requires all of the following on one exact PR head:
 - edited JSON to HWPX and HWP export tests;
 - committed synthetic `briefing-minutes` and `unsupported-shape` fixtures that project known paragraphs/tables and fail closed on unsupported structures;
 - real documents reopened after export and compared against expected semantic content;
-- hostile/malformed input and resource-limit tests;
+- hostile/malformed input and resource-limit tests, including over-limit host section/paragraph metadata that fails before child traversal or host mutation;
 - package-consumer verification for ESM, CommonJS, and declarations;
 - production statement and branch coverage at repository policy thresholds;
 - public API docstring coverage at repository policy thresholds;
