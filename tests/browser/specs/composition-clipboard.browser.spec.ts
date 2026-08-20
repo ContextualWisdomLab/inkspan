@@ -92,9 +92,28 @@ for (const inputCase of structuredCommittedInputCases) {
       (window.inkspanInputHarness as InputHarness).setHtml(sourceHtml);
     }, inputCase.sourceHtml);
 
+    const editable = page.locator('.ProseMirror');
     const target = page.locator(`.ProseMirror ${inputCase.selector}`).first();
-    await target.click();
-    await page.keyboard.press('End');
+    await editable.focus();
+    await target.evaluate((element) => {
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      let textNode: Node | null = null;
+      for (let candidate = walker.nextNode(); candidate; candidate = walker.nextNode()) {
+        textNode = candidate;
+      }
+      if (!textNode) {
+        throw new Error('Structured input target has no text node.');
+      }
+      const selection = window.getSelection();
+      if (!selection) {
+        throw new Error('Selection API is unavailable.');
+      }
+      const range = document.createRange();
+      range.setStart(textNode, textNode.textContent?.length ?? 0);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    });
     await page.keyboard.insertText(inputCase.insertedText);
 
     await expect(target).toHaveText(inputCase.expectedText);
