@@ -11,6 +11,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ### Accessibility
 - Prepared the active-PR dark active-toolbar accent change from protected-main `#4493f8` to `#58a6ff`, increasing `--cwl-accent` text on `--cwl-accent-soft: #163356` from about 4.13:1 to about 5.06:1 so the candidate default 13px active-button text meets the WCAG 2.2 4.5:1 normal-text threshold; this remains active-PR evidence until protected integration. `getEditorThemeTokenContrast()` checks catalog values, and host overrides must be re-checked with `contrastRatioFromHex(actualForegroundHex, actualBackgroundHex)` using the actual resolved colors.
+- Restored a visible `:focus-visible` indicator on the editable textbox, mapped it to `CanvasText` in forced-colors mode, and suppresses that interactive focus chrome under `@media print`; dependency-locked Chromium, Firefox, and WebKit acceptance exercises the packed stylesheet on the real `role="textbox"` surface.
 
 ## [0.6.0] — 2026-08-10
 
@@ -112,7 +113,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Corrected the autosave onboarding so initial and replacement validators are checked before use and come from the durable host's server-issued strong `ETag` rather than local revision evidence; missing, weak, or malformed validators fail closed in the example
 - Documented that host-owned save callbacks must apply their own timeout or abort signal because an unresolved callback intentionally retains the active single-flight operation; retry policy remains host-owned
 - Added a deterministic repository contract test and APA 7th-style doctoring for README, npm-search, Node.js package-export discoverability, RFC 9110 validator ownership, and quoted opaque-tag syntax
-- Added operator, doctoring, and release evidence for the durable autosave session, coherent recovery-time flush snapshots, host ownership boundaries, exact-head verification, and acquisition-review scope
+- Added operator, doctoring, and release evidence for the durable autosave session, coherent recovery-time flush snapshots, exact-head verification, and acquisition-review scope
 
 ## [0.5.28] — 2026-08-05
 
