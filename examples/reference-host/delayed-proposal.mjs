@@ -15,21 +15,55 @@ function requireBoundedString(value, maximumCodeUnits, label) {
   return value;
 }
 
+function readPlainDataRecord(source, keys, message) {
+  try {
+    if (
+      typeof source !== 'object' ||
+      source === null ||
+      Object.getPrototypeOf(source) !== Object.prototype
+    ) {
+      throw new TypeError(message);
+    }
+
+    const values = Object.create(null);
+    for (const key of keys) {
+      const descriptor = Object.getOwnPropertyDescriptor(source, key);
+      if (
+        descriptor === undefined ||
+        !Object.prototype.hasOwnProperty.call(descriptor, 'value')
+      ) {
+        throw new TypeError(message);
+      }
+      values[key] = descriptor.value;
+    }
+    return values;
+  } catch (error) {
+    if (error instanceof TypeError && error.message === message) throw error;
+    throw new TypeError(message);
+  }
+}
+
 /**
  * Produce one deterministic asynchronous proposal bound to the revision captured by the host.
  *
  * This fixture deliberately contains no provider SDK, credential, prompt log, or remote call.
  * Real hosts replace proposal generation with an approved model boundary while preserving the
- * expectedRevision conflict gate before applying untrusted proposal data.
+ * expectedRevision conflict gate before applying untrusted proposal data. Candidate fields are
+ * snapshotted from own data properties without invoking caller-owned accessors.
  */
-export async function createDelayedProposal({ expectedRevision, replacement }) {
+export async function createDelayedProposal(source) {
+  const input = readPlainDataRecord(
+    source,
+    ['expectedRevision', 'replacement'],
+    'proposal creation is invalid.',
+  );
   const boundedRevision = requireBoundedString(
-    expectedRevision,
+    input.expectedRevision,
     MAX_REVISION_CODE_UNITS,
     'expectedRevision',
   );
   const boundedReplacement = requireBoundedString(
-    replacement,
+    input.replacement,
     MAX_PROPOSAL_CODE_UNITS,
     'replacement',
   );
@@ -43,17 +77,25 @@ export async function createDelayedProposal({ expectedRevision, replacement }) {
 
 /**
  * Apply one untrusted proposal only when the host's current revision still matches its capture.
+ * Top-level application metadata and model proposal fields must be own data properties so
+ * validation never executes accessor-backed untrusted proposal data.
  */
-export function applyDelayedProposal({ proposal, currentRevision, apply }) {
-  if (
-    typeof proposal !== 'object' ||
-    proposal === null ||
-    typeof apply !== 'function'
-  ) {
+export function applyDelayedProposal(source) {
+  const application = readPlainDataRecord(
+    source,
+    ['proposal', 'currentRevision', 'apply'],
+    'proposal application is invalid.',
+  );
+  if (typeof application.apply !== 'function') {
     throw new TypeError('proposal application is invalid.');
   }
+  const proposal = readPlainDataRecord(
+    application.proposal,
+    ['expectedRevision', 'replacement'],
+    'proposal application is invalid.',
+  );
   const boundedCurrentRevision = requireBoundedString(
-    currentRevision,
+    application.currentRevision,
     MAX_REVISION_CODE_UNITS,
     'currentRevision',
   );
@@ -72,7 +114,7 @@ export function applyDelayedProposal({ proposal, currentRevision, apply }) {
     return Object.freeze({ status: 'conflict' });
   }
 
-  apply(replacement);
+  application.apply(replacement);
   return Object.freeze({ status: 'applied' });
 }
 
@@ -119,6 +161,80 @@ async function runSelfTest() {
   );
 }
 
-if (process.argv.includes('--self-test')) {
+async function runHostileAccessorSelfTest() {
+  let creationGetterCalls = 0;
+  let creationError = null;
+  const hostileCreation = { replacement: 'Hostile proposal' };
+  Object.defineProperty(hostileCreation, 'expectedRevision', {
+    enumerable: true,
+    get() {
+      creationGetterCalls += 1;
+      return 'revision-v1';
+    },
+  });
+  try {
+    await createDelayedProposal(hostileCreation);
+  } catch (error) {
+    creationError = error instanceof Error ? error.message : 'unexpected error';
+  }
+
+  const validProposal = await createDelayedProposal({
+    expectedRevision: 'revision-v1',
+    replacement: 'Valid proposal',
+  });
+  let applicationGetterCalls = 0;
+  let applicationError = null;
+  const hostileApplication = {
+    proposal: validProposal,
+    currentRevision: 'revision-v1',
+  };
+  Object.defineProperty(hostileApplication, 'apply', {
+    enumerable: true,
+    get() {
+      applicationGetterCalls += 1;
+      return () => undefined;
+    },
+  });
+  try {
+    applyDelayedProposal(hostileApplication);
+  } catch (error) {
+    applicationError = error instanceof Error ? error.message : 'unexpected error';
+  }
+
+  let proposalGetterCalls = 0;
+  let proposalError = null;
+  const hostileProposal = { replacement: 'Hostile proposal' };
+  Object.defineProperty(hostileProposal, 'expectedRevision', {
+    enumerable: true,
+    get() {
+      proposalGetterCalls += 1;
+      return 'revision-v1';
+    },
+  });
+  try {
+    applyDelayedProposal({
+      proposal: hostileProposal,
+      currentRevision: 'revision-v1',
+      apply() {},
+    });
+  } catch (error) {
+    proposalError = error instanceof Error ? error.message : 'unexpected error';
+  }
+
+  process.stdout.write(
+    `${JSON.stringify({
+      applicationError,
+      applicationGetterCalls,
+      creationError,
+      creationGetterCalls,
+      proposalError,
+      proposalGetterCalls,
+    })}\n`,
+  );
+}
+
+if (process.argv.includes('--hostile-accessor-self-test')) {
+  await runHostileAccessorSelfTest();
+} else if (process.argv.includes('--self-test')) {
   await runSelfTest();
 }
