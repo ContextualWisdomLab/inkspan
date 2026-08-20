@@ -48,6 +48,22 @@ describe('reference-host synthetic durable repository contract', () => {
     });
   });
 
+  it('accepts an empty document body while keeping document identifiers non-empty', () => {
+    if (!existsSync(fixturePath)) return;
+    const output = execFileSync(
+      process.execPath,
+      [fixturePath, '--empty-document-self-test'],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      clearedDocument: '',
+      clearedValidator: '"v2"',
+      emptyDocumentIdError: 'invalid_document_id',
+      initialEmptyDocument: '',
+    });
+  });
+
   it('fails closed without invoking caller-owned option, save, or fork-request accessors', () => {
     if (!existsSync(fixturePath)) return;
     const output = execFileSync(
