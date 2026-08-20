@@ -78,9 +78,9 @@ describe('deterministic synthetic performance corpus', () => {
       for (const dimensions of ['1x1', '16x16', '64x64']) {
         expect(smallBody).toContain(`![synthetic raster ${dimensions} 0001](`);
       }
-      expect(new Set(smallBody.match(/data:image\/png;base64,[A-Za-z0-9+/=]+/g))).toHaveLength(
-        3,
-      );
+      expect(
+        new Set(smallBody.match(/data:image\/png;base64,[A-Za-z0-9+/=]+/g)).size,
+      ).toBe(3);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
