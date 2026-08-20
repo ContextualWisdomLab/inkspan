@@ -15,9 +15,9 @@ function readScalar(
   lines: readonly string[] = workspacePolicyLines,
 ): string | undefined {
   const prefix = `${name}:`;
-  const line = lines.find((candidate) => candidate.startsWith(prefix));
-  if (line === undefined) return undefined;
-  return line.slice(prefix.length).split('#', 1)[0]?.trim();
+  const matches = lines.filter((candidate) => candidate.startsWith(prefix));
+  if (matches.length !== 1) return undefined;
+  return matches[0]?.slice(prefix.length).split('#', 1)[0]?.trim();
 }
 
 describe('pnpm supply-chain policy', () => {
