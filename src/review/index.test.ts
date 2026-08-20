@@ -79,6 +79,16 @@ describe('provider-neutral review target contract', () => {
       [Symbol('hidden authority')]: true,
     });
 
+    const sameWidthUnknownKey = validTarget();
+    delete sameWidthUnknownKey.contractVersion;
+    sameWidthUnknownKey.unexpected = 1;
+    expectInvalid(sameWidthUnknownKey);
+
+    const sameWidthSymbolKey = validTarget();
+    delete sameWidthSymbolKey.contractVersion;
+    sameWidthSymbolKey[Symbol('hidden authority')] = 1;
+    expectInvalid(sameWidthSymbolKey);
+
     const accessorTarget = validTarget();
     let getterCalls = 0;
     Object.defineProperty(accessorTarget, 'revision', {
