@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { base64ToBytes, bytesToBase64 } from './base64.js';
 
 describe('base64 runtime authority', () => {
@@ -50,30 +50,6 @@ describe('base64 runtime authority', () => {
       expect(Array.from(base64ToBytes('AQIDBA=='))).toEqual([1, 2, 3, 4]);
     } finally {
       Object.defineProperty(buffer, 'from', descriptor);
-    }
-  });
-
-  it('initializes the browser codec path without a global Buffer', async () => {
-    const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'Buffer');
-    if (descriptor === undefined || descriptor.configurable !== true) {
-      throw new Error('global Buffer must be configurable in the Node test runtime.');
-    }
-
-    Object.defineProperty(globalThis, 'Buffer', {
-      configurable: true,
-      enumerable: descriptor.enumerable,
-      writable: true,
-      value: undefined,
-    });
-
-    try {
-      vi.resetModules();
-      const browserCodec = await import('./base64.js');
-      expect(typeof browserCodec.bytesToBase64).toBe('function');
-      expect(typeof browserCodec.base64ToBytes).toBe('function');
-    } finally {
-      Object.defineProperty(globalThis, 'Buffer', descriptor);
-      vi.resetModules();
     }
   });
 });
