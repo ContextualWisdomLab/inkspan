@@ -77,7 +77,12 @@ function readInstalledDependencyVersion(packageName) {
 
 /** Assert that a resolved path cannot escape the independent consumer tree. */
 function assertPathInsideConsumer(resolvedPath, description) {
-  const relativePath = relative(verificationDirectory, resolvedPath);
+  const canonicalConsumerDirectory = realpathSync(verificationDirectory);
+  const canonicalResolvedPath = realpathSync(resolvedPath);
+  const relativePath = relative(
+    canonicalConsumerDirectory,
+    canonicalResolvedPath,
+  );
   assert.equal(
     isAbsolute(relativePath),
     false,
@@ -254,13 +259,16 @@ function verifyRevisionEvidenceEsmRuntime(packageDirectory) {
   writeFileSync(
     esmPath,
     `import assert from 'node:assert/strict';
+import { realpathSync } from 'node:fs';
 import { isAbsolute, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as editor from '${packageJson.name}';
 
-const consumerDirectory = ${JSON.stringify(verificationDirectory)};
+const consumerDirectory = realpathSync(${JSON.stringify(verificationDirectory)});
+const packedPackageDirectory = realpathSync(${JSON.stringify(packageDirectory)});
 function assertInsideConsumer(resolvedPath, description) {
-  const resolvedRelative = relative(consumerDirectory, resolvedPath);
+  const canonicalResolvedPath = realpathSync(resolvedPath);
+  const resolvedRelative = relative(consumerDirectory, canonicalResolvedPath);
   assert.equal(isAbsolute(resolvedRelative), false, description);
   assert.equal(
     resolvedRelative === '..' || resolvedRelative.startsWith('..' + sep),
@@ -268,9 +276,9 @@ function assertInsideConsumer(resolvedPath, description) {
     description,
   );
 }
-const resolvedEntry = fileURLToPath(import.meta.resolve('${packageJson.name}'));
+const resolvedEntry = realpathSync(fileURLToPath(import.meta.resolve('${packageJson.name}')));
 assertInsideConsumer(resolvedEntry, 'packed ESM entry escaped consumer tree');
-const packageRelative = relative(${JSON.stringify(packageDirectory)}, resolvedEntry);
+const packageRelative = relative(packedPackageDirectory, resolvedEntry);
 assert.equal(isAbsolute(packageRelative), false);
 assert.equal(
   packageRelative === '..' || packageRelative.startsWith('..' + sep),
@@ -324,12 +332,14 @@ function verifyRevisionEvidenceCommonJsRuntime(packageDirectory) {
   writeFileSync(
     commonJsPath,
     `const assert = require('node:assert/strict');
+const { realpathSync } = require('node:fs');
 const { isAbsolute, relative, sep } = require('node:path');
 const editor = require('${packageJson.name}');
 
 void (async () => {
-  const resolvedEntry = require.resolve('${packageJson.name}');
-  const resolvedRelative = relative(${JSON.stringify(packageDirectory)}, resolvedEntry);
+  const packedPackageDirectory = realpathSync(${JSON.stringify(packageDirectory)});
+  const resolvedEntry = realpathSync(require.resolve('${packageJson.name}'));
+  const resolvedRelative = relative(packedPackageDirectory, resolvedEntry);
   assert.equal(isAbsolute(resolvedRelative), false);
   assert.equal(
     resolvedRelative === '..' || resolvedRelative.startsWith('..' + sep),
