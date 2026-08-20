@@ -70,6 +70,7 @@ runtime.
 | Envelope identity | `@contextualwisdomlab/cwl-editor/envelope-identity` | Framework-independent bounded schema identity for host-owned migration routing |
 | Revision evidence | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent canonical envelope, strong revision, and transition evidence |
 | Text-position selector | `@contextualwisdomlab/cwl-editor/text-position-selector` | React-free deterministic W3C `TextPositionSelector` projection core |
+| Review target core | `@contextualwisdomlab/cwl-editor/review` | `implemented_on_active_pr` — React-free deterministic exact-revision review targets; durable review records and policy remain host-owned |
 | Autosave | `@contextualwisdomlab/cwl-editor/autosave` | Provider-neutral bounded single-flight persistence coordination |
 | Headless Markdown | `@contextualwisdomlab/cwl-editor/markdown` | React-free deterministic Markdown/HTML/email/plain-text conversion |
 | Styles | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
