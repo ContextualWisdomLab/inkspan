@@ -1,3 +1,5 @@
+import { Doc } from 'yjs';
+
 const MAX_CONTEXT_CODE_UNITS = 256;
 const TEARDOWN_FAILURE = 'collaboration lifecycle teardown failed.';
 
@@ -216,18 +218,29 @@ export function createHostCollaborationLifecycle(source) {
 function runSelfTest() {
   const events = [];
   let providerCounter = 0;
+  let firstProviderDocument = null;
+  let sameDocumentAcrossReconnect = true;
   const lifecycle = createHostCollaborationLifecycle({
     documentFactory() {
       events.push('document:create');
-      return {
-        destroy() {
-          events.push('document:destroy');
-        },
-      };
+      const document = new Doc();
+      document.getText('document').insert(0, 'Buyer draft');
+      document.on('destroy', () => {
+        events.push('document:destroy');
+      });
+      return document;
     },
-    providerFactory() {
+    providerFactory({ document }) {
       providerCounter += 1;
       const generation = providerCounter;
+      if (!(document instanceof Doc)) {
+        throw new TypeError('reference host must supply a Y.Doc.');
+      }
+      if (firstProviderDocument === null) {
+        firstProviderDocument = document;
+      } else if (document !== firstProviderDocument) {
+        sameDocumentAcrossReconnect = false;
+      }
       events.push(`provider:create:${generation}`);
       return {
         connect() {
@@ -247,11 +260,19 @@ function runSelfTest() {
 
   lifecycle.connect();
   lifecycle.reconnect();
+  const hostDocumentIsYjs = lifecycle.document instanceof Doc;
+  const yjsText = lifecycle.document.getText('document').toString();
   lifecycle.dispose();
   lifecycle.dispose();
 
   process.stdout.write(
-    `${JSON.stringify({ events, ...lifecycle.getSnapshot() })}\n`,
+    `${JSON.stringify({
+      events,
+      hostDocumentIsYjs,
+      ...lifecycle.getSnapshot(),
+      sameDocumentAcrossReconnect,
+      yjsText,
+    })}\n`,
   );
 }
 
