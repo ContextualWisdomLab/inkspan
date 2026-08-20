@@ -1,6 +1,6 @@
 # Inkspan product-technical gap baseline
 
-Status: Dated operational baseline — 2026-08-20
+Status: Dated operational baseline — 2026-08-20; live snapshot refetched at `2026-08-20T10:48:01Z`
 
 This record turns the current protected-main product boundary, live pull-request
 queue, release evidence, and buyer-visible gaps into an executable maintenance
@@ -14,11 +14,11 @@ implementation authority; an active PR is not a shipped capability.
 | --- | --- | --- |
 | Protected source | `main@3b38ead2d00f44eb578d0689087b9293b3dabe1e` | The only source head used for shipped-product claims. |
 | Repository state | `ContextualWisdomLab/inkspan`, default branch `main` | This is the correct repository for Inkspan-owned editor, conversion, evidence, accessibility, package, and provider-neutral adapter work. |
-| Open PR queue | 57 open PRs from the REST pull-request endpoint; 1 Ready and 56 Draft at this snapshot | The queue is active work, not protected implementation. |
+| Open PR queue | 58 open PRs from the REST pull-request endpoint; 2 Ready and 56 Draft at the refetch above | The queue is active work, not protected implementation. |
 | Current source versions | npm `0.6.0`; Office manifest `0.6.0` | Version alignment exists in source, but it does not prove registry publication. |
 | Public release evidence | Latest GitHub release is `v0.3.1`; no `v0.6.0` release is present | Stable `0.6.0` publication remains an operational gap. |
 | Protected governance | Active `CWL Central required workflows` ruleset; one approval, last-push approval, resolved review threads, and required workflows | No self-approval or governance bypass is valid. Code-owner review is disabled by policy. |
-| Main checks | Latest protected-main CI run `31996429786` is terminal success | This does not transfer to active PR heads or prove release publication. |
+| Main checks | Latest protected-main CI run `31996429786` is terminal success: `build-and-test`, Office Python 3.11, and Chromium/Firefox/WebKit evidence all completed successfully | This does not transfer to active PR heads or prove release publication. |
 
 The queue count and status must be refreshed with:
 
@@ -26,6 +26,24 @@ The queue count and status must be refreshed with:
 gh api --paginate \
   'repos/ContextualWisdomLab/inkspan/pulls?state=open&per_page=100' \
   --jq '.[] | [.number,.title,.draft,.head.ref,.base.ref,.updated_at] | @tsv'
+```
+
+The mutable values in the table were refetched with these bounded queries
+(`main` and the ruleset query use immutable identifiers in the result):
+
+```bash
+gh api repos/ContextualWisdomLab/inkspan/branches/main --jq '.commit.sha'
+gh api repos/ContextualWisdomLab/inkspan/rulesets/18156473 \
+  --jq '{id,name,enforcement,target}'
+gh api 'repos/ContextualWisdomLab/inkspan/commits/3b38ead2d00f44eb578d0689087b9293b3dabe1e/check-runs?per_page=100' \
+  --jq '.check_runs[] | select(.name == "build-and-test" or .name == "Office / Python 3.11" or .name == "Cross-engine Clipboard / Playwright 1.62.0") | [.name,.status,.conclusion,.completed_at] | @tsv'
+gh release list --repo ContextualWisdomLab/inkspan --limit 1
+jq -r '.version' package.json
+rg -n '^version\\s*=' office/pyproject.toml
+for pr_number in 285 299 362 372; do
+  gh api "repos/ContextualWisdomLab/inkspan/pulls/$pr_number" \
+    --jq '[.number,.draft,.head.sha,.base.sha,.head.ref,.base.ref,.updated_at] | @tsv'
+done
 ```
 
 ## Product and ownership boundary
@@ -62,7 +80,7 @@ surface:
 | Lane | Current authority | Buyer impact | Gate / next action |
 | --- | --- | --- | --- |
 | [PR #362](https://github.com/ContextualWisdomLab/inkspan/pull/362) — editor contrast and keyboard focus | Ready active PR; exact head `11d5cfecdcc0949ec98e6ca110d482124bff00c4` | Shipped dark active-toolbar text is below the WCAG normal-text target, and the editable surface lacks a replacement focus indicator. | Inkspan CI, Security, SAST, package, Office, and browser checks are terminal-success on the exact head. Strix failed at `Run Strix (quick)`, OpenCode same-head review and qualifying approval are absent. Keep the release lane blocked; do not duplicate requests or self-approve. |
-| [Issue #118](https://github.com/ContextualWisdomLab/inkspan/issues/118) — stable release acceptance | Open release issue | Buyers cannot install a verified protected `0.6.0` artifact through the promised release path. | Integrate #362 and the release-workflow writer lane, then refetch exact protected evidence, create the supported release identity, and verify public npm/PyPI digests. |
+| [Issue #118](https://github.com/ContextualWisdomLab/inkspan/issues/118) — stable release acceptance | Open release issue | Buyers cannot install a verified protected `0.6.0` artifact through the promised release path. | Integrate #362 and its named release-workflow writer [PR #285](https://github.com/ContextualWisdomLab/inkspan/pull/285), then refetch exact protected evidence, create the supported release identity, and verify public npm/PyPI digests. |
 | [PR #285](https://github.com/ContextualWisdomLab/inkspan/pull/285) — hostile-input/browser assurance | Draft, stacked on `feat/writing-diagnostics-package`; branch is currently dirty relative to its base | Release browser evidence has a known 30-minute admission ceiling and the active branch proposes a five-file SBOM inventory. | Do not duplicate `.github/workflows/release.yml` ownership. Advance its stack only after the exact-head CI lane is executable; treat its five-file inventory as Proposed until protected. |
 | [PR #299](https://github.com/ContextualWisdomLab/inkspan/pull/299) — exact-head gates for stacked PRs | Draft, targets protected `main` | Stacked work can otherwise receive checks that do not prove the contributor head. | Resolve its own current-head workflow evidence and review gates; do not transfer predecessor checks. |
 | [PR #323](https://github.com/ContextualWisdomLab/inkspan/pull/323), [#320](https://github.com/ContextualWisdomLab/inkspan/pull/320), [#318](https://github.com/ContextualWisdomLab/inkspan/pull/318) — Office imports | Draft feature lanes | Word, HWP/HWPX, and spreadsheet import broaden buyer workflows but are not shipped. | Review each against bounded deterministic conversion, realistic Office fixtures, privacy-safe diagnostics, and exact-head package evidence before making any lane Ready. |
