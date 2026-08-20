@@ -127,10 +127,12 @@ const BLOB_ARRAY_BUFFER_METHOD = Object.getOwnPropertyDescriptor(
   'arrayBuffer',
 )?.value as unknown;
 const NODE_BUFFER = globalThis.Buffer;
+/* v8 ignore start -- browser-only module initialization without Node Buffer. */
 const NODE_BUFFER_FROM =
   typeof NODE_BUFFER === 'undefined'
     ? undefined
     : NODE_BUFFER.from.bind(NODE_BUFFER);
+/* v8 ignore stop */
 const hasBuffer = typeof NODE_BUFFER_FROM === 'function';
 
 interface Uint8ArraySlots {
