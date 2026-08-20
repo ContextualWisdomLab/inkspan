@@ -1,4 +1,5 @@
 const MAX_CONTEXT_CODE_UNITS = 256;
+const TEARDOWN_FAILURE = 'collaboration lifecycle teardown failed.';
 
 /** Marker used by repository contracts to keep this lifecycle example out of runtime authority. */
 export const REFERENCE_ONLY = true;
@@ -88,6 +89,10 @@ function requireProvider(value) {
   });
 }
 
+function teardownFailure() {
+  return new Error(TEARDOWN_FAILURE);
+}
+
 /**
  * Create one provider-neutral collaboration lifecycle owned entirely by the host.
  *
@@ -95,7 +100,8 @@ function requireProvider(value) {
  * context. Inkspan receives the resulting stable document/provider references;
  * it does not create, reconnect, disconnect, or destroy either resource. Option
  * fields and resource methods are captured from data descriptors so lifecycle
- * validation never executes accessor-backed host objects.
+ * validation never executes accessor-backed host objects. Cleanup failures are
+ * payload-redacted and do not prevent remaining teardown attempts.
  */
 export function createHostCollaborationLifecycle(source) {
   const options = readOwnDataRecord(
@@ -143,13 +149,24 @@ export function createHostCollaborationLifecycle(source) {
   }
 
   function teardownProvider() {
-    if (providerResource === null) return;
-    if (connected) {
-      providerResource.disconnect.call(providerResource.value);
-      connected = false;
-    }
-    providerResource.destroy.call(providerResource.value);
+    const resource = providerResource;
+    if (resource === null) return;
     providerResource = null;
+    let failed = false;
+    if (connected) {
+      connected = false;
+      try {
+        resource.disconnect.call(resource.value);
+      } catch {
+        failed = true;
+      }
+    }
+    try {
+      resource.destroy.call(resource.value);
+    } catch {
+      failed = true;
+    }
+    if (failed) throw teardownFailure();
   }
 
   function reconnect() {
@@ -162,9 +179,19 @@ export function createHostCollaborationLifecycle(source) {
 
   function dispose() {
     if (disposed) return false;
-    teardownProvider();
-    documentResource.destroy.call(document);
+    let failed = false;
+    try {
+      teardownProvider();
+    } catch {
+      failed = true;
+    }
+    try {
+      documentResource.destroy.call(document);
+    } catch {
+      failed = true;
+    }
     disposed = true;
+    if (failed) throw teardownFailure();
     return true;
   }
 
@@ -313,7 +340,54 @@ function runHostileAccessorSelfTest() {
   );
 }
 
-if (process.argv.includes('--hostile-accessor-self-test')) {
+function runCleanupFailureSelfTest() {
+  const privateCause = 'private-provider-disconnect-cause';
+  const events = [];
+  const lifecycle = createHostCollaborationLifecycle({
+    documentFactory() {
+      return {
+        destroy() {
+          events.push('document:destroy');
+        },
+      };
+    },
+    providerFactory() {
+      return {
+        connect() {
+          events.push('provider:connect');
+        },
+        disconnect() {
+          events.push('provider:disconnect');
+          throw new Error(privateCause);
+        },
+        destroy() {
+          events.push('provider:destroy');
+        },
+      };
+    },
+    roomId: 'reference-room',
+    actorId: 'reference-actor',
+  });
+  lifecycle.connect();
+  let error = null;
+  try {
+    lifecycle.dispose();
+  } catch (failure) {
+    error = failure instanceof Error ? failure.message : 'unexpected error';
+  }
+  process.stdout.write(
+    `${JSON.stringify({
+      error,
+      events,
+      leakedPrivateCause: typeof error === 'string' && error.includes(privateCause),
+      status: lifecycle.getSnapshot().status,
+    })}\n`,
+  );
+}
+
+if (process.argv.includes('--cleanup-failure-self-test')) {
+  runCleanupFailureSelfTest();
+} else if (process.argv.includes('--hostile-accessor-self-test')) {
   runHostileAccessorSelfTest();
 } else if (process.argv.includes('--self-test')) {
   runSelfTest();
