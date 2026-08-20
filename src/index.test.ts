@@ -47,6 +47,12 @@ describe('package entry point', () => {
     expect(typeof api.markdownToEmailHtml).toBe('function');
     expect(typeof api.markdownToPlainText).toBe('function');
     expect(typeof api.htmlToPlainText).toBe('function');
+    expect(api.DEFAULT_HTML_TO_MARKDOWN_MAX_BYTES).toBe(16_777_216);
+    expect(api.MAXIMUM_HTML_TO_MARKDOWN_MAX_BYTES).toBe(67_108_864);
+    expect(typeof api.HtmlToMarkdownResourceError).toBe('function');
+    expect(api.DEFAULT_MARKDOWN_TO_HTML_MAX_BYTES).toBe(16_777_216);
+    expect(api.MAXIMUM_MARKDOWN_TO_HTML_MAX_BYTES).toBe(67_108_864);
+    expect(typeof api.MarkdownToHtmlResourceError).toBe('function');
   });
 
   it('re-exports the standalone base64 converter', () => {

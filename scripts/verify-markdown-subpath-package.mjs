@@ -110,24 +110,68 @@ Object.defineProperty(globalThis, 'document', {
 });
 const markdown = await import('${packageJson.name}/markdown');
 const {
+  DEFAULT_HTML_TO_MARKDOWN_MAX_BYTES,
+  DEFAULT_MARKDOWN_TO_HTML_MAX_BYTES,
+  MAXIMUM_HTML_TO_MARKDOWN_MAX_BYTES,
+  MAXIMUM_MARKDOWN_TO_HTML_MAX_BYTES,
+  HtmlToMarkdownResourceError,
+  MarkdownToHtmlResourceError,
   htmlToMarkdown,
   markdownToEmailHtml,
   markdownToHtml,
   markdownToPlainText,
   normalizeMarkdown,
 } = markdown;
+assert.equal(DEFAULT_HTML_TO_MARKDOWN_MAX_BYTES, 16_777_216);
+assert.equal(MAXIMUM_HTML_TO_MARKDOWN_MAX_BYTES, 67_108_864);
+assert.equal(DEFAULT_MARKDOWN_TO_HTML_MAX_BYTES, 16_777_216);
+assert.equal(MAXIMUM_MARKDOWN_TO_HTML_MAX_BYTES, 67_108_864);
 const safeHtml = markdownToHtml('[safe](https://example.com)');
 assert.equal(safeHtml.includes('href="https://example.com"'), true);
 assert.doesNotMatch(markdownToHtml('[unsafe](javascript:alert(1))'), /href=/u);
+let markdownBoundedFailure;
+try {
+  markdownToHtml('oversized', { maxMarkdownBytes: 4 });
+} catch (error) {
+  markdownBoundedFailure = error;
+}
+assert.equal(markdownBoundedFailure instanceof MarkdownToHtmlResourceError, true);
+assert.equal(markdownBoundedFailure?.name, 'MarkdownToHtmlResourceError');
+assert.equal(markdownBoundedFailure?.code, 'input_too_large');
+assert.equal(
+  markdownBoundedFailure?.message,
+  'Markdown-to-HTML input exceeds the configured byte limit.',
+);
 assert.equal(htmlToMarkdown('<p>Alpha <strong>Beta</strong></p>'), 'Alpha **Beta**');
+let htmlBoundedFailure;
+try {
+  htmlToMarkdown('<p>oversized</p>', { maxHtmlBytes: 4 });
+} catch (error) {
+  htmlBoundedFailure = error;
+}
+assert.equal(htmlBoundedFailure instanceof HtmlToMarkdownResourceError, true);
+assert.equal(htmlBoundedFailure?.name, 'HtmlToMarkdownResourceError');
+assert.equal(htmlBoundedFailure?.code, 'input_too_large');
+assert.equal(
+  htmlBoundedFailure?.message,
+  'HTML-to-Markdown input exceeds the configured byte limit.',
+);
 assert.equal(markdownToPlainText('**Alpha** [Beta](https://example.com)'), 'Alpha Beta');
 assert.equal(normalizeMarkdown('**Alpha**').includes('**Alpha**'), true);
+assert.throws(
+  () => normalizeMarkdown('oversized', { maxMarkdownBytes: 4 }),
+  (error) => error instanceof MarkdownToHtmlResourceError && error.code === 'input_too_large',
+);
 const email = markdownToEmailHtml('Hello', {
   fullDocument: true,
   languageTag: 'ko-kr',
   textDirection: 'ltr',
 });
 assert.equal(email.includes('<html lang="ko-KR" dir="ltr">'), true);
+assert.throws(
+  () => markdownToEmailHtml('oversized', { maxMarkdownBytes: 4 }),
+  (error) => error instanceof MarkdownToHtmlResourceError && error.code === 'input_too_large',
+);
 delete globalThis.document;
 `,
     'utf8',
@@ -144,7 +188,25 @@ Object.defineProperty(globalThis, 'document', {
 const markdown = require('${packageJson.name}/markdown');
 assert.equal(typeof markdown.markdownToHtml, 'function');
 assert.equal(markdown.htmlToMarkdown('<p>Gamma</p>'), 'Gamma');
+assert.equal(markdown.DEFAULT_HTML_TO_MARKDOWN_MAX_BYTES, 16_777_216);
+assert.equal(markdown.MAXIMUM_HTML_TO_MARKDOWN_MAX_BYTES, 67_108_864);
+assert.equal(typeof markdown.HtmlToMarkdownResourceError, 'function');
+assert.equal(markdown.DEFAULT_MARKDOWN_TO_HTML_MAX_BYTES, 16_777_216);
+assert.equal(markdown.MAXIMUM_MARKDOWN_TO_HTML_MAX_BYTES, 67_108_864);
+assert.equal(typeof markdown.MarkdownToHtmlResourceError, 'function');
+assert.throws(
+  () => markdown.markdownToHtml('oversized', { maxMarkdownBytes: 4 }),
+  (error) => error instanceof markdown.MarkdownToHtmlResourceError && error.code === 'input_too_large',
+);
+assert.throws(
+  () => markdown.normalizeMarkdown('oversized', { maxMarkdownBytes: 4 }),
+  (error) => error instanceof markdown.MarkdownToHtmlResourceError && error.code === 'input_too_large',
+);
 assert.equal(typeof markdown.markdownToEmailHtml, 'function');
+assert.throws(
+  () => markdown.markdownToEmailHtml('oversized', { maxMarkdownBytes: 4 }),
+  (error) => error instanceof markdown.MarkdownToHtmlResourceError && error.code === 'input_too_large',
+);
 assert.equal(markdown.markdownToPlainText('# Title'), 'Title');
 delete globalThis.document;
 `,
@@ -162,6 +224,12 @@ function verifyDeclarationConsumer() {
   writeFileSync(
     sourcePath,
     `import {
+  DEFAULT_HTML_TO_MARKDOWN_MAX_BYTES,
+  DEFAULT_MARKDOWN_TO_HTML_MAX_BYTES,
+  MAXIMUM_HTML_TO_MARKDOWN_MAX_BYTES,
+  MAXIMUM_MARKDOWN_TO_HTML_MAX_BYTES,
+  HtmlToMarkdownResourceError,
+  MarkdownToHtmlResourceError,
   htmlToMarkdown,
   htmlToPlainText,
   markdownToEmailHtml,
@@ -169,20 +237,40 @@ function verifyDeclarationConsumer() {
   markdownToPlainText,
   normalizeMarkdown,
   type HtmlToMarkdownOptions,
+  type HtmlToMarkdownResourceErrorCode,
   type MarkdownToEmailHtmlOptions,
+  type MarkdownToHtmlOptions,
+  type MarkdownToHtmlResourceErrorCode,
+  type NormalizeMarkdownOptions,
   type PlainTextOptions,
 } from '${packageJson.name}/markdown';
-const htmlOptions: HtmlToMarkdownOptions = { includeImageAlt: false };
+const htmlOptions: HtmlToMarkdownOptions = {
+  includeImageAlt: false,
+  maxHtmlBytes: 1024,
+};
+const markdownOptions: MarkdownToHtmlOptions = { maxMarkdownBytes: 1024 };
+const normalizeOptions: NormalizeMarkdownOptions = { maxMarkdownBytes: 1024 };
+const htmlErrorCode: HtmlToMarkdownResourceErrorCode = 'input_too_large';
+const htmlResourceError = new HtmlToMarkdownResourceError(htmlErrorCode);
+const markdownErrorCode: MarkdownToHtmlResourceErrorCode = 'input_too_large';
+const markdownResourceError = new MarkdownToHtmlResourceError(markdownErrorCode);
 const emailOptions: MarkdownToEmailHtmlOptions = {
   fullDocument: true,
   languageTag: 'en-US',
   textDirection: 'ltr',
+  maxMarkdownBytes: 1024,
 };
 const plainOptions: PlainTextOptions = { includeImageAlt: true };
 void [
-  markdownToHtml('x'),
+  DEFAULT_HTML_TO_MARKDOWN_MAX_BYTES,
+  MAXIMUM_HTML_TO_MARKDOWN_MAX_BYTES,
+  DEFAULT_MARKDOWN_TO_HTML_MAX_BYTES,
+  MAXIMUM_MARKDOWN_TO_HTML_MAX_BYTES,
+  htmlResourceError.code,
+  markdownResourceError.code,
+  markdownToHtml('x', markdownOptions),
   htmlToMarkdown('<p>x</p>', htmlOptions),
-  normalizeMarkdown('x'),
+  normalizeMarkdown('x', normalizeOptions),
   markdownToEmailHtml('x', emailOptions),
   markdownToPlainText('x', plainOptions),
   htmlToPlainText('<p>x</p>', plainOptions),

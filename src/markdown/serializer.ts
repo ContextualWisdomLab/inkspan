@@ -14,6 +14,11 @@ import TurndownService from 'turndown';
 import { gfm } from 'turndown-plugin-gfm';
 import { validateInlineImageSource } from '../policy/inlineImagePolicy.js';
 import { isSafeLinkHref } from '../policy/safeLinkPolicy.js';
+import {
+  HtmlToMarkdownResourceError,
+  assertHtmlToMarkdownInputSize,
+  resolveHtmlToMarkdownMaxBytes,
+} from './htmlToMarkdownResourcePolicy.js';
 
 const SERIALIZED_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
@@ -142,7 +147,7 @@ function formatMarkdownTitle(value: string | null): string {
  * inert browser template fragment before Turndown sees it.
  */
 function sanitizeInertHtmlFragment(fragment: DocumentFragment): DocumentFragment {
-  for (const element of Array.from(fragment.querySelectorAll('*'))) {
+  for (const element of fragment.querySelectorAll('*')) {
     const elementName = element.localName;
     if (REMOVED_HTML_ELEMENTS.has(elementName)) {
       element.remove();
@@ -246,12 +251,59 @@ const turndownWithoutImageAlt = createTurndown(false);
 export interface HtmlToMarkdownOptions {
   /** Include image alternative text in converted Markdown. Defaults to true. */
   includeImageAlt?: boolean;
+  /** Maximum UTF-8 bytes accepted before parsing. Defaults to 16 MiB. */
+  maxHtmlBytes?: number;
+}
+
+type ResolvedHtmlToMarkdownOptions = Record<string, unknown> & {
+  includeImageAlt?: boolean;
+  maxHtmlBytes?: unknown;
+};
+
+const HTML_TO_MARKDOWN_OPTION_KEYS = new Set(['includeImageAlt', 'maxHtmlBytes']);
+
+/** Snapshot one runtime option bag without invoking caller accessors or coercions. */
+function resolveHtmlToMarkdownOptions(options: unknown): ResolvedHtmlToMarkdownOptions {
+  try {
+    if (typeof options !== 'object' || options === null || Array.isArray(options)) {
+      throw new HtmlToMarkdownResourceError('invalid_configuration');
+    }
+    const prototype = Object.getPrototypeOf(options);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new HtmlToMarkdownResourceError('invalid_configuration');
+    }
+    const descriptors = Object.getOwnPropertyDescriptors(options);
+    const resolved = Object.create(null) as ResolvedHtmlToMarkdownOptions;
+    for (const key of Reflect.ownKeys(descriptors)) {
+      if (typeof key !== 'string' || !HTML_TO_MARKDOWN_OPTION_KEYS.has(key)) {
+        throw new HtmlToMarkdownResourceError('invalid_configuration');
+      }
+      const descriptor = descriptors[key];
+      if (!descriptor.enumerable || !('value' in descriptor)) {
+        throw new HtmlToMarkdownResourceError('invalid_configuration');
+      }
+      resolved[key] = descriptor.value;
+    }
+    if (
+      resolved.includeImageAlt !== undefined &&
+      typeof resolved.includeImageAlt !== 'boolean'
+    ) {
+      throw new HtmlToMarkdownResourceError('invalid_configuration');
+    }
+    return resolved;
+  } catch {
+    throw new HtmlToMarkdownResourceError('invalid_configuration');
+  }
 }
 
 /**
  * Convert an HTML string to Markdown through an inert, fail-closed boundary.
  *
- * In browsers, the raw string is parsed only inside a detached `<template>` and
+ * The runtime option bag is snapshotted before source sizing or parser work so
+ * accessors, unknown keys, exotic prototypes, and malformed values cannot run
+ * caller code or silently alter policy. The input byte ceiling is then enforced
+ * before any browser DOM or browserless Turndown parser materialization. In
+ * browsers, accepted raw input is parsed only inside a detached `<template>` and
  * sanitized before the resulting `DocumentFragment` reaches Turndown. In
  * browserless Node runtimes, Turndown 7 uses its non-fetching Domino parser.
  * Both paths emit Markdown links only for Inkspan-safe targets and Markdown
@@ -261,8 +313,11 @@ export function htmlToMarkdown(
   html: string,
   options: HtmlToMarkdownOptions = {},
 ): string {
+  const resolvedOptions = resolveHtmlToMarkdownOptions(options);
+  const maxHtmlBytes = resolveHtmlToMarkdownMaxBytes(resolvedOptions.maxHtmlBytes);
+  assertHtmlToMarkdownInputSize(html, maxHtmlBytes);
   const fragment = createInertBrowserFragment(html);
-  const turndown = options.includeImageAlt === false
+  const turndown = resolvedOptions.includeImageAlt === false
     ? turndownWithoutImageAlt
     : turndownWithImageAlt;
   /* v8 ignore next 3 -- packed Node consumer verification exercises this DOM-free fallback. */
@@ -347,11 +402,11 @@ export function markdownToEmailHtml(
   markdown: string,
   options: MarkdownToEmailHtmlOptions = {},
 ): string {
-  const body = markdownToHtml(markdown).trim();
-  if (!options.fullDocument) return body;
+  if (!options.fullDocument) return markdownToHtml(markdown).trim();
   const title = escapeHtml(options.title ?? 'Message');
   const languageTag = canonicalizeEmailLanguageTag(options.languageTag);
   const textDirection = validateEmailTextDirection(options.textDirection);
+  const body = markdownToHtml(markdown).trim();
   const languageAttribute = languageTag
     ? ` lang="${escapeHtml(languageTag)}"`
     : '';
