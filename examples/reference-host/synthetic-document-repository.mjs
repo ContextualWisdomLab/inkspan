@@ -25,6 +25,44 @@ function requireBoundedString(value, maximumCodeUnits, code) {
   return value;
 }
 
+function readPlainDataRecord(source, requiredKeys, optionalKeys, code) {
+  try {
+    if (
+      typeof source !== 'object' ||
+      source === null ||
+      Object.getPrototypeOf(source) !== Object.prototype
+    ) {
+      throw new ReferencePersistenceError(code);
+    }
+
+    const values = Object.create(null);
+    for (const key of requiredKeys) {
+      const descriptor = Object.getOwnPropertyDescriptor(source, key);
+      if (
+        descriptor === undefined ||
+        !Object.prototype.hasOwnProperty.call(descriptor, 'value')
+      ) {
+        throw new ReferencePersistenceError(code);
+      }
+      values[key] = descriptor.value;
+    }
+    for (const key of optionalKeys) {
+      const descriptor = Object.getOwnPropertyDescriptor(source, key);
+      if (descriptor === undefined) continue;
+      if (!Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+        throw new ReferencePersistenceError(code);
+      }
+      values[key] = descriptor.value;
+    }
+    return values;
+  } catch (error) {
+    if (error instanceof ReferencePersistenceError && error.code === code) {
+      throw error;
+    }
+    throw new ReferencePersistenceError(code);
+  }
+}
+
 function validatorForVersion(version) {
   return `"v${version}"`;
 }
@@ -46,24 +84,24 @@ function frozenConflict(currentValidator) {
  *
  * This adapter is synthetic acquisition/support evidence only. Buyers must replace
  * it with an authorized atomic durable store. Ambiguous or failed operations never
- * mutate the document or advance the strong validator.
+ * mutate the document or advance the strong validator. Configuration and save
+ * request fields are snapshotted from own data properties without invoking
+ * caller-owned accessors.
  */
 export function createSyntheticDocumentRepository(options) {
-  if (
-    typeof options !== 'object' ||
-    options === null ||
-    Object.getPrototypeOf(options) !== Object.prototype
-  ) {
-    throw new ReferencePersistenceError('invalid_options');
-  }
-
+  const configuration = readPlainDataRecord(
+    options,
+    ['documentId', 'initialDocument'],
+    [],
+    'invalid_options',
+  );
   const documentId = requireBoundedString(
-    options.documentId,
+    configuration.documentId,
     MAX_DOCUMENT_ID_CODE_UNITS,
     'invalid_document_id',
   );
   let document = requireBoundedString(
-    options.initialDocument,
+    configuration.initialDocument,
     MAX_DOCUMENT_CODE_UNITS,
     'invalid_document',
   );
@@ -82,26 +120,25 @@ export function createSyntheticDocumentRepository(options) {
   }
 
   function save(request) {
-    if (
-      typeof request !== 'object' ||
-      request === null ||
-      Object.getPrototypeOf(request) !== Object.prototype
-    ) {
-      throw new ReferencePersistenceError('invalid_request');
-    }
+    const candidate = readPlainDataRecord(
+      request,
+      ['documentId', 'document', 'ifMatch'],
+      ['outcome'],
+      'invalid_request',
+    );
 
-    assertDocumentId(request.documentId);
+    assertDocumentId(candidate.documentId);
     const nextDocument = requireBoundedString(
-      request.document,
+      candidate.document,
       MAX_DOCUMENT_CODE_UNITS,
       'invalid_document',
     );
     const ifMatch = requireBoundedString(
-      request.ifMatch,
+      candidate.ifMatch,
       256,
       'invalid_if_match',
     );
-    const outcome = request.outcome ?? 'saved';
+    const outcome = candidate.outcome ?? 'saved';
     if (
       outcome !== 'saved' &&
       outcome !== 'ambiguous_failure' &&
@@ -192,6 +229,61 @@ function runSelfTest() {
   );
 }
 
-if (process.argv.includes('--self-test')) {
+function runHostileAccessorSelfTest() {
+  let optionGetterCalls = 0;
+  let optionErrorCode = null;
+  const hostileOptions = { initialDocument: 'Buyer draft v1' };
+  Object.defineProperty(hostileOptions, 'documentId', {
+    enumerable: true,
+    get() {
+      optionGetterCalls += 1;
+      return 'buyer-document';
+    },
+  });
+  try {
+    createSyntheticDocumentRepository(hostileOptions);
+  } catch (error) {
+    optionErrorCode =
+      error instanceof ReferencePersistenceError ? error.code : 'unexpected_error';
+  }
+
+  const repository = createSyntheticDocumentRepository({
+    documentId: 'buyer-document',
+    initialDocument: 'Buyer draft v1',
+  });
+  const initial = repository.read('buyer-document');
+  let requestGetterCalls = 0;
+  let requestErrorCode = null;
+  const hostileRequest = {
+    documentId: 'buyer-document',
+    ifMatch: initial.validator,
+  };
+  Object.defineProperty(hostileRequest, 'document', {
+    enumerable: true,
+    get() {
+      requestGetterCalls += 1;
+      return 'Hostile write';
+    },
+  });
+  try {
+    repository.save(hostileRequest);
+  } catch (error) {
+    requestErrorCode =
+      error instanceof ReferencePersistenceError ? error.code : 'unexpected_error';
+  }
+
+  process.stdout.write(
+    `${JSON.stringify({
+      optionErrorCode,
+      optionGetterCalls,
+      requestErrorCode,
+      requestGetterCalls,
+    })}\n`,
+  );
+}
+
+if (process.argv.includes('--hostile-accessor-self-test')) {
+  runHostileAccessorSelfTest();
+} else if (process.argv.includes('--self-test')) {
   runSelfTest();
 }
