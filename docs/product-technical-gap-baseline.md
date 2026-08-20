@@ -40,7 +40,7 @@ gh api 'repos/ContextualWisdomLab/inkspan/commits/3b38ead2d00f44eb578d0689087b92
   --jq '.check_runs[] | select(.name == "build-and-test" or .name == "Office / Python 3.11" or .name == "Cross-engine Clipboard / Playwright 1.62.0") | [.name,.status,.conclusion,.completed_at] | @tsv'
 gh release list --repo ContextualWisdomLab/inkspan --limit 1
 jq -r '.version' package.json
-rg -n '^version\\s*=' office/pyproject.toml
+rg -n '^version\s*=' office/pyproject.toml
 npm view @contextualwisdomlab/cwl-editor version || true
 gh api repos/ContextualWisdomLab/inkspan/dependabot/alerts \
   --jq '.[] | select(.state == "open") | [.number,.dependency.package.name,.security_advisory.severity,.security_vulnerability.first_patched_version.identifier] | @tsv'
