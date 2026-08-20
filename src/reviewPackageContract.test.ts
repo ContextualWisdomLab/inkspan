@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 interface PackageManifest {
@@ -14,7 +15,7 @@ interface PackageManifest {
 }
 
 const manifest = JSON.parse(
-  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+  readFileSync(resolve(process.cwd(), 'package.json'), 'utf8'),
 ) as PackageManifest;
 
 describe('review package contract', () => {
