@@ -38,6 +38,22 @@ describe('reference-host delayed proposal contract', () => {
     });
   });
 
+  it('permits an empty replacement without weakening non-empty revision identity', () => {
+    if (!existsSync(fixturePath)) return;
+    const output = execFileSync(
+      process.execPath,
+      [fixturePath, '--empty-proposal-self-test'],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      appliedDocument: '',
+      appliedStatus: 'applied',
+      emptyRevisionError: 'expectedRevision is invalid.',
+      proposalReplacement: '',
+    });
+  });
+
   it('rejects accessor-backed untrusted proposal inputs without invoking them', () => {
     if (!existsSync(fixturePath)) return;
     const output = execFileSync(
