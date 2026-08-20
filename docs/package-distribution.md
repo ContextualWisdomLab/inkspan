@@ -17,6 +17,7 @@ integrations.
 | `@contextualwisdomlab/cwl-editor/envelope-identity` | Framework-independent identity-only envelope routing for bounded schema identity inspection; migration remains host-owned |
 | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent revision evidence and document-transition evidence for local content equality/lineage claims |
 | `@contextualwisdomlab/cwl-editor/text-position-selector` | `implemented_on_protected_main` — React-free text-position projection core implementing W3C `TextPositionSelector`; interactive capture, revision binding, authorization, persistence, and re-anchoring remain outside this subpath |
+| `@contextualwisdomlab/cwl-editor/review` | `implemented_on_active_pr` — React-free deterministic review-target validation bound to exact local SHA-256 revision evidence plus Inkspan's W3C text-position projection; durable review records and policy remain host-owned |
 | `@contextualwisdomlab/cwl-editor/markdown` | `implemented_on_active_pr` — headless deterministic Markdown/HTML/email/plain-text conversion with the same safe-link and strict inline-raster policies as the editor, without importing the React/TipTap editor graph |
 | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
 | `@contextualwisdomlab/cwl-editor/fonts.css` | Full offline KR/EN/JP/SC/TC/VI font bundle |
@@ -58,8 +59,8 @@ embedded in the npm tarball.
   dependencies so the consumer's package manager installs and resolves it; it
   is not merely a type-only dependency.
 - The framework-independent autosave, converter, envelope-identity,
-  revision-evidence, text-position-selector, and Markdown entrypoints do not
-  require React UI, a mounted editor, naruon, contextual-orchestrator, a
+  revision-evidence, text-position-selector, review, and Markdown entrypoints do
+  not require React UI, a mounted editor, naruon, contextual-orchestrator, a
   database, provider credentials, or host transport. Their individual
   package-consumer gates additionally prevent framework dependencies from
   leaking into subpaths whose public contracts exclude them.
@@ -81,6 +82,15 @@ embedded in the npm tarball.
   state or bind a selector to a document revision. Hosts remain responsible for
   annotation identifiers/bodies, source-resource identity, authorization,
   tenancy, persistence, audit, and cross-revision re-anchoring.
+- The review subpath composes only validated local SHA-256 revision evidence,
+  Inkspan's canonical text-position selector/projection identity, and a detached
+  immutable v1 target. It rejects malformed, accessor-backed, symbolic, or
+  unknown target fields without retaining caller-owned objects. It cannot prove
+  that an arbitrary caller-supplied offset is inside a document without the
+  referenced document, and it creates no durable comment/thread identifier,
+  actor identity, authorization, tenant boundary, persistence, retention,
+  notification, audit occurrence, collaboration-provider admission, or
+  cross-revision re-anchoring authority. Hosts retain all of those duties.
 - Envelope identity output is routing metadata only. It does not accept an
   unsupported document generation as current semantics and does not move schema
   registry, migration, persistence, rollback, or authorization authority into
@@ -109,9 +119,9 @@ production library build. The verification chain:
 4. rejects internal source, tests, demos, Office files, coverage output, and
    workflow files from the npm tarball;
 5. imports the root, collaboration, converter, autosave, envelope-identity,
-   revision-evidence, text-position-selector, and Markdown surfaces through their
-   dedicated packed-consumer checks, including framework-free isolation where
-   that is part of the public contract;
+   revision-evidence, text-position-selector, review, and Markdown surfaces
+   through their dedicated packed-consumer checks, including framework-free
+   isolation where that is part of the public contract;
 6. exercises supported ESM/CommonJS entrypoints and compiles strict TypeScript
    consumers against the published declaration surfaces;
 7. resolves public CSS and font subpaths; and
@@ -128,6 +138,13 @@ rejects **ambient network and credential authority** such as `fetch`,
 `Deno.env`, and `Bun.env`. Type-only ProseMirror model/state inputs remain part
 of the selector's structural contract and introduce no interactive runtime
 authority.
+
+The active review-package check likewise builds and extracts a real npm tarball,
+executes `@contextualwisdomlab/cwl-editor/review` through ESM and CommonJS,
+compiles a strict TypeScript consumer, exercises valid and malformed target
+metadata, and rejects external runtime imports, dynamic module loaders, and
+ambient network or credential authority. This is active-PR evidence only until
+the review subpath is integrated into protected main.
 
 The Markdown package check likewise builds and extracts a real npm tarball,
 executes its ESM and CommonJS entrypoints outside the source tree, compiles a
