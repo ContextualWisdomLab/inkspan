@@ -18,6 +18,13 @@ function attributesWithAriaLabel(value: unknown): Record<string, string> {
   });
 }
 
+function attributesWithDefaultLabel(value: unknown): Record<string, string> {
+  return buildEditorAccessibilityAttributes({
+    defaultLabel: value as EditorAccessibilityOptions['defaultLabel'],
+    editable: true,
+  });
+}
+
 describe('editor accessibility metadata resource boundary', () => {
   it('rejects non-string runtime metadata through one stable error contract', () => {
     expect(() => attributesWithAriaLabel(42)).toThrowError(
@@ -46,6 +53,29 @@ describe('editor accessibility metadata resource boundary', () => {
     const value = 'x'.repeat(ACCESSIBILITY_METADATA_MAX_CODE_UNITS);
 
     expect(attributesWithAriaLabel(value)['aria-label']).toBe(value);
+  });
+
+  it('rejects non-string required fallback labels through the stable metadata error contract', () => {
+    expect(() => attributesWithDefaultLabel(42)).toThrowError(
+      new RangeError(INVALID_ACCESSIBILITY_METADATA_MESSAGE),
+    );
+  });
+
+  it('rejects oversized required fallback labels without reflecting their payload', () => {
+    const privateMarker = 'private-default-label-marker';
+    const value = `${privateMarker}${'x'.repeat(ACCESSIBILITY_METADATA_MAX_CODE_UNITS)}`;
+    let failure: unknown;
+
+    try {
+      attributesWithDefaultLabel(value);
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(failure).toEqual(
+      new RangeError(INVALID_ACCESSIBILITY_METADATA_MESSAGE),
+    );
+    expect(String(failure)).not.toContain(privateMarker);
   });
 
   it('keeps blank optional metadata omitted after bounded normalization', () => {
