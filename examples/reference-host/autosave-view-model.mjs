@@ -18,7 +18,7 @@ const SNAPSHOT_KEYS = [
 export const REFERENCE_ONLY = true;
 
 function requireNullableString(value, label) {
-  if (value !== null && typeof value !== 'string') {
+  if (value !== null && (typeof value !== 'string' || value.length === 0)) {
     throw new TypeError(`${label} is invalid.`);
   }
   return value;
@@ -216,6 +216,35 @@ function runSelfTest() {
   );
 }
 
+function runInvalidValidatorSelfTest() {
+  function observeError(candidate) {
+    try {
+      createAutosaveViewModel().observe(candidate);
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : 'unexpected error';
+    }
+  }
+
+  const activeError = observeError(
+    snapshot({ state: 'saving', activeStrongEntityTag: '' }),
+  );
+  const pendingError = observeError(
+    snapshot({
+      state: 'saving',
+      activeStrongEntityTag: '"local-active"',
+      pendingStrongEntityTag: '',
+    }),
+  );
+  const lastSavedError = observeError(
+    snapshot({ state: 'idle', lastSavedStrongEntityTag: '' }),
+  );
+
+  process.stdout.write(
+    `${JSON.stringify({ activeError, lastSavedError, pendingError })}\n`,
+  );
+}
+
 function runHostileAccessorSelfTest() {
   let getterCalls = 0;
   let error = null;
@@ -240,7 +269,9 @@ function runHostileAccessorSelfTest() {
   process.stdout.write(`${JSON.stringify({ error, getterCalls })}\n`);
 }
 
-if (process.argv.includes('--hostile-accessor-self-test')) {
+if (process.argv.includes('--invalid-validator-self-test')) {
+  runInvalidValidatorSelfTest();
+} else if (process.argv.includes('--hostile-accessor-self-test')) {
   runHostileAccessorSelfTest();
 } else if (process.argv.includes('--self-test')) {
   runSelfTest();
