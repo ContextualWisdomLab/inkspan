@@ -21,4 +21,5 @@ test('pins the pnpm supply-chain policy instead of relying on mutable defaults',
   assert.equal(readScalar('blockExoticSubdeps'), 'true');
   assert.equal(readScalar('minimumReleaseAge'), '10080');
   assert.equal(readScalar('trustPolicy'), 'no-downgrade');
+  assert.equal(readScalar('trustPolicyIgnoreAfter'), '43200');
 });
