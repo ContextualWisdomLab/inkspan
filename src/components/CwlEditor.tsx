@@ -216,7 +216,17 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     useEditorHandle(ref, editor, modeRef);
 
     useEffect(() => {
-      editor?.setEditable(editable);
+      if (!editor) return;
+      if (!editable && editor.view.composing) {
+        // ProseMirror treats compositionend as an edit event, so it will stop
+        // processing that event after editability has already been revoked.
+        // Drain the active local composition first to avoid stranding its
+        // internal composing state across the read-only transition.
+        const EventConstructor =
+          editor.view.dom.ownerDocument.defaultView!.Event;
+        editor.view.dom.dispatchEvent(new EventConstructor('compositionend'));
+      }
+      editor.setEditable(editable);
     }, [editor, editable]);
 
     useEffect(() => {
