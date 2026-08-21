@@ -22,7 +22,7 @@ describe('reference-host package authority boundary', () => {
 
   it('rejects source-relative and workspace-alias imports in executable reference files', () => {
     const executableFiles = readdirSync(referenceHostDirectory).filter((path) =>
-      path.endsWith('.mjs'),
+      /\.(?:[cm]?[jt]s|[jt]sx)$/u.test(path),
     );
 
     expect(executableFiles).toEqual(
