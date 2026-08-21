@@ -99,42 +99,54 @@ function presentation(viewState) {
  *
  * `observe()` consumes only programmatic queue/session snapshots. Snapshot fields
  * must be own data properties so presentation never invokes caller-owned accessors.
- * A blocked to saving transition is presented as retrying, and its next idle
- * transition is presented as recovered. The projection never returns local or
- * durable validators; hosts localize `messageKey` and keep authenticated recovery
- * controls outside Inkspan.
+ * A blocked to saving transition is presented as retrying, and only a later idle
+ * transition after that observed retry is presented as recovered. A blocked to
+ * idle transition without an intervening save returns to clean instead of
+ * manufacturing recovery evidence. The projection never returns local or durable
+ * validators; hosts localize `messageKey` and keep authenticated recovery controls
+ * outside Inkspan.
  */
 export function createAutosaveViewModel() {
-  let recovering = false;
+  let retryPending = false;
+  let retryInFlight = false;
+
+  function clearRetryEvidence() {
+    retryPending = false;
+    retryInFlight = false;
+  }
 
   function observe(snapshot) {
     const current = readSnapshot(snapshot);
 
     if (current.state === 'blocked') {
-      recovering = true;
+      retryPending = true;
+      retryInFlight = false;
       return presentation(
         current.blockedReason === 'conflict' ? 'conflict' : 'failed',
       );
     }
     if (current.state === 'closing') {
-      recovering = false;
+      clearRetryEvidence();
       return presentation('closing');
     }
     if (current.state === 'closed') {
-      recovering = false;
+      clearRetryEvidence();
       return presentation('closed');
     }
-    if (current.state === 'saving' && recovering) {
+    if (current.state === 'saving' && (retryPending || retryInFlight)) {
+      retryPending = false;
+      retryInFlight = true;
       return presentation('retrying');
     }
     if (current.state === 'saving' && current.pendingStrongEntityTag !== null) {
       return presentation('queued');
     }
     if (current.state === 'saving') return presentation('saving');
-    if (recovering) {
-      recovering = false;
+    if (retryInFlight) {
+      clearRetryEvidence();
       return presentation('recovered');
     }
+    retryPending = false;
     return presentation('clean');
   }
 
