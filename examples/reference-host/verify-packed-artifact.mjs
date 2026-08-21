@@ -73,10 +73,15 @@ try {
     'utf8',
   );
 
-  // Offline mode is intentional: this acceptance step may use only artifacts
-  // already admitted by the clean-checkout dependency install. A missing cache
-  // entry must fail rather than silently introducing a new network dependency.
-  run('pnpm', ['install', '--offline', '--ignore-scripts'], hostDirectory);
+  // A published library consumer resolves the dependency ranges declared in the
+  // packed manifest. Prefer the clean-checkout store, but permit the package
+  // manager to fetch a transitive version that is valid for the packed consumer
+  // even when that version is not present in Inkspan's development lockfile.
+  run(
+    'pnpm',
+    ['install', '--prefer-offline', '--ignore-scripts', '--no-frozen-lockfile'],
+    hostDirectory,
+  );
 
   const consumerPath = join(hostDirectory, 'consumer.mjs');
   writeFileSync(
@@ -158,7 +163,7 @@ process.stdout.write(JSON.stringify({
       packageName,
       packageVersion,
       installedFromTarball: true,
-      offlineInstall: true,
+      consumerInstallCompleted: true,
       serverRenderedNamedField: consumerResult.serverRenderedNamedField === true,
       sourceImportDetected,
     })}\n`,
