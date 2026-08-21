@@ -9,6 +9,7 @@ describe('ReviewPanel repository-rendered fixture', () => {
     'pending-insert',
     'pending-delete',
     'resolved',
+    'permission-disabled',
     'empty',
   ])('renders the %s state', async (state) => {
     render(<ReviewPanelFixture state={state} />);
@@ -37,6 +38,11 @@ describe('ReviewPanel repository-rendered fixture', () => {
     if (state === 'resolved') {
       expect(screen.getByText(/fixture-thread/)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Accept' })).toBeDisabled();
+    }
+    if (state === 'permission-disabled') {
+      expect(screen.getByText(/permission-disabled/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Accept' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Reject' })).toBeDisabled();
     }
   });
 });
