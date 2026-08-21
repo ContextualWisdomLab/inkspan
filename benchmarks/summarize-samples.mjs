@@ -20,6 +20,17 @@ const SHA1_PATTERN = /^[0-9a-f]{40}$/u;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const EVIDENCE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const DOCUMENT_PROFILES = new Set(['small', 'medium', 'large', 'stress']);
+const BENCHMARK_INPUT_KEYS = new Set([
+  'contractVersion',
+  'benchmarkId',
+  'unit',
+  'sourceCommitSha',
+  'artifactSha256',
+  'documentProfile',
+  'runtimeId',
+  'referenceHardwareId',
+  'samples',
+]);
 const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
 
 function resolveArguments(argv) {
@@ -95,6 +106,9 @@ function readBoundedJson(path) {
 function validateInput(value) {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('Benchmark sample input must be an object.');
+  }
+  if (Object.keys(value).some((key) => !BENCHMARK_INPUT_KEYS.has(key))) {
+    throw new Error('Benchmark sample input contains unsupported fields.');
   }
   if (value.contractVersion !== 1) {
     throw new Error('Benchmark sample contractVersion must be 1.');
