@@ -82,6 +82,23 @@ describe('reference-host synthetic durable repository contract', () => {
     });
   });
 
+  it('fails closed on unknown option, save, and fork fields before durable state changes', () => {
+    if (!existsSync(fixturePath)) return;
+    const output = execFileSync(
+      process.execPath,
+      [fixturePath, '--unknown-field-self-test'],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      forkErrorCode: 'invalid_fork_request',
+      optionErrorCode: 'invalid_options',
+      saveErrorCode: 'invalid_request',
+      savedDocument: 'Buyer draft v1',
+      savedValidator: '"v1"',
+    });
+  });
+
   it('keeps the buyer guide code-current for retry, ambiguity reconciliation, restore, and independent fork semantics', () => {
     const guide = readFileSync(guidePath, 'utf8');
 
