@@ -9,6 +9,7 @@ import {
   DEFAULT_CLIPBOARD_HTML_BYTES,
   DEFAULT_CLIPBOARD_MAX_DEPTH,
   DEFAULT_CLIPBOARD_MAX_NODES,
+  isClipboardSanitizationError,
   sanitizeRichClipboardHtml,
   type ClipboardConfig,
 } from './SafeClipboard.js';
@@ -55,10 +56,9 @@ function transformPastedClipboardHtml(
         : options.config;
     return sanitizeRichClipboardHtml(html, config, options.document);
   } catch (error) {
-    const clipboardError =
-      error instanceof ClipboardSanitizationError
-        ? error
-        : new ClipboardSanitizationError('invalid_html');
+    const clipboardError = isClipboardSanitizationError(error)
+      ? error
+      : new ClipboardSanitizationError('invalid_html');
     try {
       options.onError?.(clipboardError);
     } catch {
