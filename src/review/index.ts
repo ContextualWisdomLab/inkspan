@@ -58,6 +58,22 @@ export class CwlReviewSuggestionError extends Error {
   }
 }
 
+/** Stable redacted failure code for malformed review presentation metadata. */
+export type CwlReviewPresentationErrorCode = 'invalid_presentation';
+
+/** Raised when host-supplied thread presentation metadata violates the contract. */
+export class CwlReviewPresentationError extends Error {
+  /** Stable machine-readable failure category. */
+  readonly code: CwlReviewPresentationErrorCode;
+
+  /** Create one payload-redacted presentation validation error. */
+  constructor() {
+    super('Review presentation metadata is invalid.');
+    this.name = 'CwlReviewPresentationError';
+    this.code = 'invalid_presentation';
+  }
+}
+
 /** Stable redacted failure codes for review-operation evidence. */
 export type CwlReviewOperationErrorCode =
   | 'invalid_operation'
@@ -106,6 +122,19 @@ export interface CwlReviewTarget {
   readonly projection: CwlEditorTextProjectionIdentity;
 }
 
+/** Bounded host-supplied metadata used to render one comment-thread target. */
+export interface CwlReviewThreadPresentation {
+  readonly contractVersion: typeof INKSPAN_REVIEW_CONTRACT_VERSION;
+  /** Opaque host-owned key carried for callback correlation, never generated here. */
+  readonly threadKey: string;
+  readonly target: CwlReviewTarget;
+  readonly state: 'unresolved' | 'resolved';
+  readonly commentCount: number;
+  readonly selected: boolean;
+  readonly canReply: boolean;
+  readonly canResolve: boolean;
+}
+
 /** Detached insertion proposal with no host identity or persistence authority. */
 export interface CwlReviewInsertSuggestion {
   readonly contractVersion: typeof INKSPAN_REVIEW_CONTRACT_VERSION;
@@ -142,6 +171,16 @@ const REVIEW_TARGET_KEYS = [
   'selector',
   'projection',
 ] as const;
+const REVIEW_PRESENTATION_KEYS = [
+  'contractVersion',
+  'threadKey',
+  'target',
+  'state',
+  'commentCount',
+  'selected',
+  'canReply',
+  'canResolve',
+] as const;
 const INSERT_SUGGESTION_KEYS = [
   'contractVersion',
   'kind',
@@ -153,7 +192,9 @@ const REVISION_KEYS = ['algorithm', 'digestHex', 'strongEntityTag'] as const;
 const SELECTOR_KEYS = ['type', 'start', 'end'] as const;
 const PROJECTION_KEYS = ['id', 'version'] as const;
 const SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/u;
+const REVIEW_THREAD_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const MAX_REVIEW_INSERT_TEXT_CODE_UNITS = 65_536;
+const MAX_REVIEW_COMMENT_COUNT = 10_000;
 
 /** Throw one fresh redacted public validation error. */
 function rejectReviewTarget(): never {
@@ -163,6 +204,11 @@ function rejectReviewTarget(): never {
 /** Throw one fresh redacted public suggestion validation error. */
 function rejectReviewSuggestion(): never {
   throw new CwlReviewSuggestionError();
+}
+
+/** Throw one fresh redacted public presentation validation error. */
+function rejectReviewPresentation(): never {
+  throw new CwlReviewPresentationError();
 }
 
 /**
@@ -254,7 +300,7 @@ export function createReviewTarget(source: unknown): CwlReviewTarget {
     typeof digestHex !== 'string' ||
     digestHex.length !== 64 ||
     !SHA256_HEX_PATTERN.test(digestHex) ||
-    revision.strongEntityTag !== `\"sha256-${digestHex}\"`
+    revision.strongEntityTag !== `"sha256-${digestHex}"`
   ) {
     rejectReviewTarget();
   }
@@ -285,7 +331,7 @@ export function createReviewTarget(source: unknown): CwlReviewTarget {
   const detachedRevision: CwlEditorDocumentRevision = Object.freeze({
     algorithm: 'SHA-256',
     digestHex,
-    strongEntityTag: `\"sha256-${digestHex}\"`,
+    strongEntityTag: `"sha256-${digestHex}"`,
   });
   const detachedSelector: CwlEditorTextPositionSelector = Object.freeze({
     type: 'TextPositionSelector',
@@ -302,6 +348,57 @@ export function createReviewTarget(source: unknown): CwlReviewTarget {
     selector: detachedSelector,
     projection: detachedProjection,
   });
+}
+
+/**
+ * Validate and detach host-supplied comment-thread presentation metadata.
+ *
+ * The contract deliberately carries no comment body, actor identity,
+ * authorization assertion, timestamp, persistence state, or durable audit data.
+ * `threadKey` is an opaque bounded host-owned correlation key only; Inkspan does
+ * not generate, persist, authenticate, or interpret it. `commentCount`, status,
+ * selection, and capability booleans are presentation inputs for later
+ * controlled UI surfaces and grant no host authority by themselves.
+ *
+ * @param source - Untrusted host presentation metadata.
+ * @returns A detached, deeply frozen bounded presentation snapshot.
+ * @throws {CwlReviewPresentationError} When any field or shape is invalid.
+ */
+export function createReviewThreadPresentation(
+  source: unknown,
+): CwlReviewThreadPresentation {
+  try {
+    const presentation = readExactDataRecord(source, REVIEW_PRESENTATION_KEYS);
+    if (
+      presentation.contractVersion !== INKSPAN_REVIEW_CONTRACT_VERSION ||
+      typeof presentation.threadKey !== 'string' ||
+      !REVIEW_THREAD_KEY_PATTERN.test(presentation.threadKey) ||
+      (presentation.state !== 'unresolved' && presentation.state !== 'resolved') ||
+      typeof presentation.commentCount !== 'number' ||
+      !Number.isSafeInteger(presentation.commentCount) ||
+      presentation.commentCount < 1 ||
+      presentation.commentCount > MAX_REVIEW_COMMENT_COUNT ||
+      typeof presentation.selected !== 'boolean' ||
+      typeof presentation.canReply !== 'boolean' ||
+      typeof presentation.canResolve !== 'boolean'
+    ) {
+      rejectReviewPresentation();
+    }
+
+    const target = createReviewTarget(presentation.target);
+    return Object.freeze({
+      contractVersion: INKSPAN_REVIEW_CONTRACT_VERSION,
+      threadKey: presentation.threadKey,
+      target,
+      state: presentation.state,
+      commentCount: presentation.commentCount,
+      selected: presentation.selected,
+      canReply: presentation.canReply,
+      canResolve: presentation.canResolve,
+    });
+  } catch {
+    rejectReviewPresentation();
+  }
 }
 
 /**
