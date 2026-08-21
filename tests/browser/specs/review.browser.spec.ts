@@ -56,3 +56,34 @@ test('runs exact-revision review, keyboard history, stale protection, and print 
     ),
   ).toBe('none');
 });
+
+test('keeps review usable at narrow width and in forced-colors mode', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 740 });
+  const region = page.getByRole('region', { name: 'Document review' });
+  await expect(region).toBeVisible();
+
+  const regionBox = await region.boundingBox();
+  expect(regionBox).not.toBeNull();
+  expect(regionBox!.width).toBeLessThanOrEqual(360);
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+  ).toBe(true);
+
+  await page.emulateMedia({ forcedColors: 'active' });
+  expect(
+    await page.evaluate(() => matchMedia('(forced-colors: active)').matches),
+  ).toBe(true);
+
+  const target = region.locator('.cwl-review-panel__target').first();
+  await target.focus();
+  await expect(target).toBeFocused();
+  const focusOutline = await target.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      style: style.outlineStyle,
+      width: Number.parseFloat(style.outlineWidth),
+    };
+  });
+  expect(focusOutline.style).not.toBe('none');
+  expect(focusOutline.width).toBeGreaterThan(0);
+});
