@@ -30,6 +30,7 @@ describe('reference-host packed artifact acceptance', () => {
         installedFromTarball?: unknown;
         consumerInstallCompleted?: unknown;
         serverRenderedNamedField?: unknown;
+        publicAssetEntriesContained?: unknown;
         sourceImportDetected?: unknown;
       };
 
@@ -38,6 +39,7 @@ describe('reference-host packed artifact acceptance', () => {
       expect(result.installedFromTarball).toBe(true);
       expect(result.consumerInstallCompleted).toBe(true);
       expect(result.serverRenderedNamedField).toBe(true);
+      expect(result.publicAssetEntriesContained).toBe(true);
       expect(result.sourceImportDetected).toBe(false);
     },
     180_000,
