@@ -53,4 +53,60 @@ describe('packed root consumer release evidence', () => {
     expect(verifierSource).toContain('assertResolvedInsidePackedPackage');
     expect(verifierSource).not.toContain('includes(packagePathFragment)');
   });
+
+  it('executes only the exact canonical module entries that passed containment validation', () => {
+    expect(verifierSource).toContain(
+      "import { fileURLToPath, pathToFileURL } from 'node:url';",
+    );
+    expect(verifierSource).not.toContain(
+      "import * as editor from '${packageName}';",
+    );
+    expect(verifierSource).not.toContain(
+      "import * as autosave from '${packageName}/autosave';",
+    );
+    expect(verifierSource).not.toContain(
+      "import * as collaboration from '${packageName}/collaboration';",
+    );
+    expect(verifierSource).not.toContain(
+      "import * as converter from '${packageName}/converter';",
+    );
+    expect(verifierSource).toContain(
+      "const rootEntrypoint = assertResolvedInsidePackedPackage(\n  import.meta.resolve('${packageName}')",
+    );
+    expect(verifierSource).toContain(
+      'const editor = await import(pathToFileURL(rootEntrypoint).href);',
+    );
+    expect(verifierSource).toContain(
+      'const autosave = await import(pathToFileURL(autosaveEntrypoint).href);',
+    );
+    expect(verifierSource).toContain(
+      'const collaboration = await import(\n  pathToFileURL(collaborationEntrypoint).href\n);',
+    );
+    expect(verifierSource).toContain(
+      'const converter = await import(pathToFileURL(converterEntrypoint).href);',
+    );
+
+    expect(verifierSource).not.toContain(
+      "const editor = require('${packageName}');",
+    );
+    expect(verifierSource).not.toContain(
+      "const autosave = require('${packageName}/autosave');",
+    );
+    expect(verifierSource).not.toContain(
+      "const collaboration = require('${packageName}/collaboration');",
+    );
+    expect(verifierSource).not.toContain(
+      "const converter = require('${packageName}/converter');",
+    );
+    expect(verifierSource).toContain('const editor = require(rootEntrypoint);');
+    expect(verifierSource).toContain(
+      'const autosave = require(autosaveEntrypoint);',
+    );
+    expect(verifierSource).toContain(
+      'const collaboration = require(collaborationEntrypoint);',
+    );
+    expect(verifierSource).toContain(
+      'const converter = require(converterEntrypoint);',
+    );
+  });
 });
