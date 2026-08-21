@@ -23,9 +23,9 @@ const designPath =
   'docs/superpowers/specs/2026-08-12-revision-bound-llm-writing-diagnostics-design.md';
 const planPath =
   'docs/superpowers/plans/2026-08-12-writing-diagnostics-implementation.md';
-const adrPath = 'docs/adr/0027-host-owned-llm-writing-diagnostics.md';
+const adrPath = 'docs/adr/0028-host-owned-llm-writing-diagnostics.md';
 const supersedingAdrPath =
-  'docs/adr/0028-writing-diagnostics-v1-strict-invalidation.md';
+  'docs/adr/0029-writing-diagnostics-v1-strict-invalidation.md';
 
 describe('writing diagnostics documentation contract', () => {
   it('keeps the public design examples synchronized with the implemented v1 types', () => {

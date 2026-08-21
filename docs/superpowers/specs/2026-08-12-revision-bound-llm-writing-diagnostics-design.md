@@ -297,7 +297,7 @@ The feature remains `Unreleased`. It may ship only after the complete stack is r
 - RFC 9110 for strong entity-tag semantics used by Inkspan revision evidence.
 - Inkspan ADR 0011 for deterministic versus model-assisted authoring.
 - Inkspan ADR 0018 for revision-scoped W3C selector authority.
-- Inkspan ADR 0027 and ADR 0028 for host semantic authority, strict invalidation, and semantic-neutral accessibility.
+- Inkspan ADR 0028 and ADR 0029 for host semantic authority, strict invalidation, and semantic-neutral accessibility.
 - The accompanying doctoring record for LLM-judge bias and host calibration implications.
 
 ## Approval boundary
