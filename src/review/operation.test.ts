@@ -211,6 +211,25 @@ describe('provider-neutral review operation evidence', () => {
       code: 'rejected_operation_changed',
     });
 
+    const dynamicOperation = createReviewOperationResult as unknown as (
+      suggestion: unknown,
+      action: unknown,
+      previousSource: unknown,
+      resultingSource: unknown,
+      limits?: unknown,
+      digestProvider?: DocumentEnvelopeDigestProvider | null,
+    ) => Promise<unknown>;
+    await expect(
+      dynamicOperation(
+        suggestion,
+        'approve',
+        previousEnvelope,
+        resultingEnvelope,
+        undefined,
+        provider,
+      ),
+    ).rejects.toMatchObject({ code: 'invalid_operation' });
+
     const failure = new CwlReviewOperationError('invalid_operation');
     expect(failure.message).not.toContain('private before body');
     expect(failure.message).not.toContain('검토 제안');
