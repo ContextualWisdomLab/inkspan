@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -101,7 +102,7 @@ function StatefulDiagnosticsPanel({
 
 afterEach(cleanup);
 
-it('moves focus to the next surviving diagnostic after a stateful dismissal', () => {
+it('moves focus to the next surviving diagnostic after a stateful dismissal', async () => {
   const first = verifiedDiagnostic('diagnostic-one', 'First diagnostic');
   const second = verifiedDiagnostic('diagnostic-two', 'Second diagnostic');
   const focusDiagnostic = vi.fn(() => true);
@@ -116,10 +117,12 @@ it('moves focus to the next surviving diagnostic after a stateful dismissal', ()
   const dismissFirst = screen.getByRole('button', {
     name: 'Dismiss First diagnostic',
   });
-  dismissFirst.focus();
+  act(() => dismissFirst.focus());
   expect(dismissFirst).toHaveFocus();
 
-  fireEvent.click(dismissFirst);
+  await act(async () => {
+    fireEvent.click(dismissFirst);
+  });
 
   const remainingItems = screen.getAllByRole('listitem');
   expect(remainingItems).toHaveLength(1);
@@ -131,7 +134,7 @@ it('moves focus to the next surviving diagnostic after a stateful dismissal', ()
   );
 });
 
-it('moves focus to the guidance region when the final diagnostic is dismissed', () => {
+it('moves focus to the guidance region when the final diagnostic is dismissed', async () => {
   const only = verifiedDiagnostic('diagnostic-only', 'Only diagnostic');
   const focusDiagnostic = vi.fn(() => true);
 
@@ -146,8 +149,10 @@ it('moves focus to the guidance region when the final diagnostic is dismissed', 
   const dismissOnly = screen.getByRole('button', {
     name: 'Dismiss Only diagnostic',
   });
-  dismissOnly.focus();
-  fireEvent.click(dismissOnly);
+  act(() => dismissOnly.focus());
+  await act(async () => {
+    fireEvent.click(dismissOnly);
+  });
 
   expect(region).toHaveFocus();
   expect(screen.queryAllByRole('listitem')).toHaveLength(0);
