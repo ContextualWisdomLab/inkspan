@@ -1,7 +1,11 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { CwlEditor } from '@contextualwisdomlab/cwl-editor';
+import {
+  createSingleFlightSubmission,
+  type ReferenceHostSubmissionState,
+} from './single-flight-submission.js';
 
-type SubmissionState = 'idle' | 'saving' | 'saved' | 'failed';
+type SubmissionState = 'idle' | ReferenceHostSubmissionState;
 
 export interface NativeFormHostProps {
   /**
@@ -18,12 +22,28 @@ export interface NativeFormHostProps {
  * Inkspan owns synchronization of the editor document into the native form
  * control. The host reads FormData at submit time and then applies its own
  * authorization and durable-persistence policy through onAuthorizedSubmit.
+ * Overlapping submissions are rejected while the host callback is in flight,
+ * preventing duplicate durable writes without claiming host persistence.
  */
 export function NativeFormHost({
   onAuthorizedSubmit,
 }: NativeFormHostProps) {
   const [submissionState, setSubmissionState] =
     useState<SubmissionState>('idle');
+  const onAuthorizedSubmitRef = useRef(onAuthorizedSubmit);
+  onAuthorizedSubmitRef.current = onAuthorizedSubmit;
+
+  const submitAuthorizedRef = useRef<
+    ReturnType<typeof createSingleFlightSubmission> | null
+  >(null);
+  let submitAuthorized = submitAuthorizedRef.current;
+  if (submitAuthorized === null) {
+    submitAuthorized = createSingleFlightSubmission(
+      (messageBody) => onAuthorizedSubmitRef.current(messageBody),
+      setSubmissionState,
+    );
+    submitAuthorizedRef.current = submitAuthorized;
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,14 +56,7 @@ export function NativeFormHost({
       return;
     }
 
-    setSubmissionState('saving');
-    try {
-      const messageBody = messageBodyEntry;
-      await onAuthorizedSubmit(messageBody);
-      setSubmissionState('saved');
-    } catch {
-      setSubmissionState('failed');
-    }
+    await submitAuthorized(messageBodyEntry);
   }
 
   return (
@@ -55,7 +68,9 @@ export function NativeFormHost({
         formResetValue="# Draft"
       />
       <div>
-        <button type="submit">Save document</button>
+        <button type="submit" disabled={submissionState === 'saving'}>
+          Save document
+        </button>
         <button type="reset">Reset draft</button>
       </div>
       <output aria-live="polite">
