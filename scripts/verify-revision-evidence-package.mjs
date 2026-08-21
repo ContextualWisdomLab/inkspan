@@ -261,7 +261,7 @@ function verifyRevisionEvidenceEsmRuntime(packageDirectory) {
     `import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { isAbsolute, relative, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const consumerDirectory = realpathSync(${JSON.stringify(verificationDirectory)});
 const packedPackageDirectory = realpathSync(${JSON.stringify(packageDirectory)});
@@ -283,7 +283,7 @@ assert.equal(
   packageRelative === '..' || packageRelative.startsWith('..' + sep),
   false,
 );
-const editor = await import('${packageJson.name}');
+const editor = await import(pathToFileURL(resolvedEntry).href);
 assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidence, 'function');
 assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
 const sourceEnvelope = {
@@ -356,7 +356,7 @@ void (async () => {
     packageRelative === '..' || packageRelative.startsWith('..' + sep),
     false,
   );
-  const editor = require('${packageJson.name}');
+  const editor = require(resolvedEntry);
   assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidence, 'function');
   assert.equal(typeof editor.createDocumentEnvelopeRevisionEvidenceBytes, 'function');
   const sourceEnvelope = {
