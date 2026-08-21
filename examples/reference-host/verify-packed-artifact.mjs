@@ -148,6 +148,20 @@ process.stdout.write(JSON.stringify({
     'Consumer root import did not resolve through the packed host installation.',
   );
 
+  const publicAssetEntries = [
+    ['stylesheet', consumerResult.styleEntry],
+    ['full font stylesheet', consumerResult.fullFontEntry],
+    ['Latin font stylesheet', consumerResult.latinFontEntry],
+  ];
+  for (const [label, entry] of publicAssetEntries) {
+    assert.equal(
+      isContained(installedPackageDirectory, fileURLToPath(entry)),
+      true,
+      `${label} export escaped the installed packed package.`,
+    );
+  }
+  const publicAssetEntriesContained = true;
+
   const sourceImportDetected = !relative(
     realpathSync(installedPackageDirectory),
     realpathSync(resolvedRootPath),
@@ -165,6 +179,7 @@ process.stdout.write(JSON.stringify({
       installedFromTarball: true,
       consumerInstallCompleted: true,
       serverRenderedNamedField: consumerResult.serverRenderedNamedField === true,
+      publicAssetEntriesContained,
       sourceImportDetected,
     })}\n`,
   );
