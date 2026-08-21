@@ -7,6 +7,7 @@ export type ReviewPanelFixtureState =
   | 'pending-insert'
   | 'pending-delete'
   | 'resolved'
+  | 'permission-disabled'
   | 'empty';
 
 const FIXTURE_REVISION = Object.freeze({
@@ -59,6 +60,18 @@ function fixtureReview(state: ReviewPanelFixtureState): CwlEditorReviewProps {
       }],
     };
   }
+  if (state === 'permission-disabled') {
+    return {
+      suggestions: [{
+        suggestionId: 'permission-disabled',
+        kind: 'insert',
+        state: 'pending',
+        expectedRevision: FIXTURE_REVISION,
+        target: FIXTURE_TARGET,
+        text: 'permission text',
+      }],
+    };
+  }
   return {
     suggestions: [{
       suggestionId: 'fixture-insert',
@@ -71,11 +84,12 @@ function fixtureReview(state: ReviewPanelFixtureState): CwlEditorReviewProps {
   };
 }
 
-/** Minimal Storybook-equivalent render fixture with pending/final/empty states. */
+/** Minimal Storybook-equivalent render fixture with pending/final/permission/empty states. */
 export function ReviewPanelFixture({ state }: { readonly state: ReviewPanelFixtureState }) {
   return (
     <ReviewPanel
       review={fixtureReview(state)}
+      editable={state !== 'permission-disabled'}
       onAction={async () => undefined}
       onSelect={() => undefined}
     />
