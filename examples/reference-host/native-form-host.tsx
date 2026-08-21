@@ -22,8 +22,10 @@ export interface NativeFormHostProps {
  * Inkspan owns synchronization of the editor document into the native form
  * control. The host reads FormData at submit time and then applies its own
  * authorization and durable-persistence policy through onAuthorizedSubmit.
- * Overlapping submissions are rejected while the host callback is in flight,
- * preventing duplicate durable writes without claiming host persistence.
+ * Overlapping submissions and form resets are blocked while the host callback
+ * is in flight, preventing stale success presentation or duplicate durable
+ * writes without claiming host persistence. A later successful reset returns
+ * the host presentation to an explicitly unsaved state.
  */
 export function NativeFormHost({
   onAuthorizedSubmit,
@@ -59,8 +61,16 @@ export function NativeFormHost({
     await submitAuthorized(messageBodyEntry);
   }
 
+  function handleReset(event: FormEvent<HTMLFormElement>) {
+    if (submissionState === 'saving') {
+      event.preventDefault();
+      return;
+    }
+    setSubmissionState('idle');
+  }
+
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} onReset={handleReset}>
       <CwlEditor
         mode="markdown"
         defaultValue="# Draft"
@@ -71,7 +81,9 @@ export function NativeFormHost({
         <button type="submit" disabled={submissionState === 'saving'}>
           Save document
         </button>
-        <button type="reset">Reset draft</button>
+        <button type="reset" disabled={submissionState === 'saving'}>
+          Reset draft
+        </button>
       </div>
       <output aria-live="polite">
         {submissionState === 'saving'
