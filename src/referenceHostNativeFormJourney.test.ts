@@ -25,7 +25,16 @@ describe('reference-host native form journey', () => {
 
   it('keeps host authorization and durable persistence explicitly outside the component submit callback', () => {
     expect(nativeFormHostSource).toContain('onAuthorizedSubmit');
-    expect(nativeFormHostSource).toContain('await onAuthorizedSubmit(messageBody)');
+    expect(nativeFormHostSource).toContain('createSingleFlightSubmission');
+    expect(nativeFormHostSource).toContain(
+      'onAuthorizedSubmitRef.current(messageBody)',
+    );
+    expect(nativeFormHostSource).toContain(
+      'await submitAuthorized(messageBodyEntry)',
+    );
+    expect(nativeFormHostSource).toContain(
+      "disabled={submissionState === 'saving'}",
+    );
     expect(nativeFormHostSource).not.toContain('fetch(');
     expect(nativeFormHostSource).not.toContain('localStorage');
   });
