@@ -7,7 +7,15 @@
  * notifications, audit, and cross-revision re-anchoring policy.
  */
 
-import type { CwlEditorDocumentRevision } from '../documentEnvelopeRevision.js';
+import type { DocumentEnvelopeLimits } from '../documentEnvelope.js';
+import type {
+  CwlEditorDocumentRevision,
+  DocumentEnvelopeDigestProvider,
+} from '../documentEnvelopeRevision.js';
+import {
+  createDocumentEnvelopeTransitionEvidence,
+  type CwlEditorDocumentTransitionEvidence,
+} from '../documentTransitionEvidence.js';
 import {
   TEXT_POSITION_PROJECTION_ID,
   TEXT_POSITION_PROJECTION_VERSION,
@@ -50,6 +58,36 @@ export class CwlReviewSuggestionError extends Error {
   }
 }
 
+/** Stable redacted failure codes for review-operation evidence. */
+export type CwlReviewOperationErrorCode =
+  | 'invalid_operation'
+  | 'accepted_operation_unchanged'
+  | 'rejected_operation_changed';
+
+const REVIEW_OPERATION_ERROR_MESSAGES: Record<
+  CwlReviewOperationErrorCode,
+  string
+> = {
+  invalid_operation: 'Review operation is invalid.',
+  accepted_operation_unchanged:
+    'Accepted review operation must change the document revision.',
+  rejected_operation_changed:
+    'Rejected review operation must preserve the document revision.',
+};
+
+/** Raised when before/after review-operation evidence violates the contract. */
+export class CwlReviewOperationError extends Error {
+  /** Stable machine-readable failure category. */
+  readonly code: CwlReviewOperationErrorCode;
+
+  /** Create one payload-redacted review-operation error. */
+  constructor(code: CwlReviewOperationErrorCode) {
+    super(REVIEW_OPERATION_ERROR_MESSAGES[code]);
+    this.name = 'CwlReviewOperationError';
+    this.code = code;
+  }
+}
+
 /**
  * Immutable target for a host-owned comment or suggestion.
  *
@@ -87,6 +125,16 @@ export interface CwlReviewDeleteSuggestion {
 export type CwlReviewSuggestion =
   | CwlReviewInsertSuggestion
   | CwlReviewDeleteSuggestion;
+
+/** Review decision whose effect is proven only through exact revision evidence. */
+export interface CwlReviewOperationResult {
+  readonly contractVersion: typeof INKSPAN_REVIEW_CONTRACT_VERSION;
+  readonly action: 'accept' | 'reject';
+  readonly status: 'accepted' | 'rejected' | 'stale';
+  readonly beforeRevision: CwlEditorDocumentRevision;
+  readonly resultingRevision?: CwlEditorDocumentRevision;
+  readonly transitionEvidence?: CwlEditorDocumentTransitionEvidence;
+}
 
 const REVIEW_TARGET_KEYS = [
   'contractVersion',
@@ -316,6 +364,77 @@ export function createReviewSuggestion(source: unknown): CwlReviewSuggestion {
   }
 }
 
+/**
+ * Bind a host/editor review decision to exact before/after document revisions.
+ *
+ * This function does not apply an editor transaction and does not persist a
+ * review decision. The caller supplies the actual previous and resulting
+ * document envelopes after its authorized operation. Inkspan validates the
+ * proposal, derives canonical transition evidence, and refuses to classify an
+ * accepted operation that changed nothing or a rejected operation that changed
+ * the document. A stale proposal returns a compact `stale` result instead of
+ * silently re-anchoring it to the current revision.
+ *
+ * The result contains revisions and transition metadata only; proposal text and
+ * document bodies are not retained. Host-owned identity, authorization,
+ * persistence, exact-once durable state, audit, and conflict policy remain out
+ * of scope.
+ *
+ * @param suggestionSource - Untrusted provider-neutral insert/delete proposal.
+ * @param action - Host-authorized review decision to classify.
+ * @param previousSource - Exact document envelope observed before the operation.
+ * @param resultingSource - Exact document envelope observed after the operation.
+ * @param limits - Optional strict document-envelope resource limits.
+ * @param digestProvider - Optional SHA-256 provider for deterministic testing.
+ * @returns Frozen revision-only review-operation evidence.
+ * @throws {CwlReviewOperationError} When action/change semantics conflict.
+ */
+export async function createReviewOperationResult(
+  suggestionSource: unknown,
+  action: 'accept' | 'reject',
+  previousSource: unknown,
+  resultingSource: unknown,
+  limits?: DocumentEnvelopeLimits,
+  digestProvider?: DocumentEnvelopeDigestProvider | null,
+): Promise<CwlReviewOperationResult> {
+  if (action !== 'accept' && action !== 'reject') {
+    throw new CwlReviewOperationError('invalid_operation');
+  }
+  const suggestion = createReviewSuggestion(suggestionSource);
+  const transition = await createDocumentEnvelopeTransitionEvidence(
+    previousSource,
+    resultingSource,
+    limits,
+    digestProvider,
+  );
+
+  if (
+    transition.previousRevision.digestHex !== suggestion.target.revision.digestHex
+  ) {
+    return Object.freeze({
+      contractVersion: INKSPAN_REVIEW_CONTRACT_VERSION,
+      action,
+      status: 'stale',
+      beforeRevision: transition.previousRevision,
+    });
+  }
+  if (action === 'accept' && !transition.changed) {
+    throw new CwlReviewOperationError('accepted_operation_unchanged');
+  }
+  if (action === 'reject' && transition.changed) {
+    throw new CwlReviewOperationError('rejected_operation_changed');
+  }
+
+  return Object.freeze({
+    contractVersion: INKSPAN_REVIEW_CONTRACT_VERSION,
+    action,
+    status: action === 'accept' ? 'accepted' : 'rejected',
+    beforeRevision: transition.previousRevision,
+    resultingRevision: transition.resultingRevision,
+    transitionEvidence: transition,
+  });
+}
+
 export {
   TEXT_POSITION_PROJECTION_ID,
   TEXT_POSITION_PROJECTION_VERSION,
@@ -336,3 +455,4 @@ export type {
   CwlEditorDocumentRevision,
   DocumentEnvelopeDigestProvider,
 } from '../documentEnvelopeRevision.js';
+export type { CwlEditorDocumentTransitionEvidence } from '../documentTransitionEvidence.js';
