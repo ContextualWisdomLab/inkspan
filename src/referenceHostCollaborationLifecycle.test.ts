@@ -120,6 +120,77 @@ describe('reference-host collaboration lifecycle contract', () => {
     });
   });
 
+  it('redacts reconnect provider construction failures and remains recoverable', () => {
+    if (!existsSync(fixturePath)) return;
+    const moduleUrl = JSON.stringify(pathToFileURL(fixturePath).href);
+    const script = `
+      import { createHostCollaborationLifecycle } from ${moduleUrl};
+      const privateCause = 'private reconnect provider cause';
+      const events = [];
+      let generation = 0;
+      const lifecycle = createHostCollaborationLifecycle({
+        documentFactory() {
+          return { destroy() { events.push('document:destroy'); } };
+        },
+        providerFactory() {
+          generation += 1;
+          const current = generation;
+          events.push('provider:create:' + current);
+          if (current === 2) throw new Error(privateCause);
+          return {
+            connect() { events.push('provider:connect:' + current); },
+            disconnect() { events.push('provider:disconnect:' + current); },
+            destroy() { events.push('provider:destroy:' + current); },
+          };
+        },
+        roomId: 'reference-room',
+        actorId: 'reference-actor',
+      });
+      lifecycle.connect();
+      let reconnectError = null;
+      try {
+        lifecycle.reconnect();
+      } catch (error) {
+        reconnectError = error instanceof Error ? error.message : 'unexpected error';
+      }
+      const afterFailure = lifecycle.getSnapshot();
+      const recovered = lifecycle.reconnect();
+      lifecycle.dispose();
+      process.stdout.write(JSON.stringify({
+        afterFailure,
+        events,
+        leakedPrivateCause:
+          typeof reconnectError === 'string' && reconnectError.includes(privateCause),
+        reconnectError,
+        recovered,
+      }));
+    `;
+    const output = execFileSync(
+      process.execPath,
+      ['--input-type=module', '--eval', script],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      afterFailure: { providerGeneration: 2, status: 'disconnected' },
+      events: [
+        'provider:create:1',
+        'provider:connect:1',
+        'provider:disconnect:1',
+        'provider:destroy:1',
+        'provider:create:2',
+        'provider:create:3',
+        'provider:connect:3',
+        'provider:disconnect:3',
+        'provider:destroy:3',
+        'document:destroy',
+      ],
+      leakedPrivateCause: false,
+      reconnectError: 'collaboration lifecycle reconnect failed.',
+      recovered: { providerGeneration: 3, status: 'connected' },
+    });
+  });
+
   it('rejects accessor-backed lifecycle options and resource methods without invoking them', () => {
     if (!existsSync(fixturePath)) return;
     const output = execFileSync(
