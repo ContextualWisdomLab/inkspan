@@ -262,6 +262,11 @@ function compare(baseline, current, metric, maxRegressionPercent) {
     baselineValue === 0
       ? 0
       : normalizePercent(((currentValue - baselineValue) / baselineValue) * 100);
+  if (!Number.isFinite(regressionPercent)) {
+    throw new Error(
+      'Benchmark regression percent is not finite for the supplied measurements.',
+    );
+  }
   return Object.freeze({
     contractVersion: 1,
     benchmarkId: baseline.benchmarkId,
