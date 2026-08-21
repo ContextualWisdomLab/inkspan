@@ -71,7 +71,7 @@ The host owns annotation identifiers/bodies, source-resource IRI policy, authent
 
 ADR 0018 is the durable authority decision. `docs/selection-lifecycle.md` and `docs/doctoring/w3c-text-position-selector-evidence.md` record the operator-facing semantics and APA-7 standards basis. Packed ESM/CommonJS/strict-TypeScript consumers verify both the root public API and the protected React-free `@contextualwisdomlab/cwl-editor/text-position-selector` subpath; no database, network, provider credential, model, naruon, or contextual-orchestrator dependency is introduced by the projection subpath or evidence operation.
 
-The active review contract keeps comment bodies, durable thread/suggestion identity, authorization, persistence, audit, collaboration-provider state, and cross-revision re-anchoring with the host. Inkspan validates only bounded immutable revision/selector/projection metadata and deterministic insert/delete lifecycle/transition semantics. `docs/review-contract.md` and ADR 0027 define the proposed editor integration and its fail-closed stale-revision boundary; active-PR evidence must not be described as shipped behavior.
+The active review contract keeps comment bodies, durable thread/suggestion identity, authorization, persistence, audit, collaboration-provider state, and cross-revision re-anchoring with the host. Inkspan validates only bounded immutable revision/selector/projection metadata and deterministic insert/delete lifecycle/transition semantics. `docs/review-contract.md` and ADR 0032 define the proposed editor integration and its fail-closed stale-revision boundary; active-PR evidence must not be described as shipped behavior.
 
 ## Autosave contract
 
