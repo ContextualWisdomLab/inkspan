@@ -58,4 +58,37 @@ describe('benchmark summary output contract', () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it('fails closed on a named-pipe sample input instead of blocking before regular-file validation', () => {
+    if (process.platform === 'win32') return;
+
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-input-fifo-'));
+    const input = join(root, 'samples.pipe');
+    const output = join(root, 'output');
+    try {
+      const mkfifo = spawnSync('mkfifo', [input], { encoding: 'utf8' });
+      expect(mkfifo.status).toBe(0);
+
+      const result = spawnSync(
+        process.execPath,
+        [script, '--input', input, '--output', output],
+        {
+          cwd: process.cwd(),
+          encoding: 'utf8',
+          timeout: 1000,
+        },
+      );
+
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(
+        'Benchmark sample input must be a regular file.',
+      );
+      expect(existsSync(join(output, 'summary.json'))).toBe(false);
+      expect(existsSync(join(output, 'summary.txt'))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
