@@ -28,7 +28,7 @@ describe('reference-host ambiguous persistence reconciliation', () => {
           documentId: 'buyer-document',
           document: 'Possibly committed draft',
           ifMatch: initial.validator,
-          outcome: 'ambiguous_failure',
+          outcome: 'ambiguous_commit_failure',
         });
       } catch (error) {
         ambiguousError =
