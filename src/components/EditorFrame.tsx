@@ -117,6 +117,7 @@ export function EditorFrame({
       {review && onReviewAction && onReviewSelect ? (
         <ReviewPanel
           review={review}
+          editable={editable}
           onAction={onReviewAction}
           onSelect={onReviewSelect}
         />
