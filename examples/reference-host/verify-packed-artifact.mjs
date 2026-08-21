@@ -91,6 +91,7 @@ import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { CwlEditor } from '${packageName}';
 import { createDocumentAutosaveQueue } from '${packageName}/autosave';
+import { dataUriToBytes } from '${packageName}/converter';
 
 const serverHtml = renderToString(
   React.createElement(CwlEditor, {
@@ -103,18 +104,31 @@ const serverHtml = renderToString(
 assert.match(serverHtml, /name="message_body"/u);
 assert.match(serverHtml, /value="# Packed draft"/u);
 assert.equal(typeof createDocumentAutosaveQueue, 'function');
+assert.deepEqual(Array.from(dataUriToBytes('data:text/plain;base64,SGk=').bytes), [72, 105]);
 
 const rootEntry = import.meta.resolve('${packageName}');
+const autosaveEntry = import.meta.resolve('${packageName}/autosave');
+const converterEntry = import.meta.resolve('${packageName}/converter');
 const styleEntry = import.meta.resolve('${packageName}/styles.css');
 const fullFontEntry = import.meta.resolve('${packageName}/fonts.css');
 const latinFontEntry = import.meta.resolve('${packageName}/fonts-latin.css');
-for (const entry of [rootEntry, styleEntry, fullFontEntry, latinFontEntry]) {
+for (const entry of [
+  rootEntry,
+  autosaveEntry,
+  converterEntry,
+  styleEntry,
+  fullFontEntry,
+  latinFontEntry,
+]) {
   assert.ok(entry.startsWith('file:'), 'Packed package export did not resolve to a file URL.');
 }
 
 process.stdout.write(JSON.stringify({
   serverRenderedNamedField: true,
+  converterRoundTrip: true,
   rootEntry,
+  autosaveEntry,
+  converterEntry,
   styleEntry,
   fullFontEntry,
   latinFontEntry,
@@ -124,6 +138,45 @@ process.stdout.write(JSON.stringify({
   );
 
   const consumerResult = JSON.parse(run(process.execPath, [consumerPath], hostDirectory));
+
+  const commonJsConsumerPath = join(hostDirectory, 'consumer.cjs');
+  writeFileSync(
+    commonJsConsumerPath,
+    `const assert = require('node:assert/strict');
+const React = require('react');
+const { renderToString } = require('react-dom/server');
+const { CwlEditor } = require('${packageName}');
+const { createDocumentAutosaveQueue } = require('${packageName}/autosave');
+const { dataUriToBytes } = require('${packageName}/converter');
+
+const serverHtml = renderToString(
+  React.createElement(CwlEditor, {
+    mode: 'markdown',
+    defaultValue: '# Packed CommonJS draft',
+    formFieldName: 'message_body',
+    hideToolbar: true,
+  }),
+);
+assert.match(serverHtml, /name="message_body"/u);
+assert.match(serverHtml, /value="# Packed CommonJS draft"/u);
+assert.equal(typeof createDocumentAutosaveQueue, 'function');
+assert.deepEqual(Array.from(dataUriToBytes('data:text/plain;base64,T0s=').bytes), [79, 75]);
+
+process.stdout.write(JSON.stringify({
+  serverRenderedNamedField: true,
+  converterRoundTrip: true,
+  rootEntry: require.resolve('${packageName}'),
+  autosaveEntry: require.resolve('${packageName}/autosave'),
+  converterEntry: require.resolve('${packageName}/converter'),
+}));
+`,
+    'utf8',
+  );
+
+  const commonJsConsumerResult = JSON.parse(
+    run(process.execPath, [commonJsConsumerPath], hostDirectory),
+  );
+
   const installedPackageDirectory = join(
     hostDirectory,
     'node_modules',
@@ -141,12 +194,28 @@ process.stdout.write(JSON.stringify({
     'Installed package escaped the isolated host node_modules tree.',
   );
 
-  const resolvedRootPath = fileURLToPath(consumerResult.rootEntry);
-  assert.equal(
-    isContained(installedPackageDirectory, resolvedRootPath),
-    true,
-    'Consumer root import did not resolve through the packed host installation.',
-  );
+  const executableEntries = [
+    ['ESM root', fileURLToPath(consumerResult.rootEntry)],
+    ['ESM autosave', fileURLToPath(consumerResult.autosaveEntry)],
+    ['ESM converter', fileURLToPath(consumerResult.converterEntry)],
+    ['CommonJS root', commonJsConsumerResult.rootEntry],
+    ['CommonJS autosave', commonJsConsumerResult.autosaveEntry],
+    ['CommonJS converter', commonJsConsumerResult.converterEntry],
+  ];
+  for (const [label, entry] of executableEntries) {
+    assert.equal(
+      isContained(installedPackageDirectory, entry),
+      true,
+      `${label} import escaped the installed packed package.`,
+    );
+    assert.equal(
+      relative(realpathSync(installedPackageDirectory), realpathSync(entry)).startsWith(
+        `dist${sep}`,
+      ),
+      true,
+      `${label} executable import did not resolve through packed dist/.`,
+    );
+  }
 
   const publicAssetEntries = [
     ['stylesheet', consumerResult.styleEntry],
@@ -162,14 +231,15 @@ process.stdout.write(JSON.stringify({
   }
   const publicAssetEntriesContained = true;
 
-  const sourceImportDetected = !relative(
-    realpathSync(installedPackageDirectory),
-    realpathSync(resolvedRootPath),
-  ).startsWith(`dist${sep}`);
+  const sourceImportDetected = executableEntries.some(([, entry]) =>
+    relative(realpathSync(installedPackageDirectory), realpathSync(entry)).startsWith(
+      `src${sep}`,
+    ),
+  );
   assert.equal(
     sourceImportDetected,
     false,
-    'Packed consumer unexpectedly resolved the executable root import outside dist/.',
+    'Packed consumer unexpectedly resolved an executable import through source files.',
   );
 
   process.stdout.write(
@@ -178,8 +248,13 @@ process.stdout.write(JSON.stringify({
       packageVersion,
       installedFromTarball: true,
       consumerInstallCompleted: true,
-      serverRenderedNamedField: consumerResult.serverRenderedNamedField === true,
+      esmServerRenderedNamedField: consumerResult.serverRenderedNamedField === true,
+      commonJsServerRenderedNamedField:
+        commonJsConsumerResult.serverRenderedNamedField === true,
+      esmConverterRoundTrip: consumerResult.converterRoundTrip === true,
+      commonJsConverterRoundTrip: commonJsConsumerResult.converterRoundTrip === true,
       publicAssetEntriesContained,
+      executableEntriesContained: true,
       sourceImportDetected,
     })}\n`,
   );
