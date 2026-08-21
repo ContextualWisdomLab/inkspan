@@ -1,6 +1,7 @@
 import { Doc } from 'yjs';
 
 const MAX_CONTEXT_CODE_UNITS = 256;
+const MAX_RESOURCE_PROTOTYPE_DEPTH = 64;
 const INITIALIZATION_FAILURE = 'collaboration lifecycle initialization failed.';
 const CONNECTION_FAILURE = 'collaboration lifecycle connection failed.';
 const RECONNECT_FAILURE = 'collaboration lifecycle reconnect failed.';
@@ -64,7 +65,11 @@ function findDataMethod(source, key, message) {
       throw new ResourceValidationError(message);
     }
     let cursor = source;
+    let depth = 0;
     while (cursor !== null) {
+      if (depth >= MAX_RESOURCE_PROTOTYPE_DEPTH) {
+        throw new ResourceValidationError(message);
+      }
       const descriptor = Object.getOwnPropertyDescriptor(cursor, key);
       if (descriptor !== undefined) {
         if (
@@ -76,6 +81,7 @@ function findDataMethod(source, key, message) {
         return descriptor.value;
       }
       cursor = Object.getPrototypeOf(cursor);
+      depth += 1;
     }
     throw new ResourceValidationError(message);
   } catch {
