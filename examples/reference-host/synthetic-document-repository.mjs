@@ -87,10 +87,13 @@ function frozenConflict(currentValidator) {
  * Create an in-memory host-owned reference repository with exact If-Match semantics.
  *
  * This adapter is synthetic acquisition/support evidence only. Buyers must replace
- * it with an authorized atomic durable store. Ambiguous or failed operations never
- * mutate the document or advance the strong validator. A confirmed fork requires
- * the current strong validator and starts an independent repository at a fresh
- * validator so source and fork cannot silently share revision authority.
+ * it with an authorized atomic durable store. Confirmed failures and the
+ * `ambiguous_failure` pre-commit fixture leave durable state unchanged. The
+ * `ambiguous_commit_failure` fixture deliberately commits before returning the
+ * same ambiguous error so consumers must re-read durable state instead of
+ * advancing or blindly reusing their last known validator. A confirmed fork
+ * requires the current strong validator and starts an independent repository at a
+ * fresh validator so source and fork cannot silently share revision authority.
  * Configuration, save, and fork request fields are snapshotted from own data
  * properties without invoking caller-owned accessors.
  */
@@ -146,6 +149,7 @@ export function createSyntheticDocumentRepository(options) {
     if (
       outcome !== 'saved' &&
       outcome !== 'ambiguous_failure' &&
+      outcome !== 'ambiguous_commit_failure' &&
       outcome !== 'failure'
     ) {
       throw new ReferencePersistenceError('invalid_outcome');
@@ -164,6 +168,9 @@ export function createSyntheticDocumentRepository(options) {
     document = nextDocument;
     version += 1;
     validator = validatorForVersion(version);
+    if (outcome === 'ambiguous_commit_failure') {
+      throw new ReferencePersistenceError('ambiguous_failure');
+    }
     return frozenSave('saved', validator);
   }
 
