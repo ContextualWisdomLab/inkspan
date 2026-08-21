@@ -25,6 +25,13 @@ describe('reference-host package authority boundary', () => {
       path.endsWith('.mjs'),
     );
 
+    expect(executableFiles).toEqual(
+      expect.arrayContaining([
+        'hydration-gate.tsx',
+        'native-form-host.tsx',
+        'single-flight-submission.ts',
+      ]),
+    );
     expect(executableFiles.length).toBeGreaterThan(0);
     for (const file of executableFiles) {
       const source = readFileSync(resolve(referenceHostDirectory, file), 'utf8');
