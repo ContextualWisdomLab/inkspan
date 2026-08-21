@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const nativeFormHostSource = readFileSync(
-  new URL('../examples/reference-host/native-form-host.tsx', import.meta.url),
+  resolve(process.cwd(), 'examples/reference-host/native-form-host.tsx'),
   'utf8',
 );
 
