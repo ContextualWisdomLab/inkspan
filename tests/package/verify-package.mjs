@@ -379,11 +379,7 @@ try {
     `import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import * as editor from '${packageName}';
-import * as autosave from '${packageName}/autosave';
-import * as collaboration from '${packageName}/collaboration';
-import * as converter from '${packageName}/converter';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const packedPackageRoot = realpathSync(
   join(process.cwd(), 'node_modules', ...'${packageName}'.split('/')),
@@ -398,12 +394,30 @@ function assertResolvedInsidePackedPackage(resolved, message) {
       !isAbsolute(relativePath),
     message,
   );
+  return resolvedPath;
 }
-const rootEntrypoint = import.meta.resolve('${packageName}');
-assertResolvedInsidePackedPackage(
-  rootEntrypoint,
+const rootEntrypoint = assertResolvedInsidePackedPackage(
+  import.meta.resolve('${packageName}'),
   'ESM root package must resolve from isolated consumer node_modules',
 );
+const autosaveEntrypoint = assertResolvedInsidePackedPackage(
+  import.meta.resolve('${packageName}/autosave'),
+  'ESM autosave package must resolve from isolated consumer node_modules',
+);
+const collaborationEntrypoint = assertResolvedInsidePackedPackage(
+  import.meta.resolve('${packageName}/collaboration'),
+  'ESM collaboration package must resolve from isolated consumer node_modules',
+);
+const converterEntrypoint = assertResolvedInsidePackedPackage(
+  import.meta.resolve('${packageName}/converter'),
+  'ESM converter package must resolve from isolated consumer node_modules',
+);
+const editor = await import(pathToFileURL(rootEntrypoint).href);
+const autosave = await import(pathToFileURL(autosaveEntrypoint).href);
+const collaboration = await import(
+  pathToFileURL(collaborationEntrypoint).href
+);
+const converter = await import(pathToFileURL(converterEntrypoint).href);
 assert.equal(typeof editor.markdownToHtml, 'function');
 assert.equal(editor.validateSafeLinkHref('/documents/current'), '/documents/current');
 assert.equal(typeof editor.restoreDocumentEnvelopeIfMatch, 'function');
@@ -431,10 +445,6 @@ for (const subpath of ['styles.css', 'fonts.css', 'fonts-latin.css']) {
     `const assert = require('node:assert/strict');
 const { realpathSync } = require('node:fs');
 const { isAbsolute, join, relative, sep } = require('node:path');
-const editor = require('${packageName}');
-const autosave = require('${packageName}/autosave');
-const collaboration = require('${packageName}/collaboration');
-const converter = require('${packageName}/converter');
 
 const packedPackageRoot = realpathSync(
   join(process.cwd(), 'node_modules', ...'${packageName}'.split('/')),
@@ -449,12 +459,28 @@ function assertResolvedInsidePackedPackage(resolved, message) {
       !isAbsolute(relativePath),
     message,
   );
+  return resolvedPath;
 }
-const rootEntrypoint = require.resolve('${packageName}');
-assertResolvedInsidePackedPackage(
-  rootEntrypoint,
+const rootEntrypoint = assertResolvedInsidePackedPackage(
+  require.resolve('${packageName}'),
   'CommonJS root package must resolve from isolated consumer node_modules',
 );
+const autosaveEntrypoint = assertResolvedInsidePackedPackage(
+  require.resolve('${packageName}/autosave'),
+  'CommonJS autosave package must resolve from isolated consumer node_modules',
+);
+const collaborationEntrypoint = assertResolvedInsidePackedPackage(
+  require.resolve('${packageName}/collaboration'),
+  'CommonJS collaboration package must resolve from isolated consumer node_modules',
+);
+const converterEntrypoint = assertResolvedInsidePackedPackage(
+  require.resolve('${packageName}/converter'),
+  'CommonJS converter package must resolve from isolated consumer node_modules',
+);
+const editor = require(rootEntrypoint);
+const autosave = require(autosaveEntrypoint);
+const collaboration = require(collaborationEntrypoint);
+const converter = require(converterEntrypoint);
 assert.equal(typeof editor.markdownToHtml, 'function');
 assert.equal(editor.validateSafeLinkHref('/documents/current'), '/documents/current');
 assert.equal(typeof editor.restoreDocumentEnvelopeIfMatch, 'function');
