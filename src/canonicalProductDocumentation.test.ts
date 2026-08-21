@@ -48,7 +48,7 @@ const requiredFiles = [
   'docs/adr/0022-informative-docx-png-figures.md',
   'docs/adr/0023-bounded-docx-rich-text-runs.md',
   'docs/adr/0024-bounded-docx-paragraph-alignment.md',
-  'docs/adr/0027-provider-neutral-review-contract.md',
+  'docs/adr/0032-provider-neutral-review-contract.md',
   'docs/review-contract.md',
   'src/fonts/OFL.txt',
   'src/fonts/NOTICE',
