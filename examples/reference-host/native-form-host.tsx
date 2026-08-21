@@ -14,6 +14,15 @@ export interface NativeFormHostProps {
    * credentials, tenancy, or storage for the embedding application.
    */
   onAuthorizedSubmit(messageBody: string): Promise<void> | void;
+  /**
+   * Host-owned write permission presentation.
+   *
+   * A read-only host keeps the editor readable while fail-closing native form
+   * submission/reset and disabling the named form field. This is presentation
+   * evidence only; the embedding host remains responsible for authorization at
+   * the durable write boundary.
+   */
+  readOnly?: boolean;
 }
 
 /**
@@ -23,12 +32,14 @@ export interface NativeFormHostProps {
  * control. The host reads FormData at submit time and then applies its own
  * authorization and durable-persistence policy through onAuthorizedSubmit.
  * Overlapping submissions and form resets are blocked while the host callback
- * is in flight, preventing stale success presentation or duplicate durable
- * writes without claiming host persistence. A later successful reset returns
- * the host presentation to an explicitly unsaved state.
+ * is in flight. Host read-only state additionally fail-closes native form
+ * writes and disables the named field without moving authorization authority
+ * into Inkspan. A later successful reset returns the host presentation to an
+ * explicitly unsaved state.
  */
 export function NativeFormHost({
   onAuthorizedSubmit,
+  readOnly = false,
 }: NativeFormHostProps) {
   const [submissionState, setSubmissionState] =
     useState<SubmissionState>('idle');
@@ -51,6 +62,9 @@ export function NativeFormHost({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (readOnly || submissionState === 'saving') {
+      return;
+    }
 
     const messageBodyEntry = new FormData(event.currentTarget).get(
       'message_body',
@@ -64,7 +78,7 @@ export function NativeFormHost({
   }
 
   function handleReset(event: FormEvent<HTMLFormElement>) {
-    if (submissionState === 'saving') {
+    if (readOnly || submissionState === 'saving') {
       event.preventDefault();
       return;
     }
@@ -76,14 +90,22 @@ export function NativeFormHost({
       <CwlEditor
         mode="markdown"
         defaultValue="# Draft"
+        editable={!readOnly}
         formFieldName="message_body"
+        formFieldDisabled={readOnly}
         formResetValue="# Draft"
       />
       <div>
-        <button type="submit" disabled={submissionState === 'saving'}>
+        <button
+          type="submit"
+          disabled={readOnly || submissionState === 'saving'}
+        >
           Save document
         </button>
-        <button type="reset" disabled={submissionState === 'saving'}>
+        <button
+          type="reset"
+          disabled={readOnly || submissionState === 'saving'}
+        >
           Reset draft
         </button>
       </div>
