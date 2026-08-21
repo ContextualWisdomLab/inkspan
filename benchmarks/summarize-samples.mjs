@@ -15,6 +15,10 @@ const READ_CHUNK_BYTES = 64 * 1024;
 const MAX_SAMPLES = 1_000_000;
 const BENCHMARK_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const UNIT_PATTERN = /^[A-Za-z][A-Za-z0-9._/%-]{0,31}$/u;
+const SHA1_PATTERN = /^[0-9a-f]{40}$/u;
+const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
+const EVIDENCE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
+const DOCUMENT_PROFILES = new Set(['small', 'medium', 'large', 'stress']);
 
 function resolveArguments(argv) {
   if (
@@ -97,6 +101,40 @@ function validateInput(value) {
     throw new Error('Benchmark unit is invalid.');
   }
   if (
+    typeof value.sourceCommitSha !== 'string' ||
+    !SHA1_PATTERN.test(value.sourceCommitSha)
+  ) {
+    throw new Error(
+      'Benchmark sourceCommitSha must be a lowercase 40-character commit SHA.',
+    );
+  }
+  if (
+    typeof value.artifactSha256 !== 'string' ||
+    !SHA256_PATTERN.test(value.artifactSha256)
+  ) {
+    throw new Error(
+      'Benchmark artifactSha256 must be a lowercase 64-character SHA-256 digest.',
+    );
+  }
+  if (
+    typeof value.documentProfile !== 'string' ||
+    !DOCUMENT_PROFILES.has(value.documentProfile)
+  ) {
+    throw new Error('Benchmark documentProfile is invalid.');
+  }
+  if (
+    typeof value.runtimeId !== 'string' ||
+    !EVIDENCE_ID_PATTERN.test(value.runtimeId)
+  ) {
+    throw new Error('Benchmark runtimeId is invalid.');
+  }
+  if (
+    typeof value.referenceHardwareId !== 'string' ||
+    !EVIDENCE_ID_PATTERN.test(value.referenceHardwareId)
+  ) {
+    throw new Error('Benchmark referenceHardwareId is invalid.');
+  }
+  if (
     !Array.isArray(value.samples) ||
     value.samples.length === 0 ||
     value.samples.length > MAX_SAMPLES
@@ -114,6 +152,11 @@ function validateInput(value) {
   return Object.freeze({
     benchmarkId: value.benchmarkId,
     unit: value.unit,
+    sourceCommitSha: value.sourceCommitSha,
+    artifactSha256: value.artifactSha256,
+    documentProfile: value.documentProfile,
+    runtimeId: value.runtimeId,
+    referenceHardwareId: value.referenceHardwareId,
     samples: Object.freeze([...value.samples]),
   });
 }
@@ -129,6 +172,11 @@ function summarize(input) {
     contractVersion: 1,
     benchmarkId: input.benchmarkId,
     unit: input.unit,
+    sourceCommitSha: input.sourceCommitSha,
+    artifactSha256: input.artifactSha256,
+    documentProfile: input.documentProfile,
+    runtimeId: input.runtimeId,
+    referenceHardwareId: input.referenceHardwareId,
     sampleCount: sorted.length,
     percentileMethod: 'nearest-rank',
     minimum: sorted[0],
@@ -143,6 +191,11 @@ function formatSummary(summary) {
   return [
     `benchmark=${summary.benchmarkId}`,
     `unit=${summary.unit}`,
+    `source_commit_sha=${summary.sourceCommitSha}`,
+    `artifact_sha256=${summary.artifactSha256}`,
+    `document_profile=${summary.documentProfile}`,
+    `runtime_id=${summary.runtimeId}`,
+    `reference_hardware_id=${summary.referenceHardwareId}`,
     `samples=${summary.sampleCount}`,
     `percentile_method=${summary.percentileMethod}`,
     `minimum=${summary.minimum}`,
