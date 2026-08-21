@@ -51,4 +51,39 @@ describe('reference-host authorized submission single-flight boundary', () => {
     expect(onAuthorizedSubmit).toHaveBeenCalledTimes(2);
     expect(states).toEqual(['saving', 'failed', 'saving', 'saved']);
   });
+
+  it('contains a saving-state observer failure without blocking durable host submission or later retries', async () => {
+    const privateObserverFailure = new Error('private presentation detail');
+    const onAuthorizedSubmit = vi
+      .fn<(messageBody: string) => Promise<void>>()
+      .mockResolvedValue(undefined);
+    let savingNotifications = 0;
+    const submit = createSingleFlightSubmission(onAuthorizedSubmit, (state) => {
+      if (state === 'saving' && savingNotifications++ === 0) {
+        throw privateObserverFailure;
+      }
+    });
+
+    await expect(submit('# First')).resolves.toBe(true);
+    await expect(submit('# Retry')).resolves.toBe(true);
+    expect(onAuthorizedSubmit).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not reclassify successful durable persistence when the saved-state observer fails', async () => {
+    const privateObserverFailure = new Error('private presentation detail');
+    const onAuthorizedSubmit = vi
+      .fn<(messageBody: string) => Promise<void>>()
+      .mockResolvedValue(undefined);
+    const states: string[] = [];
+    const submit = createSingleFlightSubmission(onAuthorizedSubmit, (state) => {
+      states.push(state);
+      if (state === 'saved') {
+        throw privateObserverFailure;
+      }
+    });
+
+    await expect(submit('# Persisted')).resolves.toBe(true);
+    expect(onAuthorizedSubmit).toHaveBeenCalledOnce();
+    expect(states).toEqual(['saving', 'saved']);
+  });
 });
