@@ -244,4 +244,75 @@ describe('reference-host collaboration lifecycle contract', () => {
       status: 'disposed',
     });
   });
+
+  it('retries incomplete provider destruction without destroying the host document twice', () => {
+    if (!existsSync(fixturePath)) return;
+    const moduleUrl = JSON.stringify(pathToFileURL(fixturePath).href);
+    const script = `
+      import { createHostCollaborationLifecycle } from ${moduleUrl};
+      const events = [];
+      let providerDestroyAttempts = 0;
+      const lifecycle = createHostCollaborationLifecycle({
+        documentFactory() {
+          return {
+            destroy() { events.push('document:destroy'); },
+          };
+        },
+        providerFactory() {
+          return {
+            connect() { events.push('provider:connect'); },
+            disconnect() { events.push('provider:disconnect'); },
+            destroy() {
+              providerDestroyAttempts += 1;
+              events.push('provider:destroy:' + providerDestroyAttempts);
+              if (providerDestroyAttempts === 1) {
+                throw new Error('private transient provider destroy failure');
+              }
+            },
+          };
+        },
+        roomId: 'reference-room',
+        actorId: 'reference-actor',
+      });
+      lifecycle.connect();
+      let firstError = null;
+      try {
+        lifecycle.dispose();
+      } catch (error) {
+        firstError = error instanceof Error ? error.message : 'unexpected error';
+      }
+      const afterFailure = lifecycle.getSnapshot();
+      const retryResult = lifecycle.dispose();
+      const afterRetry = lifecycle.getSnapshot();
+      const idempotentResult = lifecycle.dispose();
+      process.stdout.write(JSON.stringify({
+        afterFailure,
+        afterRetry,
+        events,
+        firstError,
+        idempotentResult,
+        retryResult,
+      }));
+    `;
+    const output = execFileSync(
+      process.execPath,
+      ['--input-type=module', '--eval', script],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      afterFailure: { providerGeneration: 1, status: 'disconnected' },
+      afterRetry: { providerGeneration: 1, status: 'disposed' },
+      events: [
+        'provider:connect',
+        'provider:disconnect',
+        'provider:destroy:1',
+        'document:destroy',
+        'provider:destroy:2',
+      ],
+      firstError: 'collaboration lifecycle teardown failed.',
+      idempotentResult: false,
+      retryResult: true,
+    });
+  });
 });
