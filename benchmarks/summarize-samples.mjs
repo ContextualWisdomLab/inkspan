@@ -19,6 +19,7 @@ const SHA1_PATTERN = /^[0-9a-f]{40}$/u;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const EVIDENCE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const DOCUMENT_PROFILES = new Set(['small', 'medium', 'large', 'stress']);
+const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
 
 function resolveArguments(argv) {
   if (
@@ -72,9 +73,15 @@ function readBoundedJson(path) {
     }
 
     const bytes = Buffer.concat(chunks, totalBytes);
+    let text;
+    try {
+      text = UTF8_DECODER.decode(bytes);
+    } catch {
+      throw new Error('Benchmark sample input must be valid UTF-8 JSON.');
+    }
     let parsed;
     try {
-      parsed = JSON.parse(bytes.toString('utf8'));
+      parsed = JSON.parse(text);
     } catch {
       throw new Error('Benchmark sample input must be valid JSON.');
     }
