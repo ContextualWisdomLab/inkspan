@@ -38,12 +38,14 @@ export function NativeFormHost({
   const submitAuthorizedRef = useRef<
     ReturnType<typeof createSingleFlightSubmission> | null
   >(null);
-  let submitAuthorized = submitAuthorizedRef.current;
-  if (submitAuthorized === null) {
-    submitAuthorized = createSingleFlightSubmission(
+  const existingSubmitAuthorized = submitAuthorizedRef.current;
+  const submitAuthorized =
+    existingSubmitAuthorized ??
+    createSingleFlightSubmission(
       (messageBody) => onAuthorizedSubmitRef.current(messageBody),
       setSubmissionState,
     );
+  if (existingSubmitAuthorized === null) {
     submitAuthorizedRef.current = submitAuthorized;
   }
 
