@@ -52,4 +52,20 @@ describe('reference-host native form journey', () => {
       /<button type="reset" disabled=\{submissionState === 'saving'\}>/u,
     );
   });
+
+  it('makes host write permission explicit and fail-closes native form writes while read-only', () => {
+    expect(nativeFormHostSource).toContain('readOnly?: boolean;');
+    expect(nativeFormHostSource).toContain('readOnly = false');
+    expect(nativeFormHostSource).toContain('editable={!readOnly}');
+    expect(nativeFormHostSource).toContain('formFieldDisabled={readOnly}');
+    expect(nativeFormHostSource).toContain(
+      "if (readOnly || submissionState === 'saving') {",
+    );
+    expect(nativeFormHostSource).toMatch(
+      /type="submit"\s+disabled=\{readOnly \|\| submissionState === 'saving'\}/u,
+    );
+    expect(nativeFormHostSource).toMatch(
+      /type="reset"\s+disabled=\{readOnly \|\| submissionState === 'saving'\}/u,
+    );
+  });
 });
