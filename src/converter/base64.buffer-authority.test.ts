@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { base64ToBytes, bytesToBase64 } from './base64.js';
 
+type BufferFrom = typeof globalThis.Buffer.from;
+
 describe('base64 runtime authority', () => {
   it('does not let a later global Buffer replacement become codec authority', () => {
     const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'Buffer');
@@ -51,5 +53,34 @@ describe('base64 runtime authority', () => {
     } finally {
       Object.defineProperty(buffer, 'from', descriptor);
     }
+  });
+
+  it('covers browser startup Buffer resolution without mutating Vitest globals', async () => {
+    const converterModule = (await import('./base64.js')) as unknown as Record<
+      string,
+      unknown
+    >;
+    const resolver = converterModule.resolveNodeBufferFrom;
+
+    expect(resolver).toBeTypeOf('function');
+    if (typeof resolver !== 'function') {
+      throw new Error('Buffer authority resolver is unavailable.');
+    }
+
+    const resolveNodeBufferFrom = resolver as (
+      buffer: typeof globalThis.Buffer | undefined,
+    ) => BufferFrom | undefined;
+    expect(resolveNodeBufferFrom(undefined)).toBeUndefined();
+
+    const buffer = globalThis.Buffer;
+    if (buffer === undefined) {
+      throw new Error('global Buffer is unavailable in the Node test runtime.');
+    }
+    const captured = resolveNodeBufferFrom(buffer);
+    expect(captured).toBeTypeOf('function');
+    if (captured === undefined) {
+      throw new Error('Node Buffer.from authority was not captured.');
+    }
+    expect(captured('AQIDBA==', 'base64').toString('hex')).toBe('01020304');
   });
 });
