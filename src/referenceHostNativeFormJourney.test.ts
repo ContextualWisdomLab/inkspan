@@ -33,7 +33,7 @@ describe('reference-host native form journey', () => {
       'await submitAuthorized(messageBodyEntry)',
     );
     expect(nativeFormHostSource).toContain(
-      "disabled={submissionState === 'saving'}",
+      "disabled={readOnly || submissionState === 'saving'}",
     );
     expect(nativeFormHostSource).not.toContain('fetch(');
     expect(nativeFormHostSource).not.toContain('localStorage');
@@ -44,12 +44,12 @@ describe('reference-host native form journey', () => {
       '<form onSubmit={handleSubmit} onReset={handleReset}>',
     );
     expect(nativeFormHostSource).toContain(
-      "if (submissionState === 'saving') {",
+      "if (readOnly || submissionState === 'saving') {",
     );
     expect(nativeFormHostSource).toContain('event.preventDefault();');
     expect(nativeFormHostSource).toContain("setSubmissionState('idle');");
     expect(nativeFormHostSource).toMatch(
-      /<button type="reset" disabled=\{submissionState === 'saving'\}>/u,
+      /type="reset"\s+disabled=\{readOnly \|\| submissionState === 'saving'\}/u,
     );
   });
 
