@@ -56,7 +56,7 @@ The React-free text-position-selector package surface is also protected-main beh
 
 ## Provider-neutral review contract
 
-The active review line adds Proposed ADR 0027 and the React-free `./review`
+The active review line adds Proposed ADR 0032 and the React-free `./review`
 subpath. Its v1 core validates bounded host-supplied thread/suggestion metadata
 against one immutable SHA-256 revision and the named W3C logical-text
 projection. Insert targets are empty ranges; delete targets are non-empty
