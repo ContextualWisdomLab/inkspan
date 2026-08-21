@@ -1,4 +1,10 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { resolve } from 'node:path';
 
 const MAX_INPUT_BYTES = 16 * 1024 * 1024;
@@ -112,16 +118,28 @@ function formatSummary(summary) {
   ].join('\n');
 }
 
+function refersToSameFile(leftPath, rightPath) {
+  if (!existsSync(leftPath) || !existsSync(rightPath)) return false;
+  const left = statSync(leftPath);
+  const right = statSync(rightPath);
+  return left.dev === right.dev && left.ino === right.ino;
+}
+
 function main() {
   const { inputPath, outputDirectory } = resolveArguments(process.argv.slice(2));
   const summaryJsonPath = resolve(outputDirectory, 'summary.json');
   const summaryTextPath = resolve(outputDirectory, 'summary.txt');
-  if (inputPath === summaryJsonPath || inputPath === summaryTextPath) {
+  mkdirSync(outputDirectory, { recursive: true });
+  if (
+    inputPath === summaryJsonPath ||
+    inputPath === summaryTextPath ||
+    refersToSameFile(inputPath, summaryJsonPath) ||
+    refersToSameFile(inputPath, summaryTextPath)
+  ) {
     throw new Error('Benchmark output must not overwrite the sample input.');
   }
   const input = validateInput(readBoundedJson(inputPath));
   const summary = summarize(input);
-  mkdirSync(outputDirectory, { recursive: true });
   writeFileSync(
     summaryJsonPath,
     `${JSON.stringify(summary, null, 2)}\n`,
