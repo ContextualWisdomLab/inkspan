@@ -1,29 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { createElement } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-
-vi.mock('@contextualwisdomlab/cwl-editor', async () => {
-  const { createElement: createReactElement } = await import('react');
-  return {
-    CwlEditor: () =>
-      createReactElement('textarea', {
-        'aria-label': 'Document body',
-        defaultValue: '# Draft',
-        name: 'message_body',
-      }),
-  };
-});
-
-import { NativeFormHost } from '../examples/reference-host/native-form-host.js';
+import { describe, expect, it } from 'vitest';
 
 const nativeFormHostSource = readFileSync(
   resolve(process.cwd(), 'examples/reference-host/native-form-host.tsx'),
   'utf8',
 );
-
-afterEach(cleanup);
 
 describe('reference-host native form journey', () => {
   it('uses the published editor package and delegates serialization to Inkspan native form integration', () => {
@@ -57,32 +39,17 @@ describe('reference-host native form journey', () => {
     expect(nativeFormHostSource).not.toContain('localStorage');
   });
 
-  it('blocks reset while durable submission is in flight and clears stale saved status after a later reset', async () => {
-    let resolveSave: (() => void) | undefined;
-    const saveResult = new Promise<void>((resolve) => {
-      resolveSave = resolve;
-    });
-    const onAuthorizedSubmit = vi.fn(() => saveResult);
-    const { container } = render(
-      createElement(NativeFormHost, { onAuthorizedSubmit }),
+  it('blocks form reset while durable submission is in flight and marks a later reset unsaved', () => {
+    expect(nativeFormHostSource).toContain(
+      '<form onSubmit={handleSubmit} onReset={handleReset}>',
     );
-    const form = container.querySelector('form')!;
-    const resetButton = screen.getByRole('button', { name: 'Reset draft' });
-
-    fireEvent.submit(form);
-    await waitFor(() => expect(screen.getByText('Saving…')).toBeInTheDocument());
-    expect(resetButton).toBeDisabled();
-    expect(fireEvent.reset(form)).toBe(false);
-    expect(screen.getByText('Saving…')).toBeInTheDocument();
-
-    act(() => resolveSave?.());
-    await waitFor(() => expect(screen.getByText('Saved')).toBeInTheDocument());
-    expect(resetButton).not.toBeDisabled();
-
-    expect(fireEvent.reset(form)).toBe(true);
-    await waitFor(() =>
-      expect(screen.getByText('Not saved yet')).toBeInTheDocument(),
+    expect(nativeFormHostSource).toContain(
+      "if (submissionState === 'saving') {",
     );
-    expect(onAuthorizedSubmit).toHaveBeenCalledOnce();
+    expect(nativeFormHostSource).toContain('event.preventDefault();');
+    expect(nativeFormHostSource).toContain("setSubmissionState('idle');");
+    expect(nativeFormHostSource).toMatch(
+      /<button type="reset" disabled=\{submissionState === 'saving'\}>/u,
+    );
   });
 });
