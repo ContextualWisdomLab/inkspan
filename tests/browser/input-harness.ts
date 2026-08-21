@@ -8,6 +8,7 @@ declare global {
       getText: () => string;
       isComposing: () => boolean;
       redo: () => boolean;
+      setEditable: (editable: boolean) => boolean;
       setHtml: (html: string) => boolean;
       undo: () => boolean;
     };
@@ -30,6 +31,10 @@ window.inkspanInputHarness = Object.freeze({
   getText: () => editor.getText(),
   isComposing: () => editor.view.composing,
   redo: () => editor.commands.redo(),
+  setEditable: (editable: boolean) => {
+    editor.setEditable(editable);
+    return editor.isEditable;
+  },
   setHtml: (html: string) => editor.commands.setContent(html, false),
   undo: () => editor.commands.undo(),
 });
