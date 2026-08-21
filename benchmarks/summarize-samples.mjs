@@ -261,6 +261,9 @@ function main() {
   }
   assertRegularOutputDestination(summaryJsonPath);
   assertRegularOutputDestination(summaryTextPath);
+  if (refersToSameFile(summaryJsonPath, summaryTextPath)) {
+    throw new Error('Benchmark summary outputs must be distinct files.');
+  }
   const input = validateInput(readBoundedJson(inputPath));
   const summary = summarize(input);
   writeFileSync(
