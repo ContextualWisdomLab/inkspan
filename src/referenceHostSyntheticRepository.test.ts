@@ -82,11 +82,17 @@ describe('reference-host synthetic durable repository contract', () => {
     });
   });
 
-  it('keeps the buyer guide code-current for retry, restore, and independent fork semantics', () => {
+  it('keeps the buyer guide code-current for retry, ambiguity reconciliation, restore, and independent fork semantics', () => {
     const guide = readFileSync(guidePath, 'utf8');
 
     expect(guide).toContain(
       'A confirmed failure can be retried with the unchanged current validator.',
+    );
+    expect(guide).toContain(
+      '`ambiguous_failure` models a pre-commit failure, while `ambiguous_commit_failure` commits durable state but returns the same ambiguous error without a replacement validator.',
+    );
+    expect(guide).toContain(
+      'After either ambiguous outcome, re-read durable state before retrying instead of advancing or blindly reusing the caller\'s last known validator.',
     );
     expect(guide).toContain(
       'A restore is a normal confirmed save against the current validator and advances it only after success.',
