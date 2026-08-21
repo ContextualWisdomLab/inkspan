@@ -40,6 +40,15 @@ function snapshotData(source) {
       }
       values[key] = descriptor.value;
     }
+    const ownKeys = Reflect.ownKeys(source);
+    if (
+      ownKeys.length !== SNAPSHOT_KEYS.length ||
+      ownKeys.some(
+        (key) => typeof key !== 'string' || !SNAPSHOT_KEYS.includes(key),
+      )
+    ) {
+      throw new TypeError('autosave snapshot is invalid.');
+    }
     return values;
   } catch {
     throw new TypeError('autosave snapshot is invalid.');
@@ -98,7 +107,8 @@ function presentation(viewState) {
  * Create one host-owned projection of Inkspan autosave lifecycle transitions.
  *
  * `observe()` consumes only programmatic queue/session snapshots. Snapshot fields
- * must be own data properties so presentation never invokes caller-owned accessors.
+ * must be an exact own-data-property shape so presentation never invokes
+ * caller-owned accessors or silently admits authority-looking metadata.
  * A blocked to saving transition is presented as retrying, and only a later idle
  * transition after that observed retry is presented as recovered. A blocked to
  * idle transition without an intervening save returns to clean instead of
