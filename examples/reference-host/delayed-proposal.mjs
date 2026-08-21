@@ -80,7 +80,8 @@ export async function createDelayedProposal(source) {
 /**
  * Apply one untrusted proposal only when the host's current revision still matches its capture.
  * Top-level application metadata and model proposal fields must be own data properties so
- * validation never executes accessor-backed untrusted proposal data.
+ * validation never executes accessor-backed untrusted proposal data. Host apply failures are
+ * normalized at this reference boundary so private callback causes are not reflected outward.
  */
 export function applyDelayedProposal(source) {
   const application = readPlainDataRecord(
@@ -112,7 +113,11 @@ export function applyDelayedProposal(source) {
     return Object.freeze({ status: 'conflict' });
   }
 
-  application.apply(replacement);
+  try {
+    application.apply(replacement);
+  } catch {
+    throw new Error('proposal application failed.');
+  }
   return Object.freeze({ status: 'applied' });
 }
 
