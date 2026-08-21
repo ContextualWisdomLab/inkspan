@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -44,6 +45,35 @@ describe('reference-host autosave presentation contract', () => {
       recovered: 'recovered',
       retrying: 'retrying',
       saving: 'saving',
+    });
+  });
+
+  it('does not claim recovery unless a retrying save was observed', () => {
+    if (!existsSync(fixturePath)) return;
+    const moduleUrl = JSON.stringify(pathToFileURL(fixturePath).href);
+    const script = `
+      import { createAutosaveViewModel } from ${moduleUrl};
+      const snapshot = (state, blockedReason = null) => ({
+        state,
+        blockedReason,
+        activeStrongEntityTag: null,
+        pendingStrongEntityTag: null,
+        lastSavedStrongEntityTag: null,
+      });
+      const viewModel = createAutosaveViewModel();
+      const blocked = viewModel.observe(snapshot('blocked', 'conflict')).viewState;
+      const idleWithoutRetry = viewModel.observe(snapshot('idle')).viewState;
+      process.stdout.write(JSON.stringify({ blocked, idleWithoutRetry }));
+    `;
+    const output = execFileSync(
+      process.execPath,
+      ['--input-type=module', '--eval', script],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      blocked: 'conflict',
+      idleWithoutRetry: 'clean',
     });
   });
 
