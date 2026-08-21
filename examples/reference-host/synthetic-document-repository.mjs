@@ -61,6 +61,16 @@ function readPlainDataRecord(source, requiredKeys, optionalKeys, code) {
       }
       values[key] = descriptor.value;
     }
+
+    const allowedKeys = [...requiredKeys, ...optionalKeys];
+    if (
+      Reflect.ownKeys(source).some(
+        (key) => typeof key !== 'string' || !allowedKeys.includes(key),
+      )
+    ) {
+      throw new ReferencePersistenceError(code);
+    }
+
     return values;
   } catch {
     throw new ReferencePersistenceError(code);
@@ -94,8 +104,9 @@ function frozenConflict(currentValidator) {
  * advancing or blindly reusing their last known validator. A confirmed fork
  * requires the current strong validator and starts an independent repository at a
  * fresh validator so source and fork cannot silently share revision authority.
- * Configuration, save, and fork request fields are snapshotted from own data
- * properties without invoking caller-owned accessors.
+ * Configuration, save, and fork request fields are snapshotted from exact own
+ * data-property shapes without invoking caller-owned accessors or admitting
+ * unknown authority-looking metadata.
  */
 export function createSyntheticDocumentRepository(options) {
   const configuration = readPlainDataRecord(
@@ -461,10 +472,74 @@ function runHostileAccessorSelfTest() {
   );
 }
 
+function runUnknownFieldSelfTest() {
+  let optionErrorCode = null;
+  try {
+    createSyntheticDocumentRepository({
+      documentId: 'buyer-document',
+      initialDocument: 'Buyer draft v1',
+      authorization: 'owner',
+    });
+  } catch (error) {
+    optionErrorCode =
+      error instanceof ReferencePersistenceError ? error.code : 'unexpected_error';
+  }
+
+  const repository = createSyntheticDocumentRepository({
+    documentId: 'buyer-document',
+    initialDocument: 'Buyer draft v1',
+  });
+  const initial = repository.read('buyer-document');
+
+  let saveErrorCode = null;
+  const saveWithHiddenField = {
+    documentId: 'buyer-document',
+    document: 'Unauthorized write',
+    ifMatch: initial.validator,
+  };
+  Object.defineProperty(saveWithHiddenField, 'authorization', {
+    value: 'owner',
+    enumerable: false,
+  });
+  try {
+    repository.save(saveWithHiddenField);
+  } catch (error) {
+    saveErrorCode =
+      error instanceof ReferencePersistenceError ? error.code : 'unexpected_error';
+  }
+
+  let forkErrorCode = null;
+  const authorityKey = Symbol('authorization');
+  try {
+    repository.fork({
+      documentId: 'buyer-document',
+      forkDocumentId: 'buyer-document-fork',
+      ifMatch: initial.validator,
+      [authorityKey]: 'owner',
+    });
+  } catch (error) {
+    forkErrorCode =
+      error instanceof ReferencePersistenceError ? error.code : 'unexpected_error';
+  }
+
+  const afterRejectedSave = repository.read('buyer-document');
+  process.stdout.write(
+    `${JSON.stringify({
+      forkErrorCode,
+      optionErrorCode,
+      saveErrorCode,
+      savedDocument: afterRejectedSave.document,
+      savedValidator: afterRejectedSave.validator,
+    })}\n`,
+  );
+}
+
 if (process.argv.includes('--empty-document-self-test')) {
   runEmptyDocumentSelfTest();
 } else if (process.argv.includes('--hostile-accessor-self-test')) {
   runHostileAccessorSelfTest();
+} else if (process.argv.includes('--unknown-field-self-test')) {
+  runUnknownFieldSelfTest();
 } else if (process.argv.includes('--self-test')) {
   runSelfTest();
 }
