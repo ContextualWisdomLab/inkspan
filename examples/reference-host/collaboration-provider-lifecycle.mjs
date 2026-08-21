@@ -2,6 +2,7 @@ import { Doc } from 'yjs';
 
 const MAX_CONTEXT_CODE_UNITS = 256;
 const INITIALIZATION_FAILURE = 'collaboration lifecycle initialization failed.';
+const CONNECTION_FAILURE = 'collaboration lifecycle connection failed.';
 const RECONNECT_FAILURE = 'collaboration lifecycle reconnect failed.';
 const TEARDOWN_FAILURE = 'collaboration lifecycle teardown failed.';
 const RESOURCE_VALIDATION_ERRORS = new WeakSet();
@@ -104,6 +105,10 @@ function initializationFailure() {
   return new Error(INITIALIZATION_FAILURE);
 }
 
+function connectionFailure() {
+  return new Error(CONNECTION_FAILURE);
+}
+
 function reconnectFailure() {
   return new Error(RECONNECT_FAILURE);
 }
@@ -119,10 +124,11 @@ function teardownFailure() {
  * context. Inkspan receives the resulting stable document/provider references;
  * it does not create, reconnect, disconnect, or destroy either resource. Option
  * fields and resource methods are captured from data descriptors so lifecycle
- * validation never executes accessor-backed host objects. Initial provider
- * failures unwind an already-created document, reconnect provider-construction
- * failures remain retryable, and private callback/cleanup causes are payload-
- * redacted without preventing remaining teardown attempts.
+ * validation never executes accessor-backed host objects. Initial document and
+ * provider callback failures are payload-redacted, acquired documents unwind on
+ * initial provider failure, reconnect provider-construction failures remain
+ * retryable, connect failures preserve the disconnected provider for an explicit
+ * retry, and cleanup failures do not prevent remaining teardown attempts.
  */
 export function createHostCollaborationLifecycle(source) {
   const options = readOwnDataRecord(
@@ -134,7 +140,13 @@ export function createHostCollaborationLifecycle(source) {
   const createProvider = requireFactory(options.providerFactory, 'providerFactory');
   const boundedRoomId = requireContextString(options.roomId, 'roomId');
   const boundedActorId = requireContextString(options.actorId, 'actorId');
-  const documentResource = requireDocument(createDocument());
+  let documentCandidate;
+  try {
+    documentCandidate = createDocument();
+  } catch {
+    throw initializationFailure();
+  }
+  const documentResource = requireDocument(documentCandidate);
   const document = documentResource.value;
 
   let providerGeneration = 0;
@@ -168,7 +180,11 @@ export function createHostCollaborationLifecycle(source) {
   function connect() {
     requireLive();
     if (connected) return false;
-    providerResource.connect.call(providerResource.value);
+    try {
+      providerResource.connect.call(providerResource.value);
+    } catch {
+      throw connectionFailure();
+    }
     connected = true;
     return true;
   }
