@@ -76,4 +76,23 @@ describe('protected capability documentation maturity', () => {
     expect(architecture).not.toContain('active PR #116');
     expect(architecture).not.toContain('Until #116 integrates');
   });
+
+  it('keeps canonical release inventory text aligned with the protected workflow', () => {
+    const workflow = repositoryFile('.github/workflows/release.yml');
+    const contracts = repositoryFile('docs/CONTRACTS.md');
+    const operability = repositoryFile('docs/OPERABILITY.md');
+    const testStrategy = repositoryFile('docs/TEST_STRATEGY.md');
+    const doctoring = repositoryFile(
+      'docs/doctoring/release-draft-asset-inventory.md',
+    );
+
+    expect(workflow).toContain('expected_asset_count=4');
+    expect(workflow).toContain('release/inkspan.spdx.json');
+
+    for (const document of [contracts, operability, testStrategy, doctoring]) {
+      expect(document).toContain('exactly four regular top-level files');
+      expect(document).toContain('inkspan.spdx.json');
+      expect(document).not.toContain('exactly three regular top-level files');
+    }
+  });
 });
