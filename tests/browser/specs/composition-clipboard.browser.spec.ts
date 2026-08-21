@@ -5,6 +5,7 @@ type InputHarness = {
   getText: () => string;
   isComposing: () => boolean;
   redo: () => boolean;
+  setEditable: (editable: boolean) => boolean;
   setHtml: (html: string) => boolean;
   undo: () => boolean;
 };
@@ -208,6 +209,74 @@ test('tracks a synthetic composition lifecycle without inventing OS IME evidence
       (window.inkspanInputHarness as InputHarness).getHtml(),
     ),
   ).toContain('한글');
+});
+
+test('does not admit committed input when read-only begins during composition', async ({
+  page,
+}) => {
+  const editable = page.locator('.ProseMirror');
+  await editable.click();
+  await page.keyboard.insertText('기준');
+
+  await editable.evaluate((element) => {
+    element.dispatchEvent(
+      new CompositionEvent('compositionstart', { bubbles: true, data: '' }),
+    );
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.inkspanInputHarness as InputHarness).isComposing(),
+      ),
+    )
+    .toBe(true);
+
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).setEditable(false),
+    ),
+  ).toBe(false);
+  await expect(editable).toHaveAttribute('contenteditable', 'false');
+
+  await editable.evaluate((element) => {
+    element.dispatchEvent(
+      new CompositionEvent('compositionend', { bubbles: true, data: '차단' }),
+    );
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.inkspanInputHarness as InputHarness).isComposing(),
+      ),
+    )
+    .toBe(false);
+
+  await editable.focus();
+  await page.keyboard.insertText(' 차단');
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.inkspanInputHarness as InputHarness).getText(),
+      ),
+    )
+    .toBe('기준');
+
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).setEditable(true),
+    ),
+  ).toBe(true);
+  await editable.click();
+  await page.keyboard.press('End');
+  await page.keyboard.insertText(' 재개');
+
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.inkspanInputHarness as InputHarness).getText(),
+      ),
+    )
+    .toBe('기준 재개');
 });
 
 test('preserves multilingual committed input in a narrow emulated viewport', async ({
