@@ -89,4 +89,47 @@ describe('benchmark regression provenance contract', () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it('rejects a vacuous comparison when both summaries identify the same exact artifact', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-provenance-'));
+    try {
+      const baselinePath = join(root, 'baseline.json');
+      const currentPath = join(root, 'current.json');
+      const artifactSha256 = 'b'.repeat(64);
+      writeFileSync(
+        baselinePath,
+        `${JSON.stringify(summary('a'.repeat(40), artifactSha256))}\n`,
+        'utf8',
+      );
+      writeFileSync(
+        currentPath,
+        `${JSON.stringify(summary('c'.repeat(40), artifactSha256))}\n`,
+        'utf8',
+      );
+
+      const result = spawnSync(
+        process.execPath,
+        [
+          script,
+          '--baseline',
+          baselinePath,
+          '--current',
+          currentPath,
+          '--metric',
+          'p95',
+          '--max-regression-percent',
+          '5',
+        ],
+        { cwd: process.cwd(), encoding: 'utf8' },
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr).toBe(
+        'Benchmark summaries must identify distinct measured artifacts.\n',
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
