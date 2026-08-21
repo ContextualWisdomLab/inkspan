@@ -145,7 +145,9 @@ function teardownFailure() {
  * provider callback failures are payload-redacted, acquired documents unwind on
  * initial provider failure, reconnect provider-construction failures remain
  * retryable, connect failures preserve the disconnected provider for an explicit
- * retry, and cleanup failures do not prevent remaining teardown attempts.
+ * retry, and cleanup failures do not prevent remaining teardown attempts. A
+ * failed provider or document destruction keeps only the incomplete cleanup live
+ * so a later dispose() retries it without repeating already-successful teardown.
  */
 export function createHostCollaborationLifecycle(source) {
   const options = readOwnDataRecord(
@@ -169,6 +171,7 @@ export function createHostCollaborationLifecycle(source) {
   let providerGeneration = 0;
   let providerResource = null;
   let connected = false;
+  let documentDestroyed = false;
   let disposed = false;
 
   function makeProvider(privateFailure) {
@@ -247,13 +250,16 @@ export function createHostCollaborationLifecycle(source) {
     } catch {
       failed = true;
     }
-    try {
-      documentResource.destroy.call(document);
-    } catch {
-      failed = true;
+    if (!documentDestroyed) {
+      try {
+        documentResource.destroy.call(document);
+        documentDestroyed = true;
+      } catch {
+        failed = true;
+      }
     }
-    disposed = true;
-    if (failed) throw teardownFailure();
+    disposed = providerResource === null && documentDestroyed;
+    if (failed || !disposed) throw teardownFailure();
     return true;
   }
 
