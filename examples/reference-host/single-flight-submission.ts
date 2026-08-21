@@ -13,7 +13,9 @@ export type SubmissionStateObserver = (
  * transport or storage authority in Inkspan.
  *
  * Overlapping attempts are rejected while one host callback is in flight.
- * Host failures are reduced to a stable boolean/state signal so private
+ * The returned callable also exposes the synchronous admission gate so event
+ * handlers can reject same-turn mutations without depending on deferred UI
+ * state. Host failures are reduced to a stable boolean/state signal so private
  * durable-store details do not cross the reference component boundary.
  * Presentation-state observer failures are best-effort and cannot block,
  * reclassify, or wedge the host-owned persistence attempt.
@@ -32,7 +34,7 @@ export function createSingleFlightSubmission(
     }
   };
 
-  return async (messageBody: string): Promise<boolean> => {
+  const submit = async (messageBody: string): Promise<boolean> => {
     if (inFlight) {
       return false;
     }
@@ -50,4 +52,8 @@ export function createSingleFlightSubmission(
       inFlight = false;
     }
   };
+
+  return Object.assign(submit, {
+    isInFlight: (): boolean => inFlight,
+  });
 }
