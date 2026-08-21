@@ -26,6 +26,13 @@ Where browser fragment parsing or serialization participates in a security bound
 
 The protected gate pins **Playwright 1.62.0** in an isolated immutable browser-test lock and runs the same versioned synthetic corpus through the supported TipTap/ProseMirror `transformPastedHTML` path in named Chromium, Firefox, and WebKit projects on one **exact source head**. Evidence binds the corpus version, browser-test lock digest, Playwright version, actual browser versions, operating-system identity, exact source head, fresh run identity, and exact packed npm artifact digest. The corpus covers active/resource/form content, hidden/Office/popover semantics, safe and unsafe links, malformed fragments, tables/lists, SVG/MathML, interactive/native fallback, byte/node/depth ceilings, hostile DOM capability failures, and a representative Word-like performance alarm.
 
+Issue #375's proposed first slice separately runs the deterministic synthetic
+`inkspan-large-document-v1` corpus through the real `CwlEditor` browser harness
+for mount, snapshot, envelope serialization, and revision timing. This is
+PR-CI smoke evidence only: it reports no document body or digest and claims no
+support budget until repeated exact-head hardware/runtime measurements are
+available.
+
 Differences are not normalized away merely to produce parity. The default gate has no generic normalization or broad engine allowlist; a permitted difference requires a focused regression fixture, authoritative standards basis, threat analysis, exact affected engine/version evidence, canonical interpretation, compatibility impact, and rollback. Missing, skipped, cancelled, incomplete, stale-run, stale-lock, package-mismatched, or divergent required browser evidence must fail closed rather than becoming successful release evidence. A source movement after evidence generation requires the new exact release candidate to re-prove the gate.
 
 ### Office artifact tests
