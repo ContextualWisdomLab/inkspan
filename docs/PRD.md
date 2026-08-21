@@ -149,6 +149,6 @@ Protected `main` is the sole implemented baseline. Open PRs may describe Propose
 SafeClipboard, real Chromium/Firefox/WebKit release assurance, lifecycle observation, the root security disclosure lifecycle, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, W3C text-position selector evidence, document-transition evidence, and envelope identity migration routing are implemented on protected `main`.
 
 The revision-scoped review contract and `@contextualwisdomlab/cwl-editor/review`
-subpath are `implemented_on_active_pr` under Proposed ADR 0027. The interactive
+subpath are `implemented_on_active_pr` under Proposed ADR 0032. The interactive
 review panel, editor transaction integration, Storybook/equivalent states, and
 cross-engine interaction evidence are not shipped until protected integration.
