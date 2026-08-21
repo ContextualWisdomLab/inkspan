@@ -1,6 +1,8 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
   existsSync,
+  linkSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -148,6 +150,38 @@ describe('deterministic benchmark sample statistics', () => {
       );
       expect(readFileSync(input, 'utf8')).toBe(originalInput);
       expect(existsSync(join(root, 'summary.txt'))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses a hard-linked output alias without mutating source evidence', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-summary-hardlink-'));
+    const input = join(root, 'samples.json');
+    const output = join(root, 'output');
+    const summaryJson = join(output, 'summary.json');
+    try {
+      writeInput(input, [10, 20, 30]);
+      mkdirSync(output, { recursive: true });
+      linkSync(input, summaryJson);
+      const originalInput = readFileSync(input, 'utf8');
+
+      const result = spawnSync(
+        process.execPath,
+        [script, '--input', input, '--output', output],
+        {
+          cwd: process.cwd(),
+          encoding: 'utf8',
+        },
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(
+        'Benchmark output must not overwrite the sample input.',
+      );
+      expect(readFileSync(input, 'utf8')).toBe(originalInput);
+      expect(existsSync(join(output, 'summary.txt'))).toBe(false);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
