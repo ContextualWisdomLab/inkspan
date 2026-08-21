@@ -14,6 +14,7 @@ import {
   buildEditorAccessibilityAttributes,
   normalizeEditorPlaceholder,
 } from './editorAccessibility.js';
+import { synchronizeControlledEditorValue } from './editorControlledValueSync.js';
 import { createEditorDocumentSnapshot } from './editorDocumentSnapshot.js';
 import { applyEditorFormReset } from './editorFormReset.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
@@ -65,6 +66,28 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     },
     ref,
   ) {
+    if (value !== undefined && typeof value !== 'string') {
+      throw new RangeError('editor value must be a string when provided');
+    }
+    if (defaultValue !== undefined && typeof defaultValue !== 'string') {
+      throw new RangeError(
+        'editor default value must be a string when provided',
+      );
+    }
+    if (formResetValue !== undefined && typeof formResetValue !== 'string') {
+      throw new RangeError(
+        'editor form reset value must be a string when provided',
+      );
+    }
+    if (typeof editable !== 'boolean') {
+      throw new RangeError('editor editable state must be a boolean when provided');
+    }
+    if (typeof hideToolbar !== 'boolean') {
+      throw new RangeError(
+        'editor toolbar visibility state must be a boolean when provided',
+      );
+    }
+
     const isControlled = value !== undefined;
     const selectedDocumentValue = value ?? defaultValue ?? '';
     const emittingRef = useRef(false);
@@ -193,7 +216,17 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     useEditorHandle(ref, editor, modeRef);
 
     useEffect(() => {
-      editor?.setEditable(editable);
+      if (!editor) return;
+      if (!editable && editor.view.composing) {
+        // ProseMirror treats compositionend as an edit event, so it will stop
+        // processing that event after editability has already been revoked.
+        // Drain the active local composition first to avoid stranding its
+        // internal composing state across the read-only transition.
+        const EventConstructor =
+          editor.view.dom.ownerDocument.defaultView!.Event;
+        editor.view.dom.dispatchEvent(new EventConstructor('compositionend'));
+      }
+      editor.setEditable(editable);
     }, [editor, editable]);
 
     useEffect(() => {
@@ -212,8 +245,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       const current = editorHtmlToValue(editor.getHTML(), mode);
       if (current !== value) {
         /* v8 ignore next -- isControlled guarantees value is defined. */
-        const next = editorValueToHtml(value ?? '', mode);
-        editor.commands.setContent(next, false);
+        synchronizeControlledEditorValue(editor, value ?? '', mode);
       }
     }, [editor, isControlled, value, mode]);
 
