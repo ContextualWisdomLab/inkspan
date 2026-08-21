@@ -31,11 +31,13 @@ export interface NativeFormHostProps {
  * Inkspan owns synchronization of the editor document into the native form
  * control. The host reads FormData at submit time and then applies its own
  * authorization and durable-persistence policy through onAuthorizedSubmit.
- * Overlapping submissions and form resets are blocked while the host callback
- * is in flight. Host read-only state additionally fail-closes native form
- * writes and disables the named field without moving authorization authority
- * into Inkspan. A later successful reset returns the host presentation to an
- * explicitly unsaved state.
+ * Overlapping submissions and form resets are blocked by the synchronous
+ * single-flight admission gate while the host callback is in flight; React
+ * presentation state is not used as the mutation authority. Host read-only
+ * state additionally fail-closes native form writes and disables the named
+ * field without moving authorization authority into Inkspan. A later
+ * successful reset returns the host presentation to an explicitly unsaved
+ * state.
  */
 export function NativeFormHost({
   onAuthorizedSubmit,
@@ -62,7 +64,7 @@ export function NativeFormHost({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (readOnly || submissionState === 'saving') {
+    if (readOnly || submitAuthorized.isInFlight()) {
       return;
     }
 
@@ -78,7 +80,7 @@ export function NativeFormHost({
   }
 
   function handleReset(event: FormEvent<HTMLFormElement>) {
-    if (readOnly || submissionState === 'saving') {
+    if (readOnly || submitAuthorized.isInFlight()) {
       event.preventDefault();
       return;
     }
