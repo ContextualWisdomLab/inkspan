@@ -1,9 +1,17 @@
-import { closeSync, fstatSync, openSync, readSync } from 'node:fs';
+import {
+  closeSync,
+  constants,
+  fstatSync,
+  openSync,
+  readSync,
+} from 'node:fs';
 import { resolve } from 'node:path';
 
 const MAX_INPUT_BYTES = 1024 * 1024;
 const READ_CHUNK_BYTES = 64 * 1024;
 const MAX_SAMPLES = 1_000_000;
+const READ_ONLY_NONBLOCKING =
+  constants.O_RDONLY | (constants.O_NONBLOCK ?? 0);
 const BENCHMARK_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const UNIT_PATTERN = /^[A-Za-z][A-Za-z0-9._/%-]{0,31}$/u;
 const SHA1_PATTERN = /^[0-9a-f]{40}$/u;
@@ -72,7 +80,7 @@ function resolveArguments(argv) {
 }
 
 function readBoundedJson(path) {
-  const descriptor = openSync(path, 'r');
+  const descriptor = openSync(path, READ_ONLY_NONBLOCKING);
   try {
     const metadata = fstatSync(descriptor);
     if (!metadata.isFile()) {
