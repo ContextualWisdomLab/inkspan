@@ -15,6 +15,8 @@ export type SubmissionStateObserver = (
  * Overlapping attempts are rejected while one host callback is in flight.
  * Host failures are reduced to a stable boolean/state signal so private
  * durable-store details do not cross the reference component boundary.
+ * Presentation-state observer failures are best-effort and cannot block,
+ * reclassify, or wedge the host-owned persistence attempt.
  */
 export function createSingleFlightSubmission(
   onAuthorizedSubmit: AuthorizedSubmit,
@@ -22,19 +24,27 @@ export function createSingleFlightSubmission(
 ) {
   let inFlight = false;
 
+  const notifyState = (state: ReferenceHostSubmissionState) => {
+    try {
+      onStateChange(state);
+    } catch {
+      // Presentation observation must not acquire persistence authority.
+    }
+  };
+
   return async (messageBody: string): Promise<boolean> => {
     if (inFlight) {
       return false;
     }
 
     inFlight = true;
-    onStateChange('saving');
+    notifyState('saving');
     try {
       await onAuthorizedSubmit(messageBody);
-      onStateChange('saved');
+      notifyState('saved');
       return true;
     } catch {
-      onStateChange('failed');
+      notifyState('failed');
       return false;
     } finally {
       inFlight = false;
