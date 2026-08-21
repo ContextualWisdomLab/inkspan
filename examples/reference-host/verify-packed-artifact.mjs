@@ -242,15 +242,21 @@ process.stdout.write(JSON.stringify({
     'Packed consumer unexpectedly resolved an executable import through source files.',
   );
 
+  const esmServerRenderedNamedField = consumerResult.serverRenderedNamedField === true;
+  const commonJsServerRenderedNamedField =
+    commonJsConsumerResult.serverRenderedNamedField === true;
+
   process.stdout.write(
     `${JSON.stringify({
       packageName,
       packageVersion,
       installedFromTarball: true,
       consumerInstallCompleted: true,
-      esmServerRenderedNamedField: consumerResult.serverRenderedNamedField === true,
-      commonJsServerRenderedNamedField:
-        commonJsConsumerResult.serverRenderedNamedField === true,
+      // Preserve the established verifier receipt while extending it with
+      // format-specific evidence below.
+      serverRenderedNamedField: esmServerRenderedNamedField,
+      esmServerRenderedNamedField,
+      commonJsServerRenderedNamedField,
       esmConverterRoundTrip: consumerResult.converterRoundTrip === true,
       commonJsConverterRoundTrip: commonJsConsumerResult.converterRoundTrip === true,
       publicAssetEntriesContained,
