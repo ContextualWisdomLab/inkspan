@@ -17,18 +17,27 @@ describe('reference-host authorized submission single-flight boundary', () => {
     });
 
     const first = submit('# First');
+
+    // Admission is synchronous even when a React-style state observer has not
+    // committed a render yet. Native submit/reset handlers must be able to
+    // consult this gate directly rather than infer it from presentation state.
+    expect(submit.isInFlight()).toBe(true);
+
     const overlapping = submit('# Overlapping');
 
     expect(onAuthorizedSubmit).toHaveBeenCalledTimes(1);
     expect(onAuthorizedSubmit).toHaveBeenLastCalledWith('# First');
     await expect(overlapping).resolves.toBe(false);
+    expect(submit.isInFlight()).toBe(true);
     expect(states).toEqual(['saving']);
 
     resolveFirst?.();
     await expect(first).resolves.toBe(true);
+    expect(submit.isInFlight()).toBe(false);
     expect(states).toEqual(['saving', 'saved']);
 
     await expect(submit('# Later')).resolves.toBe(true);
+    expect(submit.isInFlight()).toBe(false);
     expect(onAuthorizedSubmit).toHaveBeenCalledTimes(2);
     expect(onAuthorizedSubmit).toHaveBeenLastCalledWith('# Later');
     expect(states).toEqual(['saving', 'saved', 'saving', 'saved']);
@@ -46,6 +55,7 @@ describe('reference-host authorized submission single-flight boundary', () => {
     });
 
     await expect(submit('# Failing')).resolves.toBe(false);
+    expect(submit.isInFlight()).toBe(false);
     await expect(submit('# Retry')).resolves.toBe(true);
 
     expect(onAuthorizedSubmit).toHaveBeenCalledTimes(2);
@@ -65,6 +75,7 @@ describe('reference-host authorized submission single-flight boundary', () => {
     });
 
     await expect(submit('# First')).resolves.toBe(true);
+    expect(submit.isInFlight()).toBe(false);
     await expect(submit('# Retry')).resolves.toBe(true);
     expect(onAuthorizedSubmit).toHaveBeenCalledTimes(2);
   });
@@ -83,6 +94,7 @@ describe('reference-host authorized submission single-flight boundary', () => {
     });
 
     await expect(submit('# Persisted')).resolves.toBe(true);
+    expect(submit.isInFlight()).toBe(false);
     expect(onAuthorizedSubmit).toHaveBeenCalledOnce();
     expect(states).toEqual(['saving', 'saved']);
   });
