@@ -133,6 +133,8 @@ describe('release cross-engine browser evidence contract', () => {
     expect(consensusSpec).toContain('packedPackageSha256(repositoryRoot)');
     expect(reviewSpec).toContain('window.mountInkspanReviewProbe()');
     expect(reviewSpec).toContain("data-review-status', 'stale'");
+    expect(reviewSpec).toContain("setViewportSize({ width: 360, height: 740 })");
+    expect(reviewSpec).toContain("emulateMedia({ forcedColors: 'active' })");
     expect(reviewSpec).toContain("emulateMedia({ media: 'print' })");
   });
 
