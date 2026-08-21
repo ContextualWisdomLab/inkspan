@@ -240,7 +240,8 @@ function refersToSameFile(leftPath, rightPath) {
 }
 
 function assertRegularOutputDestination(path) {
-  if (existsSync(path) && !lstatSync(path).isFile()) {
+  const metadata = lstatSync(path, { throwIfNoEntry: false });
+  if (metadata !== undefined && !metadata.isFile()) {
     throw new Error('Benchmark summary output paths must be regular files.');
   }
 }
