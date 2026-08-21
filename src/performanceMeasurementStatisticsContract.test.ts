@@ -6,10 +6,12 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  truncateSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 interface BenchmarkSummary {
@@ -122,6 +124,50 @@ describe('deterministic benchmark sample statistics', () => {
       expect(result.stderr.trim()).toBe(
         'Benchmark samples must be finite non-negative numbers.',
       );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects obviously oversized sample input before whole-file reads', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-summary-size-'));
+    const input = join(root, 'samples.json');
+    const output = join(root, 'output');
+    const preload = join(root, 'reject-whole-file-read.mjs');
+    try {
+      writeFileSync(input, '', 'utf8');
+      truncateSync(input, 16 * 1024 * 1024 + 1);
+      writeFileSync(
+        preload,
+        `import fs from 'node:fs';\nimport { syncBuiltinESMExports } from 'node:module';\nfs.readFileSync = () => { throw new Error('benchmark whole-file read sentinel'); };\nsyncBuiltinESMExports();\n`,
+        'utf8',
+      );
+
+      const result = spawnSync(
+        process.execPath,
+        [
+          '--import',
+          pathToFileURL(preload).href,
+          script,
+          '--input',
+          input,
+          '--output',
+          output,
+        ],
+        {
+          cwd: process.cwd(),
+          encoding: 'utf8',
+        },
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(
+        'Benchmark sample input exceeds the supported size.',
+      );
+      expect(result.stderr).not.toContain('benchmark whole-file read sentinel');
+      expect(existsSync(join(output, 'summary.json'))).toBe(false);
+      expect(existsSync(join(output, 'summary.txt'))).toBe(false);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
