@@ -71,6 +71,7 @@ runtime.
 | Revision evidence | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent canonical envelope, strong revision, and transition evidence |
 | Text-position selector | `@contextualwisdomlab/cwl-editor/text-position-selector` | React-free deterministic W3C `TextPositionSelector` projection core |
 | Review target core | `@contextualwisdomlab/cwl-editor/review` | `implemented_on_active_pr` — React-free deterministic exact-revision review targets; durable review records and policy remain host-owned |
+| Review React adapter | `@contextualwisdomlab/cwl-editor/review-react` | `implemented_on_active_pr` — controlled accessible thread presentation over the React-free review contract; hosts own actions, authorization, bodies, and persistence |
 | Autosave | `@contextualwisdomlab/cwl-editor/autosave` | Provider-neutral bounded single-flight persistence coordination |
 | Headless Markdown | `@contextualwisdomlab/cwl-editor/markdown` | React-free deterministic Markdown/HTML/email/plain-text conversion |
 | Styles | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
