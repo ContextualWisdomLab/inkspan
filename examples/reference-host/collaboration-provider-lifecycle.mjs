@@ -53,6 +53,17 @@ function readOwnDataRecord(source, keys, message) {
       }
       values[key] = descriptor.value;
     }
+    const ownKeys = Reflect.ownKeys(source);
+    if (
+      ownKeys.length !== keys.length ||
+      ownKeys.some(
+        (key) =>
+          typeof key !== 'string' ||
+          !keys.some((candidate) => candidate === key),
+      )
+    ) {
+      throw new TypeError(message);
+    }
     return values;
   } catch {
     throw new TypeError(message);
