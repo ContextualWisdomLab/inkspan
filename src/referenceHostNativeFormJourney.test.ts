@@ -39,13 +39,22 @@ describe('reference-host native form journey', () => {
     expect(nativeFormHostSource).not.toContain('localStorage');
   });
 
+  it('binds submit/reset admission to the synchronous durable gate rather than deferred presentation state', () => {
+    expect(
+      nativeFormHostSource.match(
+        /if \(readOnly \|\| submitAuthorized\.isInFlight\(\)\) \{/gu,
+      ),
+    ).toHaveLength(2);
+    expect(nativeFormHostSource).not.toContain(
+      "if (readOnly || submissionState === 'saving') {",
+    );
+  });
+
   it('blocks form reset while durable submission is in flight and marks a later reset unsaved', () => {
     expect(nativeFormHostSource).toContain(
       '<form onSubmit={handleSubmit} onReset={handleReset}>',
     );
-    expect(nativeFormHostSource).toContain(
-      "if (readOnly || submissionState === 'saving') {",
-    );
+    expect(nativeFormHostSource).toContain('submitAuthorized.isInFlight()');
     expect(nativeFormHostSource).toContain('event.preventDefault();');
     expect(nativeFormHostSource).toContain("setSubmissionState('idle');");
     expect(nativeFormHostSource).toMatch(
@@ -59,7 +68,7 @@ describe('reference-host native form journey', () => {
     expect(nativeFormHostSource).toContain('editable={!readOnly}');
     expect(nativeFormHostSource).toContain('formFieldDisabled={readOnly}');
     expect(nativeFormHostSource).toContain(
-      "if (readOnly || submissionState === 'saving') {",
+      'if (readOnly || submitAuthorized.isInFlight()) {',
     );
     expect(nativeFormHostSource).toMatch(
       /type="submit"\s+disabled=\{readOnly \|\| submissionState === 'saving'\}/u,
