@@ -32,4 +32,18 @@ describe('review package contract', () => {
       'scripts/verify-review-package.mjs',
     );
   });
+
+  it('publishes the controlled React review adapter as a separate subpath', () => {
+    expect(manifest.exports?.['./review-react']).toEqual({
+      types: './dist/review-react/index.d.ts',
+      import: './dist/cwl-review-react.js',
+      require: './dist/cwl-review-react.cjs',
+    });
+    expect(manifest.scripts?.build).toContain(
+      'vite build --config vite.review-react.config.ts',
+    );
+    expect(manifest.scripts?.['verify:package']).toContain(
+      'scripts/verify-review-react-package.mjs',
+    );
+  });
 });
