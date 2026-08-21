@@ -1,13 +1,17 @@
 import {
+  closeSync,
   existsSync,
+  fstatSync,
   mkdirSync,
-  readFileSync,
+  openSync,
+  readSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
 import { resolve } from 'node:path';
 
 const MAX_INPUT_BYTES = 16 * 1024 * 1024;
+const READ_CHUNK_BYTES = 64 * 1024;
 const MAX_SAMPLES = 1_000_000;
 const BENCHMARK_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const UNIT_PATTERN = /^[A-Za-z][A-Za-z0-9._/%-]{0,31}$/u;
@@ -31,17 +35,49 @@ function resolveArguments(argv) {
 }
 
 function readBoundedJson(path) {
-  const bytes = readFileSync(path);
-  if (bytes.byteLength > MAX_INPUT_BYTES) {
-    throw new Error('Benchmark sample input exceeds the supported size.');
-  }
-  let parsed;
+  const descriptor = openSync(path, 'r');
   try {
-    parsed = JSON.parse(bytes.toString('utf8'));
-  } catch {
-    throw new Error('Benchmark sample input must be valid JSON.');
+    const metadata = fstatSync(descriptor);
+    if (!metadata.isFile()) {
+      throw new Error('Benchmark sample input must be a regular file.');
+    }
+    if (metadata.size > MAX_INPUT_BYTES) {
+      throw new Error('Benchmark sample input exceeds the supported size.');
+    }
+
+    const chunks = [];
+    let totalBytes = 0;
+    while (totalBytes <= MAX_INPUT_BYTES) {
+      const remainingBudget = MAX_INPUT_BYTES + 1 - totalBytes;
+      const chunk = Buffer.allocUnsafe(
+        Math.min(READ_CHUNK_BYTES, remainingBudget),
+      );
+      const bytesRead = readSync(
+        descriptor,
+        chunk,
+        0,
+        chunk.byteLength,
+        null,
+      );
+      if (bytesRead === 0) break;
+      totalBytes += bytesRead;
+      if (totalBytes > MAX_INPUT_BYTES) {
+        throw new Error('Benchmark sample input exceeds the supported size.');
+      }
+      chunks.push(chunk.subarray(0, bytesRead));
+    }
+
+    const bytes = Buffer.concat(chunks, totalBytes);
+    let parsed;
+    try {
+      parsed = JSON.parse(bytes.toString('utf8'));
+    } catch {
+      throw new Error('Benchmark sample input must be valid JSON.');
+    }
+    return parsed;
+  } finally {
+    closeSync(descriptor);
   }
-  return parsed;
 }
 
 function validateInput(value) {
