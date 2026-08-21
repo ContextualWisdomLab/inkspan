@@ -43,6 +43,19 @@ function readPlainDataRecord(source, keys, message) {
       }
       values[key] = descriptor.value;
     }
+
+    const ownKeys = Reflect.ownKeys(source);
+    if (
+      ownKeys.length !== keys.length ||
+      ownKeys.some(
+        (key) =>
+          typeof key !== 'string' ||
+          !keys.some((candidate) => candidate === key),
+      )
+    ) {
+      throw new TypeError(message);
+    }
+
     return values;
   } catch {
     throw new TypeError(message);
@@ -55,7 +68,7 @@ function readPlainDataRecord(source, keys, message) {
  * This fixture deliberately contains no provider SDK, credential, prompt log, or remote call.
  * Real hosts replace proposal generation with an approved model boundary while preserving the
  * expectedRevision conflict gate before applying untrusted proposal data. Candidate fields are
- * snapshotted from own data properties without invoking caller-owned accessors.
+ * snapshotted from an exact own-data-property shape without invoking caller-owned accessors.
  */
 export async function createDelayedProposal(source) {
   const input = readPlainDataRecord(
@@ -79,9 +92,10 @@ export async function createDelayedProposal(source) {
 
 /**
  * Apply one untrusted proposal only when the host's current revision still matches its capture.
- * Top-level application metadata and model proposal fields must be own data properties so
- * validation never executes accessor-backed untrusted proposal data. Host apply failures are
- * normalized at this reference boundary so private callback causes are not reflected outward.
+ * Top-level application metadata and model proposal fields must have an exact own-data-property
+ * shape so validation never executes accessor-backed untrusted proposal data or silently admits
+ * unknown authority-looking metadata. Host apply failures are normalized at this reference
+ * boundary so private callback causes are not reflected outward.
  */
 export function applyDelayedProposal(source) {
   const application = readPlainDataRecord(
@@ -270,10 +284,77 @@ async function runHostileAccessorSelfTest() {
   );
 }
 
+async function runUnknownFieldSelfTest() {
+  let creationError = null;
+  try {
+    await createDelayedProposal({
+      expectedRevision: 'revision-v1',
+      replacement: 'Untrusted proposal',
+      authorization: 'owner',
+    });
+  } catch (error) {
+    creationError = error instanceof Error ? error.message : 'unexpected error';
+  }
+
+  const validProposal = await createDelayedProposal({
+    expectedRevision: 'revision-v1',
+    replacement: 'Valid proposal',
+  });
+  let applicationApplyCalls = 0;
+  let applicationError = null;
+  const applicationWithHiddenField = {
+    proposal: validProposal,
+    currentRevision: 'revision-v1',
+    apply() {
+      applicationApplyCalls += 1;
+    },
+  };
+  Object.defineProperty(applicationWithHiddenField, 'authorization', {
+    value: 'owner',
+    enumerable: false,
+  });
+  try {
+    applyDelayedProposal(applicationWithHiddenField);
+  } catch (error) {
+    applicationError = error instanceof Error ? error.message : 'unexpected error';
+  }
+
+  let proposalApplyCalls = 0;
+  let proposalError = null;
+  const authorityKey = Symbol('authorization');
+  try {
+    applyDelayedProposal({
+      proposal: {
+        expectedRevision: 'revision-v1',
+        replacement: 'Untrusted proposal',
+        [authorityKey]: 'owner',
+      },
+      currentRevision: 'revision-v1',
+      apply() {
+        proposalApplyCalls += 1;
+      },
+    });
+  } catch (error) {
+    proposalError = error instanceof Error ? error.message : 'unexpected error';
+  }
+
+  process.stdout.write(
+    `${JSON.stringify({
+      applicationApplyCalls,
+      applicationError,
+      creationError,
+      proposalApplyCalls,
+      proposalError,
+    })}\n`,
+  );
+}
+
 if (process.argv.includes('--empty-proposal-self-test')) {
   await runEmptyProposalSelfTest();
 } else if (process.argv.includes('--hostile-accessor-self-test')) {
   await runHostileAccessorSelfTest();
+} else if (process.argv.includes('--unknown-field-self-test')) {
+  await runUnknownFieldSelfTest();
 } else if (process.argv.includes('--self-test')) {
   await runSelfTest();
 }
