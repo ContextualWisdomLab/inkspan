@@ -2,6 +2,7 @@ import {
   closeSync,
   existsSync,
   fstatSync,
+  lstatSync,
   mkdirSync,
   openSync,
   readSync,
@@ -221,6 +222,12 @@ function refersToSameFile(leftPath, rightPath) {
   return left.dev === right.dev && left.ino === right.ino;
 }
 
+function assertRegularOutputDestination(path) {
+  if (existsSync(path) && !lstatSync(path).isFile()) {
+    throw new Error('Benchmark summary output paths must be regular files.');
+  }
+}
+
 function main() {
   const { inputPath, outputDirectory } = resolveArguments(process.argv.slice(2));
   const summaryJsonPath = resolve(outputDirectory, 'summary.json');
@@ -234,6 +241,8 @@ function main() {
   ) {
     throw new Error('Benchmark output must not overwrite the sample input.');
   }
+  assertRegularOutputDestination(summaryJsonPath);
+  assertRegularOutputDestination(summaryTextPath);
   const input = validateInput(readBoundedJson(inputPath));
   const summary = summarize(input);
   writeFileSync(
