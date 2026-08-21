@@ -152,4 +152,42 @@ describe('benchmark regression comparator contract', () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it('fails closed on a named-pipe summary instead of blocking before regular-file validation', () => {
+    if (process.platform === 'win32') return;
+
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-compare-fifo-'));
+    const baselinePath = join(root, 'baseline.pipe');
+    const currentPath = join(root, 'current.json');
+    try {
+      const mkfifo = spawnSync('mkfifo', [baselinePath], { encoding: 'utf8' });
+      expect(mkfifo.status).toBe(0);
+      writeFileSync(currentPath, `${JSON.stringify(summary())}\n`, 'utf8');
+
+      const result = spawnSync(
+        process.execPath,
+        [
+          script,
+          '--baseline',
+          baselinePath,
+          '--current',
+          currentPath,
+          '--metric',
+          'p95',
+          '--max-regression-percent',
+          '5',
+        ],
+        { cwd: process.cwd(), encoding: 'utf8', timeout: 1000 },
+      );
+
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(
+        'Benchmark summary input must be a regular file.',
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
