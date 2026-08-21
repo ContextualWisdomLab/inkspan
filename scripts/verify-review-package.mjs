@@ -100,20 +100,28 @@ import {
   INKSPAN_REVIEW_CONTRACT_VERSION,
   TEXT_POSITION_PROJECTION_ID,
   TEXT_POSITION_PROJECTION_VERSION,
+  CwlReviewOperationError,
+  CwlReviewSuggestionError,
   CwlReviewTargetError,
   DocumentEnvelopeRevisionError,
   TextPositionSelectorEvidenceError,
   createDocumentEnvelopeRevision,
+  createReviewOperationResult,
+  createReviewSuggestion,
   createReviewTarget,
   createTextPositionSelector,
 } from '${packageJson.name}/review';
 assert.equal(INKSPAN_REVIEW_CONTRACT_VERSION, 1);
 assert.equal(TEXT_POSITION_PROJECTION_ID, 'inkspan-prosemirror-text');
 assert.equal(TEXT_POSITION_PROJECTION_VERSION, 1);
+assert.equal(typeof CwlReviewOperationError, 'function');
+assert.equal(typeof CwlReviewSuggestionError, 'function');
 assert.equal(typeof CwlReviewTargetError, 'function');
 assert.equal(typeof DocumentEnvelopeRevisionError, 'function');
 assert.equal(typeof TextPositionSelectorEvidenceError, 'function');
 assert.equal(typeof createDocumentEnvelopeRevision, 'function');
+assert.equal(typeof createReviewOperationResult, 'function');
+assert.equal(typeof createReviewSuggestion, 'function');
 assert.equal(typeof createReviewTarget, 'function');
 assert.equal(typeof createTextPositionSelector, 'function');
 const digestHex = 'a'.repeat(64);
@@ -134,6 +142,22 @@ assert.throws(
   () => createReviewTarget({ ...target, contractVersion: 2 }),
   CwlReviewTargetError,
 );
+const insertionTarget = createReviewTarget({
+  ...target,
+  selector: { type: 'TextPositionSelector', start: 1, end: 1 },
+});
+const suggestion = createReviewSuggestion({
+  contractVersion: 1,
+  kind: 'insert',
+  target: insertionTarget,
+  text: 'proposal',
+});
+assert.equal(suggestion.kind, 'insert');
+assert.equal(Object.isFrozen(suggestion), true);
+assert.throws(
+  () => createReviewSuggestion({ ...suggestion, text: '' }),
+  CwlReviewSuggestionError,
+);
 `,
     'utf8',
   );
@@ -145,8 +169,12 @@ const review = require('${packageJson.name}/review');
 assert.equal(review.INKSPAN_REVIEW_CONTRACT_VERSION, 1);
 assert.equal(review.TEXT_POSITION_PROJECTION_ID, 'inkspan-prosemirror-text');
 assert.equal(review.TEXT_POSITION_PROJECTION_VERSION, 1);
+assert.equal(typeof review.CwlReviewOperationError, 'function');
+assert.equal(typeof review.CwlReviewSuggestionError, 'function');
 assert.equal(typeof review.CwlReviewTargetError, 'function');
 assert.equal(typeof review.createDocumentEnvelopeRevision, 'function');
+assert.equal(typeof review.createReviewOperationResult, 'function');
+assert.equal(typeof review.createReviewSuggestion, 'function');
 assert.equal(typeof review.createReviewTarget, 'function');
 assert.equal(typeof review.createTextPositionSelector, 'function');
 const digestHex = 'b'.repeat(64);
@@ -162,6 +190,14 @@ const target = review.createReviewTarget({
 });
 assert.equal(target.revision.digestHex, digestHex);
 assert.equal(Object.isFrozen(target.projection), true);
+const suggestion = review.createReviewSuggestion({
+  contractVersion: 1,
+  kind: 'insert',
+  target,
+  text: 'proposal',
+});
+assert.equal(suggestion.text, 'proposal');
+assert.equal(Object.isFrozen(suggestion), true);
 `,
     'utf8',
   );
@@ -176,8 +212,16 @@ function verifyDeclarationConsumer() {
     sourcePath,
     `import {
   INKSPAN_REVIEW_CONTRACT_VERSION,
+  CwlReviewOperationError,
+  CwlReviewSuggestionError,
   CwlReviewTargetError,
+  createReviewOperationResult,
+  createReviewSuggestion,
   createReviewTarget,
+  type CwlReviewOperationErrorCode,
+  type CwlReviewOperationResult,
+  type CwlReviewSuggestion,
+  type CwlReviewSuggestionErrorCode,
   type CwlReviewTarget,
   type CwlReviewTargetErrorCode,
   type CwlEditorDocumentRevision,
@@ -194,13 +238,31 @@ const target: CwlReviewTarget = {
   projection,
 };
 const detachedTarget: CwlReviewTarget = createReviewTarget(target);
-const code: CwlReviewTargetErrorCode = new CwlReviewTargetError().code;
+const suggestion: CwlReviewSuggestion = createReviewSuggestion({
+  contractVersion: INKSPAN_REVIEW_CONTRACT_VERSION,
+  kind: 'delete',
+  target: {
+    ...target,
+    selector: { type: 'TextPositionSelector', start: 0, end: 1 },
+  },
+});
+const operationPromise: Promise<CwlReviewOperationResult> =
+  createReviewOperationResult(suggestion, 'reject', {}, {});
+const targetCode: CwlReviewTargetErrorCode = new CwlReviewTargetError().code;
+const suggestionCode: CwlReviewSuggestionErrorCode =
+  new CwlReviewSuggestionError().code;
+const operationCode: CwlReviewOperationErrorCode =
+  new CwlReviewOperationError('invalid_operation').code;
 void [
   detachedTarget.revision,
   detachedTarget.selector.start,
   detachedTarget.selector.end,
   detachedTarget.projection.id,
-  code,
+  suggestion.kind,
+  operationPromise,
+  targetCode,
+  suggestionCode,
+  operationCode,
 ];
 `,
     'utf8',
