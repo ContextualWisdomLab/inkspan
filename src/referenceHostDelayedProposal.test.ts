@@ -71,4 +71,21 @@ describe('reference-host delayed proposal contract', () => {
       proposalGetterCalls: 0,
     });
   });
+
+  it('fails closed on unknown proposal and application fields before host mutation', () => {
+    if (!existsSync(fixturePath)) return;
+    const output = execFileSync(
+      process.execPath,
+      [fixturePath, '--unknown-field-self-test'],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      applicationApplyCalls: 0,
+      applicationError: 'proposal application is invalid.',
+      creationError: 'proposal creation is invalid.',
+      proposalApplyCalls: 0,
+      proposalError: 'proposal application is invalid.',
+    });
+  });
 });
