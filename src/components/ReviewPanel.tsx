@@ -9,6 +9,8 @@ import type {
 
 interface ReviewPanelProps {
   readonly review: CwlEditorReviewProps;
+  /** Whether document-mutating review actions are currently permitted by the editor surface. */
+  readonly editable?: boolean;
   readonly onAction: (
     suggestion: CwlEditorReviewSuggestion,
     action: 'accept' | 'reject',
@@ -17,7 +19,12 @@ interface ReviewPanelProps {
 }
 
 /** Render accessible host-controlled threads and deterministic suggestions. */
-export function ReviewPanel({ review, onAction, onSelect }: ReviewPanelProps) {
+export function ReviewPanel({
+  review,
+  editable = true,
+  onAction,
+  onSelect,
+}: ReviewPanelProps) {
   const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(new Set());
   const suggestions = review.suggestions ?? [];
   const threads = review.threads ?? [];
@@ -58,6 +65,7 @@ export function ReviewPanel({ review, onAction, onSelect }: ReviewPanelProps) {
           {suggestions.map((suggestion) => {
             const busy = busyIds.has(suggestion.suggestionId);
             const final = suggestion.state !== 'pending';
+            const actionDisabled = !editable || busy || final;
             return (
               <li key={suggestion.suggestionId}>
                 <button
@@ -81,7 +89,7 @@ export function ReviewPanel({ review, onAction, onSelect }: ReviewPanelProps) {
                         setBusy(suggestion.suggestionId, false);
                       }
                     }}
-                    disabled={busy || final}
+                    disabled={actionDisabled}
                   >
                     Accept
                   </button>
@@ -95,7 +103,7 @@ export function ReviewPanel({ review, onAction, onSelect }: ReviewPanelProps) {
                         setBusy(suggestion.suggestionId, false);
                       }
                     }}
-                    disabled={busy || final}
+                    disabled={actionDisabled}
                   >
                     Reject
                   </button>
