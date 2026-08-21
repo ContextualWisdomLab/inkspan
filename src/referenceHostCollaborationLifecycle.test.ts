@@ -315,4 +315,84 @@ describe('reference-host collaboration lifecycle contract', () => {
       retryResult: true,
     });
   });
+
+  it('allows only cleanup retries after disposal has started', () => {
+    if (!existsSync(fixturePath)) return;
+    const moduleUrl = JSON.stringify(pathToFileURL(fixturePath).href);
+    const script = `
+      import { createHostCollaborationLifecycle } from ${moduleUrl};
+      const events = [];
+      const lifecycle = createHostCollaborationLifecycle({
+        documentFactory() {
+          return {
+            destroy() { events.push('document:destroy'); },
+          };
+        },
+        providerFactory() {
+          return {
+            connect() { events.push('provider:connect'); },
+            disconnect() { events.push('provider:disconnect'); },
+            destroy() {
+              events.push('provider:destroy');
+              throw new Error('private persistent provider destroy failure');
+            },
+          };
+        },
+        roomId: 'reference-room',
+        actorId: 'reference-actor',
+      });
+      lifecycle.connect();
+      let disposeError = null;
+      try {
+        lifecycle.dispose();
+      } catch (error) {
+        disposeError = error instanceof Error ? error.message : 'unexpected error';
+      }
+      const eventsAfterDispose = [...events];
+      let connectError = null;
+      try {
+        lifecycle.connect();
+      } catch (error) {
+        connectError = error instanceof Error ? error.message : 'unexpected error';
+      }
+      let reconnectError = null;
+      try {
+        lifecycle.reconnect();
+      } catch (error) {
+        reconnectError = error instanceof Error ? error.message : 'unexpected error';
+      }
+      process.stdout.write(JSON.stringify({
+        connectError,
+        disposeError,
+        events,
+        eventsAfterDispose,
+        reconnectError,
+        snapshot: lifecycle.getSnapshot(),
+      }));
+    `;
+    const output = execFileSync(
+      process.execPath,
+      ['--input-type=module', '--eval', script],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      connectError: 'collaboration lifecycle teardown failed.',
+      disposeError: 'collaboration lifecycle teardown failed.',
+      events: [
+        'provider:connect',
+        'provider:disconnect',
+        'provider:destroy',
+        'document:destroy',
+      ],
+      eventsAfterDispose: [
+        'provider:connect',
+        'provider:disconnect',
+        'provider:destroy',
+        'document:destroy',
+      ],
+      reconnectError: 'collaboration lifecycle teardown failed.',
+      snapshot: { providerGeneration: 1, status: 'disconnected' },
+    });
+  });
 });
