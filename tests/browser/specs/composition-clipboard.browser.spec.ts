@@ -62,6 +62,10 @@ test.beforeEach(async ({ page }) => {
     await route.abort('blockedbyclient');
   });
   await page.goto('/tests/browser/input-harness.html');
+  await expect(page.locator('.ProseMirror')).toHaveAttribute(
+    'contenteditable',
+    'true',
+  );
 });
 
 test.afterEach(async ({ page }) => {
