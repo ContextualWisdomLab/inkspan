@@ -127,18 +127,22 @@ const BLOB_ARRAY_BUFFER_METHOD = Object.getOwnPropertyDescriptor(
   'arrayBuffer',
 )?.value as unknown;
 
-type NodeBuffer = typeof globalThis.Buffer;
-type NodeBufferFrom = NodeBuffer['from'];
+type BindableBufferFrom = (...args: never[]) => unknown;
+interface BufferAuthority {
+  from: BindableBufferFrom;
+}
 
 /** Capture Node's Buffer.from authority when present without mutating globals. */
 export function resolveNodeBufferFrom(
-  buffer: NodeBuffer | undefined,
-): NodeBufferFrom | undefined {
+  buffer: BufferAuthority | undefined,
+): BindableBufferFrom | undefined {
   if (buffer === undefined) return undefined;
-  return buffer.from.bind(buffer) as NodeBufferFrom;
+  return buffer.from.bind(buffer);
 }
 
-const NODE_BUFFER_FROM = resolveNodeBufferFrom(globalThis.Buffer);
+const NODE_BUFFER_FROM = resolveNodeBufferFrom(
+  globalThis.Buffer as unknown as BufferAuthority | undefined,
+) as typeof globalThis.Buffer.from | undefined;
 const hasBuffer = typeof NODE_BUFFER_FROM === 'function';
 
 interface Uint8ArraySlots {
