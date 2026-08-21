@@ -148,6 +148,7 @@ function teardownFailure() {
  * retry, and cleanup failures do not prevent remaining teardown attempts. A
  * failed provider or document destruction keeps only the incomplete cleanup live
  * so a later dispose() retries it without repeating already-successful teardown.
+ * Once disposal starts, connect/reconnect stay closed while cleanup is pending.
  */
 export function createHostCollaborationLifecycle(source) {
   const options = readOwnDataRecord(
@@ -172,6 +173,7 @@ export function createHostCollaborationLifecycle(source) {
   let providerResource = null;
   let connected = false;
   let documentDestroyed = false;
+  let disposeStarted = false;
   let disposed = false;
 
   function makeProvider(privateFailure) {
@@ -194,6 +196,9 @@ export function createHostCollaborationLifecycle(source) {
   function requireLive() {
     if (disposed) {
       throw new Error('collaboration lifecycle is disposed.');
+    }
+    if (disposeStarted) {
+      throw teardownFailure();
     }
   }
 
@@ -244,6 +249,7 @@ export function createHostCollaborationLifecycle(source) {
 
   function dispose() {
     if (disposed) return false;
+    disposeStarted = true;
     let failed = false;
     try {
       teardownProvider();
