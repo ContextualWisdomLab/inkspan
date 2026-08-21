@@ -126,13 +126,19 @@ const BLOB_ARRAY_BUFFER_METHOD = Object.getOwnPropertyDescriptor(
   Blob.prototype,
   'arrayBuffer',
 )?.value as unknown;
-const NODE_BUFFER = globalThis.Buffer;
-/* v8 ignore start -- browser-only module initialization without Node Buffer. */
-const NODE_BUFFER_FROM =
-  typeof NODE_BUFFER === 'undefined'
-    ? undefined
-    : NODE_BUFFER.from.bind(NODE_BUFFER);
-/* v8 ignore stop */
+
+type NodeBuffer = typeof globalThis.Buffer;
+type NodeBufferFrom = NodeBuffer['from'];
+
+/** Capture Node's Buffer.from authority when present without mutating globals. */
+export function resolveNodeBufferFrom(
+  buffer: NodeBuffer | undefined,
+): NodeBufferFrom | undefined {
+  if (buffer === undefined) return undefined;
+  return buffer.from.bind(buffer) as NodeBufferFrom;
+}
+
+const NODE_BUFFER_FROM = resolveNodeBufferFrom(globalThis.Buffer);
 const hasBuffer = typeof NODE_BUFFER_FROM === 'function';
 
 interface Uint8ArraySlots {
