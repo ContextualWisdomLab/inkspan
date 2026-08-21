@@ -2,6 +2,7 @@ import { Doc } from 'yjs';
 
 const MAX_CONTEXT_CODE_UNITS = 256;
 const INITIALIZATION_FAILURE = 'collaboration lifecycle initialization failed.';
+const RECONNECT_FAILURE = 'collaboration lifecycle reconnect failed.';
 const TEARDOWN_FAILURE = 'collaboration lifecycle teardown failed.';
 const RESOURCE_VALIDATION_ERRORS = new WeakSet();
 
@@ -103,6 +104,10 @@ function initializationFailure() {
   return new Error(INITIALIZATION_FAILURE);
 }
 
+function reconnectFailure() {
+  return new Error(RECONNECT_FAILURE);
+}
+
 function teardownFailure() {
   return new Error(TEARDOWN_FAILURE);
 }
@@ -115,8 +120,9 @@ function teardownFailure() {
  * it does not create, reconnect, disconnect, or destroy either resource. Option
  * fields and resource methods are captured from data descriptors so lifecycle
  * validation never executes accessor-backed host objects. Initial provider
- * failures unwind an already-created document, and cleanup failures are
- * payload-redacted without preventing remaining teardown attempts.
+ * failures unwind an already-created document, reconnect provider-construction
+ * failures remain retryable, and private callback/cleanup causes are payload-
+ * redacted without preventing remaining teardown attempts.
  */
 export function createHostCollaborationLifecycle(source) {
   const options = readOwnDataRecord(
@@ -136,16 +142,20 @@ export function createHostCollaborationLifecycle(source) {
   let connected = false;
   let disposed = false;
 
-  function makeProvider() {
+  function makeProvider(privateFailure) {
     providerGeneration += 1;
-    providerResource = requireProvider(
-      createProvider({
+    let candidate;
+    try {
+      candidate = createProvider({
         document,
         roomId: boundedRoomId,
         actorId: boundedActorId,
         generation: providerGeneration,
-      }),
-    );
+      });
+    } catch {
+      throw privateFailure();
+    }
+    providerResource = requireProvider(candidate);
     connected = false;
   }
 
@@ -191,7 +201,7 @@ export function createHostCollaborationLifecycle(source) {
   function reconnect() {
     requireLive();
     teardownProvider();
-    makeProvider();
+    makeProvider(reconnectFailure);
     connect();
     return getSnapshot();
   }
@@ -222,7 +232,7 @@ export function createHostCollaborationLifecycle(source) {
   }
 
   try {
-    makeProvider();
+    makeProvider(initializationFailure);
   } catch (error) {
     let cleanupFailed = false;
     try {
