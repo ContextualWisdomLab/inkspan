@@ -43,6 +43,38 @@ test.afterEach(async ({ page }) => {
   expect(rejectedRequestsByPage.get(page) ?? []).toEqual([]);
 });
 
+test('delivers emulated touchscreen input through the Pointer Events touch path', async ({
+  page,
+}) => {
+  const editable = page.locator('.ProseMirror');
+  const box = await editable.boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) {
+    throw new Error('Editable surface has no touch target bounds.');
+  }
+
+  await editable.evaluate((element) => {
+    element.addEventListener(
+      'pointerdown',
+      (event) => {
+        if (!(event instanceof PointerEvent)) {
+          throw new Error('Pointer event is unavailable.');
+        }
+        element.setAttribute('data-last-pointer-type', event.pointerType);
+        element.setAttribute('data-last-pointer-primary', String(event.isPrimary));
+      },
+      { once: true },
+    );
+  });
+
+  await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+
+  await expect(editable).toHaveAttribute('data-last-pointer-type', 'touch');
+  await expect(editable).toHaveAttribute('data-last-pointer-primary', 'true');
+  await expect(editable).toBeFocused();
+  await expectNoHorizontalDocumentOverflow(page);
+});
+
 test('preserves multilingual committed input after emulated touch focus', async ({
   page,
 }) => {
