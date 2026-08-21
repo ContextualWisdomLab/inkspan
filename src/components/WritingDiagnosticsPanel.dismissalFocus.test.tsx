@@ -67,6 +67,7 @@ function StatefulDiagnosticsPanel({
     diagnostics,
     digestProvider: null,
     focusDiagnostic,
+    applyDiagnostic: async () => null,
     ignoreDiagnostic: () => null,
     dismissDiagnostic: (diagnosticId) => {
       const diagnostic = diagnostics.find(
