@@ -20,10 +20,12 @@ function target(): CwlEditorReviewTarget {
 function panel(
   review: CwlEditorReviewProps,
   onAction: CwlEditorReviewProps['onOperation'] = vi.fn(),
+  editable = true,
 ) {
   return render(
     <ReviewPanel
       review={review}
+      editable={editable}
       onAction={async (suggestion, action) => {
         await onAction?.({
           schemaId: 'https://inkspan.io/schemas/review/v1',
@@ -144,11 +146,9 @@ describe('ReviewPanel', () => {
     await waitFor(() => expect(accept).not.toBeDisabled());
   });
 
-  it('fails closed when the host disables review actions', () => {
+  it('disables document-mutating review actions when the editor is read-only', () => {
     const onAction = vi.fn();
     panel({
-      allowAccept: false,
-      allowReject: false,
       suggestions: [{
         suggestionId: 'permission-disabled',
         kind: 'insert',
@@ -157,7 +157,7 @@ describe('ReviewPanel', () => {
         target: { ...target(), selector: { ...target().selector, end: 0 } },
         text: 'x',
       }],
-    }, onAction);
+    }, onAction, false);
 
     const accept = screen.getByRole('button', { name: 'Accept' });
     const reject = screen.getByRole('button', { name: 'Reject' });
