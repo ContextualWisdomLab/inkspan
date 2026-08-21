@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 type InputHarness = {
   getText: () => string;
@@ -10,8 +10,11 @@ const allowHarnessRequest = (requestUrl: string): boolean => {
   return url.hostname === '127.0.0.1' && url.port === '4173';
 };
 
+const rejectedRequestsByPage = new WeakMap<Page, string[]>();
+
 test.beforeEach(async ({ page }) => {
   const rejectedExternalRequests: string[] = [];
+  rejectedRequestsByPage.set(page, rejectedExternalRequests);
   await page.route('**/*', async (route) => {
     if (allowHarnessRequest(route.request().url())) {
       await route.continue();
@@ -21,23 +24,11 @@ test.beforeEach(async ({ page }) => {
     await route.abort('blockedbyclient');
   });
   await page.goto('/tests/browser/input-harness.html');
-  await page.evaluate((rejected) => {
-    Object.defineProperty(window, '__inkspanRejectedInputRequests', {
-      configurable: true,
-      value: rejected,
-    });
-  }, rejectedExternalRequests);
 });
 
 test.afterEach(async ({ page }) => {
   await page.waitForLoadState('networkidle');
-  expect(
-    await page.evaluate(
-      () =>
-        (window as typeof window & { __inkspanRejectedInputRequests?: string[] })
-          .__inkspanRejectedInputRequests ?? [],
-    ),
-  ).toEqual([]);
+  expect(rejectedRequestsByPage.get(page) ?? []).toEqual([]);
 });
 
 test('keeps multilingual committed input inert while read-only and resumes after re-enable', async ({
