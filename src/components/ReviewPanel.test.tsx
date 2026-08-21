@@ -143,4 +143,28 @@ describe('ReviewPanel', () => {
     resolveAction?.();
     await waitFor(() => expect(accept).not.toBeDisabled());
   });
+
+  it('fails closed when the host disables review actions', () => {
+    const onAction = vi.fn();
+    panel({
+      allowAccept: false,
+      allowReject: false,
+      suggestions: [{
+        suggestionId: 'permission-disabled',
+        kind: 'insert',
+        state: 'pending',
+        expectedRevision: target().revision,
+        target: { ...target(), selector: { ...target().selector, end: 0 } },
+        text: 'x',
+      }],
+    }, onAction);
+
+    const accept = screen.getByRole('button', { name: 'Accept' });
+    const reject = screen.getByRole('button', { name: 'Reject' });
+    expect(accept).toBeDisabled();
+    expect(reject).toBeDisabled();
+    fireEvent.click(accept);
+    fireEvent.click(reject);
+    expect(onAction).not.toHaveBeenCalled();
+  });
 });
