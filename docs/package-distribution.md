@@ -18,6 +18,7 @@ integrations.
 | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent revision evidence and document-transition evidence for local content equality/lineage claims |
 | `@contextualwisdomlab/cwl-editor/text-position-selector` | `implemented_on_protected_main` — React-free text-position projection core implementing W3C `TextPositionSelector`; interactive capture, revision binding, authorization, persistence, and re-anchoring remain outside this subpath |
 | `@contextualwisdomlab/cwl-editor/review` | `implemented_on_active_pr` — React-free deterministic review-target validation bound to exact local SHA-256 revision evidence plus Inkspan's W3C text-position projection; durable review records and policy remain host-owned |
+| `@contextualwisdomlab/cwl-editor/review-react` | `implemented_on_active_pr` — controlled accessible React thread presentation over the bounded review contract; hosts supply labels and own actions, authorization, bodies, and persistence |
 | `@contextualwisdomlab/cwl-editor/markdown` | `implemented_on_active_pr` — headless deterministic Markdown/HTML/email/plain-text conversion with the same safe-link and strict inline-raster policies as the editor, without importing the React/TipTap editor graph |
 | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
 | `@contextualwisdomlab/cwl-editor/fonts.css` | Full offline KR/EN/JP/SC/TC/VI font bundle |
@@ -64,6 +65,13 @@ embedded in the npm tarball.
   database, provider credentials, or host transport. Their individual
   package-consumer gates additionally prevent framework dependencies from
   leaking into subpaths whose public contracts exclude them.
+- The review-react subpath is an optional controlled React presentation adapter.
+  It validates every host-supplied presentation through the React-free review
+  contract before rendering, receives visible and accessible copy from the host,
+  and emits selection, reply, and resolve intent callbacks only. Presentation
+  capability flags never grant authority on their own; missing host callbacks
+  keep actions disabled. It owns no comment body, actor lookup, authorization,
+  persistence, notification, or transport.
 - The Markdown subpath exposes `markdownToHtml`, `htmlToMarkdown`,
   `normalizeMarkdown`, `markdownToEmailHtml`, `markdownToPlainText`, and
   `htmlToPlainText` plus their option types. It bundles deterministic conversion
@@ -119,9 +127,9 @@ production library build. The verification chain:
 4. rejects internal source, tests, demos, Office files, coverage output, and
    workflow files from the npm tarball;
 5. imports the root, collaboration, converter, autosave, envelope-identity,
-   revision-evidence, text-position-selector, review, and Markdown surfaces
-   through their dedicated packed-consumer checks, including framework-free
-   isolation where that is part of the public contract;
+   revision-evidence, text-position-selector, review, review-react, and Markdown
+   surfaces through their dedicated packed-consumer checks, including
+   framework-free isolation where that is part of the public contract;
 6. exercises supported ESM/CommonJS entrypoints and compiles strict TypeScript
    consumers against the published declaration surfaces;
 7. resolves public CSS and font subpaths; and
@@ -145,6 +153,13 @@ compiles a strict TypeScript consumer, exercises valid and malformed target
 metadata, and rejects external runtime imports, dynamic module loaders, and
 ambient network or credential authority. This is active-PR evidence only until
 the review subpath is integrated into protected main.
+
+The active review-react package check is configured to build and extract a real
+npm tarball, exercise ESM and CommonJS server-render consumers plus strict
+TypeScript declarations, permit only host-supplied React peer runtime imports,
+and reject dynamic module loaders plus ambient network or credential authority.
+Its result is active-PR evidence only until the review-react subpath is integrated
+into protected main.
 
 The Markdown package check likewise builds and extracts a real npm tarball,
 executes its ESM and CommonJS entrypoints outside the source tree, compiles a
