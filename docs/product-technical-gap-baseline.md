@@ -1,6 +1,6 @@
 # Inkspan product-technical gap baseline
 
-Status: Dated operational baseline — 2026-08-20; research and issue register refreshed after `2026-08-20T13:06:45Z`
+Status: Dated operational baseline — 2026-08-21; live snapshot refetched after `2026-08-21T02:59:49Z`
 
 This record turns the current protected-main product boundary, live pull-request
 queue, release evidence, and buyer-visible gaps into an executable maintenance
@@ -19,12 +19,12 @@ market evidence and includes APA 7th references.
 | --- | --- | --- |
 | Protected source | `main@3b38ead2d00f44eb578d0689087b9293b3dabe1e` | The only source head used for shipped-product claims. |
 | Repository state | `ContextualWisdomLab/inkspan`, default branch `main` | This is the correct repository for Inkspan-owned editor, conversion, evidence, accessibility, package, and provider-neutral adapter work. |
-| Open PR queue | Last complete bounded inventory: 59 open PRs, 3 Ready and 56 Draft | The queue is active work, not protected implementation. Refetch immediately before lifecycle action. |
+| Open PR queue | Complete bounded inventory: 64 open PRs, 3 Ready and 61 Draft; 10 target non-main stack bases | The queue is active work, not protected implementation. Refetch immediately before lifecycle action. |
 | Current source versions | npm `0.6.0`; Office manifest `0.6.0` | Version alignment exists in source, but it does not prove registry publication. |
-| Public release evidence | The last observed GitHub release was `v0.3.1`; no protected `v0.6.0` publication/digest acceptance was established; public npm lookup for `@contextualwisdomlab/cwl-editor` returned `404` in the release baseline | Stable `0.6.0` publication remains an operational gap until freshly reverified. |
+| Public release evidence | The last observed GitHub release was `v0.3.1`; no protected `v0.6.0` publication/digest acceptance was established; the live npm probe returned registry `E404` and the PyPI probe returned no matching `inkspan-office` distribution | Stable `0.6.0` publication remains an operational gap until freshly reverified. |
 | Protected governance | Active central required-workflow policy and review requirements were observed in the release baseline | No self-approval, predecessor-evidence transfer, or governance bypass is valid. Live rules and permissions must be refetched. |
-| Main checks | Latest protected-main CI generation observed in the baseline was terminal success for build/test, Office Python, and Chromium/Firefox/WebKit evidence | Protected-main checks do not transfer to active PR heads or prove registry publication. |
-| Protected-main dependency alerts | Four Dependabot alerts were observed for `fast-uri` and `postcss`; PR #373 also repairs the audited `nanoid` tree | Exact-head repository CI, Security Scan, and SAST are now green on #373, but the alert state is not closed until protected integration is verified. |
+| Main checks | The current exact protected-main `build-and-test`, Office Python 3.11, and Chromium/Firefox/WebKit checks are terminal success | Protected-main checks do not transfer to active PR heads or prove registry publication. |
+| Protected-main dependency alerts | Five Dependabot alerts are open across `brace-expansion`, `postcss`, and `fast-uri`; PR #373 targets the relevant patched floors and the audited `nanoid` tree | The alert state is not closed until the exact PR is reviewed, integrated, and rechecked on protected `main`. |
 
 The queue, release, registry, alert, and governance values are mutable. Refresh
 with bounded queries instead of copying this snapshot into a lifecycle decision:
@@ -86,8 +86,8 @@ surface:
 
 | Lane | Current authority | Buyer impact | Gate / next action |
 | --- | --- | --- | --- |
-| [PR #362](https://github.com/ContextualWisdomLab/inkspan/pull/362) — editor contrast and keyboard focus | Ready active PR; exact head `11d5cfecdcc0949ec98e6ca110d482124bff00c4` at the latest refetch | Protected dark active-toolbar text is below the intended WCAG normal-text target, and the editable surface lacks a replacement focus indicator. | CI `32344528267`, Security Scan `32344528097`, and SAST Semgrep `32344528210` are terminal-success on that exact head. Qualifying independent approval and applicable formal/central review evidence remain the lifecycle gate. Do not duplicate review requests or self-approve. |
-| [PR #373](https://github.com/ContextualWisdomLab/inkspan/pull/373) — patched transitive dependency floors | Ready active PR; exact head `724b45b8d824be9581f0f29cc6eb07e6aeceb70f` at the latest refetch | Buyers need a clean, reproducible dependency audit without moving transport, credential, or runtime authority into Inkspan. | Repository CI `32361611250`, Security Scan `32361611225`, and SAST Semgrep `32361611212` are all terminal-success on that exact head. No qualifying current-head approval was observed; CodeRabbit rate limiting is not approval. Refetch all then-live central/review gates before integration. |
+| [PR #362](https://github.com/ContextualWisdomLab/inkspan/pull/362) — editor contrast and keyboard focus | Ready active PR; exact head `11d5cfecdcc0949ec98e6ca110d482124bff00c4` at the latest refetch | Protected dark active-toolbar text is below the intended WCAG normal-text target, and the editable surface lacks a replacement focus indicator. | Current exact-head checks have 22 successful completions and a failed `strix` gate. Qualifying independent approval and applicable formal/central review evidence also remain absent. Do not dismiss the security finding, duplicate review requests, or self-approve. |
+| [PR #373](https://github.com/ContextualWisdomLab/inkspan/pull/373) — patched transitive dependency floors | Ready active PR; exact head `41f978853629c3bed8ef5393f685053b24322490` at the latest refetch | Buyers need a clean, reproducible dependency audit without moving transport, credential, or runtime authority into Inkspan. | Current exact-head checks have 21 successful completions and `coverage-evidence` pending, with no completed failure observed in the check-run set. No qualifying current-head approval was observed; queued evidence is not passing evidence. Refetch all then-live central/review gates before integration. |
 | [PR #372](https://github.com/ContextualWisdomLab/inkspan/pull/372) — product-technical gap baseline | Ready active documentation PR | Buyers and maintainers need one evidence-backed view of shipped boundaries, release readiness, and the next credible product closures. | This document is its own writer, so an embedded current-head SHA or workflow run would become stale on every update. Evaluate only the live PR head returned by GitHub after the final commit, then require exact-head checks, formal review, and live governance. Predecessor #372 checks do not transfer after this update. |
 | [Issue #118](https://github.com/ContextualWisdomLab/inkspan/issues/118) — stable release acceptance | Open release issue | Buyers cannot install and verify the protected `0.6.0` artifact through the promised release path. | Integrate the release-blocking product and workflow owners in dependency order, regenerate exact protected evidence, create the supported release identity, and verify public npm/PyPI bytes and provenance. |
 | [PR #285](https://github.com/ContextualWisdomLab/inkspan/pull/285) — hostile-input/browser/release assurance | Draft, stacked on writing diagnostics | Release browser evidence has a known finite-time admission defect and the branch proposes a package-specific SBOM inventory. | Do not duplicate `.github/workflows/release.yml` ownership. Advance its stack only through exact-head evidence; treat its proposed inventory as non-authoritative until protected. |
@@ -175,7 +175,7 @@ boundaries documented in the canonical graph.
 
 ## Verification limits
 
-This snapshot supports queue selection on 2026-08-20 only. Before any merge or
+This snapshot supports queue selection on 2026-08-21 only. Before any merge or
 release, re-read `docs/README.md`, `docs/PRD.md`, `docs/TRD.md`,
 `docs/CONTRACTS.md`, `ARCHITECTURE.md`, relevant ADRs, current source/tests, the
 research doctoring record, exact GitHub heads/checks/reviews, and live
