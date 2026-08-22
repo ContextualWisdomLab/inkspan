@@ -1,6 +1,9 @@
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CwlReviewThreadList } from './index.js';
+import {
+  CwlReviewThreadList,
+  type CwlReviewThreadListProps,
+} from './index.js';
 
 afterEach(cleanup);
 
@@ -44,16 +47,16 @@ const labels = {
 function expectInvalidIntentCallbacks(
   overrides: Record<string, unknown>,
 ): void {
-  expect(() =>
-    render(
-      <CwlReviewThreadList
-        presentations={[presentation()]}
-        labels={labels}
-        onSelectThread={vi.fn()}
-        {...(overrides as never)}
-      />,
-    ),
-  ).toThrow('Review presentation metadata is invalid.');
+  const props = {
+    presentations: [presentation()],
+    labels,
+    onSelectThread: vi.fn(),
+    ...overrides,
+  } as unknown as CwlReviewThreadListProps;
+
+  expect(() => render(<CwlReviewThreadList {...props} />)).toThrow(
+    'Review presentation metadata is invalid.',
+  );
 }
 
 describe('CwlReviewThreadList intent callback validation', () => {
