@@ -87,11 +87,14 @@ describe('reference-host native form journey', () => {
       "const [controlledValue, setControlledValue] = useState('# Draft');",
     );
     expect(nativeFormHostSource).toContain(
-      "controlMode === 'controlled'",
+      "value={controlMode === 'controlled' ? controlledValue : undefined}",
     );
-    expect(nativeFormHostSource).toContain('value={controlledValue}');
-    expect(nativeFormHostSource).toContain('onChange={setControlledValue}');
-    expect(nativeFormHostSource).toContain("defaultValue={controlMode === 'uncontrolled' ? '# Draft' : undefined}");
+    expect(nativeFormHostSource).toContain(
+      "onChange={controlMode === 'controlled' ? setControlledValue : undefined}",
+    );
+    expect(nativeFormHostSource).toContain(
+      "defaultValue={controlMode === 'uncontrolled' ? '# Draft' : undefined}",
+    );
     expect(nativeFormHostSource).toContain(
       "if (controlMode === 'controlled') {",
     );
