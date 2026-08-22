@@ -30,6 +30,8 @@ describe('reference-host packed artifact acceptance', () => {
         installedFromTarball?: unknown;
         consumerInstallCompleted?: unknown;
         serverRenderedNamedField?: unknown;
+        esmMarkdownProjection?: unknown;
+        commonJsMarkdownProjection?: unknown;
         publicAssetEntriesContained?: unknown;
         sourceImportDetected?: unknown;
       };
@@ -39,6 +41,8 @@ describe('reference-host packed artifact acceptance', () => {
       expect(result.installedFromTarball).toBe(true);
       expect(result.consumerInstallCompleted).toBe(true);
       expect(result.serverRenderedNamedField).toBe(true);
+      expect(result.esmMarkdownProjection).toBe(true);
+      expect(result.commonJsMarkdownProjection).toBe(true);
       expect(result.publicAssetEntriesContained).toBe(true);
       expect(result.sourceImportDetected).toBe(false);
     },
