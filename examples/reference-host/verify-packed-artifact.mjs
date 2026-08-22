@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
+  copyFileSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
@@ -53,6 +54,10 @@ try {
 
   const hostDirectory = join(temporaryRoot, 'host');
   mkdirSync(hostDirectory, { recursive: true });
+  copyFileSync(
+    join(repositoryRoot, 'examples/reference-host/autosave-view-model.mjs'),
+    join(hostDirectory, 'autosave-view-model.mjs'),
+  );
   writeFileSync(
     join(hostDirectory, 'package.json'),
     `${JSON.stringify(
@@ -93,6 +98,7 @@ import { CwlEditor } from '${packageName}';
 import { createDocumentAutosaveQueue } from '${packageName}/autosave';
 import { dataUriToBytes } from '${packageName}/converter';
 import { markdownToHtml, markdownToPlainText } from '${packageName}/markdown';
+import { createAutosaveViewModel } from './autosave-view-model.mjs';
 
 const serverHtml = renderToString(
   React.createElement(CwlEditor, {
@@ -111,6 +117,38 @@ const projectedHtml = markdownToHtml(markdownSource);
 assert.equal(projectedHtml, markdownToHtml(markdownSource));
 assert.match(markdownToPlainText(markdownSource), /Packed handoff/u);
 assert.match(markdownToPlainText(markdownSource), /Buyer text/u);
+
+const digestHex = '41'.repeat(32);
+const evidence = Object.freeze({
+  envelope: Object.freeze({
+    schemaId: 'https://inkspan.io/schemas/document-envelope/v1',
+    schemaVersion: 1,
+    documentJson: Object.freeze({ type: 'doc' }),
+  }),
+  revision: Object.freeze({
+    algorithm: 'SHA-256',
+    digestHex,
+    strongEntityTag: \`"sha256-\${digestHex}"\`,
+  }),
+});
+const autosaveViewModel = createAutosaveViewModel();
+const autosaveViewStates = [];
+const autosaveQueue = createDocumentAutosaveQueue({
+  save() {
+    return { status: 'saved' };
+  },
+  onSnapshotChange(snapshot) {
+    autosaveViewStates.push(autosaveViewModel.observe(snapshot).viewState);
+  },
+});
+assert.equal(autosaveViewModel.observe(autosaveQueue.getSnapshot()).viewState, 'clean');
+const autosaveOutcome = await autosaveQueue.enqueue(evidence);
+await autosaveQueue.flush();
+await Promise.resolve();
+assert.equal(autosaveOutcome.status, 'saved');
+assert.ok(autosaveViewStates.includes('saving'));
+assert.equal(autosaveViewStates.at(-1), 'clean');
+assert.equal((await autosaveQueue.close()).state, 'closed');
 
 const rootEntry = import.meta.resolve('${packageName}');
 const autosaveEntry = import.meta.resolve('${packageName}/autosave');
@@ -133,6 +171,7 @@ for (const entry of [
 
 process.stdout.write(JSON.stringify({
   serverRenderedNamedField: true,
+  autosaveObserverWired: true,
   converterRoundTrip: true,
   markdownProjection: true,
   rootEntry,
@@ -277,6 +316,7 @@ process.stdout.write(JSON.stringify({
       serverRenderedNamedField: esmServerRenderedNamedField,
       esmServerRenderedNamedField,
       commonJsServerRenderedNamedField,
+      autosaveObserverWired: consumerResult.autosaveObserverWired === true,
       esmConverterRoundTrip: consumerResult.converterRoundTrip === true,
       commonJsConverterRoundTrip: commonJsConsumerResult.converterRoundTrip === true,
       esmMarkdownProjection: consumerResult.markdownProjection === true,
