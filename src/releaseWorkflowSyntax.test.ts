@@ -12,4 +12,10 @@ describe('release workflow YAML syntax contract', () => {
       /^\s+run:\s+python .*--only-binary=:all:\s+-r requirements-ci\.txt$/m,
     );
   });
+
+  it('gives release browser evidence the proven finite setup budget', () => {
+    expect(releaseWorkflow).toMatch(
+      /browser-release-evidence:\n\s+name: Cross-engine Clipboard \/ Playwright 1\.62\.0\n\s+if: [^\n]+\n\s+needs: build-release-artifacts\n\s+runs-on: ubuntu-24\.04\n\s+timeout-minutes: 60/,
+    );
+  });
 });
