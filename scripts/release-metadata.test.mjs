@@ -69,3 +69,27 @@ test('preserves historical 0.5.29 release evidence and doctoring identity', () =
     true,
   );
 });
+
+test('CI browser evidence installs the exact packed editor instead of source fallback', () => {
+  const ciWorkflow = readRepositoryText('.github/workflows/ci.yml');
+  const packIndex = ciWorkflow.indexOf(
+    '- name: Pack exact editor artifact for browser verification',
+  );
+  const entryIndex = ciWorkflow.indexOf('INKSPAN_BROWSER_PACKAGE_ENTRY=');
+  const playwrightIndex = ciWorkflow.indexOf(
+    '- name: Verify real-engine rich clipboard release evidence',
+  );
+
+  assert.notEqual(packIndex, -1);
+  assert.notEqual(entryIndex, -1);
+  assert.notEqual(playwrightIndex, -1);
+  assert.equal(ciWorkflow.includes('npm pack --ignore-scripts --json'), true);
+  assert.equal(
+    ciWorkflow.includes(
+      "if [[ \"$package_name\" != '@contextualwisdomlab/cwl-editor' ]]; then",
+    ),
+    true,
+  );
+  assert.equal(packIndex < entryIndex, true);
+  assert.equal(entryIndex < playwrightIndex, true);
+});
