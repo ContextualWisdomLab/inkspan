@@ -184,3 +184,64 @@ test('keeps the buyer host usable without horizontal overflow at a narrow viewpo
   expect(rejectedRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
 });
+
+test('applies the package print contract inside the real buyer host without runtime network', async ({
+  page,
+}) => {
+  const rejectedRequests: string[] = [];
+  const pageErrors: string[] = [];
+
+  page.on('pageerror', (error) => {
+    pageErrors.push(error.message);
+  });
+  await page.route('**/*', async (route) => {
+    const requestUrl = route.request().url();
+    if (isReferenceHostRequest(requestUrl)) {
+      await route.continue();
+      return;
+    }
+    rejectedRequests.push(requestUrl);
+    await route.abort('blockedbyclient');
+  });
+
+  await page.emulateMedia({ media: 'print' });
+  const response = await page.goto(REFERENCE_HOST_URL);
+  expect(response?.ok()).toBe(true);
+
+  await expect(
+    page.getByRole('heading', { name: 'Inkspan reference host' }),
+  ).toBeVisible();
+  await expect(page.locator('.cwl-editor__content')).toContainText('Draft');
+  await expect(page.locator('.cwl-toolbar')).toBeHidden();
+
+  const printStyles = await page.evaluate(() => {
+    const editor = document.querySelector<HTMLElement>('.cwl-editor');
+    const surface = document.querySelector<HTMLElement>('.cwl-editor__surface');
+    const content = document.querySelector<HTMLElement>('.cwl-editor__content');
+    if (!editor || !surface || !content) {
+      throw new Error('reference host print surface is incomplete');
+    }
+    const editorStyle = getComputedStyle(editor);
+    const surfaceStyle = getComputedStyle(surface);
+    const contentStyle = getComputedStyle(content);
+    return {
+      printMediaMatches: matchMedia('print').matches,
+      editorOverflow: editorStyle.overflow,
+      editorBorderTopWidth: editorStyle.borderTopWidth,
+      surfaceOverflow: surfaceStyle.overflow,
+      surfaceMaxHeight: surfaceStyle.maxHeight,
+      contentMinHeight: contentStyle.minHeight,
+      contentPaddingTop: contentStyle.paddingTop,
+    };
+  });
+
+  expect(printStyles.printMediaMatches).toBe(true);
+  expect(printStyles.editorOverflow).toBe('visible');
+  expect(printStyles.editorBorderTopWidth).toBe('0px');
+  expect(printStyles.surfaceOverflow).toBe('visible');
+  expect(printStyles.surfaceMaxHeight).toBe('none');
+  expect(printStyles.contentMinHeight).toBe('0px');
+  expect(printStyles.contentPaddingTop).toBe('0px');
+  expect(rejectedRequests).toEqual([]);
+  expect(pageErrors).toEqual([]);
+});
