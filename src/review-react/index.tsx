@@ -38,12 +38,19 @@ const REVIEW_LABEL_KEYS = ['region', 'thread', 'reply', 'resolve'] as const;
 const MAX_REVIEW_LABEL_CODE_UNITS = 512;
 
 type ReviewThreadLabelFactory = CwlReviewThreadListLabels['thread'];
+type ReviewIntentCallback = CwlReviewThreadListProps['onSelectThread'];
 
 interface ValidatedReviewThreadListLabels {
   readonly region: string;
   readonly thread: ReviewThreadLabelFactory;
   readonly reply: string;
   readonly resolve: string;
+}
+
+interface ValidatedReviewIntentCallbacks {
+  readonly onSelectThread: ReviewIntentCallback;
+  readonly onReplyThread: ReviewIntentCallback | undefined;
+  readonly onResolveThread: ReviewIntentCallback | undefined;
 }
 
 function rejectReviewPresentation(): never {
@@ -105,6 +112,27 @@ function validateReviewThreadListLabels(
   } catch {
     rejectReviewPresentation();
   }
+}
+
+function validateReviewIntentCallbacks(
+  onSelectThread: unknown,
+  onReplyThread: unknown,
+  onResolveThread: unknown,
+): ValidatedReviewIntentCallbacks {
+  if (typeof onSelectThread !== 'function') {
+    rejectReviewPresentation();
+  }
+  if (onReplyThread !== undefined && typeof onReplyThread !== 'function') {
+    rejectReviewPresentation();
+  }
+  if (onResolveThread !== undefined && typeof onResolveThread !== 'function') {
+    rejectReviewPresentation();
+  }
+  return Object.freeze({
+    onSelectThread: onSelectThread as ReviewIntentCallback,
+    onReplyThread: onReplyThread as ReviewIntentCallback | undefined,
+    onResolveThread: onResolveThread as ReviewIntentCallback | undefined,
+  });
 }
 
 function createThreadLabel(
@@ -170,6 +198,9 @@ function reviewThreadFocusIndex(
  * bounded non-empty visible strings, and one explicit thread-label function;
  * accessor-backed labels and thrown/private label failures are normalized to the
  * same redacted presentation error before React commits inaccessible content.
+ * Required and optional host intent callbacks are preflighted and snapshotted
+ * before rendering so malformed runtime values fail closed at the same public
+ * presentation boundary rather than surfacing a native invocation TypeError.
  * Arrow Up/Down and Home/End move DOM focus only among thread-selection targets;
  * keyboard traversal never commits host-controlled thread selection. Repeated
  * reply/resolve controls include the already validated thread label in their
@@ -189,6 +220,11 @@ export function CwlReviewThreadList({
   const validatedPresentations =
     validateReviewThreadPresentations(presentations);
   const validatedLabels = validateReviewThreadListLabels(labels);
+  const validatedCallbacks = validateReviewIntentCallbacks(
+    onSelectThread,
+    onReplyThread,
+    onResolveThread,
+  );
 
   return (
     <section aria-label={validatedLabels.region}>
@@ -200,14 +236,15 @@ export function CwlReviewThreadList({
             index,
           );
           const replyHandler =
-            presentation.canReply && onReplyThread !== undefined
-              ? () => onReplyThread(presentation)
+            presentation.canReply &&
+            validatedCallbacks.onReplyThread !== undefined
+              ? () => validatedCallbacks.onReplyThread!(presentation)
               : undefined;
           const resolveHandler =
             presentation.state === 'unresolved' &&
             presentation.canResolve &&
-            onResolveThread !== undefined
-              ? () => onResolveThread(presentation)
+            validatedCallbacks.onResolveThread !== undefined
+              ? () => validatedCallbacks.onResolveThread!(presentation)
               : undefined;
 
           return (
@@ -218,7 +255,7 @@ export function CwlReviewThreadList({
                 }}
                 type="button"
                 aria-pressed={presentation.selected}
-                onClick={() => onSelectThread(presentation)}
+                onClick={() => validatedCallbacks.onSelectThread(presentation)}
                 onKeyDown={(event) => {
                   const targetIndex = reviewThreadFocusIndex(
                     event.key,
