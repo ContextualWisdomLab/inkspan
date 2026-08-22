@@ -231,6 +231,14 @@ async function main() {
   }
   const source = readBoundedMarkdown(args.inputPath);
   const modulePath = resolveLocalModule(args.modulePath);
+  if (
+    modulePath === args.outputPath ||
+    refersToSameFile(modulePath, args.outputPath)
+  ) {
+    throw new Error(
+      'Markdown benchmark output must not overwrite the measured module.',
+    );
+  }
   verifyMeasuredModuleDigest(modulePath, args.artifactSha256);
 
   const measuredModule = await import(pathToFileURL(modulePath).href);
