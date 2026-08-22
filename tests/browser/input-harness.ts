@@ -33,6 +33,7 @@ const renderEditor = () => {
       defaultValue: '',
       editable,
       hideToolbar: true,
+      formFieldName: 'message_body',
       onReady: (instance: Editor) => {
         editor = instance;
       },
