@@ -92,6 +92,47 @@ describe('reference-host autosave presentation contract', () => {
     });
   });
 
+  it('bounds non-null validator fields before projecting autosave state', () => {
+    if (!existsSync(fixturePath)) return;
+    const moduleUrl = JSON.stringify(pathToFileURL(fixturePath).href);
+    const script = `
+      import { createAutosaveViewModel } from ${moduleUrl};
+      const oversized = 'x'.repeat(257);
+      const candidate = {
+        state: 'saving',
+        blockedReason: null,
+        activeStrongEntityTag: null,
+        pendingStrongEntityTag: null,
+        lastSavedStrongEntityTag: null,
+      };
+      const errors = {};
+      for (const field of [
+        'activeStrongEntityTag',
+        'pendingStrongEntityTag',
+        'lastSavedStrongEntityTag',
+      ]) {
+        try {
+          createAutosaveViewModel().observe({ ...candidate, [field]: oversized });
+          errors[field] = null;
+        } catch (error) {
+          errors[field] = error instanceof Error ? error.message : 'unexpected error';
+        }
+      }
+      process.stdout.write(JSON.stringify(errors));
+    `;
+    const output = execFileSync(
+      process.execPath,
+      ['--input-type=module', '--eval', script],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      activeStrongEntityTag: 'activeStrongEntityTag is invalid.',
+      pendingStrongEntityTag: 'pendingStrongEntityTag is invalid.',
+      lastSavedStrongEntityTag: 'lastSavedStrongEntityTag is invalid.',
+    });
+  });
+
   it('rejects accessor-backed lifecycle snapshots without invoking them', () => {
     if (!existsSync(fixturePath)) return;
     const output = execFileSync(
