@@ -689,7 +689,13 @@ export function parseDataUri(dataUri: string): ParsedDataUri {
   if (!match) {
     throw new DataUriParseError('String is not a valid data URI.');
   }
-  const mimeType = match[1] && match[1].length > 0 ? match[1] : 'text/plain';
+  const declaredMimeType = match[1] ?? '';
+  if (declaredMimeType.length > MAX_MIME_TYPE_CODE_UNITS) {
+    throw new DataUriParseError(
+      'Data URI MIME type must not exceed 1024 UTF-16 code units.',
+    );
+  }
+  const mimeType = declaredMimeType.length > 0 ? declaredMimeType : 'text/plain';
   const params = match[2] ?? '';
   const isBase64 = /;base64$/i.test(params);
   // Capture group 3 always matches (possibly empty), so `?? ''` is defensive.
