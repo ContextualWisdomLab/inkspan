@@ -233,14 +233,22 @@ async function runMeasuredRevision(createRevisionEvidence, source) {
   } catch {
     throw new Error('Measured revision-evidence execution failed.');
   }
-  if (
-    typeof evidence !== 'object' ||
-    evidence === null ||
-    typeof evidence.revision !== 'object' ||
-    evidence.revision === null ||
-    typeof evidence.revision.digestHex !== 'string' ||
-    !SHA256_PATTERN.test(evidence.revision.digestHex)
-  ) {
+
+  let digestHex;
+  try {
+    if (typeof evidence !== 'object' || evidence === null) {
+      throw new Error('invalid revision evidence');
+    }
+    const revision = evidence.revision;
+    if (typeof revision !== 'object' || revision === null) {
+      throw new Error('invalid revision evidence');
+    }
+    digestHex = revision.digestHex;
+  } catch {
+    throw new Error('Measured revision-evidence result is invalid.');
+  }
+
+  if (typeof digestHex !== 'string' || !SHA256_PATTERN.test(digestHex)) {
     throw new Error('Measured revision-evidence result is invalid.');
   }
 }
