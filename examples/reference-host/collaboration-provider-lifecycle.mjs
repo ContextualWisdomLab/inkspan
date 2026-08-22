@@ -134,6 +134,12 @@ function teardownFailure() {
   return new Error(TEARDOWN_FAILURE);
 }
 
+function consumeNonVoidResult(result) {
+  if (result === undefined) return false;
+  void Promise.resolve(result).catch(() => undefined);
+  return true;
+}
+
 /**
  * Create one provider-neutral collaboration lifecycle owned entirely by the host.
  *
@@ -146,13 +152,13 @@ function teardownFailure() {
  * initial provider failure, reconnect provider-construction failures remain
  * retryable, and connect failures quarantine the indeterminate provider until
  * reconnect/dispose tears it down. The reference lifecycle is intentionally
- * synchronous: any non-void connect result is treated as indeterminate, its
- * promise/thenable settlement is consumed, and the provider is quarantined
- * instead of reporting a false successful connection. Cleanup failures do not
- * prevent remaining teardown attempts. A failed provider or document destruction
- * keeps only the incomplete cleanup live so a later dispose() retries it without
- * repeating already-successful teardown. Once disposal starts, connect/reconnect
- * stay closed while cleanup is pending.
+ * synchronous: any non-void lifecycle callback result is treated as indeterminate,
+ * its promise/thenable settlement is consumed, and the operation fails closed
+ * instead of reporting false success. Cleanup failures do not prevent remaining
+ * teardown attempts. A failed provider or document destruction keeps only the
+ * incomplete cleanup live so a later dispose() retries it without repeating
+ * already-successful teardown. Once disposal starts, connect/reconnect stay closed
+ * while cleanup is pending.
  */
 export function createHostCollaborationLifecycle(source) {
   const options = readOwnDataRecord(
@@ -219,9 +225,8 @@ export function createHostCollaborationLifecycle(source) {
       providerConnectionIndeterminate = true;
       throw connectionFailure();
     }
-    if (connectionResult !== undefined) {
+    if (consumeNonVoidResult(connectionResult)) {
       providerConnectionIndeterminate = true;
-      void Promise.resolve(connectionResult).catch(() => undefined);
       throw connectionFailure();
     }
     connected = true;
@@ -236,15 +241,24 @@ export function createHostCollaborationLifecycle(source) {
     if (connected || providerConnectionIndeterminate) {
       connected = false;
       try {
-        resource.disconnect.call(resource.value);
-        providerConnectionIndeterminate = false;
+        const disconnectResult = resource.disconnect.call(resource.value);
+        if (consumeNonVoidResult(disconnectResult)) {
+          failed = true;
+          providerConnectionIndeterminate = true;
+        } else {
+          providerConnectionIndeterminate = false;
+        }
       } catch {
         failed = true;
         providerConnectionIndeterminate = true;
       }
     }
     try {
-      resource.destroy.call(resource.value);
+      const destroyResult = resource.destroy.call(resource.value);
+      if (consumeNonVoidResult(destroyResult)) {
+        failed = true;
+        destroyFailed = true;
+      }
     } catch {
       failed = true;
       destroyFailed = true;
@@ -275,8 +289,12 @@ export function createHostCollaborationLifecycle(source) {
     }
     if (!documentDestroyed) {
       try {
-        documentResource.destroy.call(document);
-        documentDestroyed = true;
+        const destroyResult = documentResource.destroy.call(document);
+        if (consumeNonVoidResult(destroyResult)) {
+          failed = true;
+        } else {
+          documentDestroyed = true;
+        }
       } catch {
         failed = true;
       }
@@ -298,7 +316,7 @@ export function createHostCollaborationLifecycle(source) {
   } catch (error) {
     let cleanupFailed = false;
     try {
-      documentResource.destroy.call(document);
+      cleanupFailed = consumeNonVoidResult(documentResource.destroy.call(document));
     } catch {
       cleanupFailed = true;
     }
