@@ -2,6 +2,7 @@ import {
   closeSync,
   constants,
   fstatSync,
+  lstatSync,
   openSync,
   readSync,
 } from 'node:fs';
@@ -11,7 +12,9 @@ const MAX_INPUT_BYTES = 1024 * 1024;
 const READ_CHUNK_BYTES = 64 * 1024;
 const MAX_SAMPLES = 1_000_000;
 const READ_ONLY_NONBLOCKING =
-  constants.O_RDONLY | (constants.O_NONBLOCK ?? 0);
+  constants.O_RDONLY |
+  (constants.O_NONBLOCK ?? 0) |
+  (constants.O_NOFOLLOW ?? 0);
 const BENCHMARK_ID_PATTERN =
   /^(?:ssr-shell-render|client-hydration|editor-mount|first-editable-paint|editor-input|keyboard-input|ime-composition|toolbar-action|undo-redo|table-edit|paste|image-insertion|markdown-serialization|html-serialization|envelope-parse|envelope-canonicalization|revision-evidence|transition-evidence|autosave-enqueue|autosave-coalescing|autosave-commit|yjs-update|print-media|office-parse|office-render|office-publication)-(?:small|medium|large|stress)$/u;
 const UNITS = new Set(['ms', 'bytes']);
@@ -84,6 +87,16 @@ function resolveArguments(argv) {
 }
 
 function readBoundedJson(path) {
+  const pathMetadata = lstatSync(path, { throwIfNoEntry: false });
+  if (pathMetadata === undefined || pathMetadata.isSymbolicLink()) {
+    throw new Error(
+      'Benchmark summary input must be a regular non-symlink file.',
+    );
+  }
+  if (!pathMetadata.isFile()) {
+    throw new Error('Benchmark summary input must be a regular file.');
+  }
+
   const descriptor = openSync(path, READ_ONLY_NONBLOCKING);
   try {
     const metadata = fstatSync(descriptor);
