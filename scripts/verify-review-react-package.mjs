@@ -78,6 +78,8 @@ function preparePackage() {
     'react-dom',
     '@types/react',
     '@types/react-dom',
+    '@tiptap/core',
+    '@tiptap/pm',
   ]) {
     linkDependency(dependency);
   }
