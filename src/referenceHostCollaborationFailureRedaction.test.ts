@@ -47,27 +47,29 @@ describe('reference-host collaboration callback failure redaction', () => {
     });
   });
 
-  it('redacts transient provider connect failures and permits an explicit retry', () => {
+  it('redacts ambiguous provider connect failures and requires provider replacement', () => {
     if (!existsSync(fixturePath)) return;
     const moduleUrl = JSON.stringify(pathToFileURL(fixturePath).href);
     const script = `
       import { createHostCollaborationLifecycle } from ${moduleUrl};
       const privateCause = 'private provider connect cause';
       const events = [];
-      let connectAttempts = 0;
+      let providerGeneration = 0;
       const lifecycle = createHostCollaborationLifecycle({
         documentFactory() {
           return { destroy() { events.push('document:destroy'); } };
         },
         providerFactory() {
+          providerGeneration += 1;
+          const generation = providerGeneration;
+          events.push('provider:create:' + generation);
           return {
             connect() {
-              connectAttempts += 1;
-              events.push('provider:connect:' + connectAttempts);
-              if (connectAttempts === 1) throw new Error(privateCause);
+              events.push('provider:connect:' + generation);
+              if (generation === 1) throw new Error(privateCause);
             },
-            disconnect() { events.push('provider:disconnect'); },
-            destroy() { events.push('provider:destroy'); },
+            disconnect() { events.push('provider:disconnect:' + generation); },
+            destroy() { events.push('provider:destroy:' + generation); },
           };
         },
         roomId: 'reference-room',
@@ -80,16 +82,23 @@ describe('reference-host collaboration callback failure redaction', () => {
         error = failure instanceof Error ? failure.message : 'unexpected error';
       }
       const afterFailure = lifecycle.getSnapshot();
-      const retryResult = lifecycle.connect();
-      const afterRetry = lifecycle.getSnapshot();
+      let retryError = null;
+      try {
+        lifecycle.connect();
+      } catch (failure) {
+        retryError = failure instanceof Error ? failure.message : 'unexpected error';
+      }
+      const recovered = lifecycle.reconnect();
       lifecycle.dispose();
       process.stdout.write(JSON.stringify({
         afterFailure,
-        afterRetry,
         error,
         events,
-        leakedPrivateCause: typeof error === 'string' && error.includes(privateCause),
-        retryResult,
+        leakedPrivateCause:
+          (typeof error === 'string' && error.includes(privateCause)) ||
+          (typeof retryError === 'string' && retryError.includes(privateCause)),
+        recovered,
+        retryError,
       }));
     `;
     const output = execFileSync(
@@ -100,17 +109,21 @@ describe('reference-host collaboration callback failure redaction', () => {
 
     expect(JSON.parse(output)).toEqual({
       afterFailure: { providerGeneration: 1, status: 'disconnected' },
-      afterRetry: { providerGeneration: 1, status: 'connected' },
       error: 'collaboration lifecycle connection failed.',
       events: [
+        'provider:create:1',
         'provider:connect:1',
+        'provider:disconnect:1',
+        'provider:destroy:1',
+        'provider:create:2',
         'provider:connect:2',
-        'provider:disconnect',
-        'provider:destroy',
+        'provider:disconnect:2',
+        'provider:destroy:2',
         'document:destroy',
       ],
       leakedPrivateCause: false,
-      retryResult: true,
+      recovered: { providerGeneration: 2, status: 'connected' },
+      retryError: 'collaboration lifecycle connection failed.',
     });
   });
 });
