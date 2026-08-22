@@ -89,6 +89,7 @@ function controllerFor(
     diagnostics,
     digestProvider: null,
     focusDiagnostic: vi.fn(() => true),
+    applyDiagnostic: vi.fn(async () => null),
     ignoreDiagnostic: vi.fn((diagnosticId) => {
       const diagnostic = diagnostics.find(
         (candidate) => candidate.diagnostic.diagnosticId === diagnosticId,

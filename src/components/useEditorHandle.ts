@@ -33,6 +33,7 @@ import { createTextPositionSelector } from '../textPositionSelectorEvidence.js';
 import type { CwlEditorHandle, EditorMode } from '../types.js';
 import { createEditorDocumentSnapshot } from './editorDocumentSnapshot.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
+import type { WritingDiagnosticsController } from './useWritingDiagnosticsController.js';
 
 /** Create a validated portable envelope from one active editor revision. */
 function createCurrentDocumentEnvelope(
@@ -47,6 +48,7 @@ export function useEditorHandle(
   ref: ForwardedRef<CwlEditorHandle>,
   editor: Editor | null,
   modeRef: MutableRefObject<EditorMode>,
+  writingDiagnosticsController?: WritingDiagnosticsController | null,
 ): void {
   useImperativeHandle(
     ref,
@@ -196,11 +198,23 @@ export function useEditorHandle(
         if (!editor) return;
         editor.chain().focus().insertContent(documentJson).run();
       },
+      focusWritingDiagnostic: (diagnosticId) =>
+        writingDiagnosticsController?.focusDiagnostic(diagnosticId) ?? false,
+      applyWritingDiagnostic: (diagnosticId) =>
+        writingDiagnosticsController?.applyDiagnostic(diagnosticId) ??
+        Promise.resolve(null),
+      ignoreWritingDiagnostic: (diagnosticId) =>
+        writingDiagnosticsController?.ignoreDiagnostic(diagnosticId) ?? null,
+      dismissWritingDiagnostic: (diagnosticId) =>
+        writingDiagnosticsController?.dismissDiagnostic(diagnosticId) ?? null,
+      requestWritingDiagnosticExplanation: (diagnosticId) =>
+        writingDiagnosticsController?.requestDiagnosticExplanation(diagnosticId) ??
+        null,
       clear: () => {
         editor?.commands.clearContent(true);
       },
       isEmpty: () => editor?.isEmpty ?? true,
     }),
-    [editor, modeRef],
+    [editor, modeRef, writingDiagnosticsController],
   );
 }

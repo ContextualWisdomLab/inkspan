@@ -74,6 +74,15 @@ describe('useEditorHandle', () => {
     expect(() =>
       handle.insertDocumentJson({ type: 'paragraph' }),
     ).not.toThrow();
+    expect(handle.focusWritingDiagnostic('missing')).toBe(false);
+    await expect(
+      handle.applyWritingDiagnostic('missing'),
+    ).resolves.toBeNull();
+    expect(handle.ignoreWritingDiagnostic('missing')).toBeNull();
+    expect(handle.dismissWritingDiagnostic('missing')).toBeNull();
+    expect(
+      handle.requestWritingDiagnosticExplanation('missing'),
+    ).toBeNull();
     expect(() => handle.clear()).not.toThrow();
     expect(handle.isEmpty()).toBe(true);
   });

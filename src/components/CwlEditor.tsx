@@ -19,6 +19,8 @@ import { applyEditorFormReset } from './editorFormReset.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
 import { useEditorHandle } from './useEditorHandle.js';
 import { useLatestRef } from './useLatestRef.js';
+import { useWritingDiagnosticsController } from './useWritingDiagnosticsController.js';
+import { WritingDiagnosticsPanel } from './WritingDiagnosticsPanel.js';
 
 /**
  * CwlEditor — a commercial-grade rich-text editor with interchangeable
@@ -62,6 +64,11 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       ariaErrorMessage,
       ariaInvalid,
       ariaRequired,
+      writingDiagnostics,
+      onWritingDiagnosticAction,
+      onWritingDiagnosticsError,
+      writingDiagnosticsLabel,
+      printWritingDiagnostics,
     },
     ref,
   ) {
@@ -190,7 +197,14 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       },
     });
 
-    useEditorHandle(ref, editor, modeRef);
+    const writingDiagnosticsController = useWritingDiagnosticsController({
+      editor,
+      diagnostics: writingDiagnostics,
+      onAction: onWritingDiagnosticAction,
+      onError: onWritingDiagnosticsError,
+    });
+
+    useEditorHandle(ref, editor, modeRef, writingDiagnosticsController);
 
     useEffect(() => {
       editor?.setEditable(editable);
@@ -248,6 +262,24 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         formFieldDisabled={formFieldDisabled}
         formFieldInitialValue={selectedDocumentValue}
         onFormReset={editor && observesFormReset ? handleFormReset : undefined}
+        writingDiagnosticsPanel={
+          writingDiagnostics === undefined ? undefined : (
+            <WritingDiagnosticsPanel
+              controller={writingDiagnosticsController}
+              label={writingDiagnosticsLabel ?? 'Writing guidance'}
+              onApplyDiagnostic={
+                editable
+                  ? (diagnosticId) => {
+                      void writingDiagnosticsController.applyDiagnostic(
+                        diagnosticId,
+                      );
+                    }
+                  : undefined
+              }
+              printEnabled={printWritingDiagnostics}
+            />
+          )
+        }
       />
     );
   },

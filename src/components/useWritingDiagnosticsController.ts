@@ -58,6 +58,8 @@ export interface CwlWritingDiagnosticActionEvent {
   readonly reasonCode: CwlWritingDiagnosticActionReasonCode;
   readonly diagnosticId: string;
   readonly documentRevision: CwlEditorDocumentRevision;
+  /** Strong revision produced by a successful document mutation. */
+  readonly resultingDocumentRevision?: CwlEditorDocumentRevision;
   readonly categoryCode: string;
   readonly generation: number;
 }
@@ -87,6 +89,9 @@ export interface WritingDiagnosticsController {
   /** Exposed only for deterministic integration tests and later adapter plumbing. */
   readonly digestProvider: DocumentEnvelopeDigestProvider | null | undefined;
   readonly focusDiagnostic: (diagnosticId: string) => boolean;
+  readonly applyDiagnostic: (
+    diagnosticId: string,
+  ) => Promise<CwlWritingDiagnosticActionEvent | null>;
   readonly ignoreDiagnostic: (
     diagnosticId: string,
   ) => CwlWritingDiagnosticActionEvent | null;
@@ -494,6 +499,108 @@ export function useWritingDiagnosticsController(
     })();
   });
 
+  const applyDiagnostic = useCallback(
+    async (
+      diagnosticId: string,
+    ): Promise<CwlWritingDiagnosticActionEvent | null> => {
+      const active = currentRef.current;
+      if (
+        active.status !== 'active' ||
+        active.editor === null ||
+        !active.editor.isEditable ||
+        active.editor.isDestroyed
+      ) {
+        return null;
+      }
+      const target = active.diagnostics.find(
+        (candidate) => candidate.diagnostic.diagnosticId === diagnosticId,
+      );
+      const replacement = target?.diagnostic.suggestedReplacement;
+      if (target === undefined || replacement === undefined) return null;
+
+      const activeEditor = active.editor;
+      const capturedDocument = activeEditor.state.doc;
+      const transaction = activeEditor.state.tr.insertText(
+        replacement,
+        target.from,
+        target.to,
+      );
+      let currentRevision: CwlEditorDocumentRevision;
+      let resultingRevision: CwlEditorDocumentRevision;
+      try {
+        const currentEnvelope = createDocumentEnvelope(
+          capturedDocument.toJSON(),
+        );
+        const resultingEnvelope = createDocumentEnvelope(
+          transaction.doc.toJSON(),
+        );
+        [currentRevision, resultingRevision] = await Promise.all([
+          createValidatedDocumentEnvelopeRevision(
+            currentEnvelope,
+            digestProvider,
+          ),
+          createValidatedDocumentEnvelopeRevision(
+            resultingEnvelope,
+            digestProvider,
+          ),
+        ]);
+      } catch {
+        const error = new WritingDiagnosticError('revision');
+        notifyError(errorRef.current, error);
+        return null;
+      }
+
+      const latest = currentRef.current;
+      const revisionMatches = revisionsEqual(
+        currentRevision,
+        target.diagnostic.documentRevision,
+      );
+      const documentMatches = activeEditor.state.doc.eq(capturedDocument);
+      if (
+        latest.status !== 'active' ||
+        latest.generation !== active.generation ||
+        latest.editor !== activeEditor ||
+        activeEditor.isDestroyed ||
+        !revisionMatches ||
+        !documentMatches
+      ) {
+        const conflict = Object.freeze({
+          action: 'conflict' as const,
+          reasonCode: revisionMatches
+            ? ('document_changed' as const)
+            : ('revision_mismatch' as const),
+          diagnosticId: target.diagnostic.diagnosticId,
+          documentRevision: target.diagnostic.documentRevision,
+          categoryCode: target.diagnostic.categoryCode,
+          generation: generationRef.current,
+        });
+        notifyAction(actionRef.current, conflict);
+        return conflict;
+      }
+
+      try {
+        activeEditor.view.dispatch(transaction);
+      } catch {
+        const error = new WritingDiagnosticError('lifecycle');
+        notifyError(errorRef.current, error);
+        return null;
+      }
+
+      const event = Object.freeze({
+        action: 'applied' as const,
+        reasonCode: 'explicit' as const,
+        diagnosticId: target.diagnostic.diagnosticId,
+        documentRevision: target.diagnostic.documentRevision,
+        resultingDocumentRevision: resultingRevision,
+        categoryCode: target.diagnostic.categoryCode,
+        generation: generationRef.current,
+      });
+      notifyAction(actionRef.current, event);
+      return event;
+    },
+    [actionRef, digestProvider, errorRef],
+  );
+
   const focusDiagnostic = useCallback((diagnosticId: string): boolean => {
     const active = currentRef.current;
     if (
@@ -608,6 +715,7 @@ export function useWritingDiagnosticsController(
     diagnostics: current.diagnostics,
     digestProvider,
     focusDiagnostic,
+    applyDiagnostic,
     ignoreDiagnostic,
     dismissDiagnostic,
     requestDiagnosticExplanation,
