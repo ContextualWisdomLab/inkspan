@@ -33,6 +33,89 @@ export interface CwlReviewThreadListProps {
   readonly onResolveThread?: (thread: CwlReviewThreadPresentation) => void;
 }
 
+const REVIEW_LABEL_KEYS = ['region', 'thread', 'reply', 'resolve'] as const;
+const MAX_REVIEW_LABEL_CODE_UNITS = 512;
+
+type ReviewThreadLabelFactory = CwlReviewThreadListLabels['thread'];
+
+interface ValidatedReviewThreadListLabels {
+  readonly region: string;
+  readonly thread: ReviewThreadLabelFactory;
+  readonly reply: string;
+  readonly resolve: string;
+}
+
+function rejectReviewPresentation(): never {
+  throw new CwlReviewPresentationError();
+}
+
+function requireVisibleLabel(value: unknown): string {
+  if (
+    typeof value !== 'string' ||
+    value.trim().length === 0 ||
+    value.length > MAX_REVIEW_LABEL_CODE_UNITS
+  ) {
+    rejectReviewPresentation();
+  }
+  return value;
+}
+
+function validateReviewThreadListLabels(
+  source: unknown,
+): ValidatedReviewThreadListLabels {
+  try {
+    if (typeof source !== 'object' || source === null) {
+      rejectReviewPresentation();
+    }
+    const ownKeys = Reflect.ownKeys(source);
+    if (
+      ownKeys.length !== REVIEW_LABEL_KEYS.length ||
+      ownKeys.some(
+        (key) => typeof key !== 'string' || !REVIEW_LABEL_KEYS.includes(key),
+      )
+    ) {
+      rejectReviewPresentation();
+    }
+
+    const values: Record<string, unknown> = {};
+    for (const key of REVIEW_LABEL_KEYS) {
+      const descriptor = Object.getOwnPropertyDescriptor(source, key);
+      if (
+        descriptor === undefined ||
+        descriptor.enumerable !== true ||
+        !Object.prototype.hasOwnProperty.call(descriptor, 'value')
+      ) {
+        rejectReviewPresentation();
+      }
+      values[key] = descriptor.value;
+    }
+
+    if (typeof values.thread !== 'function') {
+      rejectReviewPresentation();
+    }
+    return Object.freeze({
+      region: requireVisibleLabel(values.region),
+      thread: values.thread as ReviewThreadLabelFactory,
+      reply: requireVisibleLabel(values.reply),
+      resolve: requireVisibleLabel(values.resolve),
+    });
+  } catch {
+    rejectReviewPresentation();
+  }
+}
+
+function createThreadLabel(
+  labelFactory: ReviewThreadLabelFactory,
+  presentation: CwlReviewThreadPresentation,
+  index: number,
+): string {
+  try {
+    return requireVisibleLabel(labelFactory(presentation, index));
+  } catch {
+    rejectReviewPresentation();
+  }
+}
+
 function validateReviewThreadPresentations(
   presentations: readonly unknown[],
 ): readonly CwlReviewThreadPresentation[] {
@@ -61,9 +144,13 @@ function validateReviewThreadPresentations(
  * Render a controlled accessible list of bounded review-thread presentations.
  *
  * Every source record passes through the React-free review validator before any
- * host metadata is rendered. The component emits only intent callbacks with the
- * detached, frozen presentation snapshot; it does not authorize, persist,
- * transport, mutate, resolve, or reply to host-owned review records.
+ * host metadata is rendered. Host labels must be exact enumerable data fields,
+ * bounded non-empty visible strings, and one explicit thread-label function;
+ * accessor-backed labels and thrown/private label failures are normalized to the
+ * same redacted presentation error before React commits inaccessible content.
+ * The component emits only intent callbacks with the detached, frozen
+ * presentation snapshot; it does not authorize, persist, transport, mutate,
+ * resolve, or reply to host-owned review records.
  */
 export function CwlReviewThreadList({
   presentations,
@@ -74,9 +161,13 @@ export function CwlReviewThreadList({
 }: CwlReviewThreadListProps) {
   const validatedPresentations =
     validateReviewThreadPresentations(presentations);
+  const validatedLabels = validateReviewThreadListLabels(labels);
+  const threadLabels = validatedPresentations.map((presentation, index) =>
+    createThreadLabel(validatedLabels.thread, presentation, index),
+  );
 
   return (
-    <section aria-label={labels.region}>
+    <section aria-label={validatedLabels.region}>
       <ul>
         {validatedPresentations.map((presentation, index) => {
           const replyHandler =
@@ -97,21 +188,21 @@ export function CwlReviewThreadList({
                 aria-pressed={presentation.selected}
                 onClick={() => onSelectThread(presentation)}
               >
-                {labels.thread(presentation, index)}
+                {threadLabels[index]}
               </button>
               <button
                 type="button"
                 disabled={replyHandler === undefined}
                 onClick={replyHandler}
               >
-                {labels.reply}
+                {validatedLabels.reply}
               </button>
               <button
                 type="button"
                 disabled={resolveHandler === undefined}
                 onClick={resolveHandler}
               >
-                {labels.resolve}
+                {validatedLabels.resolve}
               </button>
             </li>
           );
