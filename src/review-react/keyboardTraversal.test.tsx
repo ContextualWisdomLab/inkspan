@@ -63,6 +63,9 @@ describe('CwlReviewThreadList keyboard traversal', () => {
     const second = screen.getByRole('button', { name: 'Thread 2' });
 
     first.focus();
+    fireEvent.keyDown(first, { key: 'Tab' });
+    expect(first).toHaveFocus();
+
     fireEvent.keyDown(first, { key: 'ArrowDown' });
     expect(second).toHaveFocus();
     expect(onSelectThread).not.toHaveBeenCalled();
