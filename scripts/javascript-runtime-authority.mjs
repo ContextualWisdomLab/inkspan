@@ -95,7 +95,10 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
       staticMemberName(receiver) === 'process'
     ) {
       const root = unwrapParentheses(receiver.expression);
-      return ts.isIdentifier(root) && root.text === 'globalThis';
+      return (
+        ts.isIdentifier(root) &&
+        (root.text === 'globalThis' || root.text === 'global')
+      );
     }
     return false;
   }
