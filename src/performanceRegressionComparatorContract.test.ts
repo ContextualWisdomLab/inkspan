@@ -155,7 +155,7 @@ describe('benchmark regression comparator contract', () => {
       const result = runComparison(
         root,
         summary(),
-        summary({ referenceHardwareId: 'different-runner' }),
+        summary({ referenceHardwareId: 'github-actions-ubuntu-22.04-x64' }),
         '5',
       );
 
