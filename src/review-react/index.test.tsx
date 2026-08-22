@@ -122,6 +122,22 @@ describe('CwlReviewThreadList', () => {
     expect(screen.getByRole('button', { name: 'Resolve' })).toBeDisabled();
   });
 
+  it('fails closed before rendering duplicate host thread keys', () => {
+    const first = presentation('thread_1');
+    const duplicate = presentation('thread_1', { selected: true });
+
+    expect(() =>
+      render(
+        <CwlReviewThreadList
+          presentations={[first, duplicate]}
+          labels={labels}
+          onSelectThread={vi.fn()}
+        />,
+      ),
+    ).toThrow(/Review presentation metadata is invalid/u);
+    expect(screen.queryByRole('region', { name: 'Document review' })).not.toBeInTheDocument();
+  });
+
   it('fails closed through the review contract before rendering hostile thread metadata', () => {
     const hostile = presentation('thread_1', {
       commentBody: 'private-body-must-not-render',
