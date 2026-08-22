@@ -138,6 +138,27 @@ describe('CwlReviewThreadList', () => {
     expect(screen.queryByRole('region', { name: 'Document review' })).not.toBeInTheDocument();
   });
 
+  it('fails closed before invoking malformed presentation collection behavior', () => {
+    const privateSentinel = 'private-presentation-collection-must-not-leak';
+    const hostileCollection = Object.defineProperty({}, 'map', {
+      enumerable: true,
+      get() {
+        throw new Error(privateSentinel);
+      },
+    }) as unknown as readonly unknown[];
+
+    expect(() =>
+      render(
+        <CwlReviewThreadList
+          presentations={hostileCollection}
+          labels={labels}
+          onSelectThread={vi.fn()}
+        />,
+      ),
+    ).toThrow('Review presentation metadata is invalid.');
+    expect(screen.queryByRole('region', { name: 'Document review' })).not.toBeInTheDocument();
+  });
+
   it('fails closed through the review contract before rendering hostile thread metadata', () => {
     const hostile = presentation('thread_1', {
       commentBody: 'private-body-must-not-render',
