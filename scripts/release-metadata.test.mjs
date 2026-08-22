@@ -84,7 +84,12 @@ test('CI browser evidence installs the exact packed editor instead of source fal
   assert.notEqual(entryIndex, -1);
   assert.notEqual(playwrightIndex, -1);
   assert.equal(ciWorkflow.includes('npm pack --ignore-scripts --json'), true);
-  assert.equal(ciWorkflow.includes("package_name != '@contextualwisdomlab/cwl-editor'"), true);
+  assert.equal(
+    ciWorkflow.includes(
+      "if [[ \"$package_name\" != '@contextualwisdomlab/cwl-editor' ]]; then",
+    ),
+    true,
+  );
   assert.equal(packIndex < entryIndex, true);
   assert.equal(entryIndex < playwrightIndex, true);
 });
