@@ -156,7 +156,7 @@ const html = renderToStaticMarkup(React.createElement(CwlReviewThreadList, {
 assert.match(html, /aria-label="Document review"/u);
 assert.match(html, /aria-pressed="true"/u);
 assert.match(html, />Reply</u);
-assert.match(html, /disabled=""[^>]*>Reply|>Reply<\/button>/u);
+assert.match(html, new RegExp('<button[^>]*disabled=""[^>]*>Reply</button>', 'u'));
 `,
     'utf8',
   );
@@ -175,6 +175,7 @@ const html = renderToStaticMarkup(React.createElement(CwlReviewThreadList, {
 assert.match(html, /aria-label="Document review"/u);
 assert.match(html, /aria-pressed="true"/u);
 assert.match(html, />Resolve</u);
+assert.match(html, new RegExp('<button[^>]*disabled=""[^>]*>Resolve</button>', 'u'));
 `,
     'utf8',
   );
