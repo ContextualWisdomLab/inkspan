@@ -169,6 +169,24 @@ describe('benchmark regression comparator contract', () => {
     }
   });
 
+  it('rejects private-looking units at the direct summary-comparison boundary', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-compare-unit-'));
+    try {
+      const result = runComparison(
+        root,
+        summary({ unit: 'tenant-acme' }),
+        summary({ artifactSha256: CURRENT_ARTIFACT_SHA256, unit: 'tenant-acme' }),
+        '5',
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe('Benchmark summary unit is invalid.');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('requires an explicit finite non-negative regression tolerance', () => {
     const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-compare-tolerance-'));
     try {
