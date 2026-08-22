@@ -94,7 +94,7 @@ function frozenConflict(currentValidator) {
   return Object.freeze({ status: 'conflict', currentValidator });
 }
 
-function createRepository(configuration, validatorNamespace) {
+function createRepository(configuration, validatorNamespace, forkAuthority) {
   const documentId = requireBoundedString(
     configuration.documentId,
     MAX_DOCUMENT_ID_CODE_UNITS,
@@ -106,7 +106,6 @@ function createRepository(configuration, validatorNamespace) {
   );
   let version = 1;
   let validator = validatorForVersion(version, validatorNamespace);
-  let forkSequence = 0;
 
   function assertDocumentId(candidate) {
     if (candidate !== documentId) {
@@ -191,12 +190,12 @@ function createRepository(configuration, validatorNamespace) {
     if (forkDocumentId === documentId) {
       throw new ReferencePersistenceError('invalid_fork_document_id');
     }
+    if (!Number.isSafeInteger(forkAuthority.nextNamespace)) {
+      throw new ReferencePersistenceError('fork_namespace_exhausted');
+    }
 
-    forkSequence += 1;
-    const childNamespace =
-      validatorNamespace === ''
-        ? `f${forkSequence}`
-        : `${validatorNamespace}.f${forkSequence}`;
+    const childNamespace = `f${forkAuthority.nextNamespace}`;
+    forkAuthority.nextNamespace += 1;
     return Object.freeze({
       status: 'forked',
       repository: createRepository(
@@ -205,6 +204,7 @@ function createRepository(configuration, validatorNamespace) {
           initialDocument: document,
         },
         childNamespace,
+        forkAuthority,
       ),
     });
   }
@@ -234,7 +234,7 @@ export function createSyntheticDocumentRepository(options) {
     [],
     'invalid_options',
   );
-  return createRepository(configuration, '');
+  return createRepository(configuration, '', { nextNamespace: 1 });
 }
 
 function runSelfTest() {
