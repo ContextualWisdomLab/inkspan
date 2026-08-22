@@ -68,6 +68,7 @@ describe('benchmark evidence privacy contract', () => {
       'tenant-acme-large',
       'Benchmark benchmarkId is invalid.',
     ],
+    ['unit', 'tenant-acme', 'Benchmark unit is invalid.'],
     ['runtimeId', 'tenant-acme', 'Benchmark runtimeId is invalid.'],
     [
       'referenceHardwareId',
