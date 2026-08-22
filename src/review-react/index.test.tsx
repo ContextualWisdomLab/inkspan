@@ -51,6 +51,18 @@ const labels = {
   resolve: 'Resolve',
 };
 
+function expectInvalidLabels(candidate: unknown) {
+  expect(() =>
+    render(
+      <CwlReviewThreadList
+        presentations={[presentation('thread_1')]}
+        labels={candidate as typeof labels}
+        onSelectThread={vi.fn()}
+      />,
+    ),
+  ).toThrow('Review presentation metadata is invalid.');
+}
+
 describe('CwlReviewThreadList', () => {
   it('renders a controlled accessible thread list and emits detached presentation intents', () => {
     const onSelectThread = vi.fn();
@@ -192,54 +204,57 @@ describe('CwlReviewThreadList', () => {
       },
     });
 
-    expect(() =>
-      render(
-        <CwlReviewThreadList
-          presentations={[presentation('thread_1')]}
-          labels={hostileLabels as typeof labels}
-          onSelectThread={vi.fn()}
-        />,
-      ),
-    ).toThrow('Review presentation metadata is invalid.');
+    expectInvalidLabels(hostileLabels);
     expect(regionGetterCalls).toBe(0);
     expect(screen.queryByRole('region')).not.toBeInTheDocument();
 
-    expect(() =>
-      render(
-        <CwlReviewThreadList
-          presentations={[presentation('thread_1')]}
-          labels={{ ...labels, region: '' }}
-          onSelectThread={vi.fn()}
-        />,
-      ),
-    ).toThrow('Review presentation metadata is invalid.');
+    expectInvalidLabels({ ...labels, region: '' });
+    expectInvalidLabels({ ...labels, region: 'x'.repeat(513) });
+  });
+
+  it('rejects malformed host label containers and descriptor shapes', () => {
+    expectInvalidLabels(null);
+    expectInvalidLabels({
+      region: labels.region,
+      thread: labels.thread,
+      reply: labels.reply,
+      unexpected: labels.resolve,
+    });
+    expectInvalidLabels({
+      region: labels.region,
+      thread: labels.thread,
+      reply: labels.reply,
+      [Symbol('resolve')]: labels.resolve,
+    });
+    expectInvalidLabels({ ...labels, thread: 'not-a-function' });
+
+    const hiddenRegion = { ...labels };
+    Object.defineProperty(hiddenRegion, 'region', {
+      configurable: true,
+      enumerable: false,
+      value: labels.region,
+    });
+    expectInvalidLabels(hiddenRegion);
+
+    const missingDescriptor = new Proxy(
+      {},
+      {
+        ownKeys: () => ['region', 'thread', 'reply', 'resolve'],
+        getOwnPropertyDescriptor: () => undefined,
+      },
+    );
+    expectInvalidLabels(missingDescriptor);
   });
 
   it('fails closed on invalid or throwing per-thread accessible labels', () => {
-    expect(() =>
-      render(
-        <CwlReviewThreadList
-          presentations={[presentation('thread_1')]}
-          labels={{ ...labels, thread: () => '' }}
-          onSelectThread={vi.fn()}
-        />,
-      ),
-    ).toThrow('Review presentation metadata is invalid.');
+    expectInvalidLabels({ ...labels, thread: () => '' });
 
     const privateSentinel = 'private-thread-label-must-not-leak';
-    expect(() =>
-      render(
-        <CwlReviewThreadList
-          presentations={[presentation('thread_1')]}
-          labels={{
-            ...labels,
-            thread() {
-              throw new Error(privateSentinel);
-            },
-          }}
-          onSelectThread={vi.fn()}
-        />,
-      ),
-    ).toThrow('Review presentation metadata is invalid.');
+    expectInvalidLabels({
+      ...labels,
+      thread() {
+        throw new Error(privateSentinel);
+      },
+    });
   });
 });
