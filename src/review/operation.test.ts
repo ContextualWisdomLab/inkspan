@@ -12,11 +12,13 @@ interface ReviewOperationSurface {
   readonly CwlReviewOperationError: new (
     code:
       | 'invalid_operation'
+      | 'stale_operation_changed'
       | 'accepted_operation_unchanged'
       | 'rejected_operation_changed',
   ) => Error & {
     readonly code:
       | 'invalid_operation'
+      | 'stale_operation_changed'
       | 'accepted_operation_unchanged'
       | 'rejected_operation_changed';
   };
@@ -146,10 +148,9 @@ describe('provider-neutral review operation evidence', () => {
     expect(JSON.stringify(result)).not.toContain('검토 제안');
   });
 
-  it('returns a stable stale result rather than silently re-anchoring a mismatched target', async () => {
+  it('returns a stable stale result only when a mismatched target leaves the document unchanged', async () => {
     const provider = digestProvider();
     const previousEnvelope = createDocumentEnvelope(BEFORE_DOCUMENT);
-    const resultingEnvelope = createDocumentEnvelope(AFTER_DOCUMENT);
     const staleDigest = 'f'.repeat(64);
     const staleRevision = Object.freeze({
       algorithm: 'SHA-256' as const,
@@ -161,7 +162,7 @@ describe('provider-neutral review operation evidence', () => {
       insertSuggestion(staleRevision),
       'accept',
       previousEnvelope,
-      resultingEnvelope,
+      previousEnvelope,
       undefined,
       provider,
     )) as Record<string, unknown>;
@@ -171,6 +172,34 @@ describe('provider-neutral review operation evidence', () => {
     expect(result.beforeRevision).not.toEqual(staleRevision);
     expect(result).not.toHaveProperty('resultingRevision');
     expect(result).not.toHaveProperty('transitionEvidence');
+    expect(Object.isFrozen(result)).toBe(true);
+  });
+
+  it('fails closed when a stale proposal is reported with a changed resulting document', async () => {
+    const provider = digestProvider();
+    const previousEnvelope = createDocumentEnvelope(BEFORE_DOCUMENT);
+    const resultingEnvelope = createDocumentEnvelope(AFTER_DOCUMENT);
+    const staleDigest = 'f'.repeat(64);
+    const staleRevision = Object.freeze({
+      algorithm: 'SHA-256' as const,
+      digestHex: staleDigest,
+      strongEntityTag: `"sha256-${staleDigest}"`,
+    });
+
+    await expect(
+      reviewOperationSurface().createReviewOperationResult(
+        insertSuggestion(staleRevision),
+        'accept',
+        previousEnvelope,
+        resultingEnvelope,
+        undefined,
+        provider,
+      ),
+    ).rejects.toMatchObject({
+      name: 'CwlReviewOperationError',
+      code: 'stale_operation_changed',
+      message: 'Stale review operations must not change the document.',
+    });
   });
 
   it('requires accepted operations to change the document and rejected operations to preserve it', async () => {
