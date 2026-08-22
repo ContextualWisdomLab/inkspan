@@ -19,7 +19,7 @@ const READ_ONLY_NONBLOCKING =
   constants.O_RDONLY | (constants.O_NONBLOCK ?? 0);
 const BENCHMARK_ID_PATTERN =
   /^(?:ssr-shell-render|client-hydration|editor-mount|first-editable-paint|editor-input|keyboard-input|ime-composition|toolbar-action|undo-redo|table-edit|paste|image-insertion|markdown-serialization|html-serialization|envelope-parse|envelope-canonicalization|revision-evidence|transition-evidence|autosave-enqueue|autosave-coalescing|autosave-commit|yjs-update|print-media|office-parse|office-render|office-publication)-(?:small|medium|large|stress)$/u;
-const UNIT_PATTERN = /^[A-Za-z][A-Za-z0-9._/%-]{0,31}$/u;
+const UNITS = new Set(['ms', 'bytes']);
 const SHA1_PATTERN = /^[0-9a-f]{40}$/u;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const RUNTIME_ID_PATTERN =
@@ -126,7 +126,7 @@ function validateInput(value) {
   ) {
     throw new Error('Benchmark benchmarkId is invalid.');
   }
-  if (typeof value.unit !== 'string' || !UNIT_PATTERN.test(value.unit)) {
+  if (typeof value.unit !== 'string' || !UNITS.has(value.unit)) {
     throw new Error('Benchmark unit is invalid.');
   }
   if (
