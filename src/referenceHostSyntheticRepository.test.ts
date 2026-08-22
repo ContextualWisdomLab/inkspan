@@ -84,6 +84,56 @@ process.stdout.write(JSON.stringify({
     expect(evidence.forkValidator).not.toBe(evidence.sourceValidator);
   });
 
+  it('keeps deeply nested fork-issued validators acceptable to their own save boundary', () => {
+    if (!existsSync(fixturePath)) return;
+    const fixtureUrl = pathToFileURL(fixturePath).href;
+    const output = execFileSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '--eval',
+        `import { createSyntheticDocumentRepository } from ${JSON.stringify(fixtureUrl)};
+let repository = createSyntheticDocumentRepository({
+  documentId: 'buyer-document-0',
+  initialDocument: 'Buyer draft v1',
+});
+let documentId = 'buyer-document-0';
+for (let depth = 1; depth <= 100; depth += 1) {
+  const current = repository.read(documentId);
+  const forkDocumentId = \`buyer-document-\${depth}\`;
+  const forked = repository.fork({
+    documentId,
+    forkDocumentId,
+    ifMatch: current.validator,
+  });
+  repository = forked.repository;
+  documentId = forkDocumentId;
+}
+const leaf = repository.read(documentId);
+const saved = repository.save({
+  documentId,
+  document: 'Deep fork edit',
+  ifMatch: leaf.validator,
+});
+process.stdout.write(JSON.stringify({
+  initialValidatorLength: leaf.validator.length,
+  savedStatus: saved.status,
+  savedValidatorLength: saved.validator.length,
+}));`,
+      ],
+      { encoding: 'utf8' },
+    );
+    const evidence = JSON.parse(output) as {
+      initialValidatorLength: number;
+      savedStatus: string;
+      savedValidatorLength: number;
+    };
+
+    expect(evidence.savedStatus).toBe('saved');
+    expect(evidence.initialValidatorLength).toBeLessThanOrEqual(256);
+    expect(evidence.savedValidatorLength).toBeLessThanOrEqual(256);
+  });
+
   it('accepts an empty document body while keeping document identifiers non-empty', () => {
     if (!existsSync(fixturePath)) return;
     const output = execFileSync(
