@@ -7,6 +7,17 @@ function requireNonEmptyString(value, fieldName) {
   return value;
 }
 
+function readOfficeHandoffInput(input) {
+  try {
+    return {
+      title: input.title,
+      markdown: input.markdown,
+    };
+  } catch {
+    throw new TypeError('Office handoff input is invalid.');
+  }
+}
+
 /**
  * Create a bounded reference-only DOCX request from editor Markdown.
  *
@@ -15,11 +26,14 @@ function requireNonEmptyString(value, fieldName) {
  * request. This example does not claim Markdown-to-OOXML round-trip fidelity,
  * perform Office rendering, authorize export, choose a filesystem path, or
  * persist/distribute the resulting artifact; those remain host responsibilities.
+ * Host input reflection failures are normalized at this boundary instead of
+ * exposing caller-controlled exception values.
  *
  * @param {{ title: string, markdown: string }} input host-owned export input
  * @returns {{ format: 'docx', title: string, blocks: readonly [{ type: 'paragraph', text: string }] }}
  */
-export function createReferenceDocxRequest({ title, markdown }) {
+export function createReferenceDocxRequest(input) {
+  const { title, markdown } = readOfficeHandoffInput(input);
   const acceptedTitle = requireNonEmptyString(title, 'title');
   if (typeof markdown !== 'string') {
     throw new TypeError('markdown must be a string.');
