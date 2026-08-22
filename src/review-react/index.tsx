@@ -166,18 +166,16 @@ export function CwlReviewThreadList({
   const validatedPresentations =
     validateReviewThreadPresentations(presentations);
   const validatedLabels = validateReviewThreadListLabels(labels);
-  const threadLabels = validatedPresentations.map((presentation, index) =>
-    createThreadLabel(validatedLabels.thread, presentation, index),
-  );
 
   return (
     <section aria-label={validatedLabels.region}>
       <ul>
         {validatedPresentations.map((presentation, index) => {
-          const threadLabel = threadLabels[index];
-          if (threadLabel === undefined) {
-            rejectReviewPresentation();
-          }
+          const threadLabel = createThreadLabel(
+            validatedLabels.thread,
+            presentation,
+            index,
+          );
           const replyHandler =
             presentation.canReply && onReplyThread !== undefined
               ? () => onReplyThread(presentation)
