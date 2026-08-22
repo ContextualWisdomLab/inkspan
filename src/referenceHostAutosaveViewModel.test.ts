@@ -133,6 +133,54 @@ describe('reference-host autosave presentation contract', () => {
     });
   });
 
+  it('rejects weak and malformed values labeled as strong entity tags', () => {
+    if (!existsSync(fixturePath)) return;
+    const moduleUrl = JSON.stringify(pathToFileURL(fixturePath).href);
+    const script = `
+      import { createAutosaveViewModel } from ${moduleUrl};
+      const candidate = {
+        state: 'saving',
+        blockedReason: null,
+        activeStrongEntityTag: null,
+        pendingStrongEntityTag: null,
+        lastSavedStrongEntityTag: null,
+      };
+      const candidates = [
+        ['weak', 'W/"weak"'],
+        ['unquoted', 'opaque'],
+        ['embeddedQuote', '"bad"quote"'],
+        ['control', '"line\\nbreak"'],
+        ['nonOctet', '"😀"'],
+      ];
+      const errors = {};
+      for (const [name, value] of candidates) {
+        try {
+          createAutosaveViewModel().observe({
+            ...candidate,
+            activeStrongEntityTag: value,
+          });
+          errors[name] = null;
+        } catch (error) {
+          errors[name] = error instanceof Error ? error.message : 'unexpected error';
+        }
+      }
+      process.stdout.write(JSON.stringify(errors));
+    `;
+    const output = execFileSync(
+      process.execPath,
+      ['--input-type=module', '--eval', script],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      weak: 'activeStrongEntityTag is invalid.',
+      unquoted: 'activeStrongEntityTag is invalid.',
+      embeddedQuote: 'activeStrongEntityTag is invalid.',
+      control: 'activeStrongEntityTag is invalid.',
+      nonOctet: 'activeStrongEntityTag is invalid.',
+    });
+  });
+
   it('rejects accessor-backed lifecycle snapshots without invoking them', () => {
     if (!existsSync(fixturePath)) return;
     const output = execFileSync(
