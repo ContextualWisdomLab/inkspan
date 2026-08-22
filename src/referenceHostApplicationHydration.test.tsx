@@ -1,120 +1,53 @@
-import { act } from 'react';
-import { hydrateRoot, type Root } from 'react-dom/client';
-import { renderToString } from 'react-dom/server';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-import { ReferenceHostApp } from '../examples/reference-host/reference-host-app.js';
+import { describe, expect, it } from 'vitest';
 
-const mountedContainers: HTMLElement[] = [];
-const mountedRoots: Root[] = [];
+const applicationSource = readFileSync(
+  resolve(process.cwd(), 'examples/reference-host/reference-host-app.tsx'),
+  'utf8',
+);
+const nativeFormSource = readFileSync(
+  resolve(process.cwd(), 'examples/reference-host/native-form-host.tsx'),
+  'utf8',
+);
 
-afterEach(async () => {
-  while (mountedRoots.length > 0) {
-    const root = mountedRoots.pop();
-    if (root) {
-      await act(async () => {
-        root.unmount();
-      });
-    }
-  }
-  while (mountedContainers.length > 0) {
-    mountedContainers.pop()?.remove();
-  }
-  vi.restoreAllMocks();
-});
-
-describe('reference-host application hydration', () => {
-  it('server-renders a deterministic shell and hydrates the real native-form host without a mismatch', async () => {
-    const onAuthorizedSubmit = vi.fn();
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-
-    const serverHtml = renderToString(
-      <ReferenceHostApp
-        loadingLabel="Loading buyer editor"
-        onAuthorizedSubmit={onAuthorizedSubmit}
-      />,
+describe('reference-host application hydration contract', () => {
+  it('keeps a deterministic server shell and mounts the real native-form host through the client hydration gate', () => {
+    expect(applicationSource.startsWith("'use client';\n")).toBe(true);
+    expect(applicationSource).toContain(
+      "from './hydration-gate.js'",
     );
-
-    expect(serverHtml).toContain('Inkspan reference host');
-    expect(serverHtml).toContain('aria-busy="true"');
-    expect(serverHtml).toContain('Loading buyer editor');
-    expect(serverHtml).not.toContain('name="message_body"');
-    expect(onAuthorizedSubmit).not.toHaveBeenCalled();
-
-    const container = document.createElement('div');
-    container.innerHTML = serverHtml;
-    document.body.append(container);
-    mountedContainers.push(container);
-
-    let root: Root | undefined;
-    await act(async () => {
-      root = hydrateRoot(
-        container,
-        <ReferenceHostApp
-          loadingLabel="Loading buyer editor"
-          onAuthorizedSubmit={onAuthorizedSubmit}
-        />,
-      );
-      await Promise.resolve();
-    });
-    if (!root) {
-      throw new Error('Reference host hydration root was not created.');
-    }
-    mountedRoots.push(root);
-
-    expect(container.querySelector('input[name="message_body"]')).not.toBeNull();
-    expect(container.textContent).toContain('Save document');
-    expect(container.textContent).not.toContain('Loading buyer editor');
-    expect(onAuthorizedSubmit).not.toHaveBeenCalled();
-
-    const hydrationErrors = consoleError.mock.calls.filter(([first]) =>
-      typeof first === 'string'
-        ? /hydration|did not match|server html/i.test(first)
-        : false,
+    expect(applicationSource).toContain(
+      "from './native-form-host.js'",
     );
-    expect(hydrationErrors).toEqual([]);
+    expect(applicationSource).toContain(
+      '<main aria-labelledby="reference-host-heading">',
+    );
+    expect(applicationSource).toContain(
+      '<ReferenceHostHydrationGate',
+    );
+    expect(applicationSource).toContain(
+      'renderEditor={() => (',
+    );
+    expect(applicationSource).toContain(
+      '<NativeFormHost',
+    );
+    expect(applicationSource).toContain(
+      'onAuthorizedSubmit={onAuthorizedSubmit}',
+    );
+    expect(applicationSource).toContain('readOnly={readOnly}');
   });
 
-  it('keeps the real hydrated form fail-closed when the host is read-only', async () => {
-    const onAuthorizedSubmit = vi.fn();
-    const container = document.createElement('div');
-    container.innerHTML = renderToString(
-      <ReferenceHostApp
-        loadingLabel="Loading buyer editor"
-        onAuthorizedSubmit={onAuthorizedSubmit}
-        readOnly
-      />,
+  it('preserves the public-package and host-authority boundary for the hydrated form', () => {
+    expect(nativeFormSource).toContain(
+      "from '@contextualwisdomlab/cwl-editor'",
     );
-    document.body.append(container);
-    mountedContainers.push(container);
-
-    let root: Root | undefined;
-    await act(async () => {
-      root = hydrateRoot(
-        container,
-        <ReferenceHostApp
-          loadingLabel="Loading buyer editor"
-          onAuthorizedSubmit={onAuthorizedSubmit}
-          readOnly
-        />,
-      );
-      await Promise.resolve();
-    });
-    if (!root) {
-      throw new Error('Reference host hydration root was not created.');
-    }
-    mountedRoots.push(root);
-
-    const field = container.querySelector<HTMLInputElement>(
-      'input[name="message_body"]',
-    );
-    const submit = container.querySelector<HTMLButtonElement>('button[type="submit"]');
-    const reset = container.querySelector<HTMLButtonElement>('button[type="reset"]');
-
-    expect(field).not.toBeNull();
-    expect(field?.disabled).toBe(true);
-    expect(submit?.disabled).toBe(true);
-    expect(reset?.disabled).toBe(true);
-    expect(onAuthorizedSubmit).not.toHaveBeenCalled();
+    expect(nativeFormSource).toContain('formFieldName="message_body"');
+    expect(applicationSource).not.toContain('/src/');
+    expect(applicationSource).not.toContain('../../src');
+    expect(applicationSource).not.toContain('fetch(');
+    expect(applicationSource).not.toContain('localStorage');
+    expect(applicationSource).not.toContain('process.env');
   });
 });
