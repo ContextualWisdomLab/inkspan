@@ -7,6 +7,7 @@ const AUTOSAVE_STATES = new Set([
 ]);
 const BLOCKED_REASONS = new Set(['conflict', 'failure']);
 const MAX_STRONG_ENTITY_TAG_CODE_UNITS = 256;
+const STRONG_ENTITY_TAG_PATTERN = /^"[\x21\x23-\x7e\x80-\xff]*"$/u;
 const SNAPSHOT_KEYS = [
   'state',
   'blockedReason',
@@ -18,12 +19,12 @@ const SNAPSHOT_KEYS = [
 /** Marker used by repository contracts to prevent this host fixture becoming runtime authority. */
 export const REFERENCE_ONLY = true;
 
-function requireNullableString(value, label) {
+function requireNullableStrongEntityTag(value, label) {
   if (
     value !== null &&
     (typeof value !== 'string' ||
-      value.length === 0 ||
-      value.length > MAX_STRONG_ENTITY_TAG_CODE_UNITS)
+      value.length > MAX_STRONG_ENTITY_TAG_CODE_UNITS ||
+      !STRONG_ENTITY_TAG_PATTERN.test(value))
   ) {
     throw new TypeError(`${label} is invalid.`);
   }
@@ -81,15 +82,15 @@ function readSnapshot(source) {
   return Object.freeze({
     state: snapshot.state,
     blockedReason: snapshot.blockedReason,
-    activeStrongEntityTag: requireNullableString(
+    activeStrongEntityTag: requireNullableStrongEntityTag(
       snapshot.activeStrongEntityTag,
       'activeStrongEntityTag',
     ),
-    pendingStrongEntityTag: requireNullableString(
+    pendingStrongEntityTag: requireNullableStrongEntityTag(
       snapshot.pendingStrongEntityTag,
       'pendingStrongEntityTag',
     ),
-    lastSavedStrongEntityTag: requireNullableString(
+    lastSavedStrongEntityTag: requireNullableStrongEntityTag(
       snapshot.lastSavedStrongEntityTag,
       'lastSavedStrongEntityTag',
     ),
@@ -115,8 +116,9 @@ function presentation(viewState) {
  * `observe()` consumes only programmatic queue/session snapshots. Snapshot fields
  * must be an exact own-data-property shape so presentation never invokes
  * caller-owned accessors or silently admits authority-looking metadata. Strong
- * entity tags are also bounded before projection so untrusted snapshot metadata
- * cannot allocate unbounded retained strings at this reference boundary.
+ * entity tags are validated as bounded RFC 9110 strong entity-tags before
+ * projection so untrusted snapshot metadata cannot masquerade as a durable
+ * validator or allocate unbounded retained strings at this reference boundary.
  * A blocked to saving transition is presented as retrying, and only a later idle
  * transition after that observed retry is presented as recovered. A blocked to
  * idle transition without an intervening save returns to clean instead of
