@@ -106,8 +106,24 @@ describe('CwlReviewThreadList', () => {
     expect(selected).not.toBe(second);
     expect(Object.isFrozen(selected)).toBe(true);
 
-    const replyButtons = screen.getAllByRole('button', { name: 'Reply' });
-    const resolveButtons = screen.getAllByRole('button', { name: 'Resolve' });
+    const replyButtons = [
+      screen.getByRole('button', {
+        name: 'Reply — Thread 1: unresolved, 2 comments',
+      }),
+      screen.getByRole('button', {
+        name: 'Reply — Thread 2: resolved, 2 comments',
+      }),
+    ];
+    const resolveButtons = [
+      screen.getByRole('button', {
+        name: 'Resolve — Thread 1: unresolved, 2 comments',
+      }),
+      screen.getByRole('button', {
+        name: 'Resolve — Thread 2: resolved, 2 comments',
+      }),
+    ];
+    expect(replyButtons[0]).toHaveTextContent('Reply');
+    expect(resolveButtons[0]).toHaveTextContent('Resolve');
     expect(replyButtons[0]).toBeEnabled();
     expect(replyButtons[1]).toBeDisabled();
     expect(resolveButtons[0]).toBeEnabled();
@@ -130,8 +146,16 @@ describe('CwlReviewThreadList', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Reply' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Resolve' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', {
+        name: 'Reply — Thread 1: unresolved, 2 comments',
+      }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', {
+        name: 'Resolve — Thread 1: unresolved, 2 comments',
+      }),
+    ).toBeDisabled();
   });
 
   it('fails closed before rendering duplicate host thread keys', () => {
@@ -168,7 +192,7 @@ describe('CwlReviewThreadList', () => {
         />,
       ),
     ).toThrow('Review presentation metadata is invalid.');
-    expect(screen.queryByRole('region', { name: 'Document review' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region')).not.toBeInTheDocument();
   });
 
   it('fails closed through the review contract before rendering hostile thread metadata', () => {
