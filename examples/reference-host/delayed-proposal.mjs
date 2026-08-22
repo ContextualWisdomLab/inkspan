@@ -127,11 +127,44 @@ export function applyDelayedProposal(source) {
     return Object.freeze({ status: 'conflict' });
   }
 
+  let applicationResult;
   try {
-    application.apply(replacement);
+    applicationResult = application.apply(replacement);
   } catch {
     throw new Error('proposal application failed.');
   }
+
+  if (
+    (typeof applicationResult === 'object' && applicationResult !== null) ||
+    typeof applicationResult === 'function'
+  ) {
+    let then;
+    try {
+      then = applicationResult.then;
+    } catch {
+      throw new Error('proposal application failed.');
+    }
+
+    if (typeof then === 'function') {
+      return new Promise((resolve, reject) => {
+        try {
+          then.call(
+            applicationResult,
+            () => resolve(),
+            () => reject(),
+          );
+        } catch {
+          reject();
+        }
+      }).then(
+        () => Object.freeze({ status: 'applied' }),
+        () => {
+          throw new Error('proposal application failed.');
+        },
+      );
+    }
+  }
+
   return Object.freeze({ status: 'applied' });
 }
 
