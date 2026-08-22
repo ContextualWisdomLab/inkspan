@@ -92,6 +92,7 @@ import { renderToString } from 'react-dom/server';
 import { CwlEditor } from '${packageName}';
 import { createDocumentAutosaveQueue } from '${packageName}/autosave';
 import { dataUriToBytes } from '${packageName}/converter';
+import { markdownToHtml, markdownToPlainText } from '${packageName}/markdown';
 
 const serverHtml = renderToString(
   React.createElement(CwlEditor, {
@@ -105,10 +106,16 @@ assert.match(serverHtml, /name="message_body"/u);
 assert.match(serverHtml, /value="# Packed draft"/u);
 assert.equal(typeof createDocumentAutosaveQueue, 'function');
 assert.deepEqual(Array.from(dataUriToBytes('data:text/plain;base64,SGk=').bytes), [72, 105]);
+const markdownSource = '# Packed handoff\\n\\nBuyer text';
+const projectedHtml = markdownToHtml(markdownSource);
+assert.equal(projectedHtml, markdownToHtml(markdownSource));
+assert.match(markdownToPlainText(markdownSource), /Packed handoff/u);
+assert.match(markdownToPlainText(markdownSource), /Buyer text/u);
 
 const rootEntry = import.meta.resolve('${packageName}');
 const autosaveEntry = import.meta.resolve('${packageName}/autosave');
 const converterEntry = import.meta.resolve('${packageName}/converter');
+const markdownEntry = import.meta.resolve('${packageName}/markdown');
 const styleEntry = import.meta.resolve('${packageName}/styles.css');
 const fullFontEntry = import.meta.resolve('${packageName}/fonts.css');
 const latinFontEntry = import.meta.resolve('${packageName}/fonts-latin.css');
@@ -116,6 +123,7 @@ for (const entry of [
   rootEntry,
   autosaveEntry,
   converterEntry,
+  markdownEntry,
   styleEntry,
   fullFontEntry,
   latinFontEntry,
@@ -126,9 +134,11 @@ for (const entry of [
 process.stdout.write(JSON.stringify({
   serverRenderedNamedField: true,
   converterRoundTrip: true,
+  markdownProjection: true,
   rootEntry,
   autosaveEntry,
   converterEntry,
+  markdownEntry,
   styleEntry,
   fullFontEntry,
   latinFontEntry,
@@ -148,6 +158,7 @@ const { renderToString } = require('react-dom/server');
 const { CwlEditor } = require('${packageName}');
 const { createDocumentAutosaveQueue } = require('${packageName}/autosave');
 const { dataUriToBytes } = require('${packageName}/converter');
+const { markdownToHtml, markdownToPlainText } = require('${packageName}/markdown');
 
 const serverHtml = renderToString(
   React.createElement(CwlEditor, {
@@ -161,13 +172,20 @@ assert.match(serverHtml, /name="message_body"/u);
 assert.match(serverHtml, /value="# Packed CommonJS draft"/u);
 assert.equal(typeof createDocumentAutosaveQueue, 'function');
 assert.deepEqual(Array.from(dataUriToBytes('data:text/plain;base64,T0s=').bytes), [79, 75]);
+const markdownSource = '# Packed CommonJS handoff\\n\\nBuyer text';
+const projectedHtml = markdownToHtml(markdownSource);
+assert.equal(projectedHtml, markdownToHtml(markdownSource));
+assert.match(markdownToPlainText(markdownSource), /Packed CommonJS handoff/u);
+assert.match(markdownToPlainText(markdownSource), /Buyer text/u);
 
 process.stdout.write(JSON.stringify({
   serverRenderedNamedField: true,
   converterRoundTrip: true,
+  markdownProjection: true,
   rootEntry: require.resolve('${packageName}'),
   autosaveEntry: require.resolve('${packageName}/autosave'),
   converterEntry: require.resolve('${packageName}/converter'),
+  markdownEntry: require.resolve('${packageName}/markdown'),
 }));
 `,
     'utf8',
@@ -198,9 +216,11 @@ process.stdout.write(JSON.stringify({
     ['ESM root', fileURLToPath(consumerResult.rootEntry)],
     ['ESM autosave', fileURLToPath(consumerResult.autosaveEntry)],
     ['ESM converter', fileURLToPath(consumerResult.converterEntry)],
+    ['ESM markdown', fileURLToPath(consumerResult.markdownEntry)],
     ['CommonJS root', commonJsConsumerResult.rootEntry],
     ['CommonJS autosave', commonJsConsumerResult.autosaveEntry],
     ['CommonJS converter', commonJsConsumerResult.converterEntry],
+    ['CommonJS markdown', commonJsConsumerResult.markdownEntry],
   ];
   for (const [label, entry] of executableEntries) {
     assert.equal(
@@ -259,6 +279,8 @@ process.stdout.write(JSON.stringify({
       commonJsServerRenderedNamedField,
       esmConverterRoundTrip: consumerResult.converterRoundTrip === true,
       commonJsConverterRoundTrip: commonJsConsumerResult.converterRoundTrip === true,
+      esmMarkdownProjection: consumerResult.markdownProjection === true,
+      commonJsMarkdownProjection: commonJsConsumerResult.markdownProjection === true,
       publicAssetEntriesContained,
       executableEntriesContained: true,
       sourceImportDetected,
