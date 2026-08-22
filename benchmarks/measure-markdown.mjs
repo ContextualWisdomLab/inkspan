@@ -13,7 +13,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const MAX_INPUT_BYTES = 16 * 1024 * 1024;
 const MAX_MODULE_BYTES = 16 * 1024 * 1024;
@@ -180,7 +180,12 @@ function resolveLocalModule(pathOrUrl) {
   if (moduleUrl.protocol !== 'file:') {
     throw new Error('Measured Markdown module must be a local regular file.');
   }
-  const resolvedPath = resolve(decodeURIComponent(moduleUrl.pathname));
+  let resolvedPath;
+  try {
+    resolvedPath = resolve(fileURLToPath(moduleUrl));
+  } catch {
+    throw new Error('Measured Markdown module must be a local regular file.');
+  }
   const metadata = lstatSync(resolvedPath, { throwIfNoEntry: false });
   if (
     metadata === undefined ||
