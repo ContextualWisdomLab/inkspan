@@ -27,7 +27,7 @@ const SETUP_NODE_PIN =
 const ACTIONS_CACHE_PIN =
   'actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0';
 const SAFE_PNPM_ACTION_PIN =
-  'pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10';
+  'pnpm/action-setup@0977fd99725dab4007ccb2928dbb4e90d06cc86 # v6.0.10';
 const VULNERABLE_PNPM_ACTION_PIN =
   'pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8';
 
@@ -42,6 +42,17 @@ describe('exact-head CI workflow contract', () => {
       ),
     ).toHaveLength(3);
     expect(workflow.match(/persist-credentials: false/g)).toHaveLength(3);
+  });
+
+  it('checks diagnostics assurance out at the immutable contributor head', () => {
+    const exactHeadRef =
+      'ref: ${{ github.event.pull_request.head.sha || github.sha }}';
+    const exactExpectedHead =
+      'INKSPAN_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}';
+
+    expect(diagnosticsWorkflow.split(exactHeadRef)).toHaveLength(3);
+    expect(diagnosticsWorkflow).not.toContain('ref: ${{ github.sha }}');
+    expect(diagnosticsWorkflow).toContain(exactExpectedHead);
   });
 
   it('keeps the workflow read-only and hash-pins every third-party action', () => {
