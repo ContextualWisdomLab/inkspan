@@ -77,8 +77,9 @@ function readPlainDataRecord(source, requiredKeys, optionalKeys, code) {
   }
 }
 
-function validatorForVersion(version) {
-  return `"v${version}"`;
+function validatorForVersion(version, validatorNamespace) {
+  const prefix = validatorNamespace === '' ? '' : `${validatorNamespace}-`;
+  return `"${prefix}v${version}"`;
 }
 
 function frozenRead(document, validator) {
@@ -93,28 +94,7 @@ function frozenConflict(currentValidator) {
   return Object.freeze({ status: 'conflict', currentValidator });
 }
 
-/**
- * Create an in-memory host-owned reference repository with exact If-Match semantics.
- *
- * This adapter is synthetic acquisition/support evidence only. Buyers must replace
- * it with an authorized atomic durable store. Confirmed failures and the
- * `ambiguous_failure` pre-commit fixture leave durable state unchanged. The
- * `ambiguous_commit_failure` fixture deliberately commits before returning the
- * same ambiguous error so consumers must re-read durable state instead of
- * advancing or blindly reusing their last known validator. A confirmed fork
- * requires the current strong validator and starts an independent repository at a
- * fresh validator so source and fork cannot silently share revision authority.
- * Configuration, save, and fork request fields are snapshotted from exact own
- * data-property shapes without invoking caller-owned accessors or admitting
- * unknown authority-looking metadata.
- */
-export function createSyntheticDocumentRepository(options) {
-  const configuration = readPlainDataRecord(
-    options,
-    ['documentId', 'initialDocument'],
-    [],
-    'invalid_options',
-  );
+function createRepository(configuration, validatorNamespace) {
   const documentId = requireBoundedString(
     configuration.documentId,
     MAX_DOCUMENT_ID_CODE_UNITS,
@@ -125,7 +105,8 @@ export function createSyntheticDocumentRepository(options) {
     'invalid_document',
   );
   let version = 1;
-  let validator = validatorForVersion(version);
+  let validator = validatorForVersion(version, validatorNamespace);
+  let forkSequence = 0;
 
   function assertDocumentId(candidate) {
     if (candidate !== documentId) {
@@ -178,7 +159,7 @@ export function createSyntheticDocumentRepository(options) {
 
     document = nextDocument;
     version += 1;
-    validator = validatorForVersion(version);
+    validator = validatorForVersion(version, validatorNamespace);
     if (outcome === 'ambiguous_commit_failure') {
       throw new ReferencePersistenceError('ambiguous_failure');
     }
@@ -211,16 +192,49 @@ export function createSyntheticDocumentRepository(options) {
       throw new ReferencePersistenceError('invalid_fork_document_id');
     }
 
+    forkSequence += 1;
+    const childNamespace =
+      validatorNamespace === ''
+        ? `f${forkSequence}`
+        : `${validatorNamespace}.f${forkSequence}`;
     return Object.freeze({
       status: 'forked',
-      repository: createSyntheticDocumentRepository({
-        documentId: forkDocumentId,
-        initialDocument: document,
-      }),
+      repository: createRepository(
+        {
+          documentId: forkDocumentId,
+          initialDocument: document,
+        },
+        childNamespace,
+      ),
     });
   }
 
   return Object.freeze({ fork, read, save });
+}
+
+/**
+ * Create an in-memory host-owned reference repository with exact If-Match semantics.
+ *
+ * This adapter is synthetic acquisition/support evidence only. Buyers must replace
+ * it with an authorized atomic durable store. Confirmed failures and the
+ * `ambiguous_failure` pre-commit fixture leave durable state unchanged. The
+ * `ambiguous_commit_failure` fixture deliberately commits before returning the
+ * same ambiguous error so consumers must re-read durable state instead of
+ * advancing or blindly reusing their last known validator. A confirmed fork
+ * requires the current strong validator and starts an independent repository at a
+ * fresh validator so source and fork cannot silently share revision authority.
+ * Configuration, save, and fork request fields are snapshotted from exact own
+ * data-property shapes without invoking caller-owned accessors or admitting
+ * unknown authority-looking metadata.
+ */
+export function createSyntheticDocumentRepository(options) {
+  const configuration = readPlainDataRecord(
+    options,
+    ['documentId', 'initialDocument'],
+    [],
+    'invalid_options',
+  );
+  return createRepository(configuration, '');
 }
 
 function runSelfTest() {
