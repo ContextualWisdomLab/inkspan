@@ -1,9 +1,11 @@
+import { createHash } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import {
   closeSync,
   constants,
   fstatSync,
   lstatSync,
+  mkdirSync,
   openSync,
   readSync,
   realpathSync,
@@ -12,9 +14,9 @@ import {
 } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { mkdirSync } from 'node:fs';
 
 const MAX_INPUT_BYTES = 16 * 1024 * 1024;
+const MAX_MODULE_BYTES = 16 * 1024 * 1024;
 const READ_CHUNK_BYTES = 64 * 1024;
 const MAX_SAMPLES = 1_000;
 const READ_ONLY_NOFOLLOW =
@@ -98,25 +100,29 @@ function resolveArguments(argv) {
   });
 }
 
-function readBoundedMarkdown(path) {
+function readBoundedRegularFile(path, maximumBytes, invalidFileMessage, oversizedMessage) {
   const pathMetadata = lstatSync(path, { throwIfNoEntry: false });
-  if (pathMetadata === undefined || pathMetadata.isSymbolicLink() || !pathMetadata.isFile()) {
-    throw new Error('Markdown benchmark input must be a regular non-symlink file.');
+  if (
+    pathMetadata === undefined ||
+    pathMetadata.isSymbolicLink() ||
+    !pathMetadata.isFile()
+  ) {
+    throw new Error(invalidFileMessage);
   }
 
   const descriptor = openSync(path, READ_ONLY_NOFOLLOW);
   try {
     const metadata = fstatSync(descriptor);
     if (!metadata.isFile()) {
-      throw new Error('Markdown benchmark input must be a regular non-symlink file.');
+      throw new Error(invalidFileMessage);
     }
-    if (metadata.size > MAX_INPUT_BYTES) {
-      throw new Error('Markdown benchmark input exceeds the supported size.');
+    if (metadata.size > maximumBytes) {
+      throw new Error(oversizedMessage);
     }
     const chunks = [];
     let totalBytes = 0;
-    while (totalBytes <= MAX_INPUT_BYTES) {
-      const remainingBudget = MAX_INPUT_BYTES + 1 - totalBytes;
+    while (totalBytes <= maximumBytes) {
+      const remainingBudget = maximumBytes + 1 - totalBytes;
       const chunk = Buffer.allocUnsafe(
         Math.min(READ_CHUNK_BYTES, remainingBudget),
       );
@@ -129,21 +135,28 @@ function readBoundedMarkdown(path) {
       );
       if (bytesRead === 0) break;
       totalBytes += bytesRead;
-      if (totalBytes > MAX_INPUT_BYTES) {
-        throw new Error('Markdown benchmark input exceeds the supported size.');
+      if (totalBytes > maximumBytes) {
+        throw new Error(oversizedMessage);
       }
       chunks.push(chunk.subarray(0, bytesRead));
     }
-
-    try {
-      return new TextDecoder('utf-8', { fatal: true }).decode(
-        Buffer.concat(chunks, totalBytes),
-      );
-    } catch {
-      throw new Error('Markdown benchmark input must be valid UTF-8.');
-    }
+    return Buffer.concat(chunks, totalBytes);
   } finally {
     closeSync(descriptor);
+  }
+}
+
+function readBoundedMarkdown(path) {
+  const bytes = readBoundedRegularFile(
+    path,
+    MAX_INPUT_BYTES,
+    'Markdown benchmark input must be a regular non-symlink file.',
+    'Markdown benchmark input exceeds the supported size.',
+  );
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error('Markdown benchmark input must be valid UTF-8.');
   }
 }
 
@@ -156,23 +169,45 @@ function resolveLocalModule(pathOrUrl) {
   ) {
     throw new Error('Measured Markdown module must be a local regular file.');
   }
-  let modulePath;
+  let moduleUrl;
   try {
-    modulePath = pathOrUrl.startsWith('file:')
+    moduleUrl = pathOrUrl.startsWith('file:')
       ? new URL(pathOrUrl)
       : pathToFileURL(resolve(pathOrUrl));
   } catch {
     throw new Error('Measured Markdown module must be a local regular file.');
   }
-  if (modulePath.protocol !== 'file:') {
+  if (moduleUrl.protocol !== 'file:') {
     throw new Error('Measured Markdown module must be a local regular file.');
   }
-  const resolvedPath = resolve(decodeURIComponent(modulePath.pathname));
+  const resolvedPath = resolve(decodeURIComponent(moduleUrl.pathname));
   const metadata = lstatSync(resolvedPath, { throwIfNoEntry: false });
-  if (metadata === undefined || metadata.isSymbolicLink() || !metadata.isFile()) {
+  if (
+    metadata === undefined ||
+    metadata.isSymbolicLink() ||
+    !metadata.isFile()
+  ) {
     throw new Error('Measured Markdown module must be a local regular file.');
   }
   return realpathSync(resolvedPath);
+}
+
+function measuredModuleSha256(modulePath) {
+  const bytes = readBoundedRegularFile(
+    modulePath,
+    MAX_MODULE_BYTES,
+    'Measured Markdown module must be a local regular file.',
+    'Measured Markdown module exceeds the supported size.',
+  );
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+function verifyMeasuredModuleDigest(modulePath, expectedSha256) {
+  if (measuredModuleSha256(modulePath) !== expectedSha256) {
+    throw new Error(
+      'Markdown benchmark artifact digest does not match the measured module.',
+    );
+  }
 }
 
 function refersToSameFile(leftPath, rightPath) {
@@ -188,11 +223,16 @@ function refersToSameFile(leftPath, rightPath) {
 
 async function main() {
   const args = resolveArguments(process.argv.slice(2));
-  if (args.inputPath === args.outputPath || refersToSameFile(args.inputPath, args.outputPath)) {
+  if (
+    args.inputPath === args.outputPath ||
+    refersToSameFile(args.inputPath, args.outputPath)
+  ) {
     throw new Error('Markdown benchmark output must not overwrite its input.');
   }
   const source = readBoundedMarkdown(args.inputPath);
   const modulePath = resolveLocalModule(args.modulePath);
+  verifyMeasuredModuleDigest(modulePath, args.artifactSha256);
+
   const measuredModule = await import(pathToFileURL(modulePath).href);
   if (typeof measuredModule.markdownToHtml !== 'function') {
     throw new Error('Measured Markdown module must export markdownToHtml().');
@@ -208,12 +248,17 @@ async function main() {
     const start = performance.now();
     const output = measuredModule.markdownToHtml(source);
     const elapsed = performance.now() - start;
-    if (typeof output !== 'string' || !Number.isFinite(elapsed) || elapsed < 0) {
+    if (
+      typeof output !== 'string' ||
+      !Number.isFinite(elapsed) ||
+      elapsed < 0
+    ) {
       throw new Error('Markdown measurement produced invalid runtime evidence.');
     }
     samples.push(elapsed);
   }
 
+  verifyMeasuredModuleDigest(modulePath, args.artifactSha256);
   const outputMetadata = lstatSync(args.outputPath, { throwIfNoEntry: false });
   if (outputMetadata !== undefined && !outputMetadata.isFile()) {
     throw new Error('Markdown benchmark output must be a regular file.');
@@ -244,7 +289,9 @@ try {
   await main();
 } catch (error) {
   const message =
-    error instanceof Error ? error.message : 'Markdown benchmark measurement failed.';
+    error instanceof Error
+      ? error.message
+      : 'Markdown benchmark measurement failed.';
   process.stderr.write(`${message}\n`);
   process.exitCode = 1;
 }
