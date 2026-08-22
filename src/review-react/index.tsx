@@ -33,6 +33,30 @@ export interface CwlReviewThreadListProps {
   readonly onResolveThread?: (thread: CwlReviewThreadPresentation) => void;
 }
 
+function validateReviewThreadPresentations(
+  presentations: readonly unknown[],
+): readonly CwlReviewThreadPresentation[] {
+  try {
+    if (!Array.isArray(presentations)) {
+      throw new CwlReviewPresentationError();
+    }
+
+    const validatedPresentations = presentations.map((presentation) =>
+      createReviewThreadPresentation(presentation),
+    );
+    const threadKeys = new Set<string>();
+    for (const presentation of validatedPresentations) {
+      if (threadKeys.has(presentation.threadKey)) {
+        throw new CwlReviewPresentationError();
+      }
+      threadKeys.add(presentation.threadKey);
+    }
+    return validatedPresentations;
+  } catch {
+    throw new CwlReviewPresentationError();
+  }
+}
+
 /**
  * Render a controlled accessible list of bounded review-thread presentations.
  *
@@ -48,16 +72,8 @@ export function CwlReviewThreadList({
   onReplyThread,
   onResolveThread,
 }: CwlReviewThreadListProps) {
-  const validatedPresentations = presentations.map((presentation) =>
-    createReviewThreadPresentation(presentation),
-  );
-  const threadKeys = new Set<string>();
-  for (const presentation of validatedPresentations) {
-    if (threadKeys.has(presentation.threadKey)) {
-      throw new CwlReviewPresentationError();
-    }
-    threadKeys.add(presentation.threadKey);
-  }
+  const validatedPresentations =
+    validateReviewThreadPresentations(presentations);
 
   return (
     <section aria-label={labels.region}>
