@@ -208,11 +208,13 @@ test('tracks a synthetic composition lifecycle without inventing OS IME evidence
     )
     .toBe('한글');
 
-  expect(
-    await page.evaluate(() =>
-      (window.inkspanInputHarness as InputHarness).getHtml(),
-    ),
-  ).toContain('한글');
+  const committedHtml = await page.evaluate(() =>
+    (window.inkspanInputHarness as InputHarness).getHtml(),
+  );
+  expect(committedHtml).toContain('한글');
+  await expect(
+    page.locator('[data-inkspan-form-field][name="message_body"]'),
+  ).toHaveValue(committedHtml);
 });
 
 test('does not admit committed input when read-only begins during composition', async ({
