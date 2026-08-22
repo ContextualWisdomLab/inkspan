@@ -169,4 +169,36 @@ describe('revision-evidence runtime measurement contract', () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it('redacts hostile revision-result accessors before publishing output', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-revision-measurement-result-'));
+    const input = join(root, 'large.json');
+    const modulePath = join(root, 'packed-revision-evidence.mjs');
+    const samplesPath = join(root, 'samples.json');
+    const privateSentinel = 'tenant-private-revision-result-sentinel';
+    try {
+      writeSyntheticEnvelope(input);
+      writeFileSync(
+        modulePath,
+        `export async function createDocumentEnvelopeRevisionEvidenceBytes() { return new Proxy({}, { get(_target, property) { if (property === 'revision') throw new Error('${privateSentinel}'); return undefined; } }); }\n`,
+        'utf8',
+      );
+
+      const result = spawnSync(
+        process.execPath,
+        argumentsFor(input, modulePath, samplesPath),
+        { cwd: process.cwd(), encoding: 'utf8' },
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(
+        'Measured revision-evidence result is invalid.',
+      );
+      expect(result.stderr).not.toContain(privateSentinel);
+      expect(existsSync(samplesPath)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
