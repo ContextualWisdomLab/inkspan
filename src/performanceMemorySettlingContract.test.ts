@@ -9,6 +9,7 @@ const SOURCE_COMMIT_SHA = 'a'.repeat(40);
 const ARTIFACT_SHA256 = 'b'.repeat(64);
 
 type MemoryEvidenceOverrides = Partial<{
+  benchmarkId: string;
   sourceCommitSha: string;
   artifactSha256: string;
   documentProfile: string;
@@ -125,6 +126,28 @@ describe('retained-memory settling evidence contract', () => {
       expect(result.stdout).toBe('');
       expect(result.stderr.trim()).toBe(
         'Memory settling evidence requires warmup plus two disjoint comparison windows.',
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects evidence whose benchmark profile disagrees with documentProfile', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-memory-settling-profile-'));
+    try {
+      const result = runAnalysis(
+        root,
+        evidence({
+          benchmarkId: 'editor-lifecycle-retained-memory-small',
+          documentProfile: 'large',
+        }),
+        '50',
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(
+        'Memory settling evidence benchmark profile must match documentProfile.',
       );
     } finally {
       rmSync(root, { recursive: true, force: true });
