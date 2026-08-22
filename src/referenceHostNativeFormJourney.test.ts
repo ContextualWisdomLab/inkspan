@@ -77,4 +77,24 @@ describe('reference-host native form journey', () => {
       /type="reset"\s+disabled=\{readOnly \|\| submissionState === 'saving'\}/u,
     );
   });
+
+  it('demonstrates both uncontrolled and host-controlled editor composition without moving persistence authority into Inkspan', () => {
+    expect(nativeFormHostSource).toContain(
+      "controlMode?: 'controlled' | 'uncontrolled';",
+    );
+    expect(nativeFormHostSource).toContain("controlMode = 'uncontrolled'");
+    expect(nativeFormHostSource).toContain(
+      "const [controlledValue, setControlledValue] = useState('# Draft');",
+    );
+    expect(nativeFormHostSource).toContain(
+      "controlMode === 'controlled'",
+    );
+    expect(nativeFormHostSource).toContain('value={controlledValue}');
+    expect(nativeFormHostSource).toContain('onChange={setControlledValue}');
+    expect(nativeFormHostSource).toContain("defaultValue={controlMode === 'uncontrolled' ? '# Draft' : undefined}");
+    expect(nativeFormHostSource).toContain(
+      "if (controlMode === 'controlled') {",
+    );
+    expect(nativeFormHostSource).toContain("setControlledValue('# Draft');");
+  });
 });
