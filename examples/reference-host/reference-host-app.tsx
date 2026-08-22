@@ -22,6 +22,7 @@ export interface ReferenceHostAppProps extends NativeFormHostProps {
 export function ReferenceHostApp({
   loadingLabel,
   onAuthorizedSubmit,
+  controlMode = 'uncontrolled',
   readOnly = false,
 }: ReferenceHostAppProps) {
   return (
@@ -32,6 +33,7 @@ export function ReferenceHostApp({
         renderEditor={() => (
           <NativeFormHost
             onAuthorizedSubmit={onAuthorizedSubmit}
+            controlMode={controlMode}
             readOnly={readOnly}
           />
         )}
