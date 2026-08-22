@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 const script = resolve(process.cwd(), 'benchmarks/compare-summaries.mjs');
 const SOURCE_COMMIT_SHA = 'a'.repeat(40);
 const ARTIFACT_SHA256 = 'b'.repeat(64);
+const CURRENT_ARTIFACT_SHA256 = 'c'.repeat(64);
 
 type SummaryOverrides = Partial<{
   benchmarkId: string;
@@ -77,7 +78,12 @@ describe('benchmark regression comparator contract', () => {
   it('passes only when a current exact-context metric stays within an explicit tolerance', () => {
     const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-compare-pass-'));
     try {
-      const result = runComparison(root, summary(), summary({ p95: 104 }), '5');
+      const result = runComparison(
+        root,
+        summary(),
+        summary({ artifactSha256: CURRENT_ARTIFACT_SHA256, p95: 104 }),
+        '5',
+      );
 
       expect(result.status).toBe(0);
       expect(result.stderr).toBe('');
@@ -94,7 +100,7 @@ describe('benchmark regression comparator contract', () => {
         baselineSourceCommitSha: SOURCE_COMMIT_SHA,
         baselineArtifactSha256: ARTIFACT_SHA256,
         currentSourceCommitSha: SOURCE_COMMIT_SHA,
-        currentArtifactSha256: ARTIFACT_SHA256,
+        currentArtifactSha256: CURRENT_ARTIFACT_SHA256,
         baselineValue: 100,
         currentValue: 104,
         maxRegressionPercent: 5,
@@ -109,7 +115,12 @@ describe('benchmark regression comparator contract', () => {
   it('fails a material unapproved regression without hiding the measured receipt', () => {
     const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-compare-fail-'));
     try {
-      const result = runComparison(root, summary(), summary({ p95: 106 }), '5');
+      const result = runComparison(
+        root,
+        summary(),
+        summary({ artifactSha256: CURRENT_ARTIFACT_SHA256, p95: 106 }),
+        '5',
+      );
 
       expect(result.status).toBe(1);
       expect(result.stderr).toBe('');
@@ -126,7 +137,7 @@ describe('benchmark regression comparator contract', () => {
         baselineSourceCommitSha: SOURCE_COMMIT_SHA,
         baselineArtifactSha256: ARTIFACT_SHA256,
         currentSourceCommitSha: SOURCE_COMMIT_SHA,
-        currentArtifactSha256: ARTIFACT_SHA256,
+        currentArtifactSha256: CURRENT_ARTIFACT_SHA256,
         baselineValue: 100,
         currentValue: 106,
         maxRegressionPercent: 5,
