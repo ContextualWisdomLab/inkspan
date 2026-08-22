@@ -1,15 +1,36 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
+
+const OFFICE_MARKDOWN_IMPORT =
+  "import { markdownToPlainText } from '@contextualwisdomlab/cwl-editor/markdown';";
+
+function fixtureModuleUrl(fixture: string): string {
+  const path = resolve(process.cwd(), fixture);
+  if (fixture !== 'examples/reference-host/office-handoff.mjs') {
+    return pathToFileURL(path).href;
+  }
+
+  const source = readFileSync(path, 'utf8');
+  const isolatedSource = source.replace(
+    OFFICE_MARKDOWN_IMPORT,
+    'const markdownToPlainText = (markdown) => markdown;',
+  );
+  if (isolatedSource === source) {
+    throw new Error('Office handoff public Markdown import contract changed.');
+  }
+  return `data:text/javascript;base64,${Buffer.from(isolatedSource, 'utf8').toString('base64')}`;
+}
 
 function observeHostileReflectionFailure(
   fixture: string,
   sourceTrap: string,
   call: string,
 ): string {
-  const fixtureUrl = pathToFileURL(resolve(process.cwd(), fixture)).href;
+  const fixtureUrl = fixtureModuleUrl(fixture);
   const script = `
     const module = await import(${JSON.stringify(fixtureUrl)});
     const privateSentinel = 'private-reflection-sentinel';
