@@ -71,6 +71,18 @@ describe('reference-host hostile reflection containment', () => {
     ).toBe('proposal creation is invalid.');
     expect(
       observeHostileReflectionFailure(
+        'examples/reference-host/office-handoff.mjs',
+        `{
+          get(_target, property) {
+            if (property === 'title') throw privateSentinel;
+            return undefined;
+          },
+        }`,
+        'module.createReferenceDocxRequest(hostileSource);',
+      ),
+    ).toBe('Office handoff input is invalid.');
+    expect(
+      observeHostileReflectionFailure(
         'examples/reference-host/autosave-view-model.mjs',
         descriptorTrap,
         'module.createAutosaveViewModel().observe(hostileSource);',
