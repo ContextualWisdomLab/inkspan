@@ -175,4 +175,71 @@ describe('CwlReviewThreadList', () => {
     ).toThrow(/Review presentation metadata is invalid/u);
     expect(screen.queryByText('private-body-must-not-render')).not.toBeInTheDocument();
   });
+
+  it('fails closed before invoking accessor-backed or inaccessible host labels', () => {
+    const privateSentinel = 'private-review-label-must-not-leak';
+    let regionGetterCalls = 0;
+    const hostileLabels = {
+      thread: labels.thread,
+      reply: labels.reply,
+      resolve: labels.resolve,
+    } as Record<string, unknown>;
+    Object.defineProperty(hostileLabels, 'region', {
+      enumerable: true,
+      get() {
+        regionGetterCalls += 1;
+        throw new Error(privateSentinel);
+      },
+    });
+
+    expect(() =>
+      render(
+        <CwlReviewThreadList
+          presentations={[presentation('thread_1')]}
+          labels={hostileLabels as typeof labels}
+          onSelectThread={vi.fn()}
+        />,
+      ),
+    ).toThrow('Review presentation metadata is invalid.');
+    expect(regionGetterCalls).toBe(0);
+    expect(screen.queryByRole('region')).not.toBeInTheDocument();
+
+    expect(() =>
+      render(
+        <CwlReviewThreadList
+          presentations={[presentation('thread_1')]}
+          labels={{ ...labels, region: '' }}
+          onSelectThread={vi.fn()}
+        />,
+      ),
+    ).toThrow('Review presentation metadata is invalid.');
+  });
+
+  it('fails closed on invalid or throwing per-thread accessible labels', () => {
+    expect(() =>
+      render(
+        <CwlReviewThreadList
+          presentations={[presentation('thread_1')]}
+          labels={{ ...labels, thread: () => '' }}
+          onSelectThread={vi.fn()}
+        />,
+      ),
+    ).toThrow('Review presentation metadata is invalid.');
+
+    const privateSentinel = 'private-thread-label-must-not-leak';
+    expect(() =>
+      render(
+        <CwlReviewThreadList
+          presentations={[presentation('thread_1')]}
+          labels={{
+            ...labels,
+            thread() {
+              throw new Error(privateSentinel);
+            },
+          }}
+          onSelectThread={vi.fn()}
+        />,
+      ),
+    ).toThrow('Review presentation metadata is invalid.');
+  });
 });
