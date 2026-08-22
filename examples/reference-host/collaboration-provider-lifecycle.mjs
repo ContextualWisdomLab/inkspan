@@ -144,12 +144,15 @@ function teardownFailure() {
  * validation never executes accessor-backed host objects. Initial document and
  * provider callback failures are payload-redacted, acquired documents unwind on
  * initial provider failure, reconnect provider-construction failures remain
- * retryable, connect failures quarantine the indeterminate provider until
- * reconnect/dispose tears it down, and cleanup failures do not prevent remaining
- * teardown attempts. A failed provider or document destruction keeps only the
- * incomplete cleanup live so a later dispose() retries it without repeating
- * already-successful teardown. Once disposal starts, connect/reconnect stay
- * closed while cleanup is pending.
+ * retryable, and connect failures quarantine the indeterminate provider until
+ * reconnect/dispose tears it down. The reference lifecycle is intentionally
+ * synchronous: any non-void connect result is treated as indeterminate, its
+ * promise/thenable settlement is consumed, and the provider is quarantined
+ * instead of reporting a false successful connection. Cleanup failures do not
+ * prevent remaining teardown attempts. A failed provider or document destruction
+ * keeps only the incomplete cleanup live so a later dispose() retries it without
+ * repeating already-successful teardown. Once disposal starts, connect/reconnect
+ * stay closed while cleanup is pending.
  */
 export function createHostCollaborationLifecycle(source) {
   const options = readOwnDataRecord(
@@ -209,10 +212,16 @@ export function createHostCollaborationLifecycle(source) {
     requireLive();
     if (providerConnectionIndeterminate) throw connectionFailure();
     if (connected) return false;
+    let connectionResult;
     try {
-      providerResource.connect.call(providerResource.value);
+      connectionResult = providerResource.connect.call(providerResource.value);
     } catch {
       providerConnectionIndeterminate = true;
+      throw connectionFailure();
+    }
+    if (connectionResult !== undefined) {
+      providerConnectionIndeterminate = true;
+      void Promise.resolve(connectionResult).catch(() => undefined);
       throw connectionFailure();
     }
     connected = true;
