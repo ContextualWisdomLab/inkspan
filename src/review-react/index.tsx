@@ -71,7 +71,9 @@ function validateReviewThreadListLabels(
     if (
       ownKeys.length !== REVIEW_LABEL_KEYS.length ||
       ownKeys.some(
-        (key) => typeof key !== 'string' || !REVIEW_LABEL_KEYS.includes(key),
+        (key) =>
+          typeof key !== 'string' ||
+          !REVIEW_LABEL_KEYS.some((candidate) => candidate === key),
       )
     ) {
       rejectReviewPresentation();
