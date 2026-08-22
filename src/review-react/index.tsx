@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import {
   createReviewThreadPresentation,
   CwlReviewPresentationError,
@@ -142,6 +143,25 @@ function validateReviewThreadPresentations(
   }
 }
 
+function reviewThreadFocusIndex(
+  key: string,
+  index: number,
+  lastIndex: number,
+): number | undefined {
+  switch (key) {
+    case 'ArrowDown':
+      return Math.min(index + 1, lastIndex);
+    case 'ArrowUp':
+      return Math.max(index - 1, 0);
+    case 'Home':
+      return 0;
+    case 'End':
+      return lastIndex;
+    default:
+      return undefined;
+  }
+}
+
 /**
  * Render a controlled accessible list of bounded review-thread presentations.
  *
@@ -150,11 +170,13 @@ function validateReviewThreadPresentations(
  * bounded non-empty visible strings, and one explicit thread-label function;
  * accessor-backed labels and thrown/private label failures are normalized to the
  * same redacted presentation error before React commits inaccessible content.
- * Repeated reply/resolve controls include the already validated thread label in
- * their accessible name so action lists remain disambiguated without changing
- * visible host copy. The component emits only intent callbacks with the
- * detached, frozen presentation snapshot; it does not authorize, persist,
- * transport, mutate, resolve, or reply to host-owned review records.
+ * Arrow Up/Down and Home/End move DOM focus only among thread-selection targets;
+ * keyboard traversal never commits host-controlled thread selection. Repeated
+ * reply/resolve controls include the already validated thread label in their
+ * accessible name so action lists remain disambiguated without changing visible
+ * host copy. The component emits only intent callbacks with the detached, frozen
+ * presentation snapshot; it does not authorize, persist, transport, mutate,
+ * resolve, or reply to host-owned review records.
  */
 export function CwlReviewThreadList({
   presentations,
@@ -163,6 +185,7 @@ export function CwlReviewThreadList({
   onReplyThread,
   onResolveThread,
 }: CwlReviewThreadListProps) {
+  const threadButtons = useRef<Array<HTMLButtonElement | null>>([]);
   const validatedPresentations =
     validateReviewThreadPresentations(presentations);
   const validatedLabels = validateReviewThreadListLabels(labels);
@@ -190,9 +213,24 @@ export function CwlReviewThreadList({
           return (
             <li key={presentation.threadKey}>
               <button
+                ref={(button) => {
+                  threadButtons.current[index] = button;
+                }}
                 type="button"
                 aria-pressed={presentation.selected}
                 onClick={() => onSelectThread(presentation)}
+                onKeyDown={(event) => {
+                  const targetIndex = reviewThreadFocusIndex(
+                    event.key,
+                    index,
+                    validatedPresentations.length - 1,
+                  );
+                  if (targetIndex === undefined) {
+                    return;
+                  }
+                  event.preventDefault();
+                  threadButtons.current[targetIndex]!.focus();
+                }}
               >
                 {threadLabel}
               </button>
