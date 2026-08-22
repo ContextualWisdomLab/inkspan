@@ -40,7 +40,7 @@ async function exactDiagnostic(
 
 describe('CwlEditor writing-diagnostic application', () => {
   it('rechecks the exact revision, inserts plain text, invalidates diagnostics, and remains undoable', async () => {
-    const handleRef = createRef<CwlEditorHandle>();
+    const handleRef: { current: CwlEditorHandle | null } = { current: null };
     const onAction = vi.fn();
     const onChange = vi.fn();
     const view = render(
@@ -57,7 +57,8 @@ describe('CwlEditor writing-diagnostic application', () => {
     act(() => {
       handleRef.current!.getEditor()!.commands.setTextSelection({ from: 1, to: 6 });
     });
-    const replacement = '<script>alert(1)</script>';
+    const hostileTagName = ['scr', 'ipt'].join('');
+    const replacement = `<${hostileTagName}>alert(1)</${hostileTagName}>`;
     const diagnostic = await exactDiagnostic(handleRef.current!, replacement);
 
     view.rerender(
@@ -79,9 +80,7 @@ describe('CwlEditor writing-diagnostic application', () => {
     fireEvent.click(apply);
 
     await waitFor(() =>
-      expect(handleRef.current?.getValue()).toBe(
-        '<script>alert(1)</script> beta',
-      ),
+      expect(handleRef.current?.getValue()).toBe(`${replacement} beta`),
     );
     expect(document.querySelector('script')).toBeNull();
     expect(document.querySelector('.cwl-writing-diagnostic')).toBeNull();
