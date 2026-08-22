@@ -190,6 +190,32 @@ describe('Markdown runtime measurement contract', () => {
     }
   });
 
+  it('rejects an output path that aliases the measured module', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-markdown-measurement-output-'));
+    const input = join(root, 'small.md');
+    const modulePath = join(root, 'packed-markdown.mjs');
+    const moduleSource =
+      'export function markdownToHtml(source) { return `<p>${source}</p>`; }\n';
+    try {
+      writeFileSync(input, '# Synthetic\n', 'utf8');
+      writeFileSync(modulePath, moduleSource, 'utf8');
+      const result = spawnSync(
+        process.execPath,
+        measurementArguments(input, modulePath, modulePath),
+        { cwd: process.cwd(), encoding: 'utf8' },
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(
+        'Markdown benchmark output must not overwrite the measured module.',
+      );
+      expect(readFileSync(modulePath, 'utf8')).toBe(moduleSource);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('requires a file-backed module URL rather than network or package-name resolution', () => {
     const root = mkdtempSync(join(tmpdir(), 'inkspan-markdown-measurement-module-'));
     const input = join(root, 'small.md');
