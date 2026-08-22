@@ -15,6 +15,7 @@ const READ_ONLY_NONBLOCKING =
   constants.O_RDONLY |
   (constants.O_NONBLOCK ?? 0) |
   (constants.O_NOFOLLOW ?? 0);
+const BENCHMARK_ID_PREFIX = 'editor-lifecycle-retained-memory-';
 const BENCHMARK_ID_PATTERN =
   /^editor-lifecycle-retained-memory-(?:small|medium|large|stress)$/u;
 const SHA1_PATTERN = /^[0-9a-f]{40}$/u;
@@ -174,6 +175,13 @@ function validateEvidence(value) {
     !DOCUMENT_PROFILES.has(value.documentProfile)
   ) {
     throw new Error('Memory settling evidence documentProfile is invalid.');
+  }
+  if (
+    value.benchmarkId.slice(BENCHMARK_ID_PREFIX.length) !== value.documentProfile
+  ) {
+    throw new Error(
+      'Memory settling evidence benchmark profile must match documentProfile.',
+    );
   }
   if (
     typeof value.runtimeId !== 'string' ||
