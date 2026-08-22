@@ -129,3 +129,58 @@ test('keeps the buyer host readable while read-only mode fail-closes native writ
     ),
   ).toEqual([]);
 });
+
+test('keeps the buyer host usable without horizontal overflow at a narrow viewport', async ({
+  page,
+}) => {
+  const rejectedRequests: string[] = [];
+  const pageErrors: string[] = [];
+
+  page.on('pageerror', (error) => {
+    pageErrors.push(error.message);
+  });
+  await page.route('**/*', async (route) => {
+    const requestUrl = route.request().url();
+    if (isReferenceHostRequest(requestUrl)) {
+      await route.continue();
+      return;
+    }
+    rejectedRequests.push(requestUrl);
+    await route.abort('blockedbyclient');
+  });
+
+  await page.setViewportSize({ width: 320, height: 640 });
+  const response = await page.goto(REFERENCE_HOST_URL);
+  expect(response?.ok()).toBe(true);
+
+  await expect(
+    page.getByRole('heading', { name: 'Inkspan reference host' }),
+  ).toBeVisible();
+  await expect(page.getByRole('textbox')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save document' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Reset draft' })).toBeVisible();
+  await expect(page.getByText('Loading buyer editor')).toHaveCount(0);
+
+  const layout = await page.evaluate(() => {
+    const editor = document.querySelector<HTMLElement>('.cwl-editor');
+    if (!editor) {
+      throw new Error('reference host editor is missing');
+    }
+    const rect = editor.getBoundingClientRect();
+    return {
+      viewportWidth: window.innerWidth,
+      documentScrollWidth: document.documentElement.scrollWidth,
+      bodyScrollWidth: document.body.scrollWidth,
+      editorLeft: rect.left,
+      editorRight: rect.right,
+    };
+  });
+
+  expect(layout.viewportWidth).toBe(320);
+  expect(layout.documentScrollWidth).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.bodyScrollWidth).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.editorLeft).toBeGreaterThanOrEqual(0);
+  expect(layout.editorRight).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(rejectedRequests).toEqual([]);
+  expect(pageErrors).toEqual([]);
+});
