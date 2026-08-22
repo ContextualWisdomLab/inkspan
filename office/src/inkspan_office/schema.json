@@ -13,6 +13,7 @@
         "title": {"$ref": "#/$defs/nonEmptyString"},
         "author": {"$ref": "#/$defs/nonEmptyString"},
         "subject": {"$ref": "#/$defs/nonEmptyString"},
+        "page_layout": {"$ref": "#/$defs/pageLayout"},
         "blocks": {
           "type": "array",
           "items": {"$ref": "#/$defs/docxBlock"}
@@ -82,6 +83,27 @@
           "maxLength": 4096,
           "description": "Optional external hyperlink target. Runtime validation deliberately permits only printable-ASCII absolute HTTP(S) URLs without credentials or backslashes; rendering remains network-free."
         }
+      }
+    },
+    "pageMargins": {
+      "type": "object",
+      "required": ["top", "right", "bottom", "left"],
+      "additionalProperties": false,
+      "properties": {
+        "top": {"type": "integer", "minimum": 0, "maximum": 100},
+        "right": {"type": "integer", "minimum": 0, "maximum": 100},
+        "bottom": {"type": "integer", "minimum": 0, "maximum": 100},
+        "left": {"type": "integer", "minimum": 0, "maximum": 100}
+      }
+    },
+    "pageLayout": {
+      "type": "object",
+      "required": ["paper_size", "orientation", "margins_mm"],
+      "additionalProperties": false,
+      "properties": {
+        "paper_size": {"type": "string", "enum": ["a4", "letter"]},
+        "orientation": {"type": "string", "enum": ["portrait", "landscape"]},
+        "margins_mm": {"$ref": "#/$defs/pageMargins"}
       }
     },
     "docxBlock": {
