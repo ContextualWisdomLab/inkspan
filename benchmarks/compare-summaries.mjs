@@ -12,11 +12,15 @@ const READ_CHUNK_BYTES = 64 * 1024;
 const MAX_SAMPLES = 1_000_000;
 const READ_ONLY_NONBLOCKING =
   constants.O_RDONLY | (constants.O_NONBLOCK ?? 0);
-const BENCHMARK_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
+const BENCHMARK_ID_PATTERN =
+  /^(?:ssr-shell-render|client-hydration|editor-mount|first-editable-paint|editor-input|keyboard-input|ime-composition|toolbar-action|undo-redo|table-edit|paste|image-insertion|markdown-serialization|html-serialization|envelope-parse|envelope-canonicalization|revision-evidence|transition-evidence|autosave-enqueue|autosave-coalescing|autosave-commit|yjs-update|print-media|office-parse|office-render|office-publication)-(?:small|medium|large|stress)$/u;
 const UNIT_PATTERN = /^[A-Za-z][A-Za-z0-9._/%-]{0,31}$/u;
 const SHA1_PATTERN = /^[0-9a-f]{40}$/u;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
-const EVIDENCE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
+const RUNTIME_ID_PATTERN =
+  /^(?:node|python|chromium|firefox|webkit|playwright)-[0-9]+(?:\.[0-9]+){1,3}$/u;
+const REFERENCE_HARDWARE_ID_PATTERN =
+  /^(?:github-actions-(?:ubuntu|windows|macos)-[0-9]+(?:\.[0-9]+){0,2}-(?:x64|arm64)|refhw-sha256-[0-9a-f]{64})$/u;
 const DOCUMENT_PROFILES = new Set(['small', 'medium', 'large', 'stress']);
 const METRICS = new Set(['p50', 'p75', 'p95', 'maximum']);
 const SUMMARY_KEYS = new Set([
@@ -172,13 +176,13 @@ function validateSummary(value) {
   }
   if (
     typeof value.runtimeId !== 'string' ||
-    !EVIDENCE_ID_PATTERN.test(value.runtimeId)
+    !RUNTIME_ID_PATTERN.test(value.runtimeId)
   ) {
     throw new Error('Benchmark summary runtimeId is invalid.');
   }
   if (
     typeof value.referenceHardwareId !== 'string' ||
-    !EVIDENCE_ID_PATTERN.test(value.referenceHardwareId)
+    !REFERENCE_HARDWARE_ID_PATTERN.test(value.referenceHardwareId)
   ) {
     throw new Error('Benchmark summary referenceHardwareId is invalid.');
   }
