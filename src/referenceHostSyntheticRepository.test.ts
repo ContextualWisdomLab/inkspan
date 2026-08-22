@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
@@ -46,6 +47,41 @@ describe('reference-host synthetic durable repository contract', () => {
       sourceDocumentAfterFork: 'Buyer draft v1',
       sourceValidatorAfterFork: '"v4"',
     });
+  });
+
+  it('gives an immediate fork validator authority distinct from its unchanged source', () => {
+    if (!existsSync(fixturePath)) return;
+    const fixtureUrl = pathToFileURL(fixturePath).href;
+    const output = execFileSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '--eval',
+        `import { createSyntheticDocumentRepository } from ${JSON.stringify(fixtureUrl)};
+const source = createSyntheticDocumentRepository({
+  documentId: 'buyer-document',
+  initialDocument: 'Buyer draft v1',
+});
+const sourceInitial = source.read('buyer-document');
+const forked = source.fork({
+  documentId: 'buyer-document',
+  forkDocumentId: 'buyer-document-fork',
+  ifMatch: sourceInitial.validator,
+});
+const forkInitial = forked.repository.read('buyer-document-fork');
+process.stdout.write(JSON.stringify({
+  forkValidator: forkInitial.validator,
+  sourceValidator: sourceInitial.validator,
+}));`,
+      ],
+      { encoding: 'utf8' },
+    );
+    const evidence = JSON.parse(output) as {
+      forkValidator: string;
+      sourceValidator: string;
+    };
+
+    expect(evidence.forkValidator).not.toBe(evidence.sourceValidator);
   });
 
   it('accepts an empty document body while keeping document identifiers non-empty', () => {
