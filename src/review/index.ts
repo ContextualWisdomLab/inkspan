@@ -77,6 +77,7 @@ export class CwlReviewPresentationError extends Error {
 /** Stable redacted failure codes for review-operation evidence. */
 export type CwlReviewOperationErrorCode =
   | 'invalid_operation'
+  | 'stale_operation_changed'
   | 'accepted_operation_unchanged'
   | 'rejected_operation_changed';
 
@@ -85,6 +86,7 @@ const REVIEW_OPERATION_ERROR_MESSAGES: Record<
   string
 > = {
   invalid_operation: 'Review operation is invalid.',
+  stale_operation_changed: 'Stale review operations must not change the document.',
   accepted_operation_unchanged:
     'Accepted review operation must change the document revision.',
   rejected_operation_changed:
@@ -469,8 +471,9 @@ export function createReviewSuggestion(source: unknown): CwlReviewSuggestion {
  * document envelopes after its authorized operation. Inkspan validates the
  * proposal, derives canonical transition evidence, and refuses to classify an
  * accepted operation that changed nothing or a rejected operation that changed
- * the document. A stale proposal returns a compact `stale` result instead of
- * silently re-anchoring it to the current revision.
+ * the document. A stale proposal returns a compact `stale` result only when the
+ * actual document remained unchanged; stale evidence paired with a mutation is
+ * rejected fail-closed rather than hiding an out-of-contract document change.
  *
  * The result contains revisions and transition metadata only; proposal text and
  * document bodies are not retained. Host-owned identity, authorization,
@@ -508,6 +511,9 @@ export async function createReviewOperationResult(
   if (
     transition.previousRevision.digestHex !== suggestion.target.revision.digestHex
   ) {
+    if (transition.changed) {
+      throw new CwlReviewOperationError('stale_operation_changed');
+    }
     return Object.freeze({
       contractVersion: INKSPAN_REVIEW_CONTRACT_VERSION,
       action,
