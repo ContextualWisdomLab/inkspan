@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -196,6 +196,48 @@ describe('benchmark regression comparator contract', () => {
       expect(result.stdout).toBe('');
       expect(result.stderr.trim()).toBe(
         'Benchmark max regression percent must be a finite non-negative number.',
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects symlinked summary inputs instead of comparing mutable aliases', () => {
+    if (process.platform === 'win32') return;
+
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-compare-symlink-'));
+    const baselineTargetPath = join(root, 'baseline-target.json');
+    const baselinePath = join(root, 'baseline-link.json');
+    const currentPath = join(root, 'current.json');
+    try {
+      writeFileSync(baselineTargetPath, `${JSON.stringify(summary())}\n`, 'utf8');
+      symlinkSync(baselineTargetPath, baselinePath);
+      writeFileSync(
+        currentPath,
+        `${JSON.stringify(summary({ artifactSha256: CURRENT_ARTIFACT_SHA256 }))}\n`,
+        'utf8',
+      );
+
+      const result = spawnSync(
+        process.execPath,
+        [
+          script,
+          '--baseline',
+          baselinePath,
+          '--current',
+          currentPath,
+          '--metric',
+          'p95',
+          '--max-regression-percent',
+          '5',
+        ],
+        { cwd: process.cwd(), encoding: 'utf8' },
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(
+        'Benchmark summary input must be a regular non-symlink file.',
       );
     } finally {
       rmSync(root, { recursive: true, force: true });
