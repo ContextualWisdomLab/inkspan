@@ -1,3 +1,4 @@
+import '@contextualwisdomlab/cwl-editor/styles.css';
 import { hydrateRoot } from 'react-dom/client';
 
 import { ReferenceHostApp } from './reference-host-app.js';
