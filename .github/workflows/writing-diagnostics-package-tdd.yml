@@ -1,0 +1,52 @@
+name: Writing Diagnostics Package TDD
+
+on:
+  push:
+    branches:
+      - feat/writing-diagnostics-package
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: writing-diagnostics-package-tdd-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  framework-neutral-package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run package-boundary acceptance
+        run: >-
+          pnpm exec vitest run
+          src/writingDiagnosticsPackage.test.ts
+          src/writingDiagnosticsExports.test.ts
+          --pool=forks
+          --maxWorkers=1
+      - name: Typecheck package contracts
+        run: pnpm typecheck
+      - name: Run complete production coverage gate
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: pnpm coverage
+      - name: Build all package entrypoints
+        run: pnpm build
+      - name: Verify isolated packed-package consumers
+        run: pnpm verify:package
+      - name: Build demonstration application
+        run: pnpm build:demo
