@@ -39,4 +39,21 @@ describe('reference-host package authority boundary', () => {
       expect(source).not.toContain('workspace:');
     }
   });
+
+  it('keeps the buyer-facing inventory synchronized without claiming complete app acceptance', () => {
+    const readme = readFileSync(resolve(referenceHostDirectory, 'README.md'), 'utf8');
+    const executableFiles = readdirSync(referenceHostDirectory).filter((path) =>
+      /\.(?:[cm]?[jt]s|[jt]sx)$/u.test(path),
+    );
+
+    for (const file of executableFiles) {
+      expect(readme).toContain(`\`${file}\``);
+    }
+    expect(readme).toContain('`presentation-full.css`');
+    expect(readme).toContain('`presentation-latin.css`');
+    expect(readme).toContain('complete packed-artifact reference-host application');
+    expect(readme).toContain(
+      'do **not** yet satisfy #377\'s complete packed-artifact browser-application acceptance.',
+    );
+  });
 });
