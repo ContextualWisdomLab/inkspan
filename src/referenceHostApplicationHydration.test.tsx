@@ -39,6 +39,11 @@ describe('reference-host application hydration contract', () => {
     expect(applicationSource).toContain('readOnly={readOnly}');
   });
 
+  it('forwards the declared controlled or uncontrolled composition mode into the hydrated native-form host', () => {
+    expect(applicationSource).toContain("controlMode = 'uncontrolled'");
+    expect(applicationSource).toContain('controlMode={controlMode}');
+  });
+
   it('preserves the public-package and host-authority boundary for the hydrated form', () => {
     expect(nativeFormSource).toContain(
       "from '@contextualwisdomlab/cwl-editor'",
