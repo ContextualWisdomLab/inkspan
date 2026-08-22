@@ -144,11 +144,12 @@ function teardownFailure() {
  * validation never executes accessor-backed host objects. Initial document and
  * provider callback failures are payload-redacted, acquired documents unwind on
  * initial provider failure, reconnect provider-construction failures remain
- * retryable, connect failures preserve the disconnected provider for an explicit
- * retry, and cleanup failures do not prevent remaining teardown attempts. A
- * failed provider or document destruction keeps only the incomplete cleanup live
- * so a later dispose() retries it without repeating already-successful teardown.
- * Once disposal starts, connect/reconnect stay closed while cleanup is pending.
+ * retryable, connect failures quarantine the indeterminate provider until
+ * reconnect/dispose tears it down, and cleanup failures do not prevent remaining
+ * teardown attempts. A failed provider or document destruction keeps only the
+ * incomplete cleanup live so a later dispose() retries it without repeating
+ * already-successful teardown. Once disposal starts, connect/reconnect stay
+ * closed while cleanup is pending.
  */
 export function createHostCollaborationLifecycle(source) {
   const options = readOwnDataRecord(
@@ -172,6 +173,7 @@ export function createHostCollaborationLifecycle(source) {
   let providerGeneration = 0;
   let providerResource = null;
   let connected = false;
+  let providerConnectionIndeterminate = false;
   let documentDestroyed = false;
   let disposeStarted = false;
   let disposed = false;
@@ -191,6 +193,7 @@ export function createHostCollaborationLifecycle(source) {
     }
     providerResource = requireProvider(candidate);
     connected = false;
+    providerConnectionIndeterminate = false;
   }
 
   function requireLive() {
@@ -204,10 +207,12 @@ export function createHostCollaborationLifecycle(source) {
 
   function connect() {
     requireLive();
+    if (providerConnectionIndeterminate) throw connectionFailure();
     if (connected) return false;
     try {
       providerResource.connect.call(providerResource.value);
     } catch {
+      providerConnectionIndeterminate = true;
       throw connectionFailure();
     }
     connected = true;
@@ -219,12 +224,14 @@ export function createHostCollaborationLifecycle(source) {
     if (resource === null) return;
     let failed = false;
     let destroyFailed = false;
-    if (connected) {
+    if (connected || providerConnectionIndeterminate) {
       connected = false;
       try {
         resource.disconnect.call(resource.value);
+        providerConnectionIndeterminate = false;
       } catch {
         failed = true;
+        providerConnectionIndeterminate = true;
       }
     }
     try {
@@ -235,6 +242,7 @@ export function createHostCollaborationLifecycle(source) {
     }
     if (!destroyFailed) {
       providerResource = null;
+      providerConnectionIndeterminate = false;
     }
     if (failed) throw teardownFailure();
   }
