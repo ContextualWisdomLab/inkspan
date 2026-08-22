@@ -1,4 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
   existsSync,
   mkdtempSync,
@@ -30,14 +31,21 @@ const measurementScript = resolve(
 );
 const summaryScript = resolve(process.cwd(), 'benchmarks/summarize-samples.mjs');
 const SOURCE_COMMIT_SHA = 'a'.repeat(40);
-const ARTIFACT_SHA256 = 'b'.repeat(64);
+const FALLBACK_ARTIFACT_SHA256 = 'b'.repeat(64);
 const RUNTIME_ID = 'node-22.18.0';
 const HARDWARE_ID = 'github-actions-ubuntu-24.04-x64';
+
+function fileSha256(path: string): string {
+  return createHash('sha256').update(readFileSync(path)).digest('hex');
+}
 
 function measurementArguments(
   input: string,
   modulePath: string,
   output: string,
+  artifactSha256 = existsSync(modulePath)
+    ? fileSha256(modulePath)
+    : FALLBACK_ARTIFACT_SHA256,
 ): string[] {
   return [
     measurementScript,
@@ -52,7 +60,7 @@ function measurementArguments(
     '--source-commit-sha',
     SOURCE_COMMIT_SHA,
     '--artifact-sha256',
-    ARTIFACT_SHA256,
+    artifactSha256,
     '--runtime-id',
     RUNTIME_ID,
     '--reference-hardware-id',
@@ -76,10 +84,11 @@ describe('Markdown runtime measurement contract', () => {
         "export function markdownToHtml(source) { return `<p>${source.length}</p>`; }\n",
         'utf8',
       );
+      const artifactSha256 = fileSha256(modulePath);
 
       execFileSync(
         process.execPath,
-        measurementArguments(input, modulePath, samplesPath),
+        measurementArguments(input, modulePath, samplesPath, artifactSha256),
         { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] },
       );
 
@@ -91,7 +100,7 @@ describe('Markdown runtime measurement contract', () => {
         benchmarkId: 'markdown-serialization-large',
         unit: 'ms',
         sourceCommitSha: SOURCE_COMMIT_SHA,
-        artifactSha256: ARTIFACT_SHA256,
+        artifactSha256,
         documentProfile: 'large',
         runtimeId: RUNTIME_ID,
         referenceHardwareId: HARDWARE_ID,
