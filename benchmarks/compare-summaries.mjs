@@ -242,6 +242,11 @@ function assertComparable(baseline, current) {
       throw new Error(`Benchmark summaries are not comparable: ${field} differs.`);
     }
   }
+  if (baseline.artifactSha256 === current.artifactSha256) {
+    throw new Error(
+      'Benchmark summaries must identify distinct measured artifacts.',
+    );
+  }
 }
 
 function normalizePercent(value) {
