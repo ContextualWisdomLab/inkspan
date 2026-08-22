@@ -1,5 +1,6 @@
 import {
   createReviewThreadPresentation,
+  CwlReviewPresentationError,
   type CwlReviewThreadPresentation,
 } from '../review/index.js';
 
@@ -50,6 +51,13 @@ export function CwlReviewThreadList({
   const validatedPresentations = presentations.map((presentation) =>
     createReviewThreadPresentation(presentation),
   );
+  const threadKeys = new Set<string>();
+  for (const presentation of validatedPresentations) {
+    if (threadKeys.has(presentation.threadKey)) {
+      throw new CwlReviewPresentationError();
+    }
+    threadKeys.add(presentation.threadKey);
+  }
 
   return (
     <section aria-label={labels.region}>
