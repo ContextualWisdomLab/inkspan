@@ -150,9 +150,11 @@ function validateReviewThreadPresentations(
  * bounded non-empty visible strings, and one explicit thread-label function;
  * accessor-backed labels and thrown/private label failures are normalized to the
  * same redacted presentation error before React commits inaccessible content.
- * The component emits only intent callbacks with the detached, frozen
- * presentation snapshot; it does not authorize, persist, transport, mutate,
- * resolve, or reply to host-owned review records.
+ * Repeated reply/resolve controls include the already validated thread label in
+ * their accessible name so action lists remain disambiguated without changing
+ * visible host copy. The component emits only intent callbacks with the
+ * detached, frozen presentation snapshot; it does not authorize, persist,
+ * transport, mutate, resolve, or reply to host-owned review records.
  */
 export function CwlReviewThreadList({
   presentations,
@@ -172,6 +174,10 @@ export function CwlReviewThreadList({
     <section aria-label={validatedLabels.region}>
       <ul>
         {validatedPresentations.map((presentation, index) => {
+          const threadLabel = threadLabels[index];
+          if (threadLabel === undefined) {
+            rejectReviewPresentation();
+          }
           const replyHandler =
             presentation.canReply && onReplyThread !== undefined
               ? () => onReplyThread(presentation)
@@ -190,10 +196,11 @@ export function CwlReviewThreadList({
                 aria-pressed={presentation.selected}
                 onClick={() => onSelectThread(presentation)}
               >
-                {threadLabels[index]}
+                {threadLabel}
               </button>
               <button
                 type="button"
+                aria-label={`${validatedLabels.reply} — ${threadLabel}`}
                 disabled={replyHandler === undefined}
                 onClick={replyHandler}
               >
@@ -201,6 +208,7 @@ export function CwlReviewThreadList({
               </button>
               <button
                 type="button"
+                aria-label={`${validatedLabels.resolve} — ${threadLabel}`}
                 disabled={resolveHandler === undefined}
                 onClick={resolveHandler}
               >
