@@ -225,4 +225,76 @@ describe('reference-host asynchronous teardown contract', () => {
       unhandledRejections: 0,
     });
   });
+
+  it('contains promise-returning provider disconnection before completing synchronous destruction', () => {
+    const moduleUrl = JSON.stringify(pathToFileURL(fixturePath).href);
+    const script = `
+      import { createHostCollaborationLifecycle } from ${moduleUrl};
+      const events = [];
+      let unhandledRejections = 0;
+      process.on('unhandledRejection', () => {
+        unhandledRejections += 1;
+      });
+
+      const lifecycle = createHostCollaborationLifecycle({
+        documentFactory() {
+          return {
+            destroy() { events.push('document:destroy'); },
+          };
+        },
+        providerFactory() {
+          return {
+            connect() { events.push('provider:connect'); },
+            disconnect() {
+              events.push('provider:disconnect');
+              return Promise.reject(new Error('private asynchronous provider disconnect failure'));
+            },
+            destroy() { events.push('provider:destroy'); },
+          };
+        },
+        roomId: 'reference-room',
+        actorId: 'reference-actor',
+      });
+
+      lifecycle.connect();
+      let firstError = null;
+      let firstResult = null;
+      try {
+        firstResult = lifecycle.dispose();
+      } catch (error) {
+        firstError = error instanceof Error ? error.message : 'unexpected error';
+      }
+
+      await new Promise((resolve) => setImmediate(resolve));
+      const afterFailure = lifecycle.getSnapshot();
+      const retryResult = lifecycle.dispose();
+      process.stdout.write(JSON.stringify({
+        afterFailure,
+        events,
+        firstError,
+        firstResult,
+        retryResult,
+        unhandledRejections,
+      }));
+    `;
+    const output = execFileSync(
+      process.execPath,
+      ['--input-type=module', '--eval', script],
+      { encoding: 'utf8' },
+    );
+
+    expect(JSON.parse(output)).toEqual({
+      afterFailure: { providerGeneration: 1, status: 'disposed' },
+      events: [
+        'provider:connect',
+        'provider:disconnect',
+        'provider:destroy',
+        'document:destroy',
+      ],
+      firstError: 'collaboration lifecycle teardown failed.',
+      firstResult: null,
+      retryResult: false,
+      unhandledRejections: 0,
+    });
+  });
 });
