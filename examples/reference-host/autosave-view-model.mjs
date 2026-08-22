@@ -6,6 +6,7 @@ const AUTOSAVE_STATES = new Set([
   'closed',
 ]);
 const BLOCKED_REASONS = new Set(['conflict', 'failure']);
+const MAX_STRONG_ENTITY_TAG_CODE_UNITS = 256;
 const SNAPSHOT_KEYS = [
   'state',
   'blockedReason',
@@ -18,7 +19,12 @@ const SNAPSHOT_KEYS = [
 export const REFERENCE_ONLY = true;
 
 function requireNullableString(value, label) {
-  if (value !== null && (typeof value !== 'string' || value.length === 0)) {
+  if (
+    value !== null &&
+    (typeof value !== 'string' ||
+      value.length === 0 ||
+      value.length > MAX_STRONG_ENTITY_TAG_CODE_UNITS)
+  ) {
     throw new TypeError(`${label} is invalid.`);
   }
   return value;
@@ -108,7 +114,9 @@ function presentation(viewState) {
  *
  * `observe()` consumes only programmatic queue/session snapshots. Snapshot fields
  * must be an exact own-data-property shape so presentation never invokes
- * caller-owned accessors or silently admits authority-looking metadata.
+ * caller-owned accessors or silently admits authority-looking metadata. Strong
+ * entity tags are also bounded before projection so untrusted snapshot metadata
+ * cannot allocate unbounded retained strings at this reference boundary.
  * A blocked to saving transition is presented as retrying, and only a later idle
  * transition after that observed retry is presented as recovered. A blocked to
  * idle transition without an intervening save returns to clean instead of
