@@ -226,6 +226,22 @@ function refersToSameFile(leftPath, rightPath) {
   return left.dev === right.dev && left.ino === right.ino;
 }
 
+async function loadMeasuredModule(modulePath) {
+  try {
+    return await import(pathToFileURL(modulePath).href);
+  } catch {
+    throw new Error('Measured Markdown module could not be loaded.');
+  }
+}
+
+function runMeasuredMarkdownToHtml(markdownToHtml, source) {
+  try {
+    return markdownToHtml(source);
+  } catch {
+    throw new Error('Measured markdownToHtml() execution failed.');
+  }
+}
+
 async function main() {
   const args = resolveArguments(process.argv.slice(2));
   if (
@@ -246,12 +262,15 @@ async function main() {
   }
   verifyMeasuredModuleDigest(modulePath, args.artifactSha256);
 
-  const measuredModule = await import(pathToFileURL(modulePath).href);
+  const measuredModule = await loadMeasuredModule(modulePath);
   if (typeof measuredModule.markdownToHtml !== 'function') {
     throw new Error('Measured Markdown module must export markdownToHtml().');
   }
 
-  const warmup = measuredModule.markdownToHtml(source);
+  const warmup = runMeasuredMarkdownToHtml(
+    measuredModule.markdownToHtml,
+    source,
+  );
   if (typeof warmup !== 'string') {
     throw new Error('Measured markdownToHtml() must return a string.');
   }
@@ -259,7 +278,10 @@ async function main() {
   const samples = [];
   for (let index = 0; index < args.sampleCount; index += 1) {
     const start = performance.now();
-    const output = measuredModule.markdownToHtml(source);
+    const output = runMeasuredMarkdownToHtml(
+      measuredModule.markdownToHtml,
+      source,
+    );
     const elapsed = performance.now() - start;
     if (
       typeof output !== 'string' ||
