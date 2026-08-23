@@ -9,6 +9,10 @@ const verifierPath = resolve(
   repositoryRoot,
   'examples/reference-host/verify-current-reference-journey.mjs',
 );
+const browserVerifierPath = resolve(
+  repositoryRoot,
+  'examples/reference-host/verify-browser-journey.mjs',
+);
 
 describe('reference-host one-command journey contract', () => {
   it('exposes one deterministic command for the currently implemented buyer journey', () => {
@@ -56,6 +60,36 @@ describe('reference-host one-command journey contract', () => {
           path: 'examples/reference-host/verify-browser-journey.mjs',
         },
       ],
+    });
+  });
+
+  it('binds the scoped browser step to an exact packed tarball and all supported engines', () => {
+    expect(existsSync(browserVerifierPath)).toBe(true);
+
+    const output = execFileSync(
+      process.execPath,
+      [browserVerifierPath, '--plan'],
+      {
+        cwd: repositoryRoot,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 10_000,
+      },
+    );
+
+    expect(JSON.parse(output.trim())).toEqual({
+      command: 'node examples/reference-host/verify-browser-journey.mjs',
+      contractVersion: 1,
+      packageAuthority: 'exact-packed-tarball',
+      projects: ['chromium', 'firefox', 'webkit'],
+      specs: [
+        'reference-host-dirty-state.browser.spec.ts',
+        'reference-host-forced-colors.print.browser.spec.ts',
+        'reference-host-hydration.browser.spec.ts',
+        'reference-host-readonly.browser.spec.ts',
+        'reference-host.print.browser.spec.ts',
+      ],
+      status: 'plan',
     });
   });
 });
