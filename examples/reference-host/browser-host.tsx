@@ -21,6 +21,10 @@ if (!root) {
 const searchParams = new URLSearchParams(window.location.search);
 const readOnly = searchParams.get('readOnly') === '1';
 const deferSubmission = searchParams.get('deferSubmission') === '1';
+const controlMode =
+  searchParams.get('controlMode') === 'controlled'
+    ? 'controlled'
+    : 'uncontrolled';
 let resolveDeferredSubmission: (() => void) | undefined;
 
 window.referenceHostResolveSubmission = () => {
@@ -30,6 +34,7 @@ window.referenceHostResolveSubmission = () => {
 hydrateRoot(
   root,
   <ReferenceHostApp
+    controlMode={controlMode}
     loadingLabel="Loading buyer editor"
     onAuthorizedSubmit={async (messageBody) => {
       submissions.push(messageBody);
