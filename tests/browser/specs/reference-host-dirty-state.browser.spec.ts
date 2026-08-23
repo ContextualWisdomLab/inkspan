@@ -92,3 +92,41 @@ test('does not claim a newer document is saved when the submitted version settle
   expect(rejectedRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
 });
+
+test('blocks a same-turn native reset after durable submission admission before React presentation commits', async ({
+  page,
+}) => {
+  const { rejectedRequests, pageErrors } = await failUnexpectedNetwork(page);
+  const response = await page.goto(`${REFERENCE_HOST_URL}?deferSubmission=1`);
+  expect(response?.ok()).toBe(true);
+
+  const editor = page.getByRole('textbox');
+  const field = page.locator(
+    '[data-inkspan-form-field][name="message_body"]',
+  );
+  await expect(editor).toBeVisible();
+
+  await editor.click();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('Durable gate payload');
+  await expect(field).toHaveValue('Durable gate payload');
+
+  await page.evaluate(() => {
+    const form = document.querySelector('form');
+    if (!(form instanceof HTMLFormElement)) {
+      throw new Error('Reference host form is missing.');
+    }
+    form.requestSubmit();
+    form.reset();
+  });
+
+  await expect(field).toHaveValue('Durable gate payload');
+  expect(await page.evaluate(() => window.referenceHostSubmissions)).toEqual([
+    'Durable gate payload',
+  ]);
+
+  await page.evaluate(() => window.referenceHostResolveSubmission?.());
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible();
+  expect(rejectedRequests).toEqual([]);
+  expect(pageErrors).toEqual([]);
+});
