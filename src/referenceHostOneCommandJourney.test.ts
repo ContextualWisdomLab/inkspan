@@ -51,6 +51,10 @@ describe('reference-host one-command journey contract', () => {
           args: [],
           path: 'examples/reference-host/verify-office-handoff.mjs',
         },
+        {
+          args: ['--self-test'],
+          path: 'examples/reference-host/verify-browser-journey.mjs',
+        },
       ],
     });
   });
