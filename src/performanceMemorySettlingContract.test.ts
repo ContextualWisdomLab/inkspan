@@ -39,6 +39,7 @@ function runAnalysis(
   root: string,
   input: ReturnType<typeof evidence>,
   maxGrowthBytes: string,
+  windowSize = '3',
 ) {
   const inputPath = join(root, 'memory-evidence.json');
   writeFileSync(inputPath, `${JSON.stringify(input)}\n`, 'utf8');
@@ -49,7 +50,7 @@ function runAnalysis(
       '--input',
       inputPath,
       '--window-size',
-      '3',
+      windowSize,
       '--max-growth-bytes',
       maxGrowthBytes,
     ],
@@ -148,6 +149,30 @@ describe('retained-memory settling evidence contract', () => {
       expect(result.stdout).toBe('');
       expect(result.stderr.trim()).toBe(
         'Memory settling evidence benchmark profile must match documentProfile.',
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails closed before a precision-loss false green from an inexact even-window median', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-memory-settling-precision-'));
+    try {
+      const maxSafe = Number.MAX_SAFE_INTEGER;
+      const result = runAnalysis(
+        root,
+        evidence({
+          warmupSamples: 0,
+          samples: [maxSafe - 1, maxSafe - 1, maxSafe - 1, maxSafe],
+        }),
+        '0.25',
+        '2',
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(
+        'Memory settling window median must be exactly representable.',
       );
     } finally {
       rmSync(root, { recursive: true, force: true });
