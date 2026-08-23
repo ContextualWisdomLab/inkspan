@@ -10,7 +10,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 
 const MAX_INPUT_BYTES = 16 * 1024 * 1024;
 const READ_CHUNK_BYTES = 64 * 1024;
@@ -253,10 +253,26 @@ function assertRegularOutputDestination(path) {
   }
 }
 
+function assertNoSymlinkDirectoryComponents(path) {
+  let current = path;
+  while (true) {
+    const metadata = lstatSync(current, { throwIfNoEntry: false });
+    if (metadata?.isSymbolicLink()) {
+      throw new Error(
+        'Benchmark summary output directory must be a non-symlink directory.',
+      );
+    }
+    const parent = dirname(current);
+    if (parent === current) return;
+    current = parent;
+  }
+}
+
 function prepareOutputDirectory(path) {
+  assertNoSymlinkDirectoryComponents(path);
   const current = lstatSync(path, { throwIfNoEntry: false });
   if (current !== undefined) {
-    if (current.isSymbolicLink() || !current.isDirectory()) {
+    if (!current.isDirectory()) {
       throw new Error(
         'Benchmark summary output directory must be a non-symlink directory.',
       );
@@ -270,12 +286,9 @@ function prepareOutputDirectory(path) {
     throw new Error('Benchmark summary output directory could not be prepared.');
   }
 
+  assertNoSymlinkDirectoryComponents(path);
   const created = lstatSync(path, { throwIfNoEntry: false });
-  if (
-    created === undefined ||
-    created.isSymbolicLink() ||
-    !created.isDirectory()
-  ) {
+  if (created === undefined || !created.isDirectory()) {
     throw new Error(
       'Benchmark summary output directory must be a non-symlink directory.',
     );
