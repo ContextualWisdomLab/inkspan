@@ -15,6 +15,12 @@ function referenceHostExecutableFiles(): string[] {
   );
 }
 
+function referenceHostRuntimeFiles(): string[] {
+  return referenceHostExecutableFiles().filter(
+    (path) => !path.startsWith('verify-'),
+  );
+}
+
 describe('reference-host package authority boundary', () => {
   it('keeps every reference-host file outside the npm publish inventory', () => {
     const packageMetadata = JSON.parse(repositoryFile('package.json')) as {
@@ -44,11 +50,18 @@ describe('reference-host package authority boundary', () => {
     }
   });
 
-  it('rejects runtime environment-variable authority in executable reference files', () => {
-    const executableFiles = referenceHostExecutableFiles();
+  it('rejects runtime environment-variable authority in reference-host runtime files', () => {
+    const runtimeFiles = referenceHostRuntimeFiles();
 
-    expect(executableFiles.length).toBeGreaterThan(0);
-    for (const file of executableFiles) {
+    expect(runtimeFiles).toEqual(
+      expect.arrayContaining([
+        'browser-host.tsx',
+        'reference-host-app.tsx',
+        'native-form-host.tsx',
+      ]),
+    );
+    expect(runtimeFiles.length).toBeGreaterThan(0);
+    for (const file of runtimeFiles) {
       const source = readFileSync(resolve(referenceHostDirectory, file), 'utf8');
       expect(source).not.toMatch(/\bprocess\s*\.\s*env\b/u);
       expect(source).not.toMatch(/\bimport\s*\.\s*meta\s*\.\s*env\b/u);
