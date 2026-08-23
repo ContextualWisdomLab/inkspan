@@ -67,6 +67,59 @@ test('hydrates the real native-form reference host without external runtime requ
   ).toEqual([]);
 });
 
+test('restores the packed native-form draft without creating a host submission', async ({
+  page,
+}) => {
+  const rejectedRequests: string[] = [];
+  const pageErrors: string[] = [];
+
+  page.on('pageerror', (error) => {
+    pageErrors.push(error.message);
+  });
+  await page.route('**/*', async (route) => {
+    const requestUrl = route.request().url();
+    if (isReferenceHostRequest(requestUrl)) {
+      await route.continue();
+      return;
+    }
+    rejectedRequests.push(requestUrl);
+    await route.abort('blockedbyclient');
+  });
+
+  const response = await page.goto(REFERENCE_HOST_URL);
+  expect(response?.ok()).toBe(true);
+
+  const editor = page.getByRole('textbox');
+  const field = page.locator(
+    '[data-inkspan-form-field][name="message_body"]',
+  );
+  await expect(editor).toBeVisible();
+  await expect(field).toHaveValue('# Draft');
+
+  await editor.click();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('Buyer changed draft');
+  await expect(field).not.toHaveValue('# Draft');
+
+  await page.getByRole('button', { name: 'Reset draft' }).click();
+  await expect(field).toHaveValue('# Draft');
+  await expect(editor).toContainText('Draft');
+  await expect(page.getByText('Not saved yet', { exact: true })).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const hostWindow = window as typeof window & {
+          referenceHostSubmissions?: string[];
+        };
+        return hostWindow.referenceHostSubmissions ?? [];
+      }),
+    )
+    .toEqual([]);
+
+  expect(rejectedRequests).toEqual([]);
+  expect(pageErrors).toEqual([]);
+});
+
 test('keeps the buyer host readable while read-only mode fail-closes native writes', async ({
   page,
 }) => {
