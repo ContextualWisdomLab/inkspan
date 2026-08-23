@@ -18,6 +18,7 @@ describe('reference-host Office execution acceptance', () => {
 
     const verifier = readFileSync(verifierPath, 'utf8');
     const workflow = repositoryFile('.github/workflows/ci.yml');
+    const readme = repositoryFile('examples/reference-host/README.md');
 
     expect(verifier).toContain('INKSPAN_BROWSER_PACKAGE_ENTRY');
     expect(verifier).toContain('office-handoff.mjs');
@@ -37,6 +38,17 @@ describe('reference-host Office execution acceptance', () => {
     );
     expect(workflow).toContain(
       'node examples/reference-host/verify-office-handoff.mjs',
+    );
+
+    expect(readme).toContain('`verify-office-handoff.mjs`');
+    expect(readme).toContain(
+      'renders that bounded request through the local Inkspan Office CLI',
+    );
+    expect(readme).not.toContain(
+      'Complete Office-renderer execution and validation also remain pending',
+    );
+    expect(readme).not.toContain(
+      'complete converter/Office execution and validation beyond the bounded request helper',
     );
   });
 });
