@@ -47,15 +47,15 @@ test('invalidates a completed save claim after the buyer edits the packed editor
   await expect(field).toHaveValue('# Draft');
 
   await page.getByRole('button', { name: 'Save document' }).click();
-  await expect(page.getByText('Saved')).toBeVisible();
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible();
 
   await editor.click();
   await page.keyboard.press('Control+A');
   await page.keyboard.type('Edited after save');
 
   await expect(field).not.toHaveValue('# Draft');
-  await expect(page.getByText('Saved')).toHaveCount(0);
-  await expect(page.getByText('Not saved yet')).toBeVisible();
+  await expect(page.getByText('Saved', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Not saved yet', { exact: true })).toBeVisible();
   expect(rejectedRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
 });
@@ -75,7 +75,7 @@ test('does not claim a newer document is saved when the submitted version settle
   await page.keyboard.press('Control+A');
   await page.keyboard.type('Submitted version');
   await saveButton.click();
-  await expect(page.getByText('Saving…')).toBeVisible();
+  await expect(page.getByText('Saving…', { exact: true })).toBeVisible();
   await expect(saveButton).toBeDisabled();
 
   await editor.click();
@@ -83,9 +83,9 @@ test('does not claim a newer document is saved when the submitted version settle
   await page.keyboard.type('Newer unsaved version');
   await page.evaluate(() => window.referenceHostResolveSubmission?.());
 
-  await expect(page.getByText('Saving…')).toHaveCount(0);
-  await expect(page.getByText('Saved')).toHaveCount(0);
-  await expect(page.getByText('Not saved yet')).toBeVisible();
+  await expect(page.getByText('Saving…', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Saved', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Not saved yet', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => window.referenceHostSubmissions)).toEqual([
     'Submitted version',
   ]);
