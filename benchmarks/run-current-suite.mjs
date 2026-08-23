@@ -45,10 +45,24 @@ function inspectOutputDirectory(path) {
   }
 }
 
+function assertNoSymlinkDirectoryComponents(path) {
+  let current = path;
+  while (true) {
+    const metadata = inspectOutputDirectory(current);
+    if (metadata?.isSymbolicLink()) {
+      throw new Error(OUTPUT_DIRECTORY_ERROR);
+    }
+    const parent = dirname(current);
+    if (parent === current) return;
+    current = parent;
+  }
+}
+
 function prepareOutputDirectory(path) {
+  assertNoSymlinkDirectoryComponents(path);
   const existing = inspectOutputDirectory(path);
   if (existing !== undefined) {
-    if (existing.isSymbolicLink() || !existing.isDirectory()) {
+    if (!existing.isDirectory()) {
       throw new Error(OUTPUT_DIRECTORY_ERROR);
     }
     return;
@@ -60,12 +74,9 @@ function prepareOutputDirectory(path) {
     throw new Error('Benchmark suite output directory could not be prepared.');
   }
 
+  assertNoSymlinkDirectoryComponents(path);
   const created = inspectOutputDirectory(path);
-  if (
-    created === undefined ||
-    created.isSymbolicLink() ||
-    !created.isDirectory()
-  ) {
+  if (created === undefined || !created.isDirectory()) {
     throw new Error(OUTPUT_DIRECTORY_ERROR);
   }
 }
