@@ -198,7 +198,12 @@ function resolveLocalModule(pathOrUrl) {
   } catch {
     throw new Error('Measured Markdown module must be a local regular file.');
   }
-  const metadata = lstatSync(resolvedPath, { throwIfNoEntry: false });
+  let metadata;
+  try {
+    metadata = lstatSync(resolvedPath, { throwIfNoEntry: false });
+  } catch {
+    throw new Error('Measured Markdown module must be a local regular file.');
+  }
   if (
     metadata === undefined ||
     metadata.isSymbolicLink() ||
@@ -206,7 +211,11 @@ function resolveLocalModule(pathOrUrl) {
   ) {
     throw new Error('Measured Markdown module must be a local regular file.');
   }
-  return realpathSync(resolvedPath);
+  try {
+    return realpathSync(resolvedPath);
+  } catch {
+    throw new Error('Measured Markdown module must be a local regular file.');
+  }
 }
 
 function measuredModuleSha256(modulePath) {
