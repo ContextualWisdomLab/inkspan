@@ -253,11 +253,19 @@ function assertRegularOutputDestination(path) {
   }
 }
 
+function prepareOutputDirectory(path) {
+  try {
+    mkdirSync(path, { recursive: true });
+  } catch {
+    throw new Error('Benchmark summary output directory could not be prepared.');
+  }
+}
+
 function main() {
   const { inputPath, outputDirectory } = resolveArguments(process.argv.slice(2));
   const summaryJsonPath = resolve(outputDirectory, 'summary.json');
   const summaryTextPath = resolve(outputDirectory, 'summary.txt');
-  mkdirSync(outputDirectory, { recursive: true });
+  prepareOutputDirectory(outputDirectory);
   if (
     inputPath === summaryJsonPath ||
     inputPath === summaryTextPath ||
