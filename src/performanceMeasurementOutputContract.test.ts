@@ -164,4 +164,36 @@ describe('benchmark summary output contract', () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it('redacts filesystem details when the output directory cannot be prepared', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-output-privacy-'));
+    const input = join(root, 'samples.json');
+    const privateSentinel = 'private-summary-output-sentinel-must-not-leak';
+    const blockedParent = join(root, privateSentinel);
+    const output = join(blockedParent, 'output');
+    try {
+      writeValidInput(input);
+      writeFileSync(blockedParent, 'not a directory', 'utf8');
+
+      const result = spawnSync(
+        process.execPath,
+        [script, '--input', input, '--output', output],
+        {
+          cwd: process.cwd(),
+          encoding: 'utf8',
+        },
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(
+        'Benchmark summary output directory could not be prepared.',
+      );
+      expect(result.stderr).not.toContain(privateSentinel);
+      expect(existsSync(join(output, 'summary.json'))).toBe(false);
+      expect(existsSync(join(output, 'summary.txt'))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
