@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { CwlReviewPresentationError } from '../review/index.js';
 import {
   CwlReviewThreadList,
   type CwlReviewThreadListLabels,
@@ -120,6 +121,6 @@ describe('CwlReviewThreadList semantic summaries', () => {
           onSelectThread={vi.fn()}
         />,
       ),
-    ).toThrowError(new Error('Review presentation metadata is invalid.'));
+    ).toThrowError(CwlReviewPresentationError);
   });
 });
