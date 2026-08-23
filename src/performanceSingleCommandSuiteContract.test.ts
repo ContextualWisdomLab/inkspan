@@ -1,9 +1,12 @@
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import {
+  existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -21,44 +24,64 @@ afterEach(() => {
   }
 });
 
+function benchmarkArguments(
+  inputPath: string,
+  modulePath: string,
+  artifactSha256: string,
+  outputDirectory: string,
+): string[] {
+  return [
+    suitePath,
+    '--input',
+    inputPath,
+    '--module',
+    modulePath,
+    '--profile',
+    'small',
+    '--samples',
+    '2',
+    '--source-commit-sha',
+    'a'.repeat(40),
+    '--artifact-sha256',
+    artifactSha256,
+    '--runtime-id',
+    'node-22.0.0',
+    '--reference-hardware-id',
+    `refhw-sha256-${'b'.repeat(64)}`,
+    '--output',
+    outputDirectory,
+  ];
+}
+
+function writeBenchmarkInputs(directory: string): {
+  artifactSha256: string;
+  inputPath: string;
+  modulePath: string;
+} {
+  const inputPath = join(directory, 'input.md');
+  const modulePath = join(directory, 'measured.mjs');
+  const moduleSource =
+    "export function markdownToHtml(source) { return `<p>${source}</p>`; }\n";
+  writeFileSync(inputPath, '# Buyer benchmark\n', 'utf8');
+  writeFileSync(modulePath, moduleSource, 'utf8');
+  return {
+    artifactSha256: createHash('sha256').update(moduleSource).digest('hex'),
+    inputPath,
+    modulePath,
+  };
+}
+
 describe('single-command benchmark suite contract', () => {
   it('measures and summarizes one deterministic Markdown profile with one command', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-suite-'));
     temporaryDirectories.push(directory);
-    const inputPath = join(directory, 'input.md');
-    const modulePath = join(directory, 'measured.mjs');
     const outputDirectory = join(directory, 'evidence');
-    const moduleSource =
-      "export function markdownToHtml(source) { return `<p>${source}</p>`; }\n";
-    writeFileSync(inputPath, '# Buyer benchmark\n', 'utf8');
-    writeFileSync(modulePath, moduleSource, 'utf8');
-    const artifactSha256 = createHash('sha256')
-      .update(moduleSource)
-      .digest('hex');
+    const { artifactSha256, inputPath, modulePath } =
+      writeBenchmarkInputs(directory);
 
     const output = execFileSync(
       process.execPath,
-      [
-        suitePath,
-        '--input',
-        inputPath,
-        '--module',
-        modulePath,
-        '--profile',
-        'small',
-        '--samples',
-        '2',
-        '--source-commit-sha',
-        'a'.repeat(40),
-        '--artifact-sha256',
-        artifactSha256,
-        '--runtime-id',
-        'node-22.0.0',
-        '--reference-hardware-id',
-        `refhw-sha256-${'b'.repeat(64)}`,
-        '--output',
-        outputDirectory,
-      ],
+      benchmarkArguments(inputPath, modulePath, artifactSha256, outputDirectory),
       {
         cwd: repositoryRoot,
         encoding: 'utf8',
@@ -91,5 +114,38 @@ describe('single-command benchmark suite contract', () => {
     expect(
       readFileSync(join(outputDirectory, 'summary', 'summary.txt'), 'utf8'),
     ).toContain('markdown-serialization-small');
+  });
+
+  it('fails closed before writing evidence through a symlink output directory', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-suite-'));
+    temporaryDirectories.push(directory);
+    const { artifactSha256, inputPath, modulePath } =
+      writeBenchmarkInputs(directory);
+    const actualOutputDirectory = join(directory, 'outside-target');
+    const outputDirectory = join(directory, 'evidence-link');
+    mkdirSync(actualOutputDirectory);
+    symlinkSync(
+      actualOutputDirectory,
+      outputDirectory,
+      process.platform === 'win32' ? 'junction' : 'dir',
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      benchmarkArguments(inputPath, modulePath, artifactSha256, outputDirectory),
+      {
+        cwd: repositoryRoot,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 10_000,
+      },
+    );
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toBe(
+      'Benchmark suite output directory must be a non-symlink directory.\n',
+    );
+    expect(existsSync(join(actualOutputDirectory, 'samples.json'))).toBe(false);
+    expect(existsSync(join(actualOutputDirectory, 'summary'))).toBe(false);
   });
 });
