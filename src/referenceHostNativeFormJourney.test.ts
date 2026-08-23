@@ -52,7 +52,7 @@ describe('reference-host native form journey', () => {
 
   it('blocks form reset while durable submission is in flight and marks a later reset unsaved', () => {
     expect(nativeFormHostSource).toMatch(
-      /<form\s+onInput=\{handleNativeInput\}\s+onSubmit=\{handleSubmit\}\s+onReset=\{handleReset\}/u,
+      /onInput=\{handleNativeInput\}\s+onSubmit=\{handleSubmit\}\s+onReset=\{handleReset\}/u,
     );
     expect(nativeFormHostSource).toContain('submitAuthorized.isInFlight()');
     expect(nativeFormHostSource).toContain('event.preventDefault();');
@@ -106,6 +106,9 @@ describe('reference-host native form journey', () => {
       "controlMode?: 'controlled' | 'uncontrolled';",
     );
     expect(nativeFormHostSource).toContain("controlMode = 'uncontrolled'");
+    expect(nativeFormHostSource).toContain(
+      'data-reference-host-control-mode={controlMode}',
+    );
     expect(nativeFormHostSource).toContain(
       "const [controlledValue, setControlledValue] = useState('# Draft');",
     );
