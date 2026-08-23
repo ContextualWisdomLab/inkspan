@@ -15,8 +15,10 @@ import { dirname, resolve } from 'node:path';
 const MAX_INPUT_BYTES = 16 * 1024 * 1024;
 const READ_CHUNK_BYTES = 64 * 1024;
 const MAX_SAMPLES = 1_000_000;
-const READ_ONLY_NONBLOCKING =
-  constants.O_RDONLY | (constants.O_NONBLOCK ?? 0);
+const READ_ONLY_NONBLOCKING_NOFOLLOW =
+  constants.O_RDONLY |
+  (constants.O_NONBLOCK ?? 0) |
+  (constants.O_NOFOLLOW ?? 0);
 const BENCHMARK_ID_PATTERN =
   /^(?:ssr-shell-render|client-hydration|editor-mount|first-editable-paint|editor-input|keyboard-input|ime-composition|toolbar-action|undo-redo|table-edit|paste|image-insertion|markdown-serialization|html-serialization|envelope-parse|envelope-canonicalization|revision-evidence|transition-evidence|autosave-enqueue|autosave-coalescing|autosave-commit|yjs-update|print-media|office-parse|office-render|office-publication)-(?:small|medium|large|stress)$/u;
 const UNITS = new Set(['ms', 'bytes']);
@@ -59,11 +61,24 @@ function resolveArguments(argv) {
 }
 
 function readBoundedJson(path) {
-  const descriptor = openSync(path, READ_ONLY_NONBLOCKING);
+  const pathMetadata = lstatSync(path, { throwIfNoEntry: false });
+  if (
+    pathMetadata === undefined ||
+    pathMetadata.isSymbolicLink() ||
+    !pathMetadata.isFile()
+  ) {
+    throw new Error(
+      'Benchmark sample input must be a regular non-symlink file.',
+    );
+  }
+
+  const descriptor = openSync(path, READ_ONLY_NONBLOCKING_NOFOLLOW);
   try {
     const metadata = fstatSync(descriptor);
     if (!metadata.isFile()) {
-      throw new Error('Benchmark sample input must be a regular file.');
+      throw new Error(
+        'Benchmark sample input must be a regular non-symlink file.',
+      );
     }
     if (metadata.size > MAX_INPUT_BYTES) {
       throw new Error('Benchmark sample input exceeds the supported size.');
