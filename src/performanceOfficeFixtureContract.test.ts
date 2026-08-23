@@ -3,6 +3,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -165,6 +166,43 @@ describe('deterministic synthetic Office performance fixtures', () => {
 
       expect(() => runGenerator(outputDirectory)).toThrow();
       expect(readFileSync(victimPath, 'utf8')).toBe('buyer-owned evidence\n');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails closed instead of publishing through a symlinked Office fixture output directory', () => {
+    if (process.platform === 'win32') return;
+
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-office-benchmark-output-dir-'));
+    const victimDirectory = join(root, 'buyer-owned');
+    const outputDirectory = join(root, 'output');
+    try {
+      mkdirSync(victimDirectory, { recursive: true });
+      writeFileSync(join(victimDirectory, 'sentinel.txt'), 'buyer-owned evidence\n', 'utf8');
+      symlinkSync(victimDirectory, outputDirectory, 'dir');
+
+      expect(() => runGenerator(outputDirectory)).toThrow();
+      expect(readdirSync(victimDirectory)).toEqual(['sentinel.txt']);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails closed instead of publishing through a symlinked Office fixture output ancestor', () => {
+    if (process.platform === 'win32') return;
+
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-office-benchmark-output-ancestor-'));
+    const victimDirectory = join(root, 'buyer-owned-parent');
+    const linkedParent = join(root, 'linked-parent');
+    const outputDirectory = join(linkedParent, 'nested-output');
+    try {
+      mkdirSync(victimDirectory, { recursive: true });
+      writeFileSync(join(victimDirectory, 'sentinel.txt'), 'buyer-owned evidence\n', 'utf8');
+      symlinkSync(victimDirectory, linkedParent, 'dir');
+
+      expect(() => runGenerator(outputDirectory)).toThrow();
+      expect(readdirSync(victimDirectory)).toEqual(['sentinel.txt']);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
