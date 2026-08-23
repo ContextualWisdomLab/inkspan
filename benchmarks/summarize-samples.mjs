@@ -253,10 +253,18 @@ function assertRegularOutputDestination(path) {
   }
 }
 
+function inspectOutputDirectoryComponent(path) {
+  try {
+    return lstatSync(path, { throwIfNoEntry: false });
+  } catch {
+    throw new Error('Benchmark summary output directory could not be prepared.');
+  }
+}
+
 function assertNoSymlinkDirectoryComponents(path) {
   let current = path;
   while (true) {
-    const metadata = lstatSync(current, { throwIfNoEntry: false });
+    const metadata = inspectOutputDirectoryComponent(current);
     if (metadata?.isSymbolicLink()) {
       throw new Error(
         'Benchmark summary output directory must be a non-symlink directory.',
@@ -270,7 +278,7 @@ function assertNoSymlinkDirectoryComponents(path) {
 
 function prepareOutputDirectory(path) {
   assertNoSymlinkDirectoryComponents(path);
-  const current = lstatSync(path, { throwIfNoEntry: false });
+  const current = inspectOutputDirectoryComponent(path);
   if (current !== undefined) {
     if (!current.isDirectory()) {
       throw new Error(
@@ -287,7 +295,7 @@ function prepareOutputDirectory(path) {
   }
 
   assertNoSymlinkDirectoryComponents(path);
-  const created = lstatSync(path, { throwIfNoEntry: false });
+  const created = inspectOutputDirectoryComponent(path);
   if (created === undefined || !created.isDirectory()) {
     throw new Error(
       'Benchmark summary output directory must be a non-symlink directory.',
