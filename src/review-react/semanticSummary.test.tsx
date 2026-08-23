@@ -103,4 +103,23 @@ describe('CwlReviewThreadList semantic summaries', () => {
       ),
     ).toThrow('Review presentation metadata is invalid.');
   });
+
+  it('normalizes a thrown semantic-summary label failure to the public presentation error', () => {
+    const privateFailureLabels = {
+      ...labels,
+      status: () => {
+        throw new Error('private host localization failure');
+      },
+    } as unknown as CwlReviewThreadListLabels;
+
+    expect(() =>
+      render(
+        <CwlReviewThreadList
+          presentations={[presentation('thread_1', 'unresolved', 2)]}
+          labels={privateFailureLabels}
+          onSelectThread={vi.fn()}
+        />,
+      ),
+    ).toThrowError(new Error('Review presentation metadata is invalid.'));
+  });
 });
