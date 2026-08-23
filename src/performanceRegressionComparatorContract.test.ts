@@ -244,6 +244,47 @@ describe('benchmark regression comparator contract', () => {
     }
   });
 
+  it('redacts a summary input path when a parent component is not a directory', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-compare-path-privacy-'));
+    try {
+      const privateMarker = 'tenant-private-performance-baseline-parent';
+      const privateParentPath = join(root, privateMarker);
+      const baselinePath = join(privateParentPath, 'baseline.json');
+      const currentPath = join(root, 'current.json');
+      writeFileSync(privateParentPath, 'not-a-directory', 'utf8');
+      writeFileSync(
+        currentPath,
+        `${JSON.stringify(summary({ artifactSha256: CURRENT_ARTIFACT_SHA256 }))}\n`,
+        'utf8',
+      );
+
+      const result = spawnSync(
+        process.execPath,
+        [
+          script,
+          '--baseline',
+          baselinePath,
+          '--current',
+          currentPath,
+          '--metric',
+          'p95',
+          '--max-regression-percent',
+          '5',
+        ],
+        { cwd: process.cwd(), encoding: 'utf8' },
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(
+        'Benchmark summary input must be a regular file.',
+      );
+      expect(result.stderr).not.toContain(privateMarker);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('fails closed on a named-pipe summary instead of blocking before regular-file validation', () => {
     if (process.platform === 'win32') return;
 
