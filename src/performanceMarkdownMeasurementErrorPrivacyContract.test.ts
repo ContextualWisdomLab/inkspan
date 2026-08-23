@@ -19,11 +19,14 @@ function sha256(value: string) {
   return createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
-function runMeasurement(moduleSource: string) {
+function runMeasurement(
+  moduleSource: string,
+  outputForRoot: (root: string) => string = (root) => join(root, 'samples.json'),
+) {
   const root = mkdtempSync(join(tmpdir(), 'inkspan-markdown-error-privacy-'));
   const input = join(root, 'document.md');
   const modulePath = join(root, 'measured.mjs');
-  const output = join(root, 'samples.json');
+  const output = outputForRoot(root);
   writeFileSync(input, '# Public benchmark fixture\n', 'utf8');
   writeFileSync(modulePath, moduleSource, 'utf8');
 
@@ -86,6 +89,28 @@ describe('Markdown measurement error privacy contract', () => {
       expect(result.stdout).toBe('');
       expect(result.stderr.trim()).toBe(
         'Measured markdownToHtml() execution failed.',
+      );
+      expect(result.stderr).not.toContain(privateSentinel);
+      expect(existsSync(output)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('redacts filesystem details when output path traversal fails', () => {
+    const privateSentinel = 'private-output-sentinel-must-not-leak';
+    const moduleSource =
+      'export function markdownToHtml(value) { return value; }\n';
+    const { root, output, result } = runMeasurement(moduleSource, (testRoot) => {
+      const blockedParent = join(testRoot, privateSentinel);
+      writeFileSync(blockedParent, 'not a directory', 'utf8');
+      return join(blockedParent, 'samples.json');
+    });
+    try {
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(
+        'Markdown benchmark output path could not be inspected.',
       );
       expect(result.stderr).not.toContain(privateSentinel);
       expect(existsSync(output)).toBe(false);
