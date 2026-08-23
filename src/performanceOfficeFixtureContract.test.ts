@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import {
+  linkSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -163,6 +164,24 @@ describe('deterministic synthetic Office performance fixtures', () => {
       mkdirSync(outputDirectory, { recursive: true });
       writeFileSync(victimPath, 'buyer-owned evidence\n', 'utf8');
       symlinkSync(victimPath, join(outputDirectory, 'docx-small.json'));
+
+      expect(() => runGenerator(outputDirectory)).toThrow();
+      expect(readFileSync(victimPath, 'utf8')).toBe('buyer-owned evidence\n');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails closed instead of overwriting a multiply linked Office fixture output', () => {
+    if (process.platform === 'win32') return;
+
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-office-benchmark-hardlink-'));
+    const outputDirectory = join(root, 'output');
+    const victimPath = join(root, 'buyer-owned.json');
+    try {
+      mkdirSync(outputDirectory, { recursive: true });
+      writeFileSync(victimPath, 'buyer-owned evidence\n', 'utf8');
+      linkSync(victimPath, join(outputDirectory, 'docx-small.json'));
 
       expect(() => runGenerator(outputDirectory)).toThrow();
       expect(readFileSync(victimPath, 'utf8')).toBe('buyer-owned evidence\n');
