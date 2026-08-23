@@ -118,4 +118,26 @@ describe('Markdown measurement error privacy contract', () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it('redacts filesystem details when output publication cannot create its directory', () => {
+    const privateSentinel = `private-markdown-publication-${process.pid}`;
+    const moduleSource =
+      'export function markdownToHtml(value) { return value; }\n';
+    const blockedOutput = join('/sys', privateSentinel, 'samples.json');
+    const { root, output, result } = runMeasurement(
+      moduleSource,
+      () => blockedOutput,
+    );
+    try {
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(
+        'Markdown benchmark output could not be written.',
+      );
+      expect(result.stderr).not.toContain(privateSentinel);
+      expect(existsSync(output)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
