@@ -130,6 +130,7 @@ export function NativeFormHost({
 
   return (
     <form
+      data-reference-host-control-mode={controlMode}
       onInput={handleNativeInput}
       onSubmit={handleSubmit}
       onReset={handleReset}
