@@ -1,5 +1,12 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -81,6 +88,22 @@ describe('deterministic synthetic performance corpus', () => {
       expect(
         new Set(smallBody.match(/data:image\/png;base64,[A-Za-z0-9+/=]+/g)).size,
       ).toBe(3);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails closed instead of following a corpus output symlink', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-corpus-symlink-'));
+    const outputDirectory = join(root, 'output');
+    const victimPath = join(root, 'victim.md');
+    try {
+      mkdirSync(outputDirectory, { recursive: true });
+      writeFileSync(victimPath, 'buyer-owned evidence\n', 'utf8');
+      symlinkSync(victimPath, join(outputDirectory, 'small.md'));
+
+      expect(() => runGenerator(outputDirectory)).toThrow();
+      expect(readFileSync(victimPath, 'utf8')).toBe('buyer-owned evidence\n');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
