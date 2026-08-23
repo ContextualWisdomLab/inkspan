@@ -236,7 +236,17 @@ function median(values) {
   const sorted = [...values].sort((left, right) => left - right);
   const midpoint = Math.floor(sorted.length / 2);
   if (sorted.length % 2 === 1) return sorted[midpoint];
-  return (sorted[midpoint - 1] + sorted[midpoint]) / 2;
+
+  const left = sorted[midpoint - 1];
+  const right = sorted[midpoint];
+  const distance = right - left;
+  const wholeMidpoint = left + Math.floor(distance / 2);
+  if (distance % 2 === 1 && wholeMidpoint >= 2 ** 52) {
+    throw new Error(
+      'Memory settling window median must be exactly representable.',
+    );
+  }
+  return wholeMidpoint + (distance % 2) / 2;
 }
 
 function analyze(evidence, windowSize, maxGrowthBytes) {
