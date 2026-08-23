@@ -133,6 +133,38 @@ describe('retained-memory settling evidence contract', () => {
     }
   });
 
+  it('redacts an input path when a parent component is not a directory', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-memory-settling-path-privacy-'));
+    try {
+      const privateMarker = 'tenant-private-memory-evidence-parent';
+      const parentPath = join(root, privateMarker);
+      writeFileSync(parentPath, 'not-a-directory', 'utf8');
+      const inputPath = join(parentPath, 'memory-evidence.json');
+      const result = spawnSync(
+        process.execPath,
+        [
+          script,
+          '--input',
+          inputPath,
+          '--window-size',
+          '3',
+          '--max-growth-bytes',
+          '50',
+        ],
+        { cwd: process.cwd(), encoding: 'utf8' },
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(
+        'Memory settling evidence input must be a regular file.',
+      );
+      expect(result.stderr).not.toContain(privateMarker);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('rejects evidence whose benchmark profile disagrees with documentProfile', () => {
     const root = mkdtempSync(join(tmpdir(), 'inkspan-memory-settling-profile-'));
     try {
