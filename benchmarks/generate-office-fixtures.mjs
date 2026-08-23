@@ -8,7 +8,7 @@ import {
   openSync,
   writeFileSync,
 } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 
 const DOCX_PROFILE_PAGES = Object.freeze({
   small: 2,
@@ -29,6 +29,8 @@ const WRITE_NOFOLLOW =
   constants.O_TRUNC |
   (constants.O_NONBLOCK ?? 0) |
   (constants.O_NOFOLLOW ?? 0);
+const OUTPUT_DIRECTORY_ERROR =
+  'Office fixture output directory must be a non-symlink directory.';
 
 function buildDocxPage(pageNumber) {
   const page = String(pageNumber).padStart(3, '0');
@@ -168,6 +170,27 @@ function resolveOutputDirectory(argv) {
   return resolve(argv[1]);
 }
 
+function inspectOutputDirectoryComponent(path) {
+  try {
+    return lstatSync(path, { throwIfNoEntry: false });
+  } catch {
+    throw new Error('Office fixture output directory could not be inspected.');
+  }
+}
+
+function assertNoSymlinkOutputDirectoryAncestors(path) {
+  let current = path;
+  while (true) {
+    const metadata = inspectOutputDirectoryComponent(current);
+    if (metadata?.isSymbolicLink()) {
+      throw new Error(OUTPUT_DIRECTORY_ERROR);
+    }
+    const parent = dirname(current);
+    if (parent === current) return;
+    current = parent;
+  }
+}
+
 function writeOutputFile(outputPath, bytes) {
   let pathMetadata;
   try {
@@ -215,7 +238,13 @@ function writeFixture(outputDirectory, fileName, request, units) {
 }
 
 const outputDirectory = resolveOutputDirectory(process.argv.slice(2));
-mkdirSync(outputDirectory, { recursive: true });
+assertNoSymlinkOutputDirectoryAncestors(outputDirectory);
+try {
+  mkdirSync(outputDirectory, { recursive: true });
+} catch {
+  throw new Error('Office fixture output directory could not be prepared.');
+}
+assertNoSymlinkOutputDirectoryAncestors(outputDirectory);
 
 const docx = {};
 for (const [profile, pages] of Object.entries(DOCX_PROFILE_PAGES)) {
