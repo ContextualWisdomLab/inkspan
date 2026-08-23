@@ -310,13 +310,13 @@ function writeMeasurementOutput(path, content) {
 async function main() {
   const args = resolveArguments(process.argv.slice(2));
   assertNoSymlinkOutputAncestors(args.outputPath);
+  const source = readBoundedMarkdown(args.inputPath);
   if (
     args.inputPath === args.outputPath ||
     refersToSameFile(args.inputPath, args.outputPath)
   ) {
     throw new Error('Markdown benchmark output must not overwrite its input.');
   }
-  const source = readBoundedMarkdown(args.inputPath);
   const modulePath = resolveLocalModule(args.modulePath);
   if (
     modulePath === args.outputPath ||
