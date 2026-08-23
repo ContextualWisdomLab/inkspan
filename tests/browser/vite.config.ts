@@ -39,6 +39,12 @@ const alias = [
 ];
 
 export default defineConfig({
+  optimizeDeps: {
+    entries: [
+      'tests/browser/harness.html',
+      'examples/reference-host/browser-host.html',
+    ],
+  },
   resolve: {
     alias,
   },
