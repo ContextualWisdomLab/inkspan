@@ -87,3 +87,40 @@ test('preserves an accessible pre-hydration shell and hydrates the packed refere
   expect(hydratedEvidence.consoleErrors).toEqual([]);
   await hydratedContext.close();
 });
+
+test('exercises the controlled public editor composition in the packed reference host without changing host authority', async ({
+  browser,
+}) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const evidence = await observeReferenceHost(page);
+
+  const response = await page.goto(`${REFERENCE_HOST_URL}?controlMode=controlled`);
+  expect(response?.ok()).toBe(true);
+
+  const form = page.locator('form[data-reference-host-control-mode="controlled"]');
+  await expect(form).toBeVisible();
+  const textbox = page.getByRole('textbox');
+  await expect(textbox).toBeVisible();
+  await textbox.fill('# Controlled buyer draft');
+  await expect(
+    page.locator('[data-inkspan-form-field][name="message_body"]'),
+  ).toHaveValue('# Controlled buyer draft');
+
+  await page.getByRole('button', { name: 'Save document' }).click();
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => window.referenceHostSubmissions)).toEqual([
+    '# Controlled buyer draft',
+  ]);
+
+  await page.getByRole('button', { name: 'Reset draft' }).click();
+  await expect(textbox).toHaveText('# Draft');
+  await expect(
+    page.locator('[data-inkspan-form-field][name="message_body"]'),
+  ).toHaveValue('# Draft');
+  await expect(page.getByText('Not saved yet', { exact: true })).toBeVisible();
+  expect(evidence.rejectedRequests).toEqual([]);
+  expect(evidence.pageErrors).toEqual([]);
+  expect(evidence.consoleErrors).toEqual([]);
+  await context.close();
+});
