@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { lstatSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,6 +16,8 @@ const expectedFlags = Object.freeze([
   '--reference-hardware-id',
   '--output',
 ]);
+const OUTPUT_DIRECTORY_ERROR =
+  'Benchmark suite output directory must be a non-symlink directory.';
 
 function resolveArguments(argv) {
   if (
@@ -32,6 +35,39 @@ function resolveArguments(argv) {
     forwardedArguments: Object.freeze(argv.slice(0, -2)),
     outputDirectory: resolve(argv[17]),
   });
+}
+
+function inspectOutputDirectory(path) {
+  try {
+    return lstatSync(path, { throwIfNoEntry: false });
+  } catch {
+    throw new Error('Benchmark suite output directory could not be inspected.');
+  }
+}
+
+function prepareOutputDirectory(path) {
+  const existing = inspectOutputDirectory(path);
+  if (existing !== undefined) {
+    if (existing.isSymbolicLink() || !existing.isDirectory()) {
+      throw new Error(OUTPUT_DIRECTORY_ERROR);
+    }
+    return;
+  }
+
+  try {
+    mkdirSync(path, { recursive: true });
+  } catch {
+    throw new Error('Benchmark suite output directory could not be prepared.');
+  }
+
+  const created = inspectOutputDirectory(path);
+  if (
+    created === undefined ||
+    created.isSymbolicLink() ||
+    !created.isDirectory()
+  ) {
+    throw new Error(OUTPUT_DIRECTORY_ERROR);
+  }
 }
 
 function runBoundedNodeScript(scriptName, args, failureMessage) {
@@ -58,6 +94,7 @@ function runBoundedNodeScript(scriptName, args, failureMessage) {
 
 function main(argv) {
   const args = resolveArguments(argv);
+  prepareOutputDirectory(args.outputDirectory);
   const samplesPath = resolve(args.outputDirectory, 'samples.json');
   const summaryDirectory = resolve(args.outputDirectory, 'summary');
 
