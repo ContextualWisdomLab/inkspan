@@ -26,6 +26,15 @@ describe('reference-host public presentation assets', () => {
     );
   });
 
+  it('runs the real browser host through the complete multilingual presentation entrypoint', () => {
+    const source = repositoryFile('examples/reference-host/browser-host.tsx');
+
+    expect(source).toContain("import './presentation-full.css';");
+    expect(source).not.toContain(
+      "import '@contextualwisdomlab/cwl-editor/styles.css';",
+    );
+  });
+
   it('keeps every referenced presentation entrypoint in the published package export map', () => {
     const packageMetadata = JSON.parse(repositoryFile('package.json')) as {
       exports: Record<string, unknown>;
