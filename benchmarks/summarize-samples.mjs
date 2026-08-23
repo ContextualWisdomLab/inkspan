@@ -151,6 +151,9 @@ function validateInput(value) {
   ) {
     throw new Error('Benchmark documentProfile is invalid.');
   }
+  if (!value.benchmarkId.endsWith(`-${value.documentProfile}`)) {
+    throw new Error('Benchmark sample profile must match documentProfile.');
+  }
   if (
     typeof value.runtimeId !== 'string' ||
     !RUNTIME_ID_PATTERN.test(value.runtimeId)
