@@ -1,5 +1,13 @@
 import { createHash } from 'node:crypto';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import {
+  closeSync,
+  constants,
+  fstatSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  writeFileSync,
+} from 'node:fs';
 import { resolve } from 'node:path';
 
 const DOCX_PROFILE_PAGES = Object.freeze({
@@ -15,6 +23,12 @@ const PPTX_PROFILE_SLIDES = Object.freeze({
 const EXCEL_MAX_COLUMNS = 16_384;
 const MULTILINGUAL_PARAGRAPH =
   'English: deterministic Office rendering fixture. 한국어: 합성 성능 문서입니다. 日本語: 合成性能文書です。 中文: 这是合成性能文档。 Tiếng Việt: Đây là tài liệu hiệu năng tổng hợp.';
+const WRITE_NOFOLLOW =
+  constants.O_WRONLY |
+  constants.O_CREAT |
+  constants.O_TRUNC |
+  (constants.O_NONBLOCK ?? 0) |
+  (constants.O_NOFOLLOW ?? 0);
 
 function buildDocxPage(pageNumber) {
   const page = String(pageNumber).padStart(3, '0');
@@ -154,10 +168,45 @@ function resolveOutputDirectory(argv) {
   return resolve(argv[1]);
 }
 
+function writeOutputFile(outputPath, bytes) {
+  let pathMetadata;
+  try {
+    pathMetadata = lstatSync(outputPath, { throwIfNoEntry: false });
+  } catch {
+    throw new Error('Office fixture output path could not be inspected.');
+  }
+  if (pathMetadata?.isSymbolicLink()) {
+    throw new Error('Office fixture output must be a regular non-symlink file.');
+  }
+  if (pathMetadata !== undefined && !pathMetadata.isFile()) {
+    throw new Error('Office fixture output must be a regular file.');
+  }
+
+  let descriptor;
+  try {
+    descriptor = openSync(outputPath, WRITE_NOFOLLOW, 0o600);
+    if (!fstatSync(descriptor).isFile()) {
+      throw new Error('Office fixture output must be a regular file.');
+    }
+    writeFileSync(descriptor, bytes);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === 'Office fixture output must be a regular file.' ||
+        error.message === 'Office fixture output must be a regular non-symlink file.')
+    ) {
+      throw error;
+    }
+    throw new Error('Office fixture output could not be written safely.');
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
+}
+
 function writeFixture(outputDirectory, fileName, request, units) {
   const body = `${JSON.stringify(request, null, 2)}\n`;
   const bytes = Buffer.from(body, 'utf8');
-  writeFileSync(resolve(outputDirectory, fileName), bytes);
+  writeOutputFile(resolve(outputDirectory, fileName), bytes);
   return Object.freeze({
     units,
     bytes: bytes.byteLength,
@@ -212,8 +261,7 @@ const manifest = Object.freeze({
     pptx: Object.freeze(pptx),
   }),
 });
-writeFileSync(
+writeOutputFile(
   resolve(outputDirectory, 'manifest.json'),
-  `${JSON.stringify(manifest, null, 2)}\n`,
-  'utf8',
+  Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, 'utf8'),
 );
