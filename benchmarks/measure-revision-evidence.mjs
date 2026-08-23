@@ -27,6 +27,8 @@ const RUNTIME_ID_PATTERN =
   /^(?:node|python|chromium|firefox|webkit|playwright)-[0-9]+(?:\.[0-9]+){1,3}$/u;
 const REFERENCE_HARDWARE_ID_PATTERN =
   /^(?:github-actions-(?:ubuntu|windows|macos)-[0-9]+(?:\.[0-9]+){0,2}-(?:x64|arm64)|refhw-sha256-[0-9a-f]{64})$/u;
+const OUTPUT_DIRECTORY_ERROR =
+  'Revision benchmark output directory must be a non-symlink directory.';
 
 function resolveArguments(argv) {
   const expectedFlags = [
@@ -215,6 +217,27 @@ function inspectOutputPath(path) {
   }
 }
 
+function inspectOutputDirectoryComponent(path) {
+  try {
+    return lstatSync(path, { throwIfNoEntry: false });
+  } catch {
+    throw new Error('Revision benchmark output directory could not be inspected.');
+  }
+}
+
+function assertNoSymlinkOutputAncestors(path) {
+  let current = dirname(path);
+  while (true) {
+    const metadata = inspectOutputDirectoryComponent(current);
+    if (metadata?.isSymbolicLink()) {
+      throw new Error(OUTPUT_DIRECTORY_ERROR);
+    }
+    const parent = dirname(current);
+    if (parent === current) return;
+    current = parent;
+  }
+}
+
 function refersToSameFile(leftPath, rightPath) {
   const rightMetadata = inspectOutputPath(rightPath);
   if (rightMetadata === undefined) return false;
@@ -235,8 +258,14 @@ async function loadMeasuredModule(modulePath) {
 }
 
 function writeMeasurementOutput(path, content) {
+  assertNoSymlinkOutputAncestors(path);
   try {
     mkdirSync(dirname(path), { recursive: true });
+  } catch {
+    throw new Error('Revision benchmark output could not be written.');
+  }
+  assertNoSymlinkOutputAncestors(path);
+  try {
     writeFileSync(path, content, 'utf8');
   } catch {
     throw new Error('Revision benchmark output could not be written.');
@@ -272,6 +301,7 @@ async function runMeasuredRevision(createRevisionEvidence, source) {
 
 async function main() {
   const args = resolveArguments(process.argv.slice(2));
+  assertNoSymlinkOutputAncestors(args.outputPath);
   if (
     args.inputPath === args.outputPath ||
     refersToSameFile(args.inputPath, args.outputPath)
@@ -320,6 +350,7 @@ async function main() {
   }
 
   verifyMeasuredModuleDigest(modulePath, args.artifactSha256);
+  assertNoSymlinkOutputAncestors(args.outputPath);
   const outputMetadata = inspectOutputPath(args.outputPath);
   if (outputMetadata !== undefined && !outputMetadata.isFile()) {
     throw new Error('Revision benchmark output must be a regular file.');
