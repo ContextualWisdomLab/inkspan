@@ -19,49 +19,102 @@ const VULNERABLE_PNPM_ACTION_SETUP_PIN =
   'pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8';
 const SETUP_NODE_PIN =
   'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0';
+const SETUP_PYTHON_PIN =
+  'actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0';
+const EXPECTED_HEAD_REF =
+  'ref: ${{ github.event.pull_request.head.sha || github.sha }}';
+const VERIFY_EXACT_CHECKOUT_STEP = [
+  '- name: Verify exact checkout',
+  '        env:',
+  '          INKSPAN_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}',
+  '        run: |',
+  '          actual_head="$(git rev-parse HEAD)"',
+  '          test "$actual_head" = "$INKSPAN_EXPECTED_HEAD_SHA"',
+].join('\n');
+
+/** Return one top-level workflow job without borrowing assertions from siblings. */
+function workflowJob(source: string, name: string, nextName?: string): string {
+  const startMarker = `  ${name}:\n`;
+  const start = source.indexOf(startMarker);
+  expect(start).toBeGreaterThan(-1);
+  if (nextName === undefined) {
+    return source.slice(start);
+  }
+  const end = source.indexOf(`\n  ${nextName}:\n`, start + startMarker.length);
+  expect(end).toBeGreaterThan(start);
+  return source.slice(start, end);
+}
+
+/** Require checkout -> exact-SHA verification -> first consumer in one job. */
+function expectExactCheckoutBeforeConsumer(job: string, consumer: string): void {
+  const checkout = job.indexOf(`- uses: ${CHECKOUT_PIN}`);
+  const verification = job.indexOf(VERIFY_EXACT_CHECKOUT_STEP);
+  const consumerIndex = job.indexOf(consumer);
+
+  expect(checkout).toBeGreaterThan(-1);
+  expect(verification).toBeGreaterThan(checkout);
+  expect(consumerIndex).toBeGreaterThan(verification);
+  expect(job.match(new RegExp(CHECKOUT_PIN, 'g'))).toHaveLength(1);
+  expect(job.match(new RegExp(EXPECTED_HEAD_REF.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'))).toHaveLength(1);
+  expect(job.match(/persist-credentials: false/g)).toHaveLength(1);
+  expect(job.split(VERIFY_EXACT_CHECKOUT_STEP)).toHaveLength(2);
+
+  const checkoutStep = job.slice(checkout, verification);
+  expect(checkoutStep).not.toContain('\n      - ');
+}
+
+const buildJob = workflowJob(workflow, 'build-and-test', 'browser-release-evidence');
+const browserJob = workflowJob(workflow, 'browser-release-evidence', 'office');
+const officeJob = workflowJob(workflow, 'office');
 
 describe('exact-head CI workflow contract', () => {
-  it('uses a fixed runner and checks out the immutable current PR head', () => {
+  it('uses a fixed runner and checks out the immutable current PR head in every job', () => {
     expect(workflow).not.toContain('ubuntu-latest');
-    expect(workflow.match(/runs-on: ubuntu-24\.04/g)).toHaveLength(3);
-    expect(workflow.match(new RegExp(CHECKOUT_PIN, 'g'))).toHaveLength(3);
-    expect(
-      workflow.match(
-        /ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/g,
-      ),
-    ).toHaveLength(3);
-    expect(workflow.match(/persist-credentials: false/g)).toHaveLength(3);
+    for (const job of [buildJob, browserJob, officeJob]) {
+      expect(job.match(/runs-on: ubuntu-24\.04/g)).toHaveLength(1);
+      expect(job).toContain(`- uses: ${CHECKOUT_PIN}`);
+      expect(job).toContain(EXPECTED_HEAD_REF);
+      expect(job).toContain('persist-credentials: false');
+    }
   });
 
   it('runs exact-head CI for pull requests regardless of stacked base branch', () => {
-    expect(workflow).toContain('  push:\n    branches: [main]');
-    expect(workflow).toContain('  pull_request:\n');
-    expect(workflow).not.toContain('  pull_request:\n    branches: [main]');
+    const triggerStart = workflow.indexOf('on:\n');
+    const triggerEnd = workflow.indexOf('\npermissions:', triggerStart);
+    expect(triggerStart).toBeGreaterThan(-1);
+    expect(triggerEnd).toBeGreaterThan(triggerStart);
+    const triggerBlock = workflow.slice(triggerStart, triggerEnd);
+
+    expect(triggerBlock).toContain('  push:\n    branches: [main]');
+    const pullRequestLines = triggerBlock
+      .split('\n')
+      .filter((line) => line.startsWith('  pull_request:'));
+    expect(pullRequestLines).toEqual(['  pull_request:']);
+    expect(triggerBlock).not.toMatch(/  pull_request:\n(?:    .*\n)*?    branches:/u);
   });
 
-  it('keeps ordinary jobs bounded while allowing slow browser dependency mirrors to finish', () => {
-    expect(workflow.match(/timeout-minutes: 30/g)).toHaveLength(2);
-    expect(workflow.match(/timeout-minutes: 60/g)).toHaveLength(1);
-
-    const browserStart = workflow.indexOf('  browser-release-evidence:');
-    const officeStart = workflow.indexOf('  office:', browserStart);
-    expect(browserStart).toBeGreaterThan(-1);
-    expect(officeStart).toBeGreaterThan(browserStart);
-    const browserJob = workflow.slice(browserStart, officeStart);
+  it('binds timeout policy to the intended job instead of global counts', () => {
+    expect(buildJob.match(/timeout-minutes:/g)).toHaveLength(1);
+    expect(buildJob).toContain('timeout-minutes: 30');
+    expect(browserJob.match(/timeout-minutes:/g)).toHaveLength(1);
     expect(browserJob).toContain('timeout-minutes: 60');
+    expect(officeJob.match(/timeout-minutes:/g)).toHaveLength(1);
+    expect(officeJob).toContain('timeout-minutes: 30');
   });
 
-  it('verifies the runtime checkout SHA before any job consumes repository code', () => {
-    const verificationStep = [
-      '- name: Verify exact checkout',
-      '        env:',
-      '          INKSPAN_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}',
-      '        run: |',
-      '          actual_head="$(git rev-parse HEAD)"',
-      '          test "$actual_head" = "$INKSPAN_EXPECTED_HEAD_SHA"',
-    ].join('\n');
-
-    expect(workflow.split(verificationStep)).toHaveLength(4);
+  it('verifies each runtime checkout immediately before repository-consuming setup', () => {
+    expectExactCheckoutBeforeConsumer(
+      buildJob,
+      `- uses: ${PNPM_ACTION_SETUP_PIN}`,
+    );
+    expectExactCheckoutBeforeConsumer(
+      browserJob,
+      `- uses: ${PNPM_ACTION_SETUP_PIN}`,
+    );
+    expectExactCheckoutBeforeConsumer(
+      officeJob,
+      `- uses: ${SETUP_PYTHON_PIN}`,
+    );
   });
 
   it('keeps the workflow read-only and hash-pins every third-party action', () => {
@@ -82,12 +135,16 @@ describe('exact-head CI workflow contract', () => {
   });
 
   it('does not bootstrap pnpm through the vulnerable action release', () => {
-    expect(workflow.match(new RegExp(PNPM_ACTION_SETUP_PIN, 'g'))).toHaveLength(2);
+    expect(buildJob).toContain(PNPM_ACTION_SETUP_PIN);
+    expect(browserJob).toContain(PNPM_ACTION_SETUP_PIN);
+    expect(officeJob).not.toContain(PNPM_ACTION_SETUP_PIN);
     expect(workflow).not.toContain(VULNERABLE_PNPM_ACTION_SETUP_PIN);
   });
 
   it('uses the current native-Node-24 setup-node release in every JavaScript job', () => {
-    expect(workflow.match(new RegExp(SETUP_NODE_PIN, 'g'))).toHaveLength(2);
+    expect(buildJob).toContain(SETUP_NODE_PIN);
+    expect(browserJob).toContain(SETUP_NODE_PIN);
+    expect(officeJob).not.toContain(SETUP_NODE_PIN);
     expect(workflow).not.toContain(
       'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0',
     );
