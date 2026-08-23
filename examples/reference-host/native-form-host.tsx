@@ -43,7 +43,9 @@ export interface NativeFormHostProps {
  * callback is in flight; React presentation state is not used as the mutation
  * authority. Host read-only state additionally fail-closes native form writes
  * and disables the named field without moving authorization authority into
- * Inkspan. A later successful reset returns the host presentation to an
+ * Inkspan. Document edits invalidate stale saved/failed presentation, including
+ * when a newer edit occurs while an older host-owned persistence attempt is in
+ * flight. A later successful reset returns the host presentation to an
  * explicitly unsaved state and restores the controlled example value when that
  * mode is selected.
  */
@@ -55,6 +57,7 @@ export function NativeFormHost({
   const [submissionState, setSubmissionState] =
     useState<SubmissionState>('idle');
   const [controlledValue, setControlledValue] = useState('# Draft');
+  const documentGenerationRef = useRef(0);
   const onAuthorizedSubmitRef = useRef(onAuthorizedSubmit);
   onAuthorizedSubmitRef.current = onAuthorizedSubmit;
 
@@ -72,6 +75,14 @@ export function NativeFormHost({
     submitAuthorizedRef.current = submitAuthorized;
   }
 
+  function handleDocumentChange(nextValue: string) {
+    documentGenerationRef.current += 1;
+    if (controlMode === 'controlled') {
+      setControlledValue(nextValue);
+    }
+    setSubmissionState((state) => (state === 'saving' ? state : 'idle'));
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (readOnly || submitAuthorized.isInFlight()) {
@@ -86,7 +97,11 @@ export function NativeFormHost({
       return;
     }
 
+    const submittedGeneration = documentGenerationRef.current;
     await submitAuthorized(messageBodyEntry);
+    if (documentGenerationRef.current !== submittedGeneration) {
+      setSubmissionState('idle');
+    }
   }
 
   function handleReset(event: FormEvent<HTMLFormElement>) {
@@ -94,6 +109,7 @@ export function NativeFormHost({
       event.preventDefault();
       return;
     }
+    documentGenerationRef.current += 1;
     if (controlMode === 'controlled') {
       setControlledValue('# Draft');
     }
@@ -105,7 +121,7 @@ export function NativeFormHost({
       <CwlEditor
         mode="markdown"
         value={controlMode === 'controlled' ? controlledValue : undefined}
-        onChange={controlMode === 'controlled' ? setControlledValue : undefined}
+        onChange={handleDocumentChange}
         defaultValue={controlMode === 'uncontrolled' ? '# Draft' : undefined}
         editable={!readOnly}
         formFieldName="message_body"
