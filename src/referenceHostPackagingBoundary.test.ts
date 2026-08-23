@@ -55,9 +55,9 @@ describe('reference-host package authority boundary', () => {
       'exact packed autosave observer wiring into the host lifecycle projection',
     );
     expect(readme).not.toContain('packed-package wiring of the autosave observer');
-    expect(readme).toContain('complete packed-artifact reference-host application');
+    expect(readme).toContain('complete reference-host application');
     expect(readme).toContain(
-      'do **not** yet satisfy #377\'s complete packed-artifact browser-application acceptance.',
+      'do **not** yet satisfy #377\'s complete packed-artifact framework-application acceptance.',
     );
   });
 });
