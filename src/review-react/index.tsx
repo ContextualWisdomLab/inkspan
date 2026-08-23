@@ -258,6 +258,17 @@ function reviewThreadFocusIndex(
   }
 }
 
+function invokeReviewIntent(
+  callback: ReviewIntentCallback,
+  presentation: CwlReviewThreadPresentation,
+): void {
+  try {
+    callback(presentation);
+  } catch {
+    rejectReviewPresentation();
+  }
+}
+
 /**
  * Render a controlled accessible list of bounded review-thread presentations.
  *
@@ -275,7 +286,9 @@ function reviewThreadFocusIndex(
  * Required and optional host intent callbacks are preflighted and snapshotted
  * before rendering so malformed runtime values fail closed at the same public
  * presentation boundary rather than surfacing a native invocation TypeError.
- * Arrow Up/Down and Home/End move DOM focus only among thread-selection targets;
+ * Private failures thrown by validated intent callbacks are likewise normalized
+ * to the public presentation error instead of leaking host details. Arrow
+ * Up/Down and Home/End move DOM focus only among thread-selection targets;
  * keyboard traversal never commits host-controlled thread selection. Repeated
  * reply/resolve controls include the already validated thread label in their
  * accessible name so action lists remain disambiguated without changing visible
@@ -334,13 +347,21 @@ export function CwlReviewThreadList({
           const replyHandler =
             presentation.canReply &&
             validatedCallbacks.onReplyThread !== undefined
-              ? () => validatedCallbacks.onReplyThread!(presentation)
+              ? () =>
+                  invokeReviewIntent(
+                    validatedCallbacks.onReplyThread!,
+                    presentation,
+                  )
               : undefined;
           const resolveHandler =
             presentation.state === 'unresolved' &&
             presentation.canResolve &&
             validatedCallbacks.onResolveThread !== undefined
-              ? () => validatedCallbacks.onResolveThread!(presentation)
+              ? () =>
+                  invokeReviewIntent(
+                    validatedCallbacks.onResolveThread!,
+                    presentation,
+                  )
               : undefined;
 
           return (
@@ -352,7 +373,12 @@ export function CwlReviewThreadList({
                 type="button"
                 aria-pressed={presentation.selected}
                 aria-describedby={summaryId}
-                onClick={() => validatedCallbacks.onSelectThread(presentation)}
+                onClick={() =>
+                  invokeReviewIntent(
+                    validatedCallbacks.onSelectThread,
+                    presentation,
+                  )
+                }
                 onKeyDown={(event) => {
                   const targetIndex = reviewThreadFocusIndex(
                     event.key,
