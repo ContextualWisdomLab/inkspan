@@ -21,6 +21,8 @@ describe('reference-host Office execution acceptance', () => {
 
     expect(verifier).toContain('INKSPAN_BROWSER_PACKAGE_ENTRY');
     expect(verifier).toContain('office-handoff.mjs');
+    expect(verifier).toContain('createReferenceDocxRequest');
+    expect(verifier).not.toContain('createDocxHandoff');
     expect(verifier).toContain("'-m', 'inkspan_office.cli'");
     expect(verifier).toContain('document.core_properties.title');
     expect(verifier).toContain('Buyer-ready body.');
