@@ -62,23 +62,20 @@ function resolveArguments(argv) {
 
 function readBoundedJson(path) {
   const pathMetadata = lstatSync(path, { throwIfNoEntry: false });
-  if (
-    pathMetadata === undefined ||
-    pathMetadata.isSymbolicLink() ||
-    !pathMetadata.isFile()
-  ) {
+  if (pathMetadata?.isSymbolicLink()) {
     throw new Error(
       'Benchmark sample input must be a regular non-symlink file.',
     );
+  }
+  if (pathMetadata === undefined || !pathMetadata.isFile()) {
+    throw new Error('Benchmark sample input must be a regular file.');
   }
 
   const descriptor = openSync(path, READ_ONLY_NONBLOCKING_NOFOLLOW);
   try {
     const metadata = fstatSync(descriptor);
     if (!metadata.isFile()) {
-      throw new Error(
-        'Benchmark sample input must be a regular non-symlink file.',
-      );
+      throw new Error('Benchmark sample input must be a regular file.');
     }
     if (metadata.size > MAX_INPUT_BYTES) {
       throw new Error('Benchmark sample input exceeds the supported size.');
