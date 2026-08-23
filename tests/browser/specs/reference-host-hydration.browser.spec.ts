@@ -102,6 +102,7 @@ test('exercises the controlled public editor composition in the packed reference
   await expect(form).toBeVisible();
   const textbox = page.getByRole('textbox');
   await expect(textbox).toBeVisible();
+  await expect(textbox).toHaveText('Draft');
   await textbox.fill('Controlled buyer draft');
   await expect(
     page.locator('[data-inkspan-form-field][name="message_body"]'),
@@ -114,7 +115,7 @@ test('exercises the controlled public editor composition in the packed reference
   ]);
 
   await page.getByRole('button', { name: 'Reset draft' }).click();
-  await expect(textbox).toHaveText('# Draft');
+  await expect(textbox).toHaveText('Draft');
   await expect(
     page.locator('[data-inkspan-form-field][name="message_body"]'),
   ).toHaveValue('# Draft');
