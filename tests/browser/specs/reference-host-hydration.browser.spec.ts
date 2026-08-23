@@ -102,7 +102,7 @@ test('exercises the controlled public editor composition in the packed reference
   await expect(form).toBeVisible();
   const textbox = page.getByRole('textbox');
   await expect(textbox).toBeVisible();
-  await textbox.fill('# Controlled buyer draft');
+  await textbox.fill('Controlled buyer draft');
   await expect(
     page.locator('[data-inkspan-form-field][name="message_body"]'),
   ).toHaveValue('# Controlled buyer draft');
