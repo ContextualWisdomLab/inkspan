@@ -201,4 +201,38 @@ describe('revision-evidence runtime measurement contract', () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it('redacts filesystem details when output path traversal fails', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-revision-measurement-output-'));
+    const input = join(root, 'large.json');
+    const modulePath = join(root, 'packed-revision-evidence.mjs');
+    const privateSentinel = 'private-revision-output-sentinel-must-not-leak';
+    const blockedParent = join(root, privateSentinel);
+    const samplesPath = join(blockedParent, 'samples.json');
+    try {
+      writeSyntheticEnvelope(input);
+      writeFileSync(
+        modulePath,
+        'export async function createDocumentEnvelopeRevisionEvidenceBytes(source) { return { revision: { digestHex: String(source.byteLength).padStart(64, "0") } }; }\n',
+        'utf8',
+      );
+      writeFileSync(blockedParent, 'not a directory', 'utf8');
+
+      const result = spawnSync(
+        process.execPath,
+        argumentsFor(input, modulePath, samplesPath),
+        { cwd: process.cwd(), encoding: 'utf8' },
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(
+        'Revision benchmark output path could not be inspected.',
+      );
+      expect(result.stderr).not.toContain(privateSentinel);
+      expect(existsSync(samplesPath)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
