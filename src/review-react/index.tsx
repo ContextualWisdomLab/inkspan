@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useId, useRef } from 'react';
 import {
   createReviewThreadPresentation,
   CwlReviewPresentationError,
@@ -11,6 +11,16 @@ export interface CwlReviewThreadListLabels {
   readonly region: string;
   /** Visible and accessible label for one validated thread. */
   readonly thread: (
+    thread: CwlReviewThreadPresentation,
+    index: number,
+  ) => string;
+  /** Optional visible status summary. Must be paired with `comments`. */
+  readonly status?: (
+    thread: CwlReviewThreadPresentation,
+    index: number,
+  ) => string;
+  /** Optional visible comment-count summary. Must be paired with `status`. */
+  readonly comments?: (
     thread: CwlReviewThreadPresentation,
     index: number,
   ) => string;
@@ -35,15 +45,24 @@ export interface CwlReviewThreadListProps {
 }
 
 const REVIEW_LABEL_KEYS = ['region', 'thread', 'reply', 'resolve'] as const;
+const REVIEW_SUMMARY_LABEL_KEYS = ['status', 'comments'] as const;
 const MAX_REVIEW_LABEL_CODE_UNITS = 512;
 const MAX_REVIEW_THREAD_PRESENTATIONS = 1_024;
 
 type ReviewThreadLabelFactory = CwlReviewThreadListLabels['thread'];
+type ReviewThreadStatusLabelFactory = NonNullable<
+  CwlReviewThreadListLabels['status']
+>;
+type ReviewThreadCommentsLabelFactory = NonNullable<
+  CwlReviewThreadListLabels['comments']
+>;
 type ReviewIntentCallback = CwlReviewThreadListProps['onSelectThread'];
 
 interface ValidatedReviewThreadListLabels {
   readonly region: string;
   readonly thread: ReviewThreadLabelFactory;
+  readonly status: ReviewThreadStatusLabelFactory | undefined;
+  readonly comments: ReviewThreadCommentsLabelFactory | undefined;
   readonly reply: string;
   readonly resolve: string;
 }
@@ -77,19 +96,24 @@ function validateReviewThreadListLabels(
       rejectReviewPresentation();
     }
     const ownKeys = Reflect.ownKeys(source);
+    const allowedKeys = [...REVIEW_LABEL_KEYS, ...REVIEW_SUMMARY_LABEL_KEYS];
+    const hasSummaryLabels =
+      ownKeys.length === allowedKeys.length &&
+      REVIEW_SUMMARY_LABEL_KEYS.every((key) => ownKeys.includes(key));
     if (
-      ownKeys.length !== REVIEW_LABEL_KEYS.length ||
+      (ownKeys.length !== REVIEW_LABEL_KEYS.length && !hasSummaryLabels) ||
       ownKeys.some(
         (key) =>
           typeof key !== 'string' ||
-          !REVIEW_LABEL_KEYS.some((candidate) => candidate === key),
+          !allowedKeys.some((candidate) => candidate === key),
       )
     ) {
       rejectReviewPresentation();
     }
 
+    const expectedKeys = hasSummaryLabels ? allowedKeys : REVIEW_LABEL_KEYS;
     const values: Record<string, unknown> = {};
-    for (const key of REVIEW_LABEL_KEYS) {
+    for (const key of expectedKeys) {
       const descriptor = Object.getOwnPropertyDescriptor(source, key);
       if (
         descriptor === undefined ||
@@ -101,12 +125,23 @@ function validateReviewThreadListLabels(
       values[key] = descriptor.value;
     }
 
-    if (typeof values.thread !== 'function') {
+    if (
+      typeof values.thread !== 'function' ||
+      (hasSummaryLabels &&
+        (typeof values.status !== 'function' ||
+          typeof values.comments !== 'function'))
+    ) {
       rejectReviewPresentation();
     }
     return Object.freeze({
       region: requireVisibleLabel(values.region),
       thread: values.thread as ReviewThreadLabelFactory,
+      status: hasSummaryLabels
+        ? (values.status as ReviewThreadStatusLabelFactory)
+        : undefined,
+      comments: hasSummaryLabels
+        ? (values.comments as ReviewThreadCommentsLabelFactory)
+        : undefined,
       reply: requireVisibleLabel(values.reply),
       resolve: requireVisibleLabel(values.resolve),
     });
@@ -138,6 +173,20 @@ function validateReviewIntentCallbacks(
 
 function createThreadLabel(
   labelFactory: ReviewThreadLabelFactory,
+  presentation: CwlReviewThreadPresentation,
+  index: number,
+): string {
+  try {
+    return requireVisibleLabel(labelFactory(presentation, index));
+  } catch {
+    rejectReviewPresentation();
+  }
+}
+
+function createThreadSummaryLabel(
+  labelFactory:
+    | ReviewThreadStatusLabelFactory
+    | ReviewThreadCommentsLabelFactory,
   presentation: CwlReviewThreadPresentation,
   index: number,
 ): string {
@@ -216,19 +265,23 @@ function reviewThreadFocusIndex(
  * a dense enumerable data property, so accessor-backed or sparse host entries
  * fail closed without invoking host accessors before the React-free review
  * validator inspects each value. Host labels must be exact enumerable data
- * fields, bounded non-empty visible strings, and one explicit thread-label
- * function; accessor-backed labels and thrown/private label failures are
- * normalized to the same redacted presentation error before React commits
- * inaccessible content. Required and optional host intent callbacks are
- * preflighted and snapshotted before rendering so malformed runtime values fail
- * closed at the same public presentation boundary rather than surfacing a native
- * invocation TypeError. Arrow Up/Down and Home/End move DOM focus only among
- * thread-selection targets; keyboard traversal never commits host-controlled
- * thread selection. Repeated reply/resolve controls include the already validated
- * thread label in their accessible name so action lists remain disambiguated
- * without changing visible host copy. The component emits only intent callbacks
- * with the detached, frozen presentation snapshot; it does not authorize,
- * persist, transport, mutate, resolve, or reply to host-owned review records.
+ * fields and bounded non-empty visible strings. The required thread-label
+ * factory may be accompanied by paired status/comment-summary factories;
+ * supplying only one summary factory fails closed. Accessor-backed labels and
+ * thrown/private label failures are normalized to the same redacted
+ * presentation error before React commits inaccessible content. When summary
+ * factories are present their localized visible output also describes the
+ * thread-selection, reply, and resolve controls without changing action names.
+ * Required and optional host intent callbacks are preflighted and snapshotted
+ * before rendering so malformed runtime values fail closed at the same public
+ * presentation boundary rather than surfacing a native invocation TypeError.
+ * Arrow Up/Down and Home/End move DOM focus only among thread-selection targets;
+ * keyboard traversal never commits host-controlled thread selection. Repeated
+ * reply/resolve controls include the already validated thread label in their
+ * accessible name so action lists remain disambiguated without changing visible
+ * host copy. The component emits only intent callbacks with the detached, frozen
+ * presentation snapshot; it does not authorize, persist, transport, mutate,
+ * resolve, or reply to host-owned review records.
  */
 export function CwlReviewThreadList({
   presentations,
@@ -237,6 +290,7 @@ export function CwlReviewThreadList({
   onReplyThread,
   onResolveThread,
 }: CwlReviewThreadListProps) {
+  const listId = useId();
   const threadButtons = useRef<Array<HTMLButtonElement | null>>([]);
   const validatedPresentations =
     validateReviewThreadPresentations(presentations);
@@ -256,6 +310,27 @@ export function CwlReviewThreadList({
             presentation,
             index,
           );
+          const statusFactory = validatedLabels.status;
+          const commentsFactory = validatedLabels.comments;
+          const semanticSummary =
+            statusFactory !== undefined && commentsFactory !== undefined
+              ? {
+                  status: createThreadSummaryLabel(
+                    statusFactory,
+                    presentation,
+                    index,
+                  ),
+                  comments: createThreadSummaryLabel(
+                    commentsFactory,
+                    presentation,
+                    index,
+                  ),
+                }
+              : undefined;
+          const summaryId =
+            semanticSummary === undefined
+              ? undefined
+              : `${listId}-thread-${index}-summary`;
           const replyHandler =
             presentation.canReply &&
             validatedCallbacks.onReplyThread !== undefined
@@ -276,6 +351,7 @@ export function CwlReviewThreadList({
                 }}
                 type="button"
                 aria-pressed={presentation.selected}
+                aria-describedby={summaryId}
                 onClick={() => validatedCallbacks.onSelectThread(presentation)}
                 onKeyDown={(event) => {
                   const targetIndex = reviewThreadFocusIndex(
@@ -292,9 +368,16 @@ export function CwlReviewThreadList({
               >
                 {threadLabel}
               </button>
+              {semanticSummary === undefined ? null : (
+                <span id={summaryId}>
+                  <span>{semanticSummary.status}</span>{' '}
+                  <span>{semanticSummary.comments}</span>
+                </span>
+              )}
               <button
                 type="button"
                 aria-label={`${validatedLabels.reply} — ${threadLabel}`}
+                aria-describedby={summaryId}
                 disabled={replyHandler === undefined}
                 onClick={replyHandler}
               >
@@ -303,6 +386,7 @@ export function CwlReviewThreadList({
               <button
                 type="button"
                 aria-label={`${validatedLabels.resolve} — ${threadLabel}`}
+                aria-describedby={summaryId}
                 disabled={resolveHandler === undefined}
                 onClick={resolveHandler}
               >
