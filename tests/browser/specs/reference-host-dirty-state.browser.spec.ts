@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const REFERENCE_HOST_URL =
   'http://127.0.0.1:4173/examples/reference-host/browser-host.html';
@@ -12,7 +12,7 @@ function isReferenceHostRequest(requestUrl: string): boolean {
   );
 }
 
-async function failUnexpectedNetwork(page: Parameters<typeof test>[0]['page']) {
+async function failUnexpectedNetwork(page: Page) {
   const rejectedRequests: string[] = [];
   const pageErrors: string[] = [];
 
