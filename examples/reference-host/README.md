@@ -21,6 +21,7 @@ The current slice contains deterministic host fixtures and helpers, public-packa
 - `office-handoff.mjs` maps bounded editor Markdown through Inkspan's public React-free Markdown projection into the strict DOCX paragraph-request shape expected by the Office component. It does not render Office bytes, authorize export, choose an output path, persist or distribute artifacts, use network/credential state, or claim Markdown-to-OOXML round-trip fidelity; those remain Office/host responsibilities.
 - `verify-office-handoff.mjs` builds and packs the exact editor artifact, maps its Markdown through the public React-free handoff, renders that bounded request through the local Inkspan Office CLI, validates the resulting DOCX title/body, and removes its temporary output. This is deterministic component-execution evidence only: host export authorization, output-location policy, durable storage, distribution, and broader document-fidelity acceptance remain outside the example's authority.
 - `verify-packed-artifact.mjs` builds and packs the current Inkspan source, installs that exact tarball into an isolated consumer, proves public ESM/CommonJS/SSR and React-free subpath consumption plus CSS/font resolution, exercises exact packed autosave observer wiring into the host lifecycle projection, and rejects source-tree authority leakage. This is exact package-consumer evidence, not a complete buyer framework application.
+- `verify-current-reference-journey.mjs` is the single entrypoint for the **currently implemented partial** journey. `--plan` emits the exact ordered verification contract without running it; the default invocation runs the deterministic repository/proposal/autosave/collaboration checks followed by exact packed-artifact and bounded Office verification. It deliberately does not claim the complete framework-host, authenticated transport/provider, richer Office-fidelity, or final clean-checkout acceptance still required by #377.
 
 Executable fixtures and helpers remain reference-only host code, require no service, database, credential, provider SDK, model, or network connection for their deterministic repository checks, and are exercised by repository tests. The presentation/native-form/hydration examples reference only public package entrypoints. The complete reference-host directory is deliberately outside the package `files` inventory so example host logic cannot silently become published Inkspan runtime authority.
 
@@ -60,7 +61,19 @@ Inkspan owns deterministic editor/revision/autosave/conversion/package behavior.
 
 ## Executable fixture checks
 
-From a clean repository checkout with the supported Node runtime, the deterministic reference-only fixture checks can be exercised directly:
+From a repository checkout with the supported Node runtime and the dependencies required by the exact packed-artifact and local Office verification already installed, the currently implemented partial reference journey can be exercised with one command:
+
+```sh
+node examples/reference-host/verify-current-reference-journey.mjs
+```
+
+Its deterministic execution plan can be inspected without running the constituent checks:
+
+```sh
+node examples/reference-host/verify-current-reference-journey.mjs --plan
+```
+
+The constituent deterministic reference-only fixture checks remain directly executable when a narrower causal check is needed:
 
 ```sh
 node examples/reference-host/synthetic-document-repository.mjs --self-test
@@ -70,6 +83,8 @@ node examples/reference-host/collaboration-provider-lifecycle.mjs --self-test
 ```
 
 The repository test suite independently exercises those fixtures plus the host-authorization, hydration/native-form/single-flight/Office-handoff contracts and runs `verify-packed-artifact.mjs` to build, pack, install, and consume the exact current tarball in an isolated consumer. The cross-engine Playwright suite additionally builds and extracts the exact tarball, binds the package root plus public styles/font subpaths to that artifact, and exercises the repository browser-test host shell with real native-form hydration/submission, deterministic read-only and delayed-submission transitions, a 320px narrow-viewport journey, print media, forced colors, and no-unexpected-network acceptance across Chromium, Firefox, and WebKit. The read-only journey proves the editor remains readable while its hidden native form field, Save action, Reset action, and host submission callback all fail closed. The narrow-viewport journey requires the editor and Save/Reset controls to remain visible and in-viewport while rejecting document or body horizontal overflow. The print journey requires the toolbar to be absent from print presentation, checks the package print overflow/border/surface/content contract, and rejects external runtime requests. The suite also asserts stale-write conflict, failure-safe retry, ambiguous pre-commit and post-commit reconciliation, restore, fork isolation, lifecycle recovery, exact packed-package autosave observer-to-host-view-model integration, real host-created `Y.Doc`, provider replacement after ambiguous connect failure, reconnect/teardown, per-generation host authorization before provider construction, exact-synchronous-true admission, authorization-failure redaction, proposal-failure redaction, full public presentation-package behavior, native-form published-package/host-authority boundaries, the bounded React-free Markdown-to-DOCX-request mapping, deterministic exact-packed Office rendering/validation through `verify-office-handoff.mjs`, and exact package authority. These checks do **not** yet satisfy #377's complete packed-artifact framework-application acceptance. The verified Office journey is intentionally bounded to the documented Markdown subset and local renderer contract; broader fidelity and production export operations remain host-owned acceptance work.
+
+The one-command helper above consolidates only the currently implemented reference-host checks. It is **not** the final #377 clean-checkout command because the complete framework application, authenticated transport/provider/credential journey, richer application-level Office fidelity, and their acceptance evidence do not exist yet.
 
 ## Deliberate omissions in this partial slice
 
