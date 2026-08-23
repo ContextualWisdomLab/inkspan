@@ -22,6 +22,7 @@ if (!(element instanceof HTMLElement)) {
   throw new Error('Input assurance harness editor host is missing.');
 }
 
+const showToolbar = new URLSearchParams(window.location.search).get('toolbar') === '1';
 let editor: Editor | null = null;
 let editable = true;
 const root = createRoot(element);
@@ -32,7 +33,7 @@ const renderEditor = () => {
       mode: 'html',
       defaultValue: '',
       editable,
-      hideToolbar: true,
+      hideToolbar: !showToolbar,
       formFieldName: 'message_body',
       onReady: (instance: Editor) => {
         editor = instance;
