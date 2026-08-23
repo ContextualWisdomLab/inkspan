@@ -6,6 +6,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   truncateSync,
   writeFileSync,
 } from 'node:fs';
@@ -286,6 +287,37 @@ describe('deterministic benchmark sample statistics', () => {
       );
       expect(readFileSync(input, 'utf8')).toBe(originalInput);
       expect(existsSync(join(output, 'summary.txt'))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails closed before writing summaries through a symlink output directory', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-summary-symlink-'));
+    const input = join(root, 'samples.json');
+    const target = join(root, 'outside-target');
+    const output = join(root, 'output-link');
+    try {
+      writeInput(input, [10, 20, 30]);
+      mkdirSync(target);
+      symlinkSync(target, output, process.platform === 'win32' ? 'junction' : 'dir');
+
+      const result = spawnSync(
+        process.execPath,
+        [script, '--input', input, '--output', output],
+        {
+          cwd: process.cwd(),
+          encoding: 'utf8',
+        },
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(
+        'Benchmark summary output directory must be a non-symlink directory.',
+      );
+      expect(existsSync(join(target, 'summary.json'))).toBe(false);
+      expect(existsSync(join(target, 'summary.txt'))).toBe(false);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
