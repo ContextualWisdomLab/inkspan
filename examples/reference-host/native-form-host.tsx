@@ -45,9 +45,13 @@ export interface NativeFormHostProps {
  * and disables the named field without moving authorization authority into
  * Inkspan. Document edits invalidate stale saved/failed presentation, including
  * when a newer edit occurs while an older host-owned persistence attempt is in
- * flight. A later successful reset returns the host presentation to an
- * explicitly unsaved state and restores the controlled example value when that
- * mode is selected.
+ * flight. The host observes both the editor value callback and bubbling native
+ * input as independent local mutation signals; either signal advances the
+ * monotonic document generation, and duplicate advances for one logical edit
+ * are harmless because generation equality—not the numeric delta—is the
+ * persistence freshness invariant. A later successful reset returns the host
+ * presentation to an explicitly unsaved state and restores the controlled
+ * example value when that mode is selected.
  */
 export function NativeFormHost({
   onAuthorizedSubmit,
@@ -75,12 +79,20 @@ export function NativeFormHost({
     submitAuthorizedRef.current = submitAuthorized;
   }
 
-  function handleDocumentChange(nextValue: string) {
+  function markDocumentDirty() {
     documentGenerationRef.current += 1;
+    setSubmissionState((state) => (state === 'saving' ? state : 'idle'));
+  }
+
+  function handleDocumentChange(nextValue: string) {
+    markDocumentDirty();
     if (controlMode === 'controlled') {
       setControlledValue(nextValue);
     }
-    setSubmissionState((state) => (state === 'saving' ? state : 'idle'));
+  }
+
+  function handleNativeInput() {
+    markDocumentDirty();
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -117,7 +129,11 @@ export function NativeFormHost({
   }
 
   return (
-    <form onSubmit={handleSubmit} onReset={handleReset}>
+    <form
+      onInput={handleNativeInput}
+      onSubmit={handleSubmit}
+      onReset={handleReset}
+    >
       <CwlEditor
         mode="markdown"
         value={controlMode === 'controlled' ? controlledValue : undefined}
