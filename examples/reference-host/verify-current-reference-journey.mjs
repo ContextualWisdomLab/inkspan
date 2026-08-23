@@ -30,6 +30,10 @@ const steps = Object.freeze([
     args: Object.freeze([]),
     path: 'examples/reference-host/verify-office-handoff.mjs',
   }),
+  Object.freeze({
+    args: Object.freeze(['--self-test']),
+    path: 'examples/reference-host/verify-browser-journey.mjs',
+  }),
 ]);
 
 function writeJson(value) {
@@ -54,7 +58,7 @@ function runStep(step) {
       encoding: 'utf8',
       maxBuffer: 4 * 1024 * 1024,
       stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: 120_000,
+      timeout: 360_000,
     },
   );
 
