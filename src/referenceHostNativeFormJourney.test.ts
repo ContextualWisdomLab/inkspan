@@ -51,8 +51,8 @@ describe('reference-host native form journey', () => {
   });
 
   it('blocks form reset while durable submission is in flight and marks a later reset unsaved', () => {
-    expect(nativeFormHostSource).toContain(
-      '<form onSubmit={handleSubmit} onReset={handleReset}>',
+    expect(nativeFormHostSource).toMatch(
+      /<form\s+onInput=\{handleNativeInput\}\s+onSubmit=\{handleSubmit\}\s+onReset=\{handleReset\}/u,
     );
     expect(nativeFormHostSource).toContain('submitAuthorized.isInFlight()');
     expect(nativeFormHostSource).toContain('event.preventDefault();');
@@ -62,8 +62,9 @@ describe('reference-host native form journey', () => {
     );
   });
 
-  it('invalidates stale persistence presentation when the document changes', () => {
+  it('invalidates stale persistence presentation through independent editor and native-input mutation signals', () => {
     expect(nativeFormHostSource).toContain('const documentGenerationRef = useRef(0);');
+    expect(nativeFormHostSource).toContain('function markDocumentDirty() {');
     expect(nativeFormHostSource).toContain(
       'documentGenerationRef.current += 1;',
     );
@@ -77,6 +78,11 @@ describe('reference-host native form journey', () => {
       "setSubmissionState((state) => (state === 'saving' ? state : 'idle'));",
     );
     expect(nativeFormHostSource).toContain('onChange={handleDocumentChange}');
+    expect(nativeFormHostSource).toContain('function handleNativeInput() {');
+    expect(nativeFormHostSource).toContain('onInput={handleNativeInput}');
+    expect(
+      nativeFormHostSource.match(/markDocumentDirty\(\);/gu),
+    ).toHaveLength(2);
   });
 
   it('makes host write permission explicit and fail-closes native form writes while read-only', () => {
