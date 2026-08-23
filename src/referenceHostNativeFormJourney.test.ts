@@ -62,6 +62,23 @@ describe('reference-host native form journey', () => {
     );
   });
 
+  it('invalidates stale persistence presentation when the document changes', () => {
+    expect(nativeFormHostSource).toContain('const documentGenerationRef = useRef(0);');
+    expect(nativeFormHostSource).toContain(
+      'documentGenerationRef.current += 1;',
+    );
+    expect(nativeFormHostSource).toContain(
+      'const submittedGeneration = documentGenerationRef.current;',
+    );
+    expect(nativeFormHostSource).toContain(
+      'if (documentGenerationRef.current !== submittedGeneration) {',
+    );
+    expect(nativeFormHostSource).toContain(
+      "setSubmissionState((state) => (state === 'saving' ? state : 'idle'));",
+    );
+    expect(nativeFormHostSource).toContain('onChange={handleDocumentChange}');
+  });
+
   it('makes host write permission explicit and fail-closes native form writes while read-only', () => {
     expect(nativeFormHostSource).toContain('readOnly?: boolean;');
     expect(nativeFormHostSource).toContain('readOnly = false');
@@ -89,9 +106,7 @@ describe('reference-host native form journey', () => {
     expect(nativeFormHostSource).toContain(
       "value={controlMode === 'controlled' ? controlledValue : undefined}",
     );
-    expect(nativeFormHostSource).toContain(
-      "onChange={controlMode === 'controlled' ? setControlledValue : undefined}",
-    );
+    expect(nativeFormHostSource).toContain('onChange={handleDocumentChange}');
     expect(nativeFormHostSource).toContain(
       "defaultValue={controlMode === 'uncontrolled' ? '# Draft' : undefined}",
     );
