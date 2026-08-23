@@ -254,10 +254,31 @@ function assertRegularOutputDestination(path) {
 }
 
 function prepareOutputDirectory(path) {
+  const current = lstatSync(path, { throwIfNoEntry: false });
+  if (current !== undefined) {
+    if (current.isSymbolicLink() || !current.isDirectory()) {
+      throw new Error(
+        'Benchmark summary output directory must be a non-symlink directory.',
+      );
+    }
+    return;
+  }
+
   try {
     mkdirSync(path, { recursive: true });
   } catch {
     throw new Error('Benchmark summary output directory could not be prepared.');
+  }
+
+  const created = lstatSync(path, { throwIfNoEntry: false });
+  if (
+    created === undefined ||
+    created.isSymbolicLink() ||
+    !created.isDirectory()
+  ) {
+    throw new Error(
+      'Benchmark summary output directory must be a non-symlink directory.',
+    );
   }
 }
 
