@@ -70,8 +70,13 @@ async function main() {
       copiedHandoff,
     );
 
-    const { createDocxHandoff } = await import(pathToFileURL(copiedHandoff).href);
-    const request = createDocxHandoff({ title: TITLE, markdown: MARKDOWN });
+    const { createReferenceDocxRequest } = await import(
+      pathToFileURL(copiedHandoff).href
+    );
+    const request = createReferenceDocxRequest({
+      title: TITLE,
+      markdown: MARKDOWN,
+    });
     if (
       request.format !== 'docx' ||
       request.title !== TITLE ||
