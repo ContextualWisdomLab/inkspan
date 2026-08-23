@@ -3,6 +3,7 @@ import {
   closeSync,
   constants,
   fstatSync,
+  ftruncateSync,
   lstatSync,
   mkdirSync,
   openSync,
@@ -26,7 +27,6 @@ const MULTILINGUAL_PARAGRAPH =
 const WRITE_NOFOLLOW =
   constants.O_WRONLY |
   constants.O_CREAT |
-  constants.O_TRUNC |
   (constants.O_NONBLOCK ?? 0) |
   (constants.O_NOFOLLOW ?? 0);
 const OUTPUT_DIRECTORY_ERROR =
@@ -208,15 +208,21 @@ function writeOutputFile(outputPath, bytes) {
   let descriptor;
   try {
     descriptor = openSync(outputPath, WRITE_NOFOLLOW, 0o600);
-    if (!fstatSync(descriptor).isFile()) {
+    const descriptorMetadata = fstatSync(descriptor);
+    if (!descriptorMetadata.isFile()) {
       throw new Error('Office fixture output must be a regular file.');
     }
+    if (descriptorMetadata.nlink !== 1) {
+      throw new Error('Office fixture output must not be multiply linked.');
+    }
+    ftruncateSync(descriptor, 0);
     writeFileSync(descriptor, bytes);
   } catch (error) {
     if (
       error instanceof Error &&
       (error.message === 'Office fixture output must be a regular file.' ||
-        error.message === 'Office fixture output must be a regular non-symlink file.')
+        error.message === 'Office fixture output must be a regular non-symlink file.' ||
+        error.message === 'Office fixture output must not be multiply linked.')
     ) {
       throw error;
     }
