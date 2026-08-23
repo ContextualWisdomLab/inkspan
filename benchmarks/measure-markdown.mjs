@@ -250,6 +250,15 @@ function runMeasuredMarkdownToHtml(markdownToHtml, source) {
   }
 }
 
+function writeMeasurementOutput(path, content) {
+  try {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, content, 'utf8');
+  } catch {
+    throw new Error('Markdown benchmark output could not be written.');
+  }
+}
+
 async function main() {
   const args = resolveArguments(process.argv.slice(2));
   if (
@@ -306,8 +315,7 @@ async function main() {
   if (outputMetadata !== undefined && !outputMetadata.isFile()) {
     throw new Error('Markdown benchmark output must be a regular file.');
   }
-  mkdirSync(dirname(args.outputPath), { recursive: true });
-  writeFileSync(
+  writeMeasurementOutput(
     args.outputPath,
     `${JSON.stringify(
       {
@@ -324,7 +332,6 @@ async function main() {
       null,
       2,
     )}\n`,
-    'utf8',
   );
 }
 
