@@ -73,8 +73,16 @@ function resolveArguments(argv) {
   });
 }
 
+function inspectEvidenceInputPath(path) {
+  try {
+    return lstatSync(path, { throwIfNoEntry: false });
+  } catch {
+    throw new Error('Memory settling evidence input must be a regular file.');
+  }
+}
+
 function readBoundedJson(path) {
-  const pathMetadata = lstatSync(path, { throwIfNoEntry: false });
+  const pathMetadata = inspectEvidenceInputPath(path);
   if (pathMetadata === undefined || pathMetadata.isSymbolicLink()) {
     throw new Error(
       'Memory settling evidence input must be a regular non-symlink file.',
