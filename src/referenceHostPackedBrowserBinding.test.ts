@@ -16,12 +16,19 @@ describe('reference-host packed browser binding', () => {
     const browserHost = repositoryFile(
       'examples/reference-host/browser-host.tsx',
     );
+    const presentationFull = repositoryFile(
+      'examples/reference-host/presentation-full.css',
+    );
 
     expect(nativeFormHost).toContain(
       "from '@contextualwisdomlab/cwl-editor'",
     );
-    expect(browserHost).toContain(
-      "import '@contextualwisdomlab/cwl-editor/styles.css'",
+    expect(browserHost).toContain("import './presentation-full.css'");
+    expect(presentationFull).toContain(
+      "@import '@contextualwisdomlab/cwl-editor/styles.css'",
+    );
+    expect(presentationFull).toContain(
+      "@import '@contextualwisdomlab/cwl-editor/fonts.css'",
     );
     expect(nativeFormHost).not.toContain('inkspan-browser-under-test');
     expect(browserHost).not.toContain('inkspan-browser-under-test');
@@ -31,10 +38,22 @@ describe('reference-host packed browser binding', () => {
       "find: '@contextualwisdomlab/cwl-editor/styles.css'",
     );
     expect(viteConfig).toContain(
+      "find: '@contextualwisdomlab/cwl-editor/fonts.css'",
+    );
+    expect(viteConfig).toContain(
+      "find: '@contextualwisdomlab/cwl-editor/fonts-latin.css'",
+    );
+    expect(viteConfig).toContain(
       "find: '@contextualwisdomlab/cwl-editor'",
     );
     expect(viteConfig).toContain(
       "resolve(packedPackageRoot, 'dist/cwl-editor.css')",
+    );
+    expect(viteConfig).toContain(
+      "resolve(packedPackageRoot, 'src/fonts/fonts.css')",
+    );
+    expect(viteConfig).toContain(
+      "resolve(packedPackageRoot, 'src/fonts/fonts-latin.css')",
     );
     expect(viteConfig).toContain('replacement: packageEntry');
   });
