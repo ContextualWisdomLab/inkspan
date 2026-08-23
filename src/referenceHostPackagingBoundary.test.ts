@@ -9,6 +9,12 @@ function repositoryFile(path: string): string {
   return readFileSync(resolve(process.cwd(), path), 'utf8');
 }
 
+function referenceHostExecutableFiles(): string[] {
+  return readdirSync(referenceHostDirectory).filter((path) =>
+    /\.(?:[cm]?[jt]s|[jt]sx)$/u.test(path),
+  );
+}
+
 describe('reference-host package authority boundary', () => {
   it('keeps every reference-host file outside the npm publish inventory', () => {
     const packageMetadata = JSON.parse(repositoryFile('package.json')) as {
@@ -21,9 +27,7 @@ describe('reference-host package authority boundary', () => {
   });
 
   it('rejects source-relative and workspace-alias imports in executable reference files', () => {
-    const executableFiles = readdirSync(referenceHostDirectory).filter((path) =>
-      /\.(?:[cm]?[jt]s|[jt]sx)$/u.test(path),
-    );
+    const executableFiles = referenceHostExecutableFiles();
 
     expect(executableFiles).toEqual(
       expect.arrayContaining([
@@ -40,11 +44,20 @@ describe('reference-host package authority boundary', () => {
     }
   });
 
+  it('rejects runtime environment-variable authority in executable reference files', () => {
+    const executableFiles = referenceHostExecutableFiles();
+
+    expect(executableFiles.length).toBeGreaterThan(0);
+    for (const file of executableFiles) {
+      const source = readFileSync(resolve(referenceHostDirectory, file), 'utf8');
+      expect(source).not.toMatch(/\bprocess\s*\.\s*env\b/u);
+      expect(source).not.toMatch(/\bimport\s*\.\s*meta\s*\.\s*env\b/u);
+    }
+  });
+
   it('keeps the buyer-facing inventory synchronized without claiming complete app acceptance', () => {
     const readme = readFileSync(resolve(referenceHostDirectory, 'README.md'), 'utf8');
-    const executableFiles = readdirSync(referenceHostDirectory).filter((path) =>
-      /\.(?:[cm]?[jt]s|[jt]sx)$/u.test(path),
-    );
+    const executableFiles = referenceHostExecutableFiles();
 
     for (const file of executableFiles) {
       expect(readme).toContain(`\`${file}\``);
