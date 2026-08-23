@@ -75,6 +75,57 @@ test('delivers emulated touchscreen input through the Pointer Events touch path'
   await expectNoHorizontalDocumentOverflow(page);
 });
 
+test('keeps enabled toolbar targets touch-operable without hover on a narrow viewport', async ({
+  page,
+}) => {
+  await page.goto('/tests/browser/input-harness.html?toolbar=1');
+
+  const toolbar = page.getByRole('toolbar', { name: 'Formatting' });
+  await expect(toolbar).toBeVisible();
+
+  const enabledButtons = toolbar.locator(
+    'button[data-cwl-toolbar-item="true"]:not(:disabled)',
+  );
+  const enabledCount = await enabledButtons.count();
+  expect(enabledCount).toBeGreaterThan(0);
+
+  for (let index = 0; index < enabledCount; index += 1) {
+    const box = await enabledButtons.nth(index).boundingBox();
+    expect(box).not.toBeNull();
+    if (box === null) {
+      throw new Error('Enabled toolbar control has no touch target bounds.');
+    }
+    expect(box.width).toBeGreaterThanOrEqual(24);
+    expect(box.height).toBeGreaterThanOrEqual(24);
+  }
+
+  const editable = page.locator('.ProseMirror');
+  const editableBox = await editable.boundingBox();
+  expect(editableBox).not.toBeNull();
+  if (editableBox === null) {
+    throw new Error('Editable surface has no touch target bounds.');
+  }
+  await page.touchscreen.tap(
+    editableBox.x + editableBox.width / 2,
+    editableBox.y + editableBox.height / 2,
+  );
+  await page.keyboard.insertText('touch target');
+
+  const bold = page.getByRole('button', { name: 'Bold (Ctrl/Cmd+B)' });
+  const boldBox = await bold.boundingBox();
+  expect(boldBox).not.toBeNull();
+  if (boldBox === null) {
+    throw new Error('Bold toolbar control has no touch target bounds.');
+  }
+  await page.touchscreen.tap(
+    boldBox.x + boldBox.width / 2,
+    boldBox.y + boldBox.height / 2,
+  );
+
+  await expect(bold).toHaveAttribute('aria-pressed', 'true');
+  await expectNoHorizontalDocumentOverflow(page);
+});
+
 test('preserves multilingual committed input after emulated touch focus', async ({
   page,
 }) => {
