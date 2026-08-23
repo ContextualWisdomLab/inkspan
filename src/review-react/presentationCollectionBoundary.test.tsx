@@ -88,4 +88,24 @@ describe('CwlReviewThreadList presentation collection boundary', () => {
     );
     expect(getterCalls).toBe(0);
   });
+
+  it('rejects sparse presentation arrays instead of silently skipping holes', () => {
+    expect(renderPresentations(new Array<unknown>(1))).toThrow(
+      'Review presentation metadata is invalid.',
+    );
+  });
+
+  it('rejects non-enumerable presentation entries before value validation', () => {
+    const presentations: unknown[] = [];
+    Object.defineProperty(presentations, '0', {
+      enumerable: false,
+      configurable: true,
+      writable: true,
+      value: presentation(),
+    });
+
+    expect(renderPresentations(presentations)).toThrow(
+      'Review presentation metadata is invalid.',
+    );
+  });
 });

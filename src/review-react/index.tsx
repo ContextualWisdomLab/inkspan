@@ -36,6 +36,7 @@ export interface CwlReviewThreadListProps {
 
 const REVIEW_LABEL_KEYS = ['region', 'thread', 'reply', 'resolve'] as const;
 const MAX_REVIEW_LABEL_CODE_UNITS = 512;
+const MAX_REVIEW_THREAD_PRESENTATIONS = 1_024;
 
 type ReviewThreadLabelFactory = CwlReviewThreadListLabels['thread'];
 type ReviewIntentCallback = CwlReviewThreadListProps['onSelectThread'];
@@ -151,13 +152,31 @@ function validateReviewThreadPresentations(
   presentations: readonly unknown[],
 ): readonly CwlReviewThreadPresentation[] {
   try {
-    if (!Array.isArray(presentations)) {
+    if (
+      !Array.isArray(presentations) ||
+      presentations.length > MAX_REVIEW_THREAD_PRESENTATIONS
+    ) {
       throw new CwlReviewPresentationError();
     }
 
-    const validatedPresentations = presentations.map((presentation) =>
-      createReviewThreadPresentation(presentation),
-    );
+    const validatedPresentations: CwlReviewThreadPresentation[] = [];
+    for (let index = 0; index < presentations.length; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        presentations,
+        String(index),
+      );
+      if (
+        descriptor === undefined ||
+        descriptor.enumerable !== true ||
+        !Object.prototype.hasOwnProperty.call(descriptor, 'value')
+      ) {
+        throw new CwlReviewPresentationError();
+      }
+      validatedPresentations.push(
+        createReviewThreadPresentation(descriptor.value),
+      );
+    }
+
     const threadKeys = new Set<string>();
     for (const presentation of validatedPresentations) {
       if (threadKeys.has(presentation.threadKey)) {
@@ -193,21 +212,23 @@ function reviewThreadFocusIndex(
 /**
  * Render a controlled accessible list of bounded review-thread presentations.
  *
- * Every source record passes through the React-free review validator before any
- * host metadata is rendered. Host labels must be exact enumerable data fields,
- * bounded non-empty visible strings, and one explicit thread-label function;
- * accessor-backed labels and thrown/private label failures are normalized to the
- * same redacted presentation error before React commits inaccessible content.
- * Required and optional host intent callbacks are preflighted and snapshotted
- * before rendering so malformed runtime values fail closed at the same public
- * presentation boundary rather than surfacing a native invocation TypeError.
- * Arrow Up/Down and Home/End move DOM focus only among thread-selection targets;
- * keyboard traversal never commits host-controlled thread selection. Repeated
- * reply/resolve controls include the already validated thread label in their
- * accessible name so action lists remain disambiguated without changing visible
- * host copy. The component emits only intent callbacks with the detached, frozen
- * presentation snapshot; it does not authorize, persist, transport, mutate,
- * resolve, or reply to host-owned review records.
+ * The collection is capped before any item inspection. Every array slot must be
+ * a dense enumerable data property, so accessor-backed or sparse host entries
+ * fail closed without invoking host accessors before the React-free review
+ * validator inspects each value. Host labels must be exact enumerable data
+ * fields, bounded non-empty visible strings, and one explicit thread-label
+ * function; accessor-backed labels and thrown/private label failures are
+ * normalized to the same redacted presentation error before React commits
+ * inaccessible content. Required and optional host intent callbacks are
+ * preflighted and snapshotted before rendering so malformed runtime values fail
+ * closed at the same public presentation boundary rather than surfacing a native
+ * invocation TypeError. Arrow Up/Down and Home/End move DOM focus only among
+ * thread-selection targets; keyboard traversal never commits host-controlled
+ * thread selection. Repeated reply/resolve controls include the already validated
+ * thread label in their accessible name so action lists remain disambiguated
+ * without changing visible host copy. The component emits only intent callbacks
+ * with the detached, frozen presentation snapshot; it does not authorize,
+ * persist, transport, mutate, resolve, or reply to host-owned review records.
  */
 export function CwlReviewThreadList({
   presentations,
