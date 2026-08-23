@@ -187,6 +187,9 @@ function validateSummary(value) {
   ) {
     throw new Error('Benchmark summary documentProfile is invalid.');
   }
+  if (!value.benchmarkId.endsWith(`-${value.documentProfile}`)) {
+    throw new Error('Benchmark summary profile must match documentProfile.');
+  }
   if (
     typeof value.runtimeId !== 'string' ||
     !RUNTIME_ID_PATTERN.test(value.runtimeId)
