@@ -19,6 +19,14 @@ const alias = [
           replacement: resolve(packedPackageRoot, 'dist/cwl-editor.css'),
         },
         {
+          find: '@contextualwisdomlab/cwl-editor/fonts.css',
+          replacement: resolve(packedPackageRoot, 'src/fonts/fonts.css'),
+        },
+        {
+          find: '@contextualwisdomlab/cwl-editor/fonts-latin.css',
+          replacement: resolve(packedPackageRoot, 'src/fonts/fonts-latin.css'),
+        },
+        {
           find: '@contextualwisdomlab/cwl-editor',
           replacement: packageEntry,
         },
