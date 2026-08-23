@@ -60,8 +60,16 @@ function resolveArguments(argv) {
   });
 }
 
+function inspectSampleInputPath(path) {
+  try {
+    return lstatSync(path, { throwIfNoEntry: false });
+  } catch {
+    throw new Error('Benchmark sample input must be a regular file.');
+  }
+}
+
 function readBoundedJson(path) {
-  const pathMetadata = lstatSync(path, { throwIfNoEntry: false });
+  const pathMetadata = inspectSampleInputPath(path);
   if (pathMetadata?.isSymbolicLink()) {
     throw new Error(
       'Benchmark sample input must be a regular non-symlink file.',
