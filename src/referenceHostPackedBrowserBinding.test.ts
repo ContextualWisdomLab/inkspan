@@ -57,4 +57,14 @@ describe('reference-host packed browser binding', () => {
     );
     expect(viteConfig).toContain('replacement: packageEntry');
   });
+
+  it('pre-optimizes every browser application entry before parallel Playwright workers can invalidate shared Vite dependency chunks', () => {
+    const viteConfig = repositoryFile('tests/browser/vite.config.ts');
+
+    expect(viteConfig).toContain('optimizeDeps: {');
+    expect(viteConfig).toContain("'tests/browser/harness.html'");
+    expect(viteConfig).toContain(
+      "'examples/reference-host/browser-host.html'",
+    );
+  });
 });
