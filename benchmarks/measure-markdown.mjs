@@ -103,7 +103,12 @@ function resolveArguments(argv) {
 }
 
 function readBoundedRegularFile(path, maximumBytes, invalidFileMessage, oversizedMessage) {
-  const pathMetadata = lstatSync(path, { throwIfNoEntry: false });
+  let pathMetadata;
+  try {
+    pathMetadata = lstatSync(path, { throwIfNoEntry: false });
+  } catch {
+    throw new Error(invalidFileMessage);
+  }
   if (
     pathMetadata === undefined ||
     pathMetadata.isSymbolicLink() ||
@@ -112,7 +117,12 @@ function readBoundedRegularFile(path, maximumBytes, invalidFileMessage, oversize
     throw new Error(invalidFileMessage);
   }
 
-  const descriptor = openSync(path, READ_ONLY_NOFOLLOW);
+  let descriptor;
+  try {
+    descriptor = openSync(path, READ_ONLY_NOFOLLOW);
+  } catch {
+    throw new Error(invalidFileMessage);
+  }
   try {
     const metadata = fstatSync(descriptor);
     if (!metadata.isFile()) {
