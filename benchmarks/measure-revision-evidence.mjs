@@ -207,8 +207,16 @@ function verifyMeasuredModuleDigest(modulePath, expectedSha256) {
   }
 }
 
+function inspectOutputPath(path) {
+  try {
+    return lstatSync(path, { throwIfNoEntry: false });
+  } catch {
+    throw new Error('Revision benchmark output path could not be inspected.');
+  }
+}
+
 function refersToSameFile(leftPath, rightPath) {
-  const rightMetadata = lstatSync(rightPath, { throwIfNoEntry: false });
+  const rightMetadata = inspectOutputPath(rightPath);
   if (rightMetadata === undefined) return false;
   if (!rightMetadata.isFile()) {
     throw new Error('Revision benchmark output must be a regular file.');
@@ -303,7 +311,7 @@ async function main() {
   }
 
   verifyMeasuredModuleDigest(modulePath, args.artifactSha256);
-  const outputMetadata = lstatSync(args.outputPath, { throwIfNoEntry: false });
+  const outputMetadata = inspectOutputPath(args.outputPath);
   if (outputMetadata !== undefined && !outputMetadata.isFile()) {
     throw new Error('Revision benchmark output must be a regular file.');
   }
