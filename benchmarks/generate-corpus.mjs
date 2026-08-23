@@ -1,5 +1,11 @@
 import { createHash } from 'node:crypto';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import {
+  lstatSync,
+  mkdirSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { resolve } from 'node:path';
 
 const RASTER_FIXTURES = Object.freeze([
@@ -41,6 +47,24 @@ const SCRIPT_LABELS = Object.freeze([
   'Vietnamese',
   'mixed',
 ]);
+
+let outputWriteCounter = 0;
+
+function writeRegularOutput(path, content) {
+  const existing = lstatSync(path, { throwIfNoEntry: false });
+  if (existing !== undefined && !existing.isFile()) {
+    throw new Error('Benchmark corpus output must be a regular file.');
+  }
+
+  const temporaryPath = `${path}.tmp-${process.pid}-${outputWriteCounter}`;
+  outputWriteCounter += 1;
+  try {
+    writeFileSync(temporaryPath, content, { flag: 'wx' });
+    renameSync(temporaryPath, path);
+  } finally {
+    rmSync(temporaryPath, { force: true });
+  }
+}
 
 function buildSection(index) {
   const id = String(index).padStart(4, '0');
@@ -111,7 +135,7 @@ const profileManifest = {};
 for (const [profile, sections] of Object.entries(PROFILE_SECTIONS)) {
   const body = buildProfile(profile, sections);
   const bytes = Buffer.from(body, 'utf8');
-  writeFileSync(resolve(outputDirectory, `${profile}.md`), bytes);
+  writeRegularOutput(resolve(outputDirectory, `${profile}.md`), bytes);
   profileManifest[profile] = Object.freeze({
     sections,
     bytes: bytes.byteLength,
@@ -125,8 +149,7 @@ const manifest = Object.freeze({
   scripts: SCRIPT_LABELS,
   profiles: profileManifest,
 });
-writeFileSync(
+writeRegularOutput(
   resolve(outputDirectory, 'manifest.json'),
   `${JSON.stringify(manifest, null, 2)}\n`,
-  'utf8',
 );
