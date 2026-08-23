@@ -234,6 +234,15 @@ async function loadMeasuredModule(modulePath) {
   }
 }
 
+function writeMeasurementOutput(path, content) {
+  try {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, content, 'utf8');
+  } catch {
+    throw new Error('Revision benchmark output could not be written.');
+  }
+}
+
 async function runMeasuredRevision(createRevisionEvidence, source) {
   let evidence;
   try {
@@ -315,8 +324,7 @@ async function main() {
   if (outputMetadata !== undefined && !outputMetadata.isFile()) {
     throw new Error('Revision benchmark output must be a regular file.');
   }
-  mkdirSync(dirname(args.outputPath), { recursive: true });
-  writeFileSync(
+  writeMeasurementOutput(
     args.outputPath,
     `${JSON.stringify(
       {
@@ -333,7 +341,6 @@ async function main() {
       null,
       2,
     )}\n`,
-    'utf8',
   );
 }
 
