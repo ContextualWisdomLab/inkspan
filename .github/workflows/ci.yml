@@ -92,7 +92,7 @@ jobs:
           cache: pip
           cache-dependency-path: office/requirements-ci.txt
       - name: Install hash-locked Office handoff dependencies
-        run: python -m pip install --require-hashes --only-binary=:all: -r office/requirements-ci.txt
+        run: "python -m pip install --require-hashes --only-binary=:all: -r office/requirements-ci.txt"
       - name: Verify exact packed reference-host Office handoff
         run: node examples/reference-host/verify-office-handoff.mjs
       - name: Install Playwright browser revisions pinned by 1.62.0
