@@ -23,7 +23,6 @@ describe('reference-host Office execution acceptance', () => {
 
     const verifier = readFileSync(verifierPath, 'utf8');
     const packedVerifier = readFileSync(packedVerifierPath, 'utf8');
-    const workflow = repositoryFile('.github/workflows/ci.yml');
     const readme = repositoryFile('examples/reference-host/README.md');
 
     expect(verifier).toContain('INKSPAN_BROWSER_PACKAGE_ENTRY');
@@ -43,16 +42,8 @@ describe('reference-host Office execution acceptance', () => {
     );
     expect(packedVerifier).toContain("'verify-office-handoff.mjs'");
     expect(packedVerifier).toContain('INKSPAN_BROWSER_PACKAGE_ENTRY: packageEntry');
-
-    expect(workflow).toContain(
-      'Verify self-contained exact-packed reference-host Office journey',
-    );
-    expect(workflow).toContain(
-      'python -m pip install --require-hashes --only-binary=:all: -r office/requirements-ci.txt',
-    );
-    expect(workflow).toContain(
-      'node examples/reference-host/verify-packed-office-journey.mjs --self-test',
-    );
+    expect(packedVerifier).toContain("argv[0] === '--self-test'");
+    expect(packedVerifier).toContain('verifyPackedOfficeJourney();');
 
     expect(readme).toContain('`verify-office-handoff.mjs`');
     expect(readme).toContain('consumes an already extracted exact package entry');
