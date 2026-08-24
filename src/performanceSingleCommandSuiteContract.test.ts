@@ -130,6 +130,10 @@ describe('single-command benchmark suite contract', () => {
     expect(JSON.parse(output.trim())).toEqual({
       contractVersion: 1,
       documentProfile: 'small',
+      sampleCount: 2,
+      sourceCommitSha: 'a'.repeat(40),
+      runtimeId: 'node-22.0.0',
+      referenceHardwareId: `refhw-sha256-${'b'.repeat(64)}`,
       markdownSamples: 'markdown/samples.json',
       markdownSummaryJson: 'markdown/summary/summary.json',
       markdownSummaryText: 'markdown/summary/summary.txt',
