@@ -61,32 +61,59 @@ try {
   assert.equal(tarballs.length, 1, 'Expected exactly one packed Inkspan tarball.');
   const tarballPath = join(packDirectory, tarballs[0]);
 
-  const extractDirectory = join(temporaryRoot, 'extracted');
-  mkdirSync(extractDirectory, { recursive: true });
-  run('tar', ['-xzf', tarballPath, '-C', extractDirectory], repositoryRoot);
-
-  const packedPackageDirectory = join(extractDirectory, 'package');
-  const packedMetadata = JSON.parse(
-    readFileSync(join(packedPackageDirectory, 'package.json'), 'utf8'),
+  const hostDirectory = join(temporaryRoot, 'host');
+  mkdirSync(hostDirectory, { recursive: true });
+  writeFileSync(
+    join(hostDirectory, 'package.json'),
+    `${JSON.stringify(
+      {
+        name: 'inkspan-reference-host-app-ssr-consumer',
+        private: true,
+        type: 'module',
+        packageManager: packageMetadata.packageManager,
+        dependencies: {
+          [packageName]: `file:${tarballPath}`,
+          react: packageMetadata.devDependencies.react,
+          'react-dom': packageMetadata.devDependencies['react-dom'],
+        },
+      },
+      null,
+      2,
+    )}\n`,
+    'utf8',
   );
-  assert.equal(packedMetadata.name, packageName);
-  assert.equal(packedMetadata.version, packageVersion);
+  run(
+    'pnpm',
+    ['install', '--prefer-offline', '--ignore-scripts', '--no-frozen-lockfile'],
+    hostDirectory,
+  );
 
-  const packedEntry = join(packedPackageDirectory, 'dist', 'cwl-editor.js');
+  const installedPackageDirectory = join(
+    hostDirectory,
+    'node_modules',
+    ...packageName.split('/'),
+  );
+  const installedMetadata = JSON.parse(
+    readFileSync(join(installedPackageDirectory, 'package.json'), 'utf8'),
+  );
+  assert.equal(installedMetadata.name, packageName);
+  assert.equal(installedMetadata.version, packageVersion);
   assert.equal(
-    isContained(packedPackageDirectory, packedEntry),
+    isContained(join(hostDirectory, 'node_modules'), installedPackageDirectory),
     true,
-    'Packed application dependency escaped the exact tarball.',
+    'Installed application dependency escaped the isolated consumer.',
   );
+
+  const packedEntry = join(installedPackageDirectory, 'dist', 'cwl-editor.js');
   assert.equal(
-    relative(realpathSync(packedPackageDirectory), realpathSync(packedEntry)).startsWith(
+    relative(realpathSync(installedPackageDirectory), realpathSync(packedEntry)).startsWith(
       `dist${sep}`,
     ),
     true,
-    'Packed application dependency did not resolve through dist/.',
+    'Installed application dependency did not resolve through packed dist/.',
   );
 
-  const applicationEntry = join(temporaryRoot, 'application-ssr.tsx');
+  const applicationEntry = join(hostDirectory, 'application-ssr.tsx');
   const referenceHostApplication = join(
     repositoryRoot,
     'examples',
@@ -133,12 +160,20 @@ process.stdout.write(JSON.stringify({
     'utf8',
   );
 
-  const outputDirectory = join(temporaryRoot, 'ssr-build');
+  const outputDirectory = join(hostDirectory, 'ssr-build');
   await build({
+    root: hostDirectory,
     configFile: false,
     logLevel: 'silent',
     resolve: {
-      alias: [{ find: packageName, replacement: packedEntry }],
+      alias: [
+        { find: packageName, replacement: packedEntry },
+        { find: 'react', replacement: join(hostDirectory, 'node_modules', 'react') },
+        {
+          find: 'react-dom',
+          replacement: join(hostDirectory, 'node_modules', 'react-dom'),
+        },
+      ],
     },
     build: {
       ssr: applicationEntry,
@@ -156,7 +191,7 @@ process.stdout.write(JSON.stringify({
   });
 
   const applicationReceipt = JSON.parse(
-    run(process.execPath, [join(outputDirectory, 'reference-host-ssr.mjs')], repositoryRoot),
+    run(process.execPath, [join(outputDirectory, 'reference-host-ssr.mjs')], hostDirectory),
   );
   assert.equal(applicationReceipt.applicationServerRendered, true);
   assert.equal(applicationReceipt.clientEditorDeferred, true);
