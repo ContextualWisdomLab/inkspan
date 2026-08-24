@@ -249,7 +249,7 @@ function formatSummary(summary) {
     `runtime_id=${summary.runtimeId}`,
     `reference_hardware_id=${summary.referenceHardwareId}`,
     `samples=${summary.sampleCount}`,
-    `percentile_method=nearest-rank`,
+    `percentile_method=${summary.percentileMethod}`,
     `minimum=${summary.minimum}`,
     `p50=${summary.p50}`,
     `p75=${summary.p75}`,
