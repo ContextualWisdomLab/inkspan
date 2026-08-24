@@ -25,17 +25,24 @@ afterEach(() => {
 });
 
 function benchmarkArguments(
-  inputPath: string,
-  modulePath: string,
-  artifactSha256: string,
+  markdownInputPath: string,
+  markdownModulePath: string,
+  markdownArtifactSha256: string,
+  revisionInputPath: string,
+  revisionModulePath: string,
+  revisionArtifactSha256: string,
   outputDirectory: string,
 ): string[] {
   return [
     suitePath,
     '--input',
-    inputPath,
+    markdownInputPath,
     '--module',
-    modulePath,
+    markdownModulePath,
+    '--revision-input',
+    revisionInputPath,
+    '--revision-module',
+    revisionModulePath,
     '--profile',
     'small',
     '--samples',
@@ -43,7 +50,9 @@ function benchmarkArguments(
     '--source-commit-sha',
     'a'.repeat(40),
     '--artifact-sha256',
-    artifactSha256,
+    markdownArtifactSha256,
+    '--revision-artifact-sha256',
+    revisionArtifactSha256,
     '--runtime-id',
     'node-22.0.0',
     '--reference-hardware-id',
@@ -54,34 +63,62 @@ function benchmarkArguments(
 }
 
 function writeBenchmarkInputs(directory: string): {
-  artifactSha256: string;
-  inputPath: string;
-  modulePath: string;
+  markdownArtifactSha256: string;
+  markdownInputPath: string;
+  markdownModulePath: string;
+  revisionArtifactSha256: string;
+  revisionInputPath: string;
+  revisionModulePath: string;
 } {
-  const inputPath = join(directory, 'input.md');
-  const modulePath = join(directory, 'measured.mjs');
-  const moduleSource =
+  const markdownInputPath = join(directory, 'input.md');
+  const markdownModulePath = join(directory, 'markdown-measured.mjs');
+  const markdownModuleSource =
     "export function markdownToHtml(source) { return `<p>${source}</p>`; }\n";
-  writeFileSync(inputPath, '# Buyer benchmark\n', 'utf8');
-  writeFileSync(modulePath, moduleSource, 'utf8');
+  const revisionInputPath = join(directory, 'document-envelope.json');
+  const revisionModulePath = join(directory, 'revision-measured.mjs');
+  const revisionModuleSource = `export async function createDocumentEnvelopeRevisionEvidenceBytes() { return { revision: { digestHex: '${'c'.repeat(64)}' } }; }\n`;
+
+  writeFileSync(markdownInputPath, '# Buyer benchmark\n', 'utf8');
+  writeFileSync(markdownModulePath, markdownModuleSource, 'utf8');
+  writeFileSync(
+    revisionInputPath,
+    '{"contractVersion":1,"mode":"markdown","document":"# Buyer benchmark"}\n',
+    'utf8',
+  );
+  writeFileSync(revisionModulePath, revisionModuleSource, 'utf8');
+
   return {
-    artifactSha256: createHash('sha256').update(moduleSource).digest('hex'),
-    inputPath,
-    modulePath,
+    markdownArtifactSha256: createHash('sha256')
+      .update(markdownModuleSource)
+      .digest('hex'),
+    markdownInputPath,
+    markdownModulePath,
+    revisionArtifactSha256: createHash('sha256')
+      .update(revisionModuleSource)
+      .digest('hex'),
+    revisionInputPath,
+    revisionModulePath,
   };
 }
 
 describe('single-command benchmark suite contract', () => {
-  it('measures and summarizes one deterministic Markdown profile with one command', () => {
+  it('measures and summarizes Markdown serialization and revision evidence with one command', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-suite-'));
     temporaryDirectories.push(directory);
     const outputDirectory = join(directory, 'evidence');
-    const { artifactSha256, inputPath, modulePath } =
-      writeBenchmarkInputs(directory);
+    const inputs = writeBenchmarkInputs(directory);
 
     const output = execFileSync(
       process.execPath,
-      benchmarkArguments(inputPath, modulePath, artifactSha256, outputDirectory),
+      benchmarkArguments(
+        inputs.markdownInputPath,
+        inputs.markdownModulePath,
+        inputs.markdownArtifactSha256,
+        inputs.revisionInputPath,
+        inputs.revisionModulePath,
+        inputs.revisionArtifactSha256,
+        outputDirectory,
+      ),
       {
         cwd: repositoryRoot,
         encoding: 'utf8',
@@ -93,34 +130,64 @@ describe('single-command benchmark suite contract', () => {
     expect(JSON.parse(output.trim())).toEqual({
       contractVersion: 1,
       documentProfile: 'small',
-      samples: 'samples.json',
+      markdownSamples: 'markdown/samples.json',
+      markdownSummaryJson: 'markdown/summary/summary.json',
+      markdownSummaryText: 'markdown/summary/summary.txt',
+      revisionSamples: 'revision/samples.json',
+      revisionSummaryJson: 'revision/summary/summary.json',
+      revisionSummaryText: 'revision/summary/summary.txt',
       status: 'completed',
-      summaryJson: 'summary/summary.json',
-      summaryText: 'summary/summary.txt',
     });
 
-    const samples = JSON.parse(
-      readFileSync(join(outputDirectory, 'samples.json'), 'utf8'),
+    const markdownSamples = JSON.parse(
+      readFileSync(join(outputDirectory, 'markdown', 'samples.json'), 'utf8'),
     ) as { benchmarkId?: unknown; documentProfile?: unknown; samples?: unknown };
-    expect(samples.benchmarkId).toBe('markdown-serialization-small');
-    expect(samples.documentProfile).toBe('small');
-    expect(samples.samples).toHaveLength(2);
+    expect(markdownSamples.benchmarkId).toBe('markdown-serialization-small');
+    expect(markdownSamples.documentProfile).toBe('small');
+    expect(markdownSamples.samples).toHaveLength(2);
 
-    const summary = JSON.parse(
-      readFileSync(join(outputDirectory, 'summary', 'summary.json'), 'utf8'),
+    const markdownSummary = JSON.parse(
+      readFileSync(
+        join(outputDirectory, 'markdown', 'summary', 'summary.json'),
+        'utf8',
+      ),
     ) as { benchmarkId?: unknown; documentProfile?: unknown };
-    expect(summary.benchmarkId).toBe('markdown-serialization-small');
-    expect(summary.documentProfile).toBe('small');
+    expect(markdownSummary.benchmarkId).toBe('markdown-serialization-small');
+    expect(markdownSummary.documentProfile).toBe('small');
     expect(
-      readFileSync(join(outputDirectory, 'summary', 'summary.txt'), 'utf8'),
+      readFileSync(
+        join(outputDirectory, 'markdown', 'summary', 'summary.txt'),
+        'utf8',
+      ),
     ).toContain('markdown-serialization-small');
+
+    const revisionSamples = JSON.parse(
+      readFileSync(join(outputDirectory, 'revision', 'samples.json'), 'utf8'),
+    ) as { benchmarkId?: unknown; documentProfile?: unknown; samples?: unknown };
+    expect(revisionSamples.benchmarkId).toBe('revision-evidence-small');
+    expect(revisionSamples.documentProfile).toBe('small');
+    expect(revisionSamples.samples).toHaveLength(2);
+
+    const revisionSummary = JSON.parse(
+      readFileSync(
+        join(outputDirectory, 'revision', 'summary', 'summary.json'),
+        'utf8',
+      ),
+    ) as { benchmarkId?: unknown; documentProfile?: unknown };
+    expect(revisionSummary.benchmarkId).toBe('revision-evidence-small');
+    expect(revisionSummary.documentProfile).toBe('small');
+    expect(
+      readFileSync(
+        join(outputDirectory, 'revision', 'summary', 'summary.txt'),
+        'utf8',
+      ),
+    ).toContain('revision-evidence-small');
   });
 
   it('fails closed before writing evidence through a symlink output directory', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-suite-'));
     temporaryDirectories.push(directory);
-    const { artifactSha256, inputPath, modulePath } =
-      writeBenchmarkInputs(directory);
+    const inputs = writeBenchmarkInputs(directory);
     const actualOutputDirectory = join(directory, 'outside-target');
     const outputDirectory = join(directory, 'evidence-link');
     mkdirSync(actualOutputDirectory);
@@ -132,7 +199,15 @@ describe('single-command benchmark suite contract', () => {
 
     const result = spawnSync(
       process.execPath,
-      benchmarkArguments(inputPath, modulePath, artifactSha256, outputDirectory),
+      benchmarkArguments(
+        inputs.markdownInputPath,
+        inputs.markdownModulePath,
+        inputs.markdownArtifactSha256,
+        inputs.revisionInputPath,
+        inputs.revisionModulePath,
+        inputs.revisionArtifactSha256,
+        outputDirectory,
+      ),
       {
         cwd: repositoryRoot,
         encoding: 'utf8',
@@ -145,7 +220,7 @@ describe('single-command benchmark suite contract', () => {
     expect(result.stderr).toBe(
       'Benchmark suite output directory must be a non-symlink directory.\n',
     );
-    expect(existsSync(join(actualOutputDirectory, 'samples.json'))).toBe(false);
-    expect(existsSync(join(actualOutputDirectory, 'summary'))).toBe(false);
+    expect(existsSync(join(actualOutputDirectory, 'markdown'))).toBe(false);
+    expect(existsSync(join(actualOutputDirectory, 'revision'))).toBe(false);
   });
 });
