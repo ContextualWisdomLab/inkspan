@@ -184,6 +184,49 @@ describe('single-command benchmark suite contract', () => {
     ).toContain('revision-evidence-small');
   });
 
+  it('removes partial suite evidence when a downstream measurement fails', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-suite-'));
+    temporaryDirectories.push(directory);
+    const outputDirectory = join(directory, 'evidence');
+    const inputs = writeBenchmarkInputs(directory);
+    const failingRevisionModuleSource =
+      "export async function createDocumentEnvelopeRevisionEvidenceBytes() { throw new Error('private benchmark failure'); }\n";
+    writeFileSync(
+      inputs.revisionModulePath,
+      failingRevisionModuleSource,
+      'utf8',
+    );
+    const failingRevisionArtifactSha256 = createHash('sha256')
+      .update(failingRevisionModuleSource)
+      .digest('hex');
+
+    const result = spawnSync(
+      process.execPath,
+      benchmarkArguments(
+        inputs.markdownInputPath,
+        inputs.markdownModulePath,
+        inputs.markdownArtifactSha256,
+        inputs.revisionInputPath,
+        inputs.revisionModulePath,
+        failingRevisionArtifactSha256,
+        outputDirectory,
+      ),
+      {
+        cwd: repositoryRoot,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 10_000,
+      },
+    );
+
+    expect(result.status).not.toBe(0);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe(
+      'Benchmark suite revision measurement failed.\n',
+    );
+    expect(existsSync(outputDirectory)).toBe(false);
+  });
+
   it('fails closed before writing evidence through a symlink output directory', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-suite-'));
     temporaryDirectories.push(directory);
