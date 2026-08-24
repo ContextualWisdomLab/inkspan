@@ -28,6 +28,10 @@ const steps = Object.freeze([
   }),
   Object.freeze({
     args: Object.freeze(['--self-test']),
+    path: 'examples/reference-host/verify-application-ssr.mjs',
+  }),
+  Object.freeze({
+    args: Object.freeze(['--self-test']),
     path: 'examples/reference-host/verify-packed-office-journey.mjs',
   }),
   Object.freeze({
