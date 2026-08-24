@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 type InputHarness = {
   getHtml: () => string;
@@ -10,6 +10,31 @@ type InputHarness = {
 
 const HARNESS_URL = '/tests/browser/input-harness.html';
 const FORM_FIELD = '[data-inkspan-form-field][name="message_body"]';
+
+const allowHarnessRequest = (requestUrl: string): boolean => {
+  const url = new URL(requestUrl);
+  return url.hostname === '127.0.0.1' && url.port === '4173';
+};
+
+const rejectedRequestsByPage = new WeakMap<Page, string[]>();
+
+test.beforeEach(async ({ page }) => {
+  const rejectedExternalRequests: string[] = [];
+  rejectedRequestsByPage.set(page, rejectedExternalRequests);
+  await page.route('**/*', async (route) => {
+    if (allowHarnessRequest(route.request().url())) {
+      await route.continue();
+      return;
+    }
+    rejectedExternalRequests.push(new URL(route.request().url()).origin);
+    await route.abort('blockedbyclient');
+  });
+});
+
+test.afterEach(async ({ page }) => {
+  await page.waitForLoadState('networkidle');
+  expect(rejectedRequestsByPage.get(page) ?? []).toEqual([]);
+});
 
 test('keeps native-form serialization atomic when editability is revoked during composition', async ({
   page,
