@@ -509,6 +509,10 @@ function suiteManifest(args, packageEvidence) {
   return Object.freeze({
     contractVersion: 1,
     documentProfile: args.documentProfile,
+    sampleCount: Number(args.sampleCount),
+    sourceCommitSha: args.sourceCommitSha,
+    runtimeId: args.runtimeId,
+    referenceHardwareId: args.referenceHardwareId,
     ...(packageEvidence ?? {}),
     markdownSamples: 'markdown/samples.json',
     markdownSummaryJson: 'markdown/summary/summary.json',
