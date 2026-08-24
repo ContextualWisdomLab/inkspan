@@ -15,6 +15,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 const repositoryRoot = process.cwd();
 const suitePath = resolve(repositoryRoot, 'benchmarks/run-current-suite.mjs');
 const temporaryDirectories: string[] = [];
+const activeRuntimeId = `node-${process.versions.node}`;
 
 afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) {
@@ -85,46 +86,59 @@ function createPackedBenchmarkFixture(directory: string): {
   };
 }
 
+function packedSuiteArguments(options: {
+  directory: string;
+  packageSha256: string;
+  runtimeId: string;
+  tarballPath: string;
+}): string[] {
+  const markdownInputPath = join(options.directory, 'input.md');
+  const revisionInputPath = join(options.directory, 'document-envelope.json');
+  writeFileSync(markdownInputPath, '# Packed buyer benchmark\n', 'utf8');
+  writeFileSync(
+    revisionInputPath,
+    '{"contractVersion":1,"mode":"markdown","document":"# Packed buyer benchmark"}\n',
+    'utf8',
+  );
+  return [
+    suitePath,
+    '--input',
+    markdownInputPath,
+    '--revision-input',
+    revisionInputPath,
+    '--package-tarball',
+    options.tarballPath,
+    '--package-sha256',
+    options.packageSha256,
+    '--profile',
+    'small',
+    '--samples',
+    '2',
+    '--source-commit-sha',
+    'a'.repeat(40),
+    '--runtime-id',
+    options.runtimeId,
+    '--reference-hardware-id',
+    `refhw-sha256-${'b'.repeat(64)}`,
+    '--output',
+    join(options.directory, 'evidence'),
+  ];
+}
+
 describe('packed artifact benchmark suite contract', () => {
   it('binds one-command benchmark evidence to a packed npm artifact digest', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inkspan-packed-benchmark-'));
     temporaryDirectories.push(directory);
-    const markdownInputPath = join(directory, 'input.md');
-    const revisionInputPath = join(directory, 'document-envelope.json');
-    const outputDirectory = join(directory, 'evidence');
-    writeFileSync(markdownInputPath, '# Packed buyer benchmark\n', 'utf8');
-    writeFileSync(
-      revisionInputPath,
-      '{"contractVersion":1,"mode":"markdown","document":"# Packed buyer benchmark"}\n',
-      'utf8',
-    );
     const packed = createPackedBenchmarkFixture(directory);
 
     const result = spawnSync(
       process.execPath,
-      [
-        suitePath,
-        '--input',
-        markdownInputPath,
-        '--revision-input',
-        revisionInputPath,
-        '--package-tarball',
-        packed.tarballPath,
-        '--package-sha256',
-        packed.packageSha256,
-        '--profile',
-        'small',
-        '--samples',
-        '2',
-        '--source-commit-sha',
-        'a'.repeat(40),
-        '--runtime-id',
-        'node-22.0.0',
-        '--reference-hardware-id',
-        `refhw-sha256-${'b'.repeat(64)}`,
-        '--output',
-        outputDirectory,
-      ],
+      packedSuiteArguments({
+        directory,
+        packageSha256: packed.packageSha256,
+        runtimeId: activeRuntimeId,
+        tarballPath: packed.tarballPath,
+      }),
       {
         cwd: repositoryRoot,
         encoding: 'utf8',
@@ -142,5 +156,33 @@ describe('packed artifact benchmark suite contract', () => {
       packageSha256: packed.packageSha256,
       status: 'completed',
     });
+  });
+
+  it('rejects a runtime identifier that does not match the active Node process', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inkspan-packed-runtime-'));
+    temporaryDirectories.push(directory);
+    const packed = createPackedBenchmarkFixture(directory);
+
+    const result = spawnSync(
+      process.execPath,
+      packedSuiteArguments({
+        directory,
+        packageSha256: packed.packageSha256,
+        runtimeId: 'node-0.0.0',
+        tarballPath: packed.tarballPath,
+      }),
+      {
+        cwd: repositoryRoot,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 15_000,
+      },
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe(
+      'Benchmark suite runtime ID must match the active Node runtime.\n',
+    );
   });
 });
