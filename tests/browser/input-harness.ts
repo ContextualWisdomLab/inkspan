@@ -10,6 +10,7 @@ declare global {
       getText: () => string;
       isComposing: () => boolean;
       redo: () => boolean;
+      remount: () => boolean;
       setEditable: (editable: boolean) => boolean;
       setHtml: (html: string) => boolean;
       undo: () => boolean;
@@ -25,7 +26,7 @@ if (!(element instanceof HTMLElement)) {
 const showToolbar = new URLSearchParams(window.location.search).get('toolbar') === '1';
 let editor: Editor | null = null;
 let editable = true;
-const root = createRoot(element);
+let root = createRoot(element);
 
 const renderEditor = () => {
   root.render(
@@ -56,6 +57,13 @@ window.inkspanInputHarness = Object.freeze({
   getText: () => getEditor().getText(),
   isComposing: () => getEditor().view.composing,
   redo: () => getEditor().commands.redo(),
+  remount: () => {
+    root.unmount();
+    editor = null;
+    root = createRoot(element);
+    renderEditor();
+    return true;
+  },
   setEditable: (nextEditable: boolean) => {
     editable = nextEditable;
     renderEditor();
