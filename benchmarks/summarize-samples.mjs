@@ -271,6 +271,10 @@ function assertRegularOutputDestination(path) {
   if (metadata !== undefined && !metadata.isFile()) {
     throw new Error('Benchmark summary output paths must be regular files.');
   }
+}
+
+function assertSingleLinkOutputDestination(path) {
+  const metadata = lstatSync(path, { throwIfNoEntry: false });
   if (metadata !== undefined && metadata.nlink !== 1) {
     throw new Error(
       'Benchmark summary output paths must not be multiply linked.',
@@ -346,6 +350,8 @@ function main() {
   if (refersToSameFile(summaryJsonPath, summaryTextPath)) {
     throw new Error('Benchmark summary outputs must be distinct files.');
   }
+  assertSingleLinkOutputDestination(summaryJsonPath);
+  assertSingleLinkOutputDestination(summaryTextPath);
   const input = validateInput(readBoundedJson(inputPath));
   const summary = summarize(input);
   writeFileSync(
