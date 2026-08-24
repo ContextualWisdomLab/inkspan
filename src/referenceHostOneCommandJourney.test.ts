@@ -9,6 +9,10 @@ const verifierPath = resolve(
   repositoryRoot,
   'examples/reference-host/verify-current-reference-journey.mjs',
 );
+const applicationSsrVerifierPath = resolve(
+  repositoryRoot,
+  'examples/reference-host/verify-application-ssr.mjs',
+);
 const browserVerifierPath = resolve(
   repositoryRoot,
   'examples/reference-host/verify-browser-journey.mjs',
@@ -57,6 +61,10 @@ describe('reference-host one-command journey contract', () => {
         },
         {
           args: ['--self-test'],
+          path: 'examples/reference-host/verify-application-ssr.mjs',
+        },
+        {
+          args: ['--self-test'],
           path: 'examples/reference-host/verify-packed-office-journey.mjs',
         },
         {
@@ -65,6 +73,10 @@ describe('reference-host one-command journey contract', () => {
         },
       ],
     });
+  });
+
+  it('keeps exact-packed application SSR in the one-command buyer journey', () => {
+    expect(existsSync(applicationSsrVerifierPath)).toBe(true);
   });
 
   it('binds the scoped Office step to a self-contained exact packed tarball', () => {
