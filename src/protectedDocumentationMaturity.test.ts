@@ -77,4 +77,20 @@ describe('protected capability documentation maturity', () => {
     expect(architecture).not.toContain('Until #116 integrates');
   });
 
+  it('does not describe merged DOCX hyperlinks as active-PR technical scope', () => {
+    const trd = repositoryFile('docs/TRD.md');
+    const adr = repositoryFile(
+      'docs/adr/0026-bounded-docx-external-hyperlinks.md',
+    );
+
+    expect(adr).toContain('Status: Accepted');
+    expect(trd).toContain('Accepted ADR 0026');
+    expect(trd).toContain('protected PR #137');
+    expect(trd).toContain('implemented_on_protected_main');
+    expect(trd).not.toContain('Active PR #137');
+    expect(trd).not.toContain('Proposed ADR 0026');
+    expect(trd).not.toContain('implemented_on_active_pr');
+    expect(trd).not.toContain('Until protected integration');
+  });
+
 });
