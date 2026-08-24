@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { lstatSync, mkdirSync } from 'node:fs';
+import { lstatSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -107,7 +107,7 @@ function prepareOutputDirectory(path) {
     if (!existing.isDirectory()) {
       throw new Error(OUTPUT_DIRECTORY_ERROR);
     }
-    return;
+    return false;
   }
 
   try {
@@ -120,6 +120,15 @@ function prepareOutputDirectory(path) {
   const created = inspectOutputDirectory(path);
   if (created === undefined || !created.isDirectory()) {
     throw new Error(OUTPUT_DIRECTORY_ERROR);
+  }
+  return true;
+}
+
+function removePartialOutputDirectory(path) {
+  try {
+    rmSync(path, { recursive: true, force: true });
+  } catch {
+    throw new Error('Benchmark suite partial evidence could not be removed.');
   }
 }
 
@@ -165,10 +174,7 @@ function runMeasurementAndSummary({
   );
 }
 
-function main(argv) {
-  const args = resolveArguments(argv);
-  prepareOutputDirectory(args.outputDirectory);
-
+function runSuite(args) {
   const markdownSamplesPath = resolve(
     args.outputDirectory,
     'markdown',
@@ -206,6 +212,20 @@ function main(argv) {
     measurementFailure: 'Benchmark suite revision measurement failed.',
     summaryFailure: 'Benchmark suite revision summary failed.',
   });
+}
+
+function main(argv) {
+  const args = resolveArguments(argv);
+  const createdOutputDirectory = prepareOutputDirectory(args.outputDirectory);
+
+  try {
+    runSuite(args);
+  } catch (error) {
+    if (createdOutputDirectory) {
+      removePartialOutputDirectory(args.outputDirectory);
+    }
+    throw error;
+  }
 
   process.stdout.write(
     `${JSON.stringify({
