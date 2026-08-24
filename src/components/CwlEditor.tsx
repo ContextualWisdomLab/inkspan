@@ -242,11 +242,26 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
 
     useEffect(() => {
       if (!editor || !isControlled || emittingRef.current) return;
-      const current = editorHtmlToValue(editor.getHTML(), mode);
-      if (current !== value) {
-        /* v8 ignore next -- isControlled guarantees value is defined. */
-        synchronizeControlledEditorValue(editor, value ?? '', mode);
+
+      const synchronizeValue = () => {
+        const current = editorHtmlToValue(editor.getHTML(), mode);
+        if (current !== value) {
+          /* v8 ignore next -- isControlled guarantees value is defined. */
+          synchronizeControlledEditorValue(editor, value ?? '', mode);
+        }
+      };
+
+      if (!editor.view.composing) {
+        synchronizeValue();
+        return;
       }
+
+      editor.view.dom.addEventListener('compositionend', synchronizeValue, {
+        once: true,
+      });
+      return () => {
+        editor.view.dom.removeEventListener('compositionend', synchronizeValue);
+      };
     }, [editor, isControlled, value, mode]);
 
     const handleFormReset = useCallback(
