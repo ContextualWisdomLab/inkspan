@@ -120,6 +120,12 @@ function resolveArguments(argv) {
         'Benchmark suite package digest must be a lowercase 64-character SHA-256.',
       );
     }
+    const activeRuntimeId = `node-${process.versions.node}`;
+    if (values['--runtime-id'] !== activeRuntimeId) {
+      throw new Error(
+        'Benchmark suite runtime ID must match the active Node runtime.',
+      );
+    }
     return Object.freeze({
       mode: 'packed',
       shared: sharedArguments(values),
