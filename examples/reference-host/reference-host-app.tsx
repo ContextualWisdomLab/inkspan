@@ -1,22 +1,16 @@
-'use client';
-
-import { ReferenceHostHydrationGate } from './hydration-gate.js';
 import {
-  NativeFormHost,
-  type NativeFormHostProps,
-} from './native-form-host.js';
+  ReferenceHostClient,
+  type ReferenceHostClientProps,
+} from './reference-host-client.js';
 
-export interface ReferenceHostAppProps extends NativeFormHostProps {
-  /** Host-localized label rendered in the deterministic server shell. */
-  loadingLabel: string;
-}
+export interface ReferenceHostAppProps extends ReferenceHostClientProps {}
 
 /**
  * Minimal buyer-facing application composition for the reference host.
  *
- * The server render is deliberately limited to deterministic host chrome and a
- * hydration placeholder. The real Inkspan native-form integration is created
- * only after client hydration, while authorization and durable persistence stay
+ * This module is deliberately server-safe: it owns only deterministic host
+ * chrome and delegates browser-only hydration/editor behavior to the narrow
+ * ReferenceHostClient boundary. Authorization and durable persistence remain
  * behind the host-supplied onAuthorizedSubmit callback.
  */
 export function ReferenceHostApp({
@@ -28,15 +22,11 @@ export function ReferenceHostApp({
   return (
     <main aria-labelledby="reference-host-heading">
       <h1 id="reference-host-heading">Inkspan reference host</h1>
-      <ReferenceHostHydrationGate
+      <ReferenceHostClient
         loadingLabel={loadingLabel}
-        renderEditor={() => (
-          <NativeFormHost
-            onAuthorizedSubmit={onAuthorizedSubmit}
-            controlMode={controlMode}
-            readOnly={readOnly}
-          />
-        )}
+        onAuthorizedSubmit={onAuthorizedSubmit}
+        controlMode={controlMode}
+        readOnly={readOnly}
       />
     </main>
   );
