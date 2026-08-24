@@ -374,6 +374,9 @@ async function main() {
   if (outputMetadata !== undefined && !outputMetadata.isFile()) {
     throw new Error('Revision benchmark output must be a regular file.');
   }
+  if (outputMetadata !== undefined && outputMetadata.nlink !== 1) {
+    throw new Error('Revision benchmark output must not be multiply linked.');
+  }
   writeMeasurementOutput(
     args.outputPath,
     `${JSON.stringify(
