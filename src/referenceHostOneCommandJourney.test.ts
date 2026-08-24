@@ -13,6 +13,10 @@ const browserVerifierPath = resolve(
   repositoryRoot,
   'examples/reference-host/verify-browser-journey.mjs',
 );
+const packedOfficeVerifierPath = resolve(
+  repositoryRoot,
+  'examples/reference-host/verify-packed-office-journey.mjs',
+);
 
 describe('reference-host one-command journey contract', () => {
   it('exposes one deterministic command for the currently implemented buyer journey', () => {
@@ -52,14 +56,37 @@ describe('reference-host one-command journey contract', () => {
           path: 'examples/reference-host/verify-packed-artifact.mjs',
         },
         {
-          args: [],
-          path: 'examples/reference-host/verify-office-handoff.mjs',
+          args: ['--self-test'],
+          path: 'examples/reference-host/verify-packed-office-journey.mjs',
         },
         {
           args: ['--self-test'],
           path: 'examples/reference-host/verify-browser-journey.mjs',
         },
       ],
+    });
+  });
+
+  it('binds the scoped Office step to a self-contained exact packed tarball', () => {
+    expect(existsSync(packedOfficeVerifierPath)).toBe(true);
+
+    const output = execFileSync(
+      process.execPath,
+      [packedOfficeVerifierPath, '--plan'],
+      {
+        cwd: repositoryRoot,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 10_000,
+      },
+    );
+
+    expect(JSON.parse(output.trim())).toEqual({
+      command:
+        'node examples/reference-host/verify-packed-office-journey.mjs',
+      contractVersion: 1,
+      packageAuthority: 'exact-packed-tarball',
+      status: 'plan',
     });
   });
 
