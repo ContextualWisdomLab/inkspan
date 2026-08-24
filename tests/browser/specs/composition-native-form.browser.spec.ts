@@ -4,6 +4,7 @@ type InputHarness = {
   getHtml: () => string;
   getText: () => string;
   isComposing: () => boolean;
+  remount: () => boolean;
   setEditable: (editable: boolean) => boolean;
 };
 
@@ -89,4 +90,61 @@ test('keeps native-form serialization atomic when editability is revoked during 
     (window.inkspanInputHarness as InputHarness).getHtml(),
   );
   await expect(page.locator(FORM_FIELD)).toHaveValue(resumedHtml);
+});
+
+test('destroys an active composition and remounts a clean native-form editor', async ({
+  page,
+}) => {
+  await page.goto(HARNESS_URL);
+
+  const editable = page.locator('.ProseMirror');
+  await editable.click();
+  await page.keyboard.insertText('작성 중');
+  await editable.evaluate((element) => {
+    element.dispatchEvent(
+      new CompositionEvent('compositionstart', { bubbles: true, data: '' }),
+    );
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.inkspanInputHarness as InputHarness).isComposing(),
+      ),
+    )
+    .toBe(true);
+
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).remount(),
+    ),
+  ).toBe(true);
+
+  const remountedEditable = page.locator('.ProseMirror');
+  await expect(remountedEditable).toHaveAttribute('contenteditable', 'true');
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.inkspanInputHarness as InputHarness).isComposing(),
+      ),
+    )
+    .toBe(false);
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.inkspanInputHarness as InputHarness).getText(),
+      ),
+    )
+    .toBe('');
+  await expect(page.locator(FORM_FIELD)).toHaveValue('');
+
+  await remountedEditable.click();
+  await page.keyboard.insertText('새 세션');
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.inkspanInputHarness as InputHarness).getText(),
+      ),
+    )
+    .toBe('새 세션');
+  await expect(page.locator(FORM_FIELD)).not.toHaveValue('');
 });
