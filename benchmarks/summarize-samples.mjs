@@ -249,7 +249,7 @@ function formatSummary(summary) {
     `runtime_id=${summary.runtimeId}`,
     `reference_hardware_id=${summary.referenceHardwareId}`,
     `samples=${summary.sampleCount}`,
-    `percentile_method=${summary.percentileMethod}`,
+    `percentile_method=nearest-rank`,
     `minimum=${summary.minimum}`,
     `p50=${summary.p50}`,
     `p75=${summary.p75}`,
@@ -270,6 +270,11 @@ function assertRegularOutputDestination(path) {
   const metadata = lstatSync(path, { throwIfNoEntry: false });
   if (metadata !== undefined && !metadata.isFile()) {
     throw new Error('Benchmark summary output paths must be regular files.');
+  }
+  if (metadata !== undefined && metadata.nlink !== 1) {
+    throw new Error(
+      'Benchmark summary output paths must not be multiply linked.',
+    );
   }
 }
 
