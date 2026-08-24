@@ -27,8 +27,8 @@ const steps = Object.freeze([
     path: 'examples/reference-host/verify-packed-artifact.mjs',
   }),
   Object.freeze({
-    args: Object.freeze([]),
-    path: 'examples/reference-host/verify-office-handoff.mjs',
+    args: Object.freeze(['--self-test']),
+    path: 'examples/reference-host/verify-packed-office-journey.mjs',
   }),
   Object.freeze({
     args: Object.freeze(['--self-test']),
