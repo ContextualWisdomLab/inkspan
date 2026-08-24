@@ -8,10 +8,13 @@ const repositoryRoot = resolve(benchmarkDirectory, '..');
 const expectedFlags = Object.freeze([
   '--input',
   '--module',
+  '--revision-input',
+  '--revision-module',
   '--profile',
   '--samples',
   '--source-commit-sha',
   '--artifact-sha256',
+  '--revision-artifact-sha256',
   '--runtime-id',
   '--reference-hardware-id',
   '--output',
@@ -26,14 +29,47 @@ function resolveArguments(argv) {
     expectedFlags.some((_, index) => argv[index * 2 + 1]?.length === 0)
   ) {
     throw new Error(
-      'Usage: node benchmarks/run-current-suite.mjs --input <document.md> --module <packed-markdown-module> --profile <small|medium|large|stress> --samples <count> --source-commit-sha <sha> --artifact-sha256 <sha256> --runtime-id <runtime> --reference-hardware-id <hardware> --output <directory>',
+      'Usage: node benchmarks/run-current-suite.mjs --input <document.md> --module <packed-markdown-module> --revision-input <document-envelope.json> --revision-module <packed-revision-module> --profile <small|medium|large|stress> --samples <count> --source-commit-sha <sha> --artifact-sha256 <markdown-sha256> --revision-artifact-sha256 <revision-sha256> --runtime-id <runtime> --reference-hardware-id <hardware> --output <directory>',
     );
   }
 
+  const values = Object.fromEntries(
+    expectedFlags.map((flag, index) => [flag, argv[index * 2 + 1]]),
+  );
+  const sharedArguments = Object.freeze([
+    '--profile',
+    values['--profile'],
+    '--samples',
+    values['--samples'],
+    '--source-commit-sha',
+    values['--source-commit-sha'],
+    '--runtime-id',
+    values['--runtime-id'],
+    '--reference-hardware-id',
+    values['--reference-hardware-id'],
+  ]);
+
   return Object.freeze({
-    documentProfile: argv[5],
-    forwardedArguments: Object.freeze(argv.slice(0, -2)),
-    outputDirectory: resolve(argv[17]),
+    documentProfile: values['--profile'],
+    markdownArguments: Object.freeze([
+      '--input',
+      values['--input'],
+      '--module',
+      values['--module'],
+      ...sharedArguments,
+      '--artifact-sha256',
+      values['--artifact-sha256'],
+    ]),
+    revisionArguments: Object.freeze([
+      '--input',
+      values['--revision-input'],
+      '--module',
+      values['--revision-module'],
+      ...sharedArguments,
+      '--artifact-sha256',
+      values['--revision-artifact-sha256'],
+    ]),
+    outputDirectory: resolve(values['--output']),
   });
 }
 
@@ -103,31 +139,79 @@ function runBoundedNodeScript(scriptName, args, failureMessage) {
   }
 }
 
-function main(argv) {
-  const args = resolveArguments(argv);
-  prepareOutputDirectory(args.outputDirectory);
-  const samplesPath = resolve(args.outputDirectory, 'samples.json');
-  const summaryDirectory = resolve(args.outputDirectory, 'summary');
-
+function runMeasurementAndSummary({
+  measurementScript,
+  measurementArguments,
+  samplesPath,
+  summaryDirectory,
+  measurementFailure,
+  summaryFailure,
+}) {
   runBoundedNodeScript(
-    'measure-markdown.mjs',
-    [...args.forwardedArguments, '--output', samplesPath],
-    'Benchmark suite measurement failed.',
+    measurementScript,
+    [...measurementArguments, '--output', samplesPath],
+    measurementFailure,
   );
   runBoundedNodeScript(
     'summarize-samples.mjs',
     ['--input', samplesPath, '--output', summaryDirectory],
-    'Benchmark suite summary failed.',
+    summaryFailure,
   );
+}
+
+function main(argv) {
+  const args = resolveArguments(argv);
+  prepareOutputDirectory(args.outputDirectory);
+
+  const markdownSamplesPath = resolve(
+    args.outputDirectory,
+    'markdown',
+    'samples.json',
+  );
+  const markdownSummaryDirectory = resolve(
+    args.outputDirectory,
+    'markdown',
+    'summary',
+  );
+  const revisionSamplesPath = resolve(
+    args.outputDirectory,
+    'revision',
+    'samples.json',
+  );
+  const revisionSummaryDirectory = resolve(
+    args.outputDirectory,
+    'revision',
+    'summary',
+  );
+
+  runMeasurementAndSummary({
+    measurementScript: 'measure-markdown.mjs',
+    measurementArguments: args.markdownArguments,
+    samplesPath: markdownSamplesPath,
+    summaryDirectory: markdownSummaryDirectory,
+    measurementFailure: 'Benchmark suite Markdown measurement failed.',
+    summaryFailure: 'Benchmark suite Markdown summary failed.',
+  });
+  runMeasurementAndSummary({
+    measurementScript: 'measure-revision-evidence.mjs',
+    measurementArguments: args.revisionArguments,
+    samplesPath: revisionSamplesPath,
+    summaryDirectory: revisionSummaryDirectory,
+    measurementFailure: 'Benchmark suite revision measurement failed.',
+    summaryFailure: 'Benchmark suite revision summary failed.',
+  });
 
   process.stdout.write(
     `${JSON.stringify({
       contractVersion: 1,
       documentProfile: args.documentProfile,
-      samples: 'samples.json',
+      markdownSamples: 'markdown/samples.json',
+      markdownSummaryJson: 'markdown/summary/summary.json',
+      markdownSummaryText: 'markdown/summary/summary.txt',
+      revisionSamples: 'revision/samples.json',
+      revisionSummaryJson: 'revision/summary/summary.json',
+      revisionSummaryText: 'revision/summary/summary.txt',
       status: 'completed',
-      summaryJson: 'summary/summary.json',
-      summaryText: 'summary/summary.txt',
     })}\n`,
   );
 }
