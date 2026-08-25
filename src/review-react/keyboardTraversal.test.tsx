@@ -79,4 +79,32 @@ describe('CwlReviewThreadList keyboard traversal', () => {
     fireEvent.keyDown(second, { key: 'Home' });
     expect(first).toHaveFocus();
   });
+
+  it('clamps arrow traversal at the first and last thread without selecting either thread', () => {
+    const onSelectThread = vi.fn();
+    render(
+      <CwlReviewThreadList
+        presentations={[
+          presentation('thread_1', 'a'),
+          presentation('thread_2', 'b'),
+          presentation('thread_3', 'c'),
+        ]}
+        labels={labels}
+        onSelectThread={onSelectThread}
+      />,
+    );
+
+    const first = screen.getByRole('button', { name: 'Thread 1' });
+    const last = screen.getByRole('button', { name: 'Thread 3' });
+
+    first.focus();
+    fireEvent.keyDown(first, { key: 'ArrowUp' });
+    expect(first).toHaveFocus();
+
+    last.focus();
+    fireEvent.keyDown(last, { key: 'ArrowDown' });
+    expect(last).toHaveFocus();
+
+    expect(onSelectThread).not.toHaveBeenCalled();
+  });
 });
