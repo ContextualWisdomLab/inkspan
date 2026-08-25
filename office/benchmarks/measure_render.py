@@ -112,6 +112,13 @@ def _read_exact_regular_fixture(path: Path, expected_bytes: int, expected_sha256
     return payload
 
 
+def _read_exact_stdin_fixture(expected_bytes: int, expected_sha256: str) -> bytes:
+    payload = sys.stdin.buffer.read(expected_bytes + 1)
+    if len(payload) != expected_bytes or hashlib.sha256(payload).hexdigest() != expected_sha256:
+        raise BenchmarkContractError("input does not match the canonical synthetic Office fixture")
+    return payload
+
+
 def _source_sha() -> str:
     status = subprocess.run(
         ["git", "-C", str(REPOSITORY_ROOT), "status", "--porcelain", "--untracked-files=all"],
@@ -146,15 +153,16 @@ def _peak_rss_bytes() -> int:
     return int(peak) * 1024
 
 
-def _child_measure() -> int:
+def _child_measure(format_name: str, profile: str) -> int:
     try:
-        payload_bytes = sys.stdin.buffer.read()
+        profile = _metadata_token(profile, "fixture profile")
+        expected_bytes, expected_sha256 = _load_fixture_contract(format_name, profile)
+        payload_bytes = _read_exact_stdin_fixture(expected_bytes, expected_sha256)
         payload = json.loads(payload_bytes.decode("utf-8"))
         if not isinstance(payload, dict):
             raise BenchmarkContractError("canonical Office fixture must contain an object")
-        format_name = payload.get("format")
-        if format_name not in SUPPORTED_FORMATS:
-            raise BenchmarkContractError("canonical Office fixture format is unsupported")
+        if payload.get("format") != format_name:
+            raise BenchmarkContractError("canonical Office fixture format is inconsistent")
         with tempfile.TemporaryDirectory(prefix="inkspan-office-benchmark-") as directory:
             output_path = Path(directory) / f"render.{format_name}"
             started = time.perf_counter_ns()
@@ -173,15 +181,26 @@ def _child_measure() -> int:
             )
         )
         return 0
+    except BenchmarkContractError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     except Exception:
         print("Office benchmark render sample failed.", file=sys.stderr)
         return 2
 
 
-def _run_sample(payload_bytes: bytes) -> dict[str, Any]:
+def _run_sample(payload_bytes: bytes, format_name: str, profile: str) -> dict[str, Any]:
     try:
         completed = subprocess.run(
-            [sys.executable, str(Path(__file__).resolve()), "--child"],
+            [
+                sys.executable,
+                str(Path(__file__).resolve()),
+                "--child",
+                "--format",
+                format_name,
+                "--fixture-profile",
+                profile,
+            ],
             input=payload_bytes,
             check=False,
             cwd=REPOSITORY_ROOT,
@@ -200,9 +219,9 @@ def _run_sample(payload_bytes: bytes) -> dict[str, Any]:
         raise BenchmarkContractError("Office benchmark render sample was invalid")
     duration = sample.get("durationMs")
     peak_rss = sample.get("peakRssBytes")
-    format_name = sample.get("format")
+    observed_format = sample.get("format")
     if (
-        format_name not in SUPPORTED_FORMATS
+        observed_format != format_name
         or not isinstance(duration, (int, float))
         or isinstance(duration, bool)
         or not math.isfinite(duration)
@@ -212,7 +231,7 @@ def _run_sample(payload_bytes: bytes) -> dict[str, Any]:
         or peak_rss <= 0
     ):
         raise BenchmarkContractError("Office benchmark render sample was invalid")
-    return {"format": format_name, "durationMs": duration, "peakRssBytes": peak_rss}
+    return {"format": observed_format, "durationMs": duration, "peakRssBytes": peak_rss}
 
 
 def _percentile(values: list[float], quantile: float) -> float:
@@ -248,6 +267,13 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _child_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Render one verified synthetic Inkspan Office fixture")
+    parser.add_argument("--format", required=True, choices=sorted(SUPPORTED_FORMATS))
+    parser.add_argument("--fixture-profile", required=True)
+    return parser
+
+
 def _main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
@@ -259,10 +285,7 @@ def _main(argv: list[str] | None = None) -> int:
         payload_bytes = _read_exact_regular_fixture(
             Path(args.input), expected_bytes, expected_sha256
         )
-        samples = [_run_sample(payload_bytes) for _ in range(iterations)]
-        observed_formats = {sample["format"] for sample in samples}
-        if observed_formats != {args.format}:
-            raise BenchmarkContractError("Office benchmark render format was inconsistent")
+        samples = [_run_sample(payload_bytes, args.format, profile) for _ in range(iterations)]
         duration_values = [float(sample["durationMs"]) for sample in samples]
         rss_values = [float(sample["peakRssBytes"]) for sample in samples]
         evidence = {
@@ -301,8 +324,9 @@ def _main(argv: list[str] | None = None) -> int:
 def main() -> int:
     """Run the benchmark command or its isolated one-render child process."""
 
-    if sys.argv[1:] == ["--child"]:
-        return _child_measure()
+    if sys.argv[1:2] == ["--child"]:
+        args = _child_parser().parse_args(sys.argv[2:])
+        return _child_measure(args.format, args.fixture_profile)
     return _main()
 
 
