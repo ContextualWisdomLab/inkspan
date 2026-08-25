@@ -4,8 +4,8 @@ import { dirname, delimiter, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const TITLE = 'Inkspan acquisition handoff';
-const MARKDOWN = '**Buyer-ready** body.';
-const EXPECTED_BODY = 'Buyer-ready body.';
+const MARKDOWN = '**Buyer-ready** body.\n\nSecond acquisition paragraph.';
+const EXPECTED_BODY = ['Buyer-ready body.', 'Second acquisition paragraph.'];
 
 function requiredEnvironment(name) {
   const value = process.env[name]?.trim();
@@ -80,9 +80,11 @@ async function main() {
     if (
       request.format !== 'docx' ||
       request.title !== TITLE ||
-      request.blocks?.length !== 1 ||
-      request.blocks[0]?.type !== 'paragraph' ||
-      request.blocks[0]?.text !== EXPECTED_BODY
+      request.blocks?.length !== EXPECTED_BODY.length ||
+      request.blocks.some(
+        (block, index) =>
+          block?.type !== 'paragraph' || block.text !== EXPECTED_BODY[index],
+      )
     ) {
       throw new Error('packed Markdown handoff produced an unexpected Office request');
     }
@@ -118,7 +120,7 @@ document = Document(output)
 if document.core_properties.title != ${JSON.stringify(TITLE)}:
     raise SystemExit("DOCX title metadata does not match the handoff")
 paragraphs = [paragraph.text for paragraph in document.paragraphs]
-if paragraphs != [${JSON.stringify(TITLE)}, ${JSON.stringify(EXPECTED_BODY)}]:
+if paragraphs != ${JSON.stringify([TITLE, ...EXPECTED_BODY])}:
     raise SystemExit(f"unexpected DOCX paragraphs: {paragraphs!r}")
 `;
     run(python, ['-c', validation, outputPath], {
