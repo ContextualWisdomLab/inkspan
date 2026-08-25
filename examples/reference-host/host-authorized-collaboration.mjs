@@ -111,3 +111,95 @@ export function createHostAuthorizedProviderFactory(source) {
     );
   };
 }
+
+function runSelfTest() {
+  const events = [];
+  const document = Object.freeze({ reference: 'host-owned-document' });
+  const authorizedFactory = createHostAuthorizedProviderFactory({
+    authorize(context) {
+      if (Object.prototype.hasOwnProperty.call(context, 'document')) {
+        throw new Error('authorization context must not receive the host document.');
+      }
+      events.push(
+        `authorize:${context.actorId}:${context.roomId}:${context.generation}`,
+      );
+      return true;
+    },
+    createProvider(context) {
+      if (context.document !== document) {
+        throw new Error('provider construction lost the host-owned document.');
+      }
+      events.push(`provider:create:${context.generation}`);
+      return Object.freeze({ generation: context.generation });
+    },
+  });
+
+  const provider1 = authorizedFactory({
+    document,
+    roomId: 'reference-room',
+    actorId: 'reference-actor',
+    generation: 1,
+  });
+  const provider2 = authorizedFactory({
+    document,
+    roomId: 'reference-room',
+    actorId: 'reference-actor',
+    generation: 2,
+  });
+
+  let deniedProviderConstructed = false;
+  let deniedError = null;
+  const deniedFactory = createHostAuthorizedProviderFactory({
+    authorize() {
+      events.push('authorize:denied');
+      return false;
+    },
+    createProvider() {
+      deniedProviderConstructed = true;
+      return {};
+    },
+  });
+  try {
+    deniedFactory({
+      document,
+      roomId: 'reference-room',
+      actorId: 'denied-actor',
+      generation: 3,
+    });
+  } catch (error) {
+    deniedError = error instanceof Error ? error.message : 'unexpected error';
+  }
+
+  const expectedEvents = [
+    'authorize:reference-actor:reference-room:1',
+    'provider:create:1',
+    'authorize:reference-actor:reference-room:2',
+    'provider:create:2',
+    'authorize:denied',
+  ];
+  if (
+    provider1.generation !== 1 ||
+    provider2.generation !== 2 ||
+    deniedProviderConstructed ||
+    deniedError !== AUTHORIZATION_FAILURE ||
+    events.length !== expectedEvents.length ||
+    events.some((event, index) => event !== expectedEvents[index])
+  ) {
+    throw new Error('host-authorized collaboration self-test failed.');
+  }
+
+  process.stdout.write(
+    `${JSON.stringify({
+      authorizationBeforeConstruction: true,
+      deniedProviderConstructed,
+      deniedError,
+      events,
+      hostDocumentPreserved: true,
+      status: 'completed',
+    })}\n`,
+  );
+}
+
+if (process.argv.includes('--self-test')) {
+  runSelfTest();
+}
