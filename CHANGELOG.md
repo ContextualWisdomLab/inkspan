@@ -6,6 +6,10 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Security
+- Raised workspace-wide transitive development-tool overrides for `fast-uri`, `nanoid`, and `postcss` to patched minimums, keeping the lockfile audit clean without changing runtime package authority.
+- Normalized isolated package-verifier temporary roots before containment checks on macOS.
+
 ## [0.6.0] — 2026-08-10
 
 ### Release
