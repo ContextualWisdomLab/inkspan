@@ -22,6 +22,20 @@ const coreRunnerPath = resolve(benchmarkDirectory, 'run-current-suite-core.mjs')
 const MAX_PACKAGE_BYTES = 64 * 1024 * 1024;
 const READ_CHUNK_BYTES = 64 * 1024;
 const READ_ONLY_NOFOLLOW = constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0);
+const legacyFlags = Object.freeze([
+  '--input',
+  '--module',
+  '--revision-input',
+  '--revision-module',
+  '--profile',
+  '--samples',
+  '--source-commit-sha',
+  '--artifact-sha256',
+  '--revision-artifact-sha256',
+  '--runtime-id',
+  '--reference-hardware-id',
+  '--output',
+]);
 const packedFlags = Object.freeze([
   '--input',
   '--revision-input',
@@ -43,6 +57,28 @@ function matchesArguments(argv, expectedFlags) {
     expectedFlags.every((flag, index) => argv[index * 2] === flag) &&
     expectedFlags.every((_, index) => argv[index * 2 + 1]?.length > 0)
   );
+}
+
+function matchingFlags(argv) {
+  if (matchesArguments(argv, packedFlags)) return packedFlags;
+  if (matchesArguments(argv, legacyFlags)) return legacyFlags;
+  return null;
+}
+
+function assertFreshOutputDirectory(argv) {
+  const flags = matchingFlags(argv);
+  if (flags === null) return;
+  const outputValueIndex = flags.indexOf('--output') * 2 + 1;
+  const outputDirectory = resolve(repositoryRoot, argv[outputValueIndex]);
+  let metadata;
+  try {
+    metadata = lstatSync(outputDirectory, { throwIfNoEntry: false });
+  } catch {
+    return;
+  }
+  if (metadata?.isDirectory()) {
+    throw new Error('Benchmark suite output directory must not already exist.');
+  }
 }
 
 function readPackedTarballSnapshot(path) {
@@ -138,6 +174,7 @@ function snapshotPackedArguments(argv) {
 
 function main(argv) {
   assertCleanSourceCheckout(repositoryRoot);
+  assertFreshOutputDirectory(argv);
   const snapshotted = snapshotPackedArguments(argv);
 
   try {
