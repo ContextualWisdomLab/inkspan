@@ -9,6 +9,20 @@ export type SubmissionStateObserver = (
 ) => void;
 
 /**
+ * Return whether a reference-host native-form write must be rejected now.
+ *
+ * Read-only host policy and the synchronous durable-submission admission gate
+ * are the only authority inputs. Presentation state is deliberately excluded so
+ * a submit/reset event in the same turn cannot race a deferred React commit.
+ */
+export function shouldBlockReferenceHostFormMutation(
+  readOnly: boolean,
+  isDurableSubmissionInFlight: () => boolean,
+): boolean {
+  return readOnly || isDurableSubmissionInFlight();
+}
+
+/**
  * Serialize host-owned authorized persistence attempts without assuming any
  * transport or storage authority in Inkspan.
  *
