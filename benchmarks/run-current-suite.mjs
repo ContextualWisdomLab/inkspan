@@ -19,11 +19,32 @@ import { assertCleanSourceCheckout } from './source-checkout-provenance.mjs';
 const benchmarkDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(benchmarkDirectory, '..');
 const coreRunnerPath = resolve(benchmarkDirectory, 'run-current-suite-core.mjs');
+const markdownMeasurementPath = resolve(
+  benchmarkDirectory,
+  'measure-markdown.mjs',
+);
+const sampleSummaryPath = resolve(benchmarkDirectory, 'summarize-samples.mjs');
 const MAX_PACKAGE_BYTES = 64 * 1024 * 1024;
+const MAX_CHILD_OUTPUT_BYTES = 4 * 1024 * 1024;
 const READ_CHUNK_BYTES = 64 * 1024;
 const READ_ONLY_NOFOLLOW = constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0);
 const legacyFlags = Object.freeze([
   '--input',
+  '--module',
+  '--revision-input',
+  '--revision-module',
+  '--profile',
+  '--samples',
+  '--source-commit-sha',
+  '--artifact-sha256',
+  '--revision-artifact-sha256',
+  '--runtime-id',
+  '--reference-hardware-id',
+  '--output',
+]);
+const htmlLegacyFlags = Object.freeze([
+  '--input',
+  '--html-input',
   '--module',
   '--revision-input',
   '--revision-module',
@@ -59,7 +80,18 @@ function matchesArguments(argv, expectedFlags) {
   );
 }
 
+function valuesForArguments(argv, expectedFlags) {
+  return Object.fromEntries(
+    expectedFlags.map((flag, index) => [flag, argv[index * 2 + 1]]),
+  );
+}
+
+function argumentsForFlags(values, flags) {
+  return flags.flatMap((flag) => [flag, values[flag]]);
+}
+
 function matchingFlags(argv) {
+  if (matchesArguments(argv, htmlLegacyFlags)) return htmlLegacyFlags;
   if (matchesArguments(argv, packedFlags)) return packedFlags;
   if (matchesArguments(argv, legacyFlags)) return legacyFlags;
   return null;
@@ -172,9 +204,118 @@ function snapshotPackedArguments(argv) {
   });
 }
 
-function main(argv) {
-  assertCleanSourceCheckout(repositoryRoot);
-  assertFreshOutputDirectory(argv);
+function runBoundedNode(scriptPath, args, failureMessage) {
+  const result = spawnSync(process.execPath, [scriptPath, ...args], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+    maxBuffer: MAX_CHILD_OUTPUT_BYTES,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    timeout: 600_000,
+  });
+  if (
+    result.error !== undefined ||
+    result.signal !== null ||
+    result.status !== 0
+  ) {
+    throw new Error(failureMessage);
+  }
+  return result.stdout;
+}
+
+function parseCoreManifest(stdout) {
+  let manifest;
+  try {
+    manifest = JSON.parse(stdout.trim());
+  } catch {
+    throw new Error('Benchmark suite internal runner returned invalid evidence.');
+  }
+  if (
+    manifest === null ||
+    typeof manifest !== 'object' ||
+    Array.isArray(manifest) ||
+    manifest.status !== 'completed'
+  ) {
+    throw new Error('Benchmark suite internal runner returned invalid evidence.');
+  }
+  return manifest;
+}
+
+function runHtmlSerializationSuite(argv) {
+  const values = valuesForArguments(argv, htmlLegacyFlags);
+  const outputDirectory = resolve(repositoryRoot, values['--output']);
+  const legacyArguments = argumentsForFlags(values, legacyFlags);
+  let coreCompleted = false;
+
+  try {
+    const coreStdout = runBoundedNode(
+      coreRunnerPath,
+      legacyArguments,
+      'Benchmark suite internal runner failed.',
+    );
+    coreCompleted = true;
+    const manifest = parseCoreManifest(coreStdout);
+    const samplesPath = resolve(
+      outputDirectory,
+      'html-serialization',
+      'samples.json',
+    );
+    const summaryDirectory = resolve(
+      outputDirectory,
+      'html-serialization',
+      'summary',
+    );
+
+    runBoundedNode(
+      markdownMeasurementPath,
+      [
+        '--input',
+        values['--html-input'],
+        '--module',
+        values['--module'],
+        '--operation',
+        'html-to-markdown',
+        '--profile',
+        values['--profile'],
+        '--samples',
+        values['--samples'],
+        '--source-commit-sha',
+        values['--source-commit-sha'],
+        '--artifact-sha256',
+        values['--artifact-sha256'],
+        '--runtime-id',
+        values['--runtime-id'],
+        '--reference-hardware-id',
+        values['--reference-hardware-id'],
+        '--output',
+        samplesPath,
+      ],
+      'Benchmark suite HTML serialization measurement failed.',
+    );
+    runBoundedNode(
+      sampleSummaryPath,
+      ['--input', samplesPath, '--output', summaryDirectory],
+      'Benchmark suite HTML serialization summary failed.',
+    );
+
+    process.stdout.write(
+      `${JSON.stringify({
+        ...manifest,
+        htmlSerializationSamples: 'html-serialization/samples.json',
+        htmlSerializationSummaryJson:
+          'html-serialization/summary/summary.json',
+        htmlSerializationSummaryText:
+          'html-serialization/summary/summary.txt',
+      })}\n`,
+    );
+  } catch (error) {
+    if (coreCompleted) {
+      rmSync(outputDirectory, { recursive: true, force: true });
+    }
+    throw error;
+  }
+}
+
+function runExistingSuite(argv) {
   const snapshotted = snapshotPackedArguments(argv);
 
   try {
@@ -201,6 +342,16 @@ function main(argv) {
       });
     }
   }
+}
+
+function main(argv) {
+  assertCleanSourceCheckout(repositoryRoot);
+  assertFreshOutputDirectory(argv);
+  if (matchesArguments(argv, htmlLegacyFlags)) {
+    runHtmlSerializationSuite(argv);
+    return;
+  }
+  runExistingSuite(argv);
 }
 
 try {
