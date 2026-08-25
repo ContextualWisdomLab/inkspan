@@ -22,6 +22,10 @@ const MAX_SAMPLES = 1_000;
 const READ_ONLY_NOFOLLOW =
   constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0);
 const DOCUMENT_PROFILES = new Set(['small', 'medium', 'large', 'stress']);
+const SERIALIZATION_OPERATIONS = new Set([
+  'markdown-to-html',
+  'html-to-markdown',
+]);
 const SHA1_PATTERN = /^[0-9a-f]{40}$/u;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const RUNTIME_ID_PATTERN =
@@ -32,32 +36,61 @@ const OUTPUT_DIRECTORY_ERROR =
   'Markdown benchmark output directory must be a non-symlink directory.';
 const OUTPUT_EXISTS_ERROR =
   'Markdown benchmark output must not already exist.';
+const LEGACY_FLAGS = Object.freeze([
+  '--input',
+  '--module',
+  '--profile',
+  '--samples',
+  '--source-commit-sha',
+  '--artifact-sha256',
+  '--runtime-id',
+  '--reference-hardware-id',
+  '--output',
+]);
+const OPERATION_FLAGS = Object.freeze([
+  '--input',
+  '--module',
+  '--operation',
+  '--profile',
+  '--samples',
+  '--source-commit-sha',
+  '--artifact-sha256',
+  '--runtime-id',
+  '--reference-hardware-id',
+  '--output',
+]);
+
+function matchesArguments(argv, expectedFlags) {
+  return (
+    argv.length === expectedFlags.length * 2 &&
+    expectedFlags.every((flag, index) => argv[index * 2] === flag) &&
+    expectedFlags.every((_, index) => argv[index * 2 + 1]?.length > 0)
+  );
+}
+
+function valuesForArguments(argv, expectedFlags) {
+  return Object.fromEntries(
+    expectedFlags.map((flag, index) => [flag, argv[index * 2 + 1]]),
+  );
+}
 
 function resolveArguments(argv) {
-  const expectedFlags = [
-    '--input',
-    '--module',
-    '--profile',
-    '--samples',
-    '--source-commit-sha',
-    '--artifact-sha256',
-    '--runtime-id',
-    '--reference-hardware-id',
-    '--output',
-  ];
-  if (
-    argv.length !== expectedFlags.length * 2 ||
-    expectedFlags.some((flag, index) => argv[index * 2] !== flag) ||
-    expectedFlags.some((_, index) => argv[index * 2 + 1]?.length === 0)
-  ) {
+  let values;
+  let operation = 'markdown-to-html';
+  if (matchesArguments(argv, OPERATION_FLAGS)) {
+    values = valuesForArguments(argv, OPERATION_FLAGS);
+    operation = values['--operation'];
+    if (!SERIALIZATION_OPERATIONS.has(operation)) {
+      throw new Error('Markdown benchmark serialization operation is invalid.');
+    }
+  } else if (matchesArguments(argv, LEGACY_FLAGS)) {
+    values = valuesForArguments(argv, LEGACY_FLAGS);
+  } else {
     throw new Error(
       'Usage: node benchmarks/measure-markdown.mjs --input <document.md> --module <packed-markdown-module> --profile <small|medium|large|stress> --samples <count> --source-commit-sha <sha> --artifact-sha256 <sha256> --runtime-id <runtime> --reference-hardware-id <hardware> --output <samples.json>',
     );
   }
 
-  const values = Object.fromEntries(
-    expectedFlags.map((flag, index) => [flag, argv[index * 2 + 1]]),
-  );
   const profile = values['--profile'];
   if (!DOCUMENT_PROFILES.has(profile)) {
     throw new Error('Markdown benchmark profile is invalid.');
@@ -94,6 +127,7 @@ function resolveArguments(argv) {
   return Object.freeze({
     inputPath: resolve(values['--input']),
     modulePath: values['--module'],
+    operation,
     profile,
     sampleCount,
     sourceCommitSha,
@@ -286,11 +320,28 @@ async function loadMeasuredModule(modulePath) {
   }
 }
 
-function runMeasuredMarkdownToHtml(markdownToHtml, source) {
+function serializationContract(operation) {
+  if (operation === 'html-to-markdown') {
+    return Object.freeze({
+      exportName: 'htmlToMarkdown',
+      benchmarkPrefix: 'html-serialization',
+      executionFailure: 'Measured htmlToMarkdown() execution failed.',
+      returnFailure: 'Measured htmlToMarkdown() must return a string.',
+    });
+  }
+  return Object.freeze({
+    exportName: 'markdownToHtml',
+    benchmarkPrefix: 'markdown-serialization',
+    executionFailure: 'Measured markdownToHtml() execution failed.',
+    returnFailure: 'Measured markdownToHtml() must return a string.',
+  });
+}
+
+function runMeasuredSerialization(serializer, source, failureMessage) {
   try {
-    return markdownToHtml(source);
+    return serializer(source);
   } catch {
-    throw new Error('Measured markdownToHtml() execution failed.');
+    throw new Error(failureMessage);
   }
 }
 
@@ -331,24 +382,30 @@ async function main() {
   verifyMeasuredModuleDigest(modulePath, args.artifactSha256);
 
   const measuredModule = await loadMeasuredModule(modulePath);
-  if (typeof measuredModule.markdownToHtml !== 'function') {
-    throw new Error('Measured Markdown module must export markdownToHtml().');
+  const contract = serializationContract(args.operation);
+  const serializer = measuredModule[contract.exportName];
+  if (typeof serializer !== 'function') {
+    throw new Error(
+      `Measured Markdown module must export ${contract.exportName}().`,
+    );
   }
 
-  const warmup = runMeasuredMarkdownToHtml(
-    measuredModule.markdownToHtml,
+  const warmup = runMeasuredSerialization(
+    serializer,
     source,
+    contract.executionFailure,
   );
   if (typeof warmup !== 'string') {
-    throw new Error('Measured markdownToHtml() must return a string.');
+    throw new Error(contract.returnFailure);
   }
 
   const samples = [];
   for (let index = 0; index < args.sampleCount; index += 1) {
     const start = performance.now();
-    const output = runMeasuredMarkdownToHtml(
-      measuredModule.markdownToHtml,
+    const output = runMeasuredSerialization(
+      serializer,
       source,
+      contract.executionFailure,
     );
     const elapsed = performance.now() - start;
     if (
@@ -378,7 +435,7 @@ async function main() {
     `${JSON.stringify(
       {
         contractVersion: 1,
-        benchmarkId: `markdown-serialization-${args.profile}`,
+        benchmarkId: `${contract.benchmarkPrefix}-${args.profile}`,
         unit: 'ms',
         sourceCommitSha: args.sourceCommitSha,
         artifactSha256: args.artifactSha256,
