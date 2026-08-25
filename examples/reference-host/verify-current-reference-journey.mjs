@@ -23,6 +23,10 @@ const steps = Object.freeze([
     path: 'examples/reference-host/collaboration-provider-lifecycle.mjs',
   }),
   Object.freeze({
+    args: Object.freeze(['--self-test']),
+    path: 'examples/reference-host/host-authorized-collaboration.mjs',
+  }),
+  Object.freeze({
     args: Object.freeze([]),
     path: 'examples/reference-host/verify-packed-artifact.mjs',
   }),
