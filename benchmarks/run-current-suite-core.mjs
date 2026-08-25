@@ -58,6 +58,8 @@ const MARKDOWN_MODULE_ENTRY = 'package/dist/cwl-markdown.js';
 const REVISION_MODULE_ENTRY = 'package/dist/cwl-revision-evidence.js';
 const OUTPUT_DIRECTORY_ERROR =
   'Benchmark suite output directory must be a non-symlink directory.';
+const OUTPUT_DIRECTORY_EXISTS_ERROR =
+  'Benchmark suite output directory must not already exist.';
 
 function matchesArguments(argv, expectedFlags) {
   return (
@@ -217,7 +219,7 @@ function prepareOutputDirectory(path) {
     if (!existing.isDirectory()) {
       throw new Error(OUTPUT_DIRECTORY_ERROR);
     }
-    return false;
+    throw new Error(OUTPUT_DIRECTORY_EXISTS_ERROR);
   }
 
   try {
