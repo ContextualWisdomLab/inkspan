@@ -16,6 +16,8 @@ const repositoryRoot = process.cwd();
 const suitePath = resolve(repositoryRoot, 'benchmarks/run-current-suite.mjs');
 const temporaryDirectories: string[] = [];
 const activeRuntimeId = `node-${process.versions.node}`;
+const sourceCommitSha = 'a'.repeat(40);
+const referenceHardwareId = `refhw-sha256-${'b'.repeat(64)}`;
 
 afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) {
@@ -115,18 +117,18 @@ function packedSuiteArguments(options: {
     '--samples',
     '2',
     '--source-commit-sha',
-    'a'.repeat(40),
+    sourceCommitSha,
     '--runtime-id',
     options.runtimeId,
     '--reference-hardware-id',
-    `refhw-sha256-${'b'.repeat(64)}`,
+    referenceHardwareId,
     '--output',
     join(options.directory, 'evidence'),
   ];
 }
 
 describe('packed artifact benchmark suite contract', () => {
-  it('binds one-command benchmark evidence to a packed npm artifact digest', () => {
+  it('binds one-command benchmark evidence to packed artifact and run provenance', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inkspan-packed-benchmark-'));
     temporaryDirectories.push(directory);
     const packed = createPackedBenchmarkFixture(directory);
@@ -151,6 +153,11 @@ describe('packed artifact benchmark suite contract', () => {
     expect(result.stderr).toBe('');
     expect(JSON.parse(result.stdout.trim())).toMatchObject({
       contractVersion: 1,
+      documentProfile: 'small',
+      sampleCount: 2,
+      sourceCommitSha,
+      runtimeId: activeRuntimeId,
+      referenceHardwareId,
       packageName: '@contextualwisdomlab/cwl-editor',
       packageVersion: '0.0.0-benchmark-fixture',
       packageSha256: packed.packageSha256,
