@@ -28,6 +28,7 @@ from inkspan_office.safe_renderer import write_office_document  # noqa: E402
 
 MAX_ITERATIONS = 100
 MAX_TOKEN_CODE_UNITS = 128
+SAMPLE_TIMEOUT_SECONDS = 120
 TOKEN_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]*\Z")
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}\Z")
 GIT_SHA_PATTERN = re.compile(r"[0-9a-f]{40}\Z")
@@ -178,13 +179,17 @@ def _child_measure() -> int:
 
 
 def _run_sample(payload_bytes: bytes) -> dict[str, Any]:
-    completed = subprocess.run(
-        [sys.executable, str(Path(__file__).resolve()), "--child"],
-        input=payload_bytes,
-        check=False,
-        cwd=REPOSITORY_ROOT,
-        capture_output=True,
-    )
+    try:
+        completed = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve()), "--child"],
+            input=payload_bytes,
+            check=False,
+            cwd=REPOSITORY_ROOT,
+            capture_output=True,
+            timeout=SAMPLE_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        raise BenchmarkContractError("Office benchmark render sample timed out") from None
     if completed.returncode != 0:
         raise BenchmarkContractError("Office benchmark render sample failed")
     try:
