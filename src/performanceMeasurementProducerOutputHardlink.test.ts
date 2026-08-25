@@ -52,7 +52,7 @@ function commonArguments(
   ];
 }
 
-function expectHardlinkFailure(
+function expectOutputPreservedFailure(
   script: string,
   args: string[],
   sentinel: string,
@@ -70,7 +70,7 @@ function expectHardlinkFailure(
   expect(readFileSync(sentinel, 'utf8')).toBe(originalSentinel);
 }
 
-describe('benchmark producer output hard-link safety', () => {
+describe('benchmark producer output immutability', () => {
   it('fails closed before Markdown measurement overwrites an unrelated hard link', () => {
     const root = mkdtempSync(join(tmpdir(), 'inkspan-markdown-hardlink-'));
     const input = join(root, 'document.md');
@@ -85,7 +85,7 @@ describe('benchmark producer output hard-link safety', () => {
       writeFileSync(sentinel, 'buyer-owned-content\n', 'utf8');
       linkSync(sentinel, output);
 
-      expectHardlinkFailure(
+      expectOutputPreservedFailure(
         markdownScript,
         commonArguments(input, module, sha256(moduleSource), output),
         sentinel,
@@ -115,11 +115,62 @@ describe('benchmark producer output hard-link safety', () => {
       writeFileSync(sentinel, 'buyer-owned-content\n', 'utf8');
       linkSync(sentinel, output);
 
-      expectHardlinkFailure(
+      expectOutputPreservedFailure(
         revisionScript,
         commonArguments(input, module, sha256(moduleSource), output),
         sentinel,
         'Revision benchmark output must not be multiply linked.',
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails closed before Markdown measurement overwrites existing evidence', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-markdown-existing-output-'));
+    const input = join(root, 'document.md');
+    const module = join(root, 'markdown-module.mjs');
+    const output = join(root, 'samples.json');
+    const moduleSource = 'export const markdownToHtml = (source) => `<p>${source}</p>`;\n';
+
+    try {
+      writeFileSync(input, '# Hello\n', 'utf8');
+      writeFileSync(module, moduleSource, 'utf8');
+      writeFileSync(output, '{"status":"accepted"}\n', 'utf8');
+
+      expectOutputPreservedFailure(
+        markdownScript,
+        commonArguments(input, module, sha256(moduleSource), output),
+        output,
+        'Markdown benchmark output must not already exist.',
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails closed before revision measurement overwrites existing evidence', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-revision-existing-output-'));
+    const input = join(root, 'document-envelope.json');
+    const module = join(root, 'revision-module.mjs');
+    const output = join(root, 'samples.json');
+    const moduleSource = [
+      'export async function createDocumentEnvelopeRevisionEvidenceBytes(source) {',
+      "  return { revision: { digestHex: String(source.byteLength).padStart(64, '0') } };",
+      '}',
+      '',
+    ].join('\n');
+
+    try {
+      writeFileSync(input, '{"contractVersion":1}\n', 'utf8');
+      writeFileSync(module, moduleSource, 'utf8');
+      writeFileSync(output, '{"status":"accepted"}\n', 'utf8');
+
+      expectOutputPreservedFailure(
+        revisionScript,
+        commonArguments(input, module, sha256(moduleSource), output),
+        output,
+        'Revision benchmark output must not already exist.',
       );
     } finally {
       rmSync(root, { recursive: true, force: true });
