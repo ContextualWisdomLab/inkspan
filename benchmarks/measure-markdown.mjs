@@ -30,6 +30,8 @@ const REFERENCE_HARDWARE_ID_PATTERN =
   /^(?:github-actions-(?:ubuntu|windows|macos)-[0-9]+(?:\.[0-9]+){0,2}-(?:x64|arm64)|refhw-sha256-[0-9a-f]{64})$/u;
 const OUTPUT_DIRECTORY_ERROR =
   'Markdown benchmark output directory must be a non-symlink directory.';
+const OUTPUT_EXISTS_ERROR =
+  'Markdown benchmark output must not already exist.';
 
 function resolveArguments(argv) {
   const expectedFlags = [
@@ -301,7 +303,7 @@ function writeMeasurementOutput(path, content) {
   }
   assertNoSymlinkOutputAncestors(path);
   try {
-    writeFileSync(path, content, 'utf8');
+    writeFileSync(path, content, { encoding: 'utf8', flag: 'wx' });
   } catch {
     throw new Error('Markdown benchmark output could not be written.');
   }
@@ -367,6 +369,9 @@ async function main() {
   }
   if (outputMetadata !== undefined && outputMetadata.nlink !== 1) {
     throw new Error('Markdown benchmark output must not be multiply linked.');
+  }
+  if (outputMetadata !== undefined) {
+    throw new Error(OUTPUT_EXISTS_ERROR);
   }
   writeMeasurementOutput(
     args.outputPath,
