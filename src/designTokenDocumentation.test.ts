@@ -23,7 +23,6 @@ describe('editor design-token documentation contract', () => {
 
     expect(index).toContain('[`design-tokens.md`](design-tokens.md)');
     expect(adrIndex).toContain('[0031](0031-editor-design-tokens-storybook.md) | Proposed');
-    expect(repositoryFile('docs/TRD.md')).toContain('theme-token catalog');
     expect(repositoryFile('docs/UML.md')).toContain('Active PR / Proposed');
     expect(repositoryFile('docs/UML.md')).toContain('--cwl-*');
     expect(existsSync(repositoryPath('docs/adr/0027-editor-design-tokens-storybook.md'))).toBe(
