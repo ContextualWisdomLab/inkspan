@@ -9,7 +9,7 @@ const dominoStandaloneEntry = createRequire(turndownStandaloneEntry).resolve(
   '@mixmark-io/domino',
 );
 const turndownAmbientWindowProbe =
-  /\bvar root = \(typeof window !== ['"]undefined['"] \? window : \{\}\);/u;
+  /\bvar root = typeof window !== ['"]undefined['"] \? window : \{\};/u;
 
 // Turndown's standalone build still probes the ambient `window` binding during
 // module evaluation before it decides whether to use its bundled Domino parser.
