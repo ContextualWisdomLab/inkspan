@@ -16,7 +16,11 @@ const repositoryRoot = process.cwd();
 const suitePath = resolve(repositoryRoot, 'benchmarks/run-current-suite.mjs');
 const temporaryDirectories: string[] = [];
 const activeRuntimeId = `node-${process.versions.node}`;
-const sourceCommitSha = 'a'.repeat(40);
+const sourceCommitSha = execFileSync('git', ['rev-parse', 'HEAD'], {
+  cwd: repositoryRoot,
+  encoding: 'utf8',
+  stdio: ['ignore', 'pipe', 'pipe'],
+}).trim();
 const referenceHardwareId = `refhw-sha256-${'b'.repeat(64)}`;
 
 afterEach(() => {
@@ -92,6 +96,7 @@ function packedSuiteArguments(options: {
   directory: string;
   packageSha256: string;
   runtimeId: string;
+  sourceCommitSha?: string;
   tarballPath: string;
 }): string[] {
   const markdownInputPath = join(options.directory, 'input.md');
@@ -117,7 +122,7 @@ function packedSuiteArguments(options: {
     '--samples',
     '2',
     '--source-commit-sha',
-    sourceCommitSha,
+    options.sourceCommitSha ?? sourceCommitSha,
     '--runtime-id',
     options.runtimeId,
     '--reference-hardware-id',
@@ -190,6 +195,35 @@ describe('packed artifact benchmark suite contract', () => {
     expect(result.stdout).toBe('');
     expect(result.stderr).toBe(
       'Benchmark suite runtime ID must match the active Node runtime.\n',
+    );
+  });
+
+  it('rejects source provenance that does not match the benchmark checkout', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inkspan-packed-source-'));
+    temporaryDirectories.push(directory);
+    const packed = createPackedBenchmarkFixture(directory);
+
+    const result = spawnSync(
+      process.execPath,
+      packedSuiteArguments({
+        directory,
+        packageSha256: packed.packageSha256,
+        runtimeId: activeRuntimeId,
+        sourceCommitSha: '0'.repeat(40),
+        tarballPath: packed.tarballPath,
+      }),
+      {
+        cwd: repositoryRoot,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 15_000,
+      },
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe(
+      'Benchmark suite source commit SHA must match the current benchmark checkout.\n',
     );
   });
 });
