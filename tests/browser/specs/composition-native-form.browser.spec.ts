@@ -160,7 +160,11 @@ test('destroys an active composition and remounts a clean native-form editor', a
       ),
     )
     .toBe('');
-  await expect(page.locator(FORM_FIELD)).toHaveValue('');
+  const remountedHtml = await page.evaluate(() =>
+    (window.inkspanInputHarness as InputHarness).getHtml(),
+  );
+  expect(remountedHtml).not.toContain('작성 중');
+  await expect(page.locator(FORM_FIELD)).toHaveValue(remountedHtml);
 
   await remountedEditable.click();
   await page.keyboard.insertText('새 세션');
@@ -171,5 +175,9 @@ test('destroys an active composition and remounts a clean native-form editor', a
       ),
     )
     .toBe('새 세션');
-  await expect(page.locator(FORM_FIELD)).not.toHaveValue('');
+  const newSessionHtml = await page.evaluate(() =>
+    (window.inkspanInputHarness as InputHarness).getHtml(),
+  );
+  expect(newSessionHtml).toContain('새 세션');
+  await expect(page.locator(FORM_FIELD)).toHaveValue(newSessionHtml);
 });
