@@ -1,31 +1,82 @@
-import { spawnSync } from 'node:child_process';
-import { rmSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
 const repositoryRoot = process.cwd();
-const suitePath = resolve(repositoryRoot, 'benchmarks/run-current-suite.mjs');
-const dirtySentinelPath = resolve(
-  repositoryRoot,
-  `.inkspan-benchmark-dirty-provenance-${process.pid}`,
-);
+const helperUrl = pathToFileURL(
+  resolve(repositoryRoot, 'benchmarks/source-checkout-provenance.mjs'),
+).href;
+const temporaryDirectories: string[] = [];
+
+const probe = `
+import { assertCleanSourceCheckout } from ${JSON.stringify(helperUrl)};
+try {
+  assertCleanSourceCheckout(process.argv[1]);
+  process.stdout.write('clean\\n');
+} catch (error) {
+  process.stderr.write(\`${'${error instanceof Error ? error.message : "verification failed"}'}\\n\`);
+  process.exitCode = 1;
+}
+`;
 
 afterEach(() => {
-  rmSync(dirtySentinelPath, { force: true });
+  for (const directory of temporaryDirectories.splice(0)) {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
-describe('benchmark source checkout provenance', () => {
-  it('rejects untracked source state before acquisition evidence can run', () => {
-    writeFileSync(dirtySentinelPath, 'untracked benchmark provenance sentinel\n');
+function createRepository(): string {
+  const directory = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-provenance-'));
+  temporaryDirectories.push(directory);
+  execFileSync('git', ['init', '--quiet'], { cwd: directory });
+  execFileSync('git', ['config', 'user.email', 'test@example.invalid'], {
+    cwd: directory,
+  });
+  execFileSync('git', ['config', 'user.name', 'Inkspan Test'], {
+    cwd: directory,
+  });
+  writeFileSync(join(directory, 'tracked.txt'), 'committed\n');
+  execFileSync('git', ['add', 'tracked.txt'], { cwd: directory });
+  execFileSync('git', ['commit', '--quiet', '-m', 'fixture'], { cwd: directory });
+  return directory;
+}
 
-    const result = spawnSync(process.execPath, [suitePath], {
+function probeCheckout(directory: string) {
+  return spawnSync(
+    process.execPath,
+    ['--input-type=module', '--eval', probe, directory],
+    {
       cwd: repositoryRoot,
       encoding: 'utf8',
       maxBuffer: 1024 * 1024,
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout: 10_000,
-    });
+    },
+  );
+}
+
+describe('benchmark source checkout provenance', () => {
+  it('accepts a clean source checkout', () => {
+    const directory = createRepository();
+    const result = probeCheckout(directory);
+
+    expect(result.error).toBeUndefined();
+    expect(result.signal).toBeNull();
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe('clean\n');
+    expect(result.stderr).toBe('');
+  });
+
+  it('rejects untracked source state without disclosing paths', () => {
+    const directory = createRepository();
+    const untrackedPath = join(directory, 'untracked-secret-name.txt');
+    writeFileSync(untrackedPath, 'not part of the committed source\n');
+
+    const result = probeCheckout(directory);
 
     expect(result.error).toBeUndefined();
     expect(result.signal).toBeNull();
@@ -34,7 +85,7 @@ describe('benchmark source checkout provenance', () => {
     expect(result.stderr).toBe(
       'Benchmark suite source checkout must be clean before acquisition evidence is recorded.\n',
     );
-    expect(result.stderr).not.toContain('Usage:');
-    expect(result.stderr).not.toContain(dirtySentinelPath);
+    expect(result.stderr).not.toContain(untrackedPath);
+    expect(result.stderr).not.toContain('untracked-secret-name.txt');
   });
 });
