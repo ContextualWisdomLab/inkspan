@@ -30,51 +30,54 @@ The queue, release, registry, alert, and governance values are mutable. Refresh
 with bounded queries instead of copying this snapshot into a lifecycle decision:
 
 ```bash
+set -euo pipefail
 gh api --paginate \
   'repos/ContextualWisdomLab/inkspan/pulls?state=open&per_page=100' \
   --jq '.[] | [.number,.title,.draft,.head.ref,.base.ref,.updated_at] | @tsv'
+# Open issues only: is:issue excludes pull requests, so the issue queue and the
+# open-PR queue never double-count one another.
+gh api --paginate \
+  'search/issues?q=repo%3AContextualWisdomLab%2Finkspan+is%3Aissue+state%3Aopen&per_page=100' \
+  --jq '.items[] | [.number,.title,.updated_at] | @tsv'
 gh api --paginate \
   'repos/ContextualWisdomLab/inkspan/pulls?state=open&per_page=100' \
   --jq '[.[] | {draft}] | {open:length,ready:(map(select(.draft == false)) | length),draft:(map(select(.draft == true)) | length)}'
 gh api repos/ContextualWisdomLab/inkspan/branches/main --jq '.commit.sha'
 gh release list --repo ContextualWisdomLab/inkspan --limit 5
-registry_npm_output="$(npm view @contextualwisdomlab/cwl-editor version 2>&1)"
-registry_npm_status=$?
-if [ "$registry_npm_status" -eq 0 ]; then
+if registry_npm_output="$(npm view @contextualwisdomlab/cwl-editor version 2>&1)"; then
   printf '%s\n' "$registry_npm_output"
 elif printf '%s\n' "$registry_npm_output" | grep -q 'E404\|404 Not Found'; then
   printf '%s\n' "$registry_npm_output"
 else
   printf '%s\n' "$registry_npm_output" >&2
-  exit "$registry_npm_status"
+  exit 1
 fi
-registry_pypi_output="$(python3 -m pip index versions inkspan-office 2>&1)"
-registry_pypi_status=$?
-if [ "$registry_pypi_status" -eq 0 ]; then
+if registry_pypi_output="$(python3 -I -m pip index versions inkspan-office --index-url https://pypi.org/simple --disable-pip-version-check 2>&1)"; then
   printf '%s\n' "$registry_pypi_output"
 elif printf '%s\n' "$registry_pypi_output" | grep -q 'No matching distribution'; then
   printf '%s\n' "$registry_pypi_output"
 else
   printf '%s\n' "$registry_pypi_output" >&2
-  exit "$registry_pypi_status"
+  exit 1
 fi
 gh api repos/ContextualWisdomLab/inkspan/dependabot/alerts \
   --jq '.[] | select(.state == "open") | [.number,.dependency.package.name,.security_advisory.severity,.security_vulnerability.first_patched_version.identifier] | @tsv'
 
-candidate_prs=(362 372 373 318 320 378 379 380 381 382)
+candidate_prs=(248 249 251 254 256 257 266 270 277 279 280 281 282 285 290 292 295 299 318 320 323 351 354 359 362 372 378 379 380 381)
 for pr_number in "${candidate_prs[@]}"; do
   pr_json="$(gh api "repos/ContextualWisdomLab/inkspan/pulls/$pr_number")"
   head_sha="$(printf '%s\n' "$pr_json" | jq -r '.head.sha')"
   printf '%s\n' "PR #$pr_number head=$(printf '%s\n' "$pr_json" | jq -r '.head.sha') base=$(printf '%s\n' "$pr_json" | jq -r '.base.sha')"
-  gh api "repos/ContextualWisdomLab/inkspan/pulls/$pr_number/files?per_page=100" \
+  gh api --paginate "repos/ContextualWisdomLab/inkspan/pulls/$pr_number/files?per_page=100" \
     --jq '.[].filename'
-  gh api "repos/ContextualWisdomLab/inkspan/pulls/$pr_number/reviews?per_page=100" \
+  gh api --paginate "repos/ContextualWisdomLab/inkspan/pulls/$pr_number/reviews?per_page=100" \
     --jq '.[] | [.state,.user.login,.submitted_at] | @tsv'
-  gh api "repos/ContextualWisdomLab/inkspan/commits/$head_sha/check-runs?per_page=100" \
+  gh api --paginate "repos/ContextualWisdomLab/inkspan/commits/$head_sha/check-runs?per_page=100" \
     --jq '.check_runs[] | [.name,.status,.conclusion] | @tsv'
   gh api graphql \
-    -f query='query($owner:String!, $name:String!, $number:Int!) { repository(owner:$owner, name:$name) { pullRequest(number:$number) { reviewThreads(first:100) { nodes { isResolved path line } } } } }' \
+    -f query='query($owner:String!, $name:String!, $number:Int!, $endCursor:String) { repository(owner:$owner, name:$name) { pullRequest(number:$number) { reviewThreads(first:100, after:$endCursor) { pageInfo { hasNextPage endCursor } nodes { isResolved path line } } } } }' \
     -F owner=ContextualWisdomLab -F name=inkspan -F number="$pr_number" \
+    --paginate \
     --jq '.data.repository.pullRequest.reviewThreads.nodes[] | [.isResolved,.path,.line] | @tsv'
 done
 gh api repos/ContextualWisdomLab/inkspan/rulesets --paginate \
