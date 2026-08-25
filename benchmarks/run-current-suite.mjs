@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import {
   closeSync,
@@ -25,9 +26,11 @@ const markdownMeasurementPath = resolve(
 );
 const sampleSummaryPath = resolve(benchmarkDirectory, 'summarize-samples.mjs');
 const MAX_PACKAGE_BYTES = 64 * 1024 * 1024;
+const MAX_MODULE_BYTES = 16 * 1024 * 1024;
 const MAX_CHILD_OUTPUT_BYTES = 4 * 1024 * 1024;
 const READ_CHUNK_BYTES = 64 * 1024;
 const READ_ONLY_NOFOLLOW = constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0);
+const PACKED_MARKDOWN_MODULE_ENTRY = 'package/dist/cwl-markdown.js';
 const legacyFlags = Object.freeze([
   '--input',
   '--module',
@@ -69,8 +72,19 @@ const packedFlags = Object.freeze([
   '--reference-hardware-id',
   '--output',
 ]);
-const packageTarballValueIndex =
-  packedFlags.indexOf('--package-tarball') * 2 + 1;
+const packedHtmlFlags = Object.freeze([
+  '--input',
+  '--html-input',
+  '--revision-input',
+  '--package-tarball',
+  '--package-sha256',
+  '--profile',
+  '--samples',
+  '--source-commit-sha',
+  '--runtime-id',
+  '--reference-hardware-id',
+  '--output',
+]);
 
 function matchesArguments(argv, expectedFlags) {
   return (
@@ -92,6 +106,7 @@ function argumentsForFlags(values, flags) {
 
 function matchingFlags(argv) {
   if (matchesArguments(argv, htmlLegacyFlags)) return htmlLegacyFlags;
+  if (matchesArguments(argv, packedHtmlFlags)) return packedHtmlFlags;
   if (matchesArguments(argv, packedFlags)) return packedFlags;
   if (matchesArguments(argv, legacyFlags)) return legacyFlags;
   return null;
@@ -209,10 +224,17 @@ function readPackedTarballSnapshot(path) {
 }
 
 function snapshotPackedArguments(argv) {
-  if (!matchesArguments(argv, packedFlags)) {
+  const flags = matchesArguments(argv, packedHtmlFlags)
+    ? packedHtmlFlags
+    : matchesArguments(argv, packedFlags)
+      ? packedFlags
+      : null;
+  if (flags === null) {
     return Object.freeze({ argv, temporaryDirectory: null });
   }
 
+  const packageTarballValueIndex =
+    flags.indexOf('--package-tarball') * 2 + 1;
   const packageTarballPath = resolve(argv[packageTarballValueIndex]);
   const packageBytes = readPackedTarballSnapshot(packageTarballPath);
   const temporaryDirectory = mkdtempSync(
@@ -252,6 +274,26 @@ function runBoundedNode(scriptPath, args, failureMessage) {
   return result.stdout;
 }
 
+function runCoreNodePreservingError(args) {
+  const result = spawnSync(process.execPath, [coreRunnerPath, ...args], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+    maxBuffer: MAX_CHILD_OUTPUT_BYTES,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    timeout: 600_000,
+  });
+  if (result.error !== undefined || result.signal !== null) {
+    throw new Error('Benchmark suite internal runner could not complete.');
+  }
+  if (result.status !== 0) {
+    const message = result.stderr.trimEnd();
+    throw new Error(
+      message.length > 0 ? message : 'Benchmark suite internal runner failed.',
+    );
+  }
+  return result.stdout;
+}
+
 function parseCoreManifest(stdout) {
   let manifest;
   try {
@@ -268,6 +310,61 @@ function parseCoreManifest(stdout) {
     throw new Error('Benchmark suite internal runner returned invalid evidence.');
   }
   return manifest;
+}
+
+function readPackedMarkdownModule(tarballPath) {
+  const result = spawnSync(
+    'tar',
+    ['-xOzf', tarballPath, PACKED_MARKDOWN_MODULE_ENTRY],
+    {
+      cwd: repositoryRoot,
+      maxBuffer: MAX_MODULE_BYTES + 1,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 30_000,
+    },
+  );
+  if (
+    result.error !== undefined ||
+    result.signal !== null ||
+    result.status !== 0 ||
+    !Buffer.isBuffer(result.stdout) ||
+    result.stdout.byteLength > MAX_MODULE_BYTES
+  ) {
+    throw new Error('Benchmark suite packed Markdown module could not be read.');
+  }
+  return result.stdout;
+}
+
+function assertPackedSnapshotDigest(tarballPath, expectedSha256) {
+  const actualSha256 = createHash('sha256')
+    .update(readPackedTarballSnapshot(tarballPath))
+    .digest('hex');
+  if (actualSha256 !== expectedSha256) {
+    throw new Error('Benchmark suite package digest does not match the packed artifact.');
+  }
+}
+
+function htmlSerializationEvidenceArguments(values, modulePath, artifactSha256) {
+  return [
+    '--input',
+    values['--html-input'],
+    '--module',
+    modulePath,
+    '--operation',
+    'html-to-markdown',
+    '--profile',
+    values['--profile'],
+    '--samples',
+    values['--samples'],
+    '--source-commit-sha',
+    values['--source-commit-sha'],
+    '--artifact-sha256',
+    artifactSha256,
+    '--runtime-id',
+    values['--runtime-id'],
+    '--reference-hardware-id',
+    values['--reference-hardware-id'],
+  ];
 }
 
 function runHtmlSerializationSuite(argv) {
@@ -298,24 +395,11 @@ function runHtmlSerializationSuite(argv) {
     runBoundedNode(
       markdownMeasurementPath,
       [
-        '--input',
-        values['--html-input'],
-        '--module',
-        values['--module'],
-        '--operation',
-        'html-to-markdown',
-        '--profile',
-        values['--profile'],
-        '--samples',
-        values['--samples'],
-        '--source-commit-sha',
-        values['--source-commit-sha'],
-        '--artifact-sha256',
-        values['--artifact-sha256'],
-        '--runtime-id',
-        values['--runtime-id'],
-        '--reference-hardware-id',
-        values['--reference-hardware-id'],
+        ...htmlSerializationEvidenceArguments(
+          values,
+          values['--module'],
+          values['--artifact-sha256'],
+        ),
         '--output',
         samplesPath,
       ],
@@ -342,6 +426,91 @@ function runHtmlSerializationSuite(argv) {
       rmSync(outputDirectory, { recursive: true, force: true });
     }
     throw error;
+  }
+}
+
+function runPackedHtmlSerializationSuite(argv) {
+  const values = valuesForArguments(argv, packedHtmlFlags);
+  const outputDirectory = resolve(repositoryRoot, values['--output']);
+  const coreArguments = argumentsForFlags(values, packedFlags);
+  const snapshotted = snapshotPackedArguments(coreArguments);
+  let coreCompleted = false;
+
+  try {
+    const coreStdout = runCoreNodePreservingError(snapshotted.argv);
+    coreCompleted = true;
+    const manifest = parseCoreManifest(coreStdout);
+    const snapshotValues = valuesForArguments(snapshotted.argv, packedFlags);
+    const snapshotTarballPath = snapshotValues['--package-tarball'];
+    const markdownModuleBytes = readPackedMarkdownModule(snapshotTarballPath);
+    const markdownModulePath = join(
+      snapshotted.temporaryDirectory,
+      'cwl-markdown.mjs',
+    );
+    try {
+      writeFileSync(markdownModulePath, markdownModuleBytes, { mode: 0o600 });
+    } catch {
+      throw new Error('Benchmark suite packed Markdown module could not be prepared.');
+    }
+    const markdownArtifactSha256 = createHash('sha256')
+      .update(markdownModuleBytes)
+      .digest('hex');
+    const samplesPath = resolve(
+      outputDirectory,
+      'html-serialization',
+      'samples.json',
+    );
+    const summaryDirectory = resolve(
+      outputDirectory,
+      'html-serialization',
+      'summary',
+    );
+
+    runBoundedNode(
+      markdownMeasurementPath,
+      [
+        ...htmlSerializationEvidenceArguments(
+          values,
+          markdownModulePath,
+          markdownArtifactSha256,
+        ),
+        '--output',
+        samplesPath,
+      ],
+      'Benchmark suite HTML serialization measurement failed.',
+    );
+    runBoundedNode(
+      sampleSummaryPath,
+      ['--input', samplesPath, '--output', summaryDirectory],
+      'Benchmark suite HTML serialization summary failed.',
+    );
+    assertPackedSnapshotDigest(
+      snapshotTarballPath,
+      values['--package-sha256'],
+    );
+
+    process.stdout.write(
+      `${JSON.stringify({
+        ...manifest,
+        htmlSerializationSamples: 'html-serialization/samples.json',
+        htmlSerializationSummaryJson:
+          'html-serialization/summary/summary.json',
+        htmlSerializationSummaryText:
+          'html-serialization/summary/summary.txt',
+      })}\n`,
+    );
+  } catch (error) {
+    if (coreCompleted) {
+      rmSync(outputDirectory, { recursive: true, force: true });
+    }
+    throw error;
+  } finally {
+    if (snapshotted.temporaryDirectory !== null) {
+      rmSync(snapshotted.temporaryDirectory, {
+        recursive: true,
+        force: true,
+      });
+    }
   }
 }
 
@@ -383,6 +552,10 @@ function main(argv) {
   }
   if (matchesArguments(argv, htmlLegacyFlags)) {
     runHtmlSerializationSuite(argv);
+    return;
+  }
+  if (matchesArguments(argv, packedHtmlFlags)) {
+    runPackedHtmlSerializationSuite(argv);
     return;
   }
   runExistingSuite(argv);
