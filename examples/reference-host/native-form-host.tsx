@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent } from 'react';
 import { CwlEditor } from '@contextualwisdomlab/cwl-editor';
 import {
   createSingleFlightSubmission,
+  shouldBlockReferenceHostFormMutation,
   type ReferenceHostSubmissionState,
 } from './single-flight-submission.js';
 
@@ -97,7 +98,12 @@ export function NativeFormHost({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (readOnly || submitAuthorized.isInFlight()) {
+    if (
+      shouldBlockReferenceHostFormMutation(
+        readOnly,
+        submitAuthorized.isInFlight,
+      )
+    ) {
       return;
     }
 
@@ -117,7 +123,12 @@ export function NativeFormHost({
   }
 
   function handleReset(event: FormEvent<HTMLFormElement>) {
-    if (readOnly || submitAuthorized.isInFlight()) {
+    if (
+      shouldBlockReferenceHostFormMutation(
+        readOnly,
+        submitAuthorized.isInFlight,
+      )
+    ) {
       event.preventDefault();
       return;
     }
