@@ -124,6 +124,18 @@ test('keeps enabled toolbar targets touch-operable without hover on a narrow vie
 
   await expect(bold).toHaveAttribute('aria-pressed', 'true');
   await expectNoHorizontalDocumentOverflow(page);
+
+  await page.setViewportSize({ width: 320, height: 568 });
+  for (let index = 0; index < enabledCount; index += 1) {
+    const box = await enabledButtons.nth(index).boundingBox();
+    expect(box).not.toBeNull();
+    if (box === null) {
+      throw new Error('Enabled toolbar control lost its touch target bounds after reflow.');
+    }
+    expect(box.width).toBeGreaterThanOrEqual(24);
+    expect(box.height).toBeGreaterThanOrEqual(24);
+  }
+  await expectNoHorizontalDocumentOverflow(page);
 });
 
 test('preserves multilingual committed input after emulated touch focus', async ({
