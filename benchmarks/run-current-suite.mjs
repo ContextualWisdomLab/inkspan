@@ -45,6 +45,7 @@ const packedFlags = Object.freeze([
   '--output',
 ]);
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
+const COMMIT_SHA_PATTERN = /^[0-9a-f]{40}$/u;
 const MAX_PACKAGE_BYTES = 64 * 1024 * 1024;
 const MAX_PACKAGE_INDEX_BYTES = 1024 * 1024;
 const MAX_PACKAGE_MANIFEST_BYTES = 1024 * 1024;
@@ -111,6 +112,28 @@ function measurementArguments({
   ]);
 }
 
+function currentCheckoutSha() {
+  const result = spawnSync('git', ['rev-parse', 'HEAD'], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+    maxBuffer: 1024,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    timeout: 10_000,
+  });
+  const checkoutSha = result.stdout?.trim();
+  if (
+    result.error !== undefined ||
+    result.signal !== null ||
+    result.status !== 0 ||
+    !COMMIT_SHA_PATTERN.test(checkoutSha ?? '')
+  ) {
+    throw new Error(
+      'Benchmark suite source commit SHA could not be verified against the current checkout.',
+    );
+  }
+  return checkoutSha;
+}
+
 function resolveArguments(argv) {
   if (matchesArguments(argv, packedFlags)) {
     const values = valuesForArguments(argv, packedFlags);
@@ -124,6 +147,11 @@ function resolveArguments(argv) {
     if (values['--runtime-id'] !== activeRuntimeId) {
       throw new Error(
         'Benchmark suite runtime ID must match the active Node runtime.',
+      );
+    }
+    if (values['--source-commit-sha'] !== currentCheckoutSha()) {
+      throw new Error(
+        'Benchmark suite source commit SHA must match the current benchmark checkout.',
       );
     }
     return Object.freeze({
