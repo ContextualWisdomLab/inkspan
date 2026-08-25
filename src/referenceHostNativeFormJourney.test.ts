@@ -42,7 +42,7 @@ describe('reference-host native form journey', () => {
   it('binds submit/reset admission to the synchronous durable gate rather than deferred presentation state', () => {
     expect(
       nativeFormHostSource.match(
-        /if \(readOnly \|\| submitAuthorized\.isInFlight\(\)\) \{/gu,
+        /shouldBlockReferenceHostFormMutation\(\s*readOnly,\s*submitAuthorized\.isInFlight,\s*\)/gu,
       ),
     ).toHaveLength(2);
     expect(nativeFormHostSource).not.toContain(
@@ -54,7 +54,10 @@ describe('reference-host native form journey', () => {
     expect(nativeFormHostSource).toMatch(
       /onInput=\{handleNativeInput\}\s+onSubmit=\{handleSubmit\}\s+onReset=\{handleReset\}/u,
     );
-    expect(nativeFormHostSource).toContain('submitAuthorized.isInFlight()');
+    expect(nativeFormHostSource).toContain(
+      'shouldBlockReferenceHostFormMutation',
+    );
+    expect(nativeFormHostSource).toContain('submitAuthorized.isInFlight,');
     expect(nativeFormHostSource).toContain('event.preventDefault();');
     expect(nativeFormHostSource).toContain("setSubmissionState('idle');");
     expect(nativeFormHostSource).toMatch(
@@ -91,7 +94,7 @@ describe('reference-host native form journey', () => {
     expect(nativeFormHostSource).toContain('editable={!readOnly}');
     expect(nativeFormHostSource).toContain('formFieldDisabled={readOnly}');
     expect(nativeFormHostSource).toContain(
-      'if (readOnly || submitAuthorized.isInFlight()) {',
+      'shouldBlockReferenceHostFormMutation',
     );
     expect(nativeFormHostSource).toMatch(
       /type="submit"\s+disabled=\{readOnly \|\| submissionState === 'saving'\}/u,
