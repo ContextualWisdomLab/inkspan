@@ -59,7 +59,11 @@ function createPackedBenchmarkFixture(directory: string): {
   );
   writeFileSync(
     join(distDirectory, 'cwl-markdown.js'),
-    "export function markdownToHtml(source) { return `<p>${source}</p>`; }\n",
+    [
+      "export function markdownToHtml(source) { return `<p>${source}</p>`; }",
+      "export function htmlToMarkdown(source) { return source.replace(/<[^>]+>/gu, '').trim(); }",
+      '',
+    ].join('\n'),
     'utf8',
   );
   writeFileSync(
@@ -100,8 +104,10 @@ function packedSuiteArguments(options: {
   tarballPath: string;
 }): string[] {
   const markdownInputPath = join(options.directory, 'input.md');
+  const htmlInputPath = join(options.directory, 'input.html');
   const revisionInputPath = join(options.directory, 'document-envelope.json');
   writeFileSync(markdownInputPath, '# Packed buyer benchmark\n', 'utf8');
+  writeFileSync(htmlInputPath, '<h1>Packed buyer benchmark</h1>\n', 'utf8');
   writeFileSync(
     revisionInputPath,
     '{"contractVersion":1,"mode":"markdown","document":"# Packed buyer benchmark"}\n',
@@ -111,6 +117,8 @@ function packedSuiteArguments(options: {
     suitePath,
     '--input',
     markdownInputPath,
+    '--html-input',
+    htmlInputPath,
     '--revision-input',
     revisionInputPath,
     '--package-tarball',
@@ -166,8 +174,22 @@ describe('packed artifact benchmark suite contract', () => {
       packageName: '@contextualwisdomlab/cwl-editor',
       packageVersion: '0.0.0-benchmark-fixture',
       packageSha256: packed.packageSha256,
+      htmlSerializationSamples: 'html-serialization/samples.json',
+      htmlSerializationSummaryJson:
+        'html-serialization/summary/summary.json',
+      htmlSerializationSummaryText:
+        'html-serialization/summary/summary.txt',
       status: 'completed',
     });
+
+    const htmlSamples = JSON.parse(
+      readFileSync(
+        join(directory, 'evidence', 'html-serialization', 'samples.json'),
+        'utf8',
+      ),
+    ) as { benchmarkId?: unknown; samples?: unknown[] };
+    expect(htmlSamples.benchmarkId).toBe('html-serialization-small');
+    expect(htmlSamples.samples).toHaveLength(2);
   });
 
   it('rejects a runtime identifier that does not match the active Node process', () => {
