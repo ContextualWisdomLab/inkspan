@@ -2,6 +2,7 @@ import type { Editor } from '@tiptap/core';
 import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { CwlEditor } from 'inkspan-browser-under-test';
+import '../../src/styles.css';
 
 declare global {
   interface Window {
