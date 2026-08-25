@@ -117,7 +117,7 @@ function createTarInterpositionShim(
   const shimPath = join(shimDirectory, 'tar');
   writeFileSync(
     shimPath,
-    `#!/usr/bin/env node\nimport { copyFileSync } from 'node:fs';\nimport { spawnSync } from 'node:child_process';\n\nconst args = process.argv.slice(2);\nconst target = args.at(-1);\nconst original = process.env.INKSPAN_TEST_ORIGINAL_TARBALL;\nif (target === original) copyFileSync(process.env.INKSPAN_TEST_ADVERSARIAL_TARBALL, original);\ntry {\n  const result = spawnSync(process.env.INKSPAN_TEST_REAL_TAR, args, { stdio: ['ignore', 'pipe', 'pipe'] });\n  if (result.stdout) process.stdout.write(result.stdout);\n  if (result.stderr) process.stderr.write(result.stderr);\n  process.exitCode = result.status ?? 1;\n} finally {\n  if (target === original) copyFileSync(process.env.INKSPAN_TEST_ORIGINAL_BACKUP, original);\n}\n`,
+    `#!/usr/bin/env node\nimport { copyFileSync } from 'node:fs';\nimport { spawnSync } from 'node:child_process';\n\nconst args = process.argv.slice(2);\nconst target = args[1];\nconst original = process.env.INKSPAN_TEST_ORIGINAL_TARBALL;\nif (target === original) copyFileSync(process.env.INKSPAN_TEST_ADVERSARIAL_TARBALL, original);\ntry {\n  const result = spawnSync(process.env.INKSPAN_TEST_REAL_TAR, args, { stdio: ['ignore', 'pipe', 'pipe'] });\n  if (result.stdout) process.stdout.write(result.stdout);\n  if (result.stderr) process.stderr.write(result.stderr);\n  process.exitCode = result.status ?? 1;\n} finally {\n  if (target === original) copyFileSync(process.env.INKSPAN_TEST_ORIGINAL_BACKUP, original);\n}\n`,
     'utf8',
   );
   chmodSync(shimPath, 0o755);
