@@ -13,6 +13,10 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Prepared the active-PR dark active-toolbar accent change from protected-main `#4493f8` to `#58a6ff`, increasing `--cwl-accent` text on `--cwl-accent-soft: #163356` from about 4.13:1 to about 5.06:1 so the candidate default 13px active-button text meets the WCAG 2.2 4.5:1 normal-text threshold; this remains active-PR evidence until protected integration. `getEditorThemeTokenContrast()` checks catalog values, and host overrides must be re-checked with `contrastRatioFromHex(actualForegroundHex, actualBackgroundHex)` using the actual resolved colors.
 - Restored a visible `:focus-visible` indicator on the editable textbox, mapped it to `CanvasText` in forced-colors mode, and suppresses that interactive focus chrome under `@media print`; dependency-locked Chromium, Firefox, and WebKit acceptance exercises the packed stylesheet on the real `role="textbox"` surface.
 
+### Security
+- Raised workspace-wide transitive development-tool overrides for `fast-uri`, `nanoid`, and `postcss` to patched minimums, keeping the lockfile audit clean without changing runtime package authority.
+- Normalized isolated package-verifier temporary roots before containment checks on macOS.
+
 ## [0.6.0] — 2026-08-10
 
 ### Release
