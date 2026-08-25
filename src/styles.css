@@ -106,13 +106,6 @@
   cursor: not-allowed;
 }
 
-@media (forced-colors: active) {
-  .cwl-tb-btn:focus-visible,
-  .cwl-editor__content:focus-visible {
-    outline-color: CanvasText;
-  }
-}
-
 .cwl-editor__surface {
   overflow-y: auto;
   max-height: 70vh;
@@ -129,6 +122,13 @@
 .cwl-editor__content:focus-visible {
   outline: 2px solid var(--cwl-accent);
   outline-offset: -2px;
+}
+
+@media (forced-colors: active) {
+  .cwl-tb-btn:focus-visible,
+  .cwl-editor__content:focus-visible {
+    outline-color: CanvasText;
+  }
 }
 
 .cwl-editor__content > * + * {
