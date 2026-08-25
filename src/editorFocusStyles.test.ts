@@ -16,8 +16,14 @@ describe('editable surface focus visibility', () => {
   });
 
   it('keeps the editable focus indicator visible in forced-colors mode', () => {
+    const ordinaryFocusRule =
+      /\.cwl-editor__content:focus-visible\s*\{[^}]*outline:\s*2px\s+solid\s+var\(--cwl-accent\)\s*;[^}]*\}/u.exec(
+        styles,
+      );
+    expect(ordinaryFocusRule).not.toBeNull();
+
     const forcedColorsIndex = styles.indexOf('@media (forced-colors: active)');
-    expect(forcedColorsIndex).toBeGreaterThan(-1);
+    expect(forcedColorsIndex).toBeGreaterThan(ordinaryFocusRule?.index ?? Number.MAX_SAFE_INTEGER);
     const forcedColorsStyles = styles.slice(forcedColorsIndex);
 
     expect(forcedColorsStyles).toMatch(
