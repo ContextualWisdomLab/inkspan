@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import runpy
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 
 MULTILINGUAL_PARAGRAPH = (
@@ -185,3 +188,29 @@ def test_measure_office_render_rejects_unbounded_iteration_counts_without_readin
     assert "iterations must be between 1 and 100" in completed.stderr
     assert str(request_path) not in completed.stderr
     assert "PRIVATE-ITERATION-SENTINEL" not in completed.stderr
+
+
+def test_office_render_sample_times_out_without_leaking_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Bound a hung renderer child and normalize timeout failure without exposing document data."""
+
+    script = Path(__file__).resolve().parents[1] / "benchmarks" / "measure_render.py"
+    namespace = runpy.run_path(str(script), run_name="inkspan_measure_render_test")
+    benchmark_error = namespace["BenchmarkContractError"]
+    run_sample = namespace["_run_sample"]
+    observed_timeout: list[float | None] = []
+    sentinel = b'PRIVATE-HUNG-RENDER-SENTINEL'
+
+    def _timeout(*args: object, **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        timeout = kwargs.get("timeout")
+        observed_timeout.append(timeout if isinstance(timeout, (int, float)) else None)
+        raise subprocess.TimeoutExpired(args[0] if args else "renderer", timeout or 0)
+
+    monkeypatch.setattr(subprocess, "run", _timeout)
+
+    with pytest.raises(benchmark_error, match="Office benchmark render sample timed out") as exc_info:
+        run_sample(sentinel)
+
+    assert observed_timeout == [120]
+    assert sentinel.decode() not in str(exc_info.value)
