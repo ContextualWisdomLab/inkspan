@@ -56,6 +56,10 @@ describe('reference-host one-command journey contract', () => {
           path: 'examples/reference-host/collaboration-provider-lifecycle.mjs',
         },
         {
+          args: ['--self-test'],
+          path: 'examples/reference-host/host-authorized-collaboration.mjs',
+        },
+        {
           args: [],
           path: 'examples/reference-host/verify-packed-artifact.mjs',
         },
