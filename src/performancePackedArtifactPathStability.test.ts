@@ -50,7 +50,7 @@ function createPackedBenchmarkFixture(
   mkdirSync(distDirectory, { recursive: true });
   mkdirSync(packDirectory, { recursive: true });
 
-  const markdownModule = `export function markdownToHtml(source) { return \`<p data-marker="${markdownMarker}">${source}</p>\`; }\n`;
+  const markdownModule = `export function markdownToHtml(source) { return \`<p data-marker="${markdownMarker}">\${source}</p>\`; }\n`;
   writeFileSync(
     join(packageDirectory, 'package.json'),
     `${JSON.stringify(
