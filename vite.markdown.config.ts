@@ -8,6 +8,33 @@ const turndownStandaloneEntry = nodeRequire.resolve('turndown/lib/turndown.es.js
 const dominoStandaloneEntry = createRequire(turndownStandaloneEntry).resolve(
   '@mixmark-io/domino',
 );
+const turndownAmbientWindowProbe =
+  /\bvar root = \(typeof window !== ['"]undefined['"] \? window : \{\}\);/u;
+
+// Turndown's standalone build still probes the ambient `window` binding during
+// module evaluation before it decides whether to use its bundled Domino parser.
+// A hostile accessor-backed global therefore executes caller code merely by
+// importing Inkspan's framework-free `/markdown` subpath. Replace only that
+// exact upstream probe with the empty root that selects the already-pinned,
+// non-fetching Domino path. Fail the build if the pinned upstream source shape
+// changes so a dependency update cannot silently restore ambient authority.
+const boundTurndownStandaloneParser = {
+  name: 'inkspan-bound-turndown-standalone-parser',
+  enforce: 'pre' as const,
+  transform(source: string, id: string) {
+    if (id.split('?', 1)[0] !== turndownStandaloneEntry) return null;
+    const matches = source.match(new RegExp(turndownAmbientWindowProbe.source, 'gu'));
+    if (matches?.length !== 1) {
+      throw new Error(
+        `Expected exactly one Turndown ambient window probe, found ${matches?.length ?? 0}.`,
+      );
+    }
+    return {
+      code: source.replace(turndownAmbientWindowProbe, 'var root = {};'),
+      map: null,
+    };
+  },
+};
 
 // Headless deterministic serializer build: bundle the conversion dependencies so
 // consumers can use the public subpath without importing the React/TipTap graph.
@@ -26,6 +53,7 @@ export default defineConfig({
     mainFields: ['module', 'jsnext:main', 'jsnext', 'main'],
   },
   plugins: [
+    boundTurndownStandaloneParser,
     dts({
       include: [
         'src/markdown',
