@@ -108,6 +108,10 @@ Object.defineProperty(globalThis, 'document', {
   configurable: true,
   get() { throw new Error('ambient document access is forbidden'); },
 });
+Object.defineProperty(globalThis, 'window', {
+  configurable: true,
+  get() { throw new Error('ambient window access is forbidden'); },
+});
 const markdown = await import('${packageJson.name}/markdown');
 const {
   DEFAULT_HTML_TO_MARKDOWN_MAX_BYTES,
@@ -172,6 +176,7 @@ assert.throws(
   () => markdownToEmailHtml('oversized', { maxMarkdownBytes: 4 }),
   (error) => error instanceof MarkdownToHtmlResourceError && error.code === 'input_too_large',
 );
+delete globalThis.window;
 delete globalThis.document;
 `,
     'utf8',
@@ -184,6 +189,10 @@ delete globalThis.document;
 Object.defineProperty(globalThis, 'document', {
   configurable: true,
   get() { throw new Error('ambient document access is forbidden'); },
+});
+Object.defineProperty(globalThis, 'window', {
+  configurable: true,
+  get() { throw new Error('ambient window access is forbidden'); },
 });
 const markdown = require('${packageJson.name}/markdown');
 assert.equal(typeof markdown.markdownToHtml, 'function');
@@ -208,6 +217,7 @@ assert.throws(
   (error) => error instanceof markdown.MarkdownToHtmlResourceError && error.code === 'input_too_large',
 );
 assert.equal(markdown.markdownToPlainText('# Title'), 'Title');
+delete globalThis.window;
 delete globalThis.document;
 `,
     'utf8',
