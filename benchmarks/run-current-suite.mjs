@@ -97,20 +97,50 @@ function matchingFlags(argv) {
   return null;
 }
 
+function inspectOutputPath(path) {
+  try {
+    return lstatSync(path, { throwIfNoEntry: false });
+  } catch {
+    throw new Error('Benchmark suite output directory could not be inspected.');
+  }
+}
+
 function assertFreshOutputDirectory(argv) {
   const flags = matchingFlags(argv);
   if (flags === null) return;
   const outputValueIndex = flags.indexOf('--output') * 2 + 1;
   const outputDirectory = resolve(repositoryRoot, argv[outputValueIndex]);
-  let metadata;
-  try {
-    metadata = lstatSync(outputDirectory, { throwIfNoEntry: false });
-  } catch {
-    return;
+
+  let current = outputDirectory;
+  while (true) {
+    const metadata = inspectOutputPath(current);
+    if (metadata?.isSymbolicLink()) {
+      throw new Error(
+        'Benchmark suite output directory must be a non-symlink directory.',
+      );
+    }
+    if (current === outputDirectory && metadata !== undefined) {
+      if (!metadata.isDirectory()) {
+        throw new Error(
+          'Benchmark suite output directory must be a non-symlink directory.',
+        );
+      }
+      throw new Error('Benchmark suite output directory must not already exist.');
+    }
+    const parent = dirname(current);
+    if (parent === current) return;
+    current = parent;
   }
-  if (metadata?.isDirectory()) {
-    throw new Error('Benchmark suite output directory must not already exist.');
+}
+
+function claimedLegacySourceCommitSha(argv) {
+  if (matchesArguments(argv, htmlLegacyFlags)) {
+    return valuesForArguments(argv, htmlLegacyFlags)['--source-commit-sha'];
   }
+  if (matchesArguments(argv, legacyFlags)) {
+    return valuesForArguments(argv, legacyFlags)['--source-commit-sha'];
+  }
+  return undefined;
 }
 
 function readPackedTarballSnapshot(path) {
@@ -347,6 +377,10 @@ function runExistingSuite(argv) {
 function main(argv) {
   assertCleanSourceCheckout(repositoryRoot);
   assertFreshOutputDirectory(argv);
+  const expectedLegacySourceCommitSha = claimedLegacySourceCommitSha(argv);
+  if (expectedLegacySourceCommitSha !== undefined) {
+    assertCleanSourceCheckout(repositoryRoot, expectedLegacySourceCommitSha);
+  }
   if (matchesArguments(argv, htmlLegacyFlags)) {
     runHtmlSerializationSuite(argv);
     return;
