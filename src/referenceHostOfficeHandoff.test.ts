@@ -20,6 +20,16 @@ describe('reference-host Office handoff', () => {
     expect(source).toContain("type: 'paragraph'");
   });
 
+  it('preserves deterministic plain-text block boundaries as separate DOCX paragraphs', () => {
+    const source = repositoryFile('examples/reference-host/office-handoff.mjs');
+
+    expect(source).toContain("const paragraphs = text.split('\\n\\n');");
+    expect(source).toContain(
+      "paragraphs.map((paragraphText) => Object.freeze({ type: 'paragraph', text: paragraphText }))",
+    );
+    expect(source).not.toContain('blocks: Object.freeze([paragraph])');
+  });
+
   it('keeps Office rendering, authorization, storage, and transport outside the reference helper', () => {
     const source = repositoryFile('examples/reference-host/office-handoff.mjs');
 
