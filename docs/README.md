@@ -11,6 +11,7 @@ This directory is the discoverable index for Inkspan's product, technical, secur
 | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | Current protected-main implementation architecture and bounded-context ownership |
 | [`../SECURITY.md`](../SECURITY.md) | Protected-main private vulnerability reporting, supported security lines, coordinated disclosure, and claim limits |
 | [`DOCUMENTATION_FITNESS.md`](DOCUMENTATION_FITNESS.md) | Acquisition completeness matrix, implementation maturity, deliberate non-applicability and remaining canonical gaps |
+| [`product-technical-gap-baseline.md`](product-technical-gap-baseline.md) | Dated protected-main product/technical gap register, live PR lanes, release blockers, and executable maintenance loop |
 | [`assessments/2026-08-10-conversation-documentation-reassessment.md`](assessments/2026-08-10-conversation-documentation-reassessment.md) | Dated whole-conversation reassessment, protected/operational deltas, and scheduler-control remediation |
 | [`PRD.md`](PRD.md) | Product users, jobs, buyer outcomes, non-goals, acceptance and claim boundaries |
 | [`TRD.md`](TRD.md) | Technical invariants, runtime boundaries, failure semantics and release evidence |

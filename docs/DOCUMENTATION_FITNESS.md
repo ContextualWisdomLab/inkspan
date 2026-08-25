@@ -68,6 +68,7 @@ Document fitness and implementation maturity are independent. A `present_current
 | TRACEABILITY | `docs/TRACEABILITY.md` | `present_current` | Protected requirements/standards/evidence mapping | Acquisition reviewers can distinguish protected evidence from active or planned work. |
 | Contributor/agent authority | `AGENTS.md`, `CLAUDE.md`, `docs/README.md` | `present_current` | Protected-main-first decision discipline | Agents are directed back to the same canonical graph rather than parallel private memory. |
 | Autonomous maintenance governance | `AGENTS.md`, `CLAUDE.md` plus the external scheduler | `present_current` | `out_of_scope` as Inkspan runtime behavior | Work-conserving execution, user-redirection incident recovery, lane-local waiting and external scheduler authority are reconstructable without pretending automation is an Inkspan API. |
+| Product/technical gap baseline | `docs/product-technical-gap-baseline.md` | `present_current` | Dated operational snapshot; protected-main authority remains separate | Buyer-visible gaps, active PR lanes, release blockers, and the next executable loop are discoverable without promoting active-PR work to shipped behavior. |
 
 ## Conversation-to-GitHub reconciliation
 
