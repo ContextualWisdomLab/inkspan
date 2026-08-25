@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import {
   mkdtempSync,
   readFileSync,
@@ -12,6 +12,15 @@ import { describe, expect, it } from 'vitest';
 
 const repositoryRoot = process.cwd();
 const suitePath = resolve(repositoryRoot, 'benchmarks/run-current-suite.mjs');
+const currentSourceCommitSha = execFileSync(
+  'git',
+  ['rev-parse', '--verify', 'HEAD'],
+  {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  },
+).trim();
 
 function sha256(source: string): string {
   return createHash('sha256').update(source).digest('hex');
@@ -63,7 +72,7 @@ describe('single-command HTML serialization benchmark contract', () => {
           '--samples',
           '2',
           '--source-commit-sha',
-          'a'.repeat(40),
+          currentSourceCommitSha,
           '--artifact-sha256',
           sha256(markdownModuleSource),
           '--revision-artifact-sha256',
