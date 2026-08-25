@@ -210,7 +210,7 @@ def test_office_render_sample_times_out_without_leaking_payload(
     monkeypatch.setattr(subprocess, "run", _timeout)
 
     with pytest.raises(benchmark_error, match="Office benchmark render sample timed out") as exc_info:
-        run_sample(sentinel)
+        run_sample(sentinel, "docx", "small")
 
     assert observed_timeout == [120]
     assert sentinel.decode() not in str(exc_info.value)
