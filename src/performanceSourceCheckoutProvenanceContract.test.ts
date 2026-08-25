@@ -15,7 +15,7 @@ const temporaryDirectories: string[] = [];
 const probe = `
 import { assertCleanSourceCheckout } from ${JSON.stringify(helperUrl)};
 try {
-  assertCleanSourceCheckout(process.argv[1]);
+  assertCleanSourceCheckout(process.argv[1], process.argv[2]);
   process.stdout.write('clean\\n');
 } catch (error) {
   process.stderr.write(\`${'${error instanceof Error ? error.message : "verification failed"}'}\\n\`);
@@ -45,10 +45,17 @@ function createRepository(): string {
   return directory;
 }
 
-function probeCheckout(directory: string) {
+function headSha(directory: string): string {
+  return execFileSync('git', ['rev-parse', '--verify', 'HEAD'], {
+    cwd: directory,
+    encoding: 'utf8',
+  }).trim();
+}
+
+function probeCheckout(directory: string, expectedCommitSha = headSha(directory)) {
   return spawnSync(
     process.execPath,
-    ['--input-type=module', '--eval', probe, directory],
+    ['--input-type=module', '--eval', probe, directory, expectedCommitSha],
     {
       cwd: repositoryRoot,
       encoding: 'utf8',
@@ -60,7 +67,7 @@ function probeCheckout(directory: string) {
 }
 
 describe('benchmark source checkout provenance', () => {
-  it('accepts a clean source checkout', () => {
+  it('accepts a clean source checkout at the claimed source commit', () => {
     const directory = createRepository();
     const result = probeCheckout(directory);
 
@@ -69,6 +76,23 @@ describe('benchmark source checkout provenance', () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toBe('clean\n');
     expect(result.stderr).toBe('');
+  });
+
+  it('rejects a clean checkout when the claimed source commit is not HEAD', () => {
+    const directory = createRepository();
+    const actualHead = headSha(directory);
+    const mismatchedCommit = actualHead === 'f'.repeat(40) ? 'e'.repeat(40) : 'f'.repeat(40);
+    const result = probeCheckout(directory, mismatchedCommit);
+
+    expect(result.error).toBeUndefined();
+    expect(result.signal).toBeNull();
+    expect(result.status).toBe(1);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe(
+      'Benchmark suite source commit does not match checked-out HEAD.\n',
+    );
+    expect(result.stderr).not.toContain(actualHead);
+    expect(result.stderr).not.toContain(mismatchedCommit);
   });
 
   it('rejects untracked source state without disclosing paths', () => {
