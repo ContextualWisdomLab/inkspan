@@ -214,3 +214,36 @@ def test_office_render_sample_times_out_without_leaking_payload(
 
     assert observed_timeout == [120]
     assert sentinel.decode() not in str(exc_info.value)
+
+
+def test_office_render_child_rejects_unverified_private_payload() -> None:
+    """Require the isolated child to re-verify canonical fixture identity before rendering."""
+
+    sentinel = "PRIVATE-DIRECT-CHILD-DOCUMENT-SENTINEL"
+    payload = json.dumps(
+        {
+            "format": "docx",
+            "title": "private direct child document",
+            "blocks": [{"type": "paragraph", "text": sentinel}],
+        }
+    ).encode()
+    script = Path(__file__).resolve().parents[1] / "benchmarks" / "measure_render.py"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "--child",
+            "--format",
+            "docx",
+            "--fixture-profile",
+            "small",
+        ],
+        input=payload,
+        check=False,
+        cwd=Path(__file__).resolve().parents[2],
+        capture_output=True,
+    )
+
+    assert completed.returncode != 0
+    assert b"input does not match the canonical synthetic Office fixture" in completed.stderr
+    assert sentinel.encode() not in completed.stderr
