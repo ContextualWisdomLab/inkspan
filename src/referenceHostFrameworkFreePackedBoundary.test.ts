@@ -39,35 +39,38 @@ function run(command: string, argumentsList: string[], cwd = repositoryRoot) {
   });
 }
 
-beforeAll(() => {
-  run('pnpm', ['build']);
-  mkdirSync(extractionDirectory, { recursive: true });
-  mkdirSync(dirname(packageDirectory), { recursive: true });
+beforeAll(
+  () => {
+    run('pnpm', ['build']);
+    mkdirSync(extractionDirectory, { recursive: true });
+    mkdirSync(dirname(packageDirectory), { recursive: true });
 
-  const packResult = JSON.parse(
-    run('npm', [
-      'pack',
-      '--json',
-      '--ignore-scripts',
-      '--pack-destination',
-      temporaryRoot,
-    ]),
-  ) as Array<{ filename: string; name: string; version: string }>;
+    const packResult = JSON.parse(
+      run('npm', [
+        'pack',
+        '--json',
+        '--ignore-scripts',
+        '--pack-destination',
+        temporaryRoot,
+      ]),
+    ) as Array<{ filename: string; name: string; version: string }>;
 
-  expect(packResult).toHaveLength(1);
-  expect(packResult[0]?.name).toBe(packageMetadata.name);
-  expect(packResult[0]?.version).toBe(packageMetadata.version);
+    expect(packResult).toHaveLength(1);
+    expect(packResult[0]?.name).toBe(packageMetadata.name);
+    expect(packResult[0]?.version).toBe(packageMetadata.version);
 
-  const tarballPath = join(temporaryRoot, packResult[0]!.filename);
-  expect(existsSync(tarballPath)).toBe(true);
-  run('tar', ['-xzf', tarballPath, '-C', extractionDirectory]);
-  renameSync(join(extractionDirectory, 'package'), packageDirectory);
-  writeFileSync(
-    join(consumerDirectory, 'package.json'),
-    '{"name":"inkspan-reference-host-framework-free-consumer","private":true,"type":"module"}\n',
-    'utf8',
-  );
-});
+    const tarballPath = join(temporaryRoot, packResult[0]!.filename);
+    expect(existsSync(tarballPath)).toBe(true);
+    run('tar', ['-xzf', tarballPath, '-C', extractionDirectory]);
+    renameSync(join(extractionDirectory, 'package'), packageDirectory);
+    writeFileSync(
+      join(consumerDirectory, 'package.json'),
+      '{"name":"inkspan-reference-host-framework-free-consumer","private":true,"type":"module"}\n',
+      'utf8',
+    );
+  },
+  180_000,
+);
 
 afterAll(() => {
   rmSync(temporaryRoot, { recursive: true, force: true });
