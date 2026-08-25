@@ -17,6 +17,15 @@ import { afterEach, describe, expect, it } from 'vitest';
 const repositoryRoot = process.cwd();
 const suitePath = resolve(repositoryRoot, 'benchmarks/run-current-suite.mjs');
 const temporaryDirectories: string[] = [];
+const currentSourceCommitSha = execFileSync(
+  'git',
+  ['rev-parse', '--verify', 'HEAD'],
+  {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  },
+).trim();
 
 afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) {
@@ -32,6 +41,7 @@ function benchmarkArguments(
   revisionModulePath: string,
   revisionArtifactSha256: string,
   outputDirectory: string,
+  sourceCommitSha = currentSourceCommitSha,
 ): string[] {
   return [
     suitePath,
@@ -48,7 +58,7 @@ function benchmarkArguments(
     '--samples',
     '2',
     '--source-commit-sha',
-    'a'.repeat(40),
+    sourceCommitSha,
     '--artifact-sha256',
     markdownArtifactSha256,
     '--revision-artifact-sha256',
@@ -131,7 +141,7 @@ describe('single-command benchmark suite contract', () => {
       contractVersion: 1,
       documentProfile: 'small',
       sampleCount: 2,
-      sourceCommitSha: 'a'.repeat(40),
+      sourceCommitSha: currentSourceCommitSha,
       runtimeId: 'node-22.0.0',
       referenceHardwareId: `refhw-sha256-${'b'.repeat(64)}`,
       markdownSamples: 'markdown/samples.json',
@@ -186,6 +196,44 @@ describe('single-command benchmark suite contract', () => {
         'utf8',
       ),
     ).toContain('revision-evidence-small');
+  });
+
+  it('rejects a claimed source commit that is not the checked-out HEAD', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-suite-source-'));
+    temporaryDirectories.push(directory);
+    const outputDirectory = join(directory, 'evidence');
+    const inputs = writeBenchmarkInputs(directory);
+    const mismatchedCommit =
+      currentSourceCommitSha === 'f'.repeat(40) ? 'e'.repeat(40) : 'f'.repeat(40);
+
+    const result = spawnSync(
+      process.execPath,
+      benchmarkArguments(
+        inputs.markdownInputPath,
+        inputs.markdownModulePath,
+        inputs.markdownArtifactSha256,
+        inputs.revisionInputPath,
+        inputs.revisionModulePath,
+        inputs.revisionArtifactSha256,
+        outputDirectory,
+        mismatchedCommit,
+      ),
+      {
+        cwd: repositoryRoot,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 10_000,
+      },
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe(
+      'Benchmark suite source commit does not match checked-out HEAD.\n',
+    );
+    expect(result.stderr).not.toContain(currentSourceCommitSha);
+    expect(result.stderr).not.toContain(mismatchedCommit);
+    expect(existsSync(outputDirectory)).toBe(false);
   });
 
   it('removes partial suite evidence when a downstream measurement fails', () => {
