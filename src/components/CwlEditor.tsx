@@ -91,6 +91,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     const isControlled = value !== undefined;
     const selectedDocumentValue = value ?? defaultValue ?? '';
     const emittingRef = useRef(false);
+    const compositionActiveRef = useRef(false);
     const editorInstanceRef = useRef<Editor | null>(null);
     const modeRef = useLatestRef(mode);
     const onChangeRef = useLatestRef(onChange);
@@ -160,6 +161,18 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       content: editorValueToHtml(selectedDocumentValue, mode),
       editorProps: {
         attributes: editorAttributes,
+        handleDOMEvents: {
+          compositionstart: () => {
+            compositionActiveRef.current = true;
+            return false;
+          },
+          compositionend: () => {
+            queueMicrotask(() => {
+              compositionActiveRef.current = false;
+            });
+            return false;
+          },
+        },
       },
       onCreate: ({ editor: instance }) => {
         editorInstanceRef.current = instance;
@@ -167,6 +180,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       },
       onDestroy: () => {
         const instance = editorInstanceRef.current!;
+        compositionActiveRef.current = false;
         onDestroyRef.current?.(instance);
         editorInstanceRef.current = null;
       },
@@ -176,7 +190,11 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         if (!valueListener && !snapshotListener) return;
         emittingRef.current = true;
         try {
-          if (snapshotListener && !instance.view.composing) {
+          if (
+            snapshotListener &&
+            !compositionActiveRef.current &&
+            !instance.view.composing
+          ) {
             const snapshot = createEditorDocumentSnapshot(
               instance,
               modeRef.current,
