@@ -114,6 +114,14 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       },
       [onClipboardErrorRef],
     );
+    const beginComposition = useCallback(() => {
+      compositionActiveRef.current = true;
+    }, []);
+    const endComposition = useCallback(() => {
+      queueMicrotask(() => {
+        compositionActiveRef.current = false;
+      });
+    }, []);
     const normalizedPlaceholder = useMemo(
       () => normalizeEditorPlaceholder(placeholder),
       [placeholder],
@@ -161,25 +169,17 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       content: editorValueToHtml(selectedDocumentValue, mode),
       editorProps: {
         attributes: editorAttributes,
-        handleDOMEvents: {
-          compositionstart: () => {
-            compositionActiveRef.current = true;
-            return false;
-          },
-          compositionend: () => {
-            queueMicrotask(() => {
-              compositionActiveRef.current = false;
-            });
-            return false;
-          },
-        },
       },
       onCreate: ({ editor: instance }) => {
         editorInstanceRef.current = instance;
+        instance.view.dom.addEventListener('compositionstart', beginComposition);
+        instance.view.dom.addEventListener('compositionend', endComposition);
         onReadyRef.current?.(instance);
       },
       onDestroy: () => {
         const instance = editorInstanceRef.current!;
+        instance.view.dom.removeEventListener('compositionstart', beginComposition);
+        instance.view.dom.removeEventListener('compositionend', endComposition);
         compositionActiveRef.current = false;
         onDestroyRef.current?.(instance);
         editorInstanceRef.current = null;
