@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import {
   closeSync,
@@ -15,6 +16,8 @@ import {
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+const benchmarkDirectory = dirname(fileURLToPath(import.meta.url));
+const repositoryRoot = resolve(benchmarkDirectory, '..');
 const MAX_INPUT_BYTES = 16 * 1024 * 1024;
 const MAX_MODULE_BYTES = 16 * 1024 * 1024;
 const READ_CHUNK_BYTES = 64 * 1024;
@@ -101,6 +104,37 @@ function resolveArguments(argv) {
     referenceHardwareId,
     outputPath: resolve(values['--output']),
   });
+}
+
+function assertMeasurementProvenance(sourceCommitSha, runtimeId) {
+  const result = spawnSync('git', ['rev-parse', '--verify', 'HEAD'], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+    maxBuffer: 1024,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    timeout: 10_000,
+  });
+  const checkoutSha = result.stdout?.trim();
+  if (
+    result.error !== undefined ||
+    result.signal !== null ||
+    result.status !== 0 ||
+    !SHA1_PATTERN.test(checkoutSha ?? '')
+  ) {
+    throw new Error(
+      'Benchmark measurement source commit could not be verified against the current checkout.',
+    );
+  }
+  if (sourceCommitSha !== checkoutSha) {
+    throw new Error(
+      'Benchmark measurement source commit does not match checked-out HEAD.',
+    );
+  }
+  if (runtimeId !== `node-${process.versions.node}`) {
+    throw new Error(
+      'Benchmark measurement runtime ID must match the active Node runtime.',
+    );
+  }
 }
 
 function readBoundedRegularFile(path, maximumBytes, invalidFileMessage, oversizedMessage) {
@@ -340,6 +374,7 @@ async function main() {
     );
   }
   verifyMeasuredModuleDigest(modulePath, args.artifactSha256);
+  assertMeasurementProvenance(args.sourceCommitSha, args.runtimeId);
 
   const measuredModule = await loadMeasuredModule(modulePath);
   if (
