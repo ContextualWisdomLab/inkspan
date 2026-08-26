@@ -112,7 +112,7 @@ describe('Toolbar', () => {
       const italic = screen.getByRole('button', { name: /Italic/ });
       const insertTable = screen.getByRole('button', { name: /^Insert table$/ });
       const insertImage = screen.getByRole('button', {
-        name: /Insert inline \(base64\) image/,
+        name: /Insert inline image/,
       });
       const enabledButtons = (
         screen.getAllByRole('button') as HTMLButtonElement[]
@@ -149,7 +149,7 @@ describe('Toolbar', () => {
 
       const bold = screen.getByRole('button', { name: /Bold/ });
       const insertImage = screen.getByRole('button', {
-        name: /Insert inline \(base64\) image/,
+        name: /Insert inline image/,
       });
       fireEvent.focus(insertImage);
       expect(insertImage).toHaveAttribute('tabindex', '0');
@@ -276,7 +276,9 @@ describe('Toolbar', () => {
       fireEvent.change(fileInput(), { target: { files: [file] } });
       await waitFor(() => expect(onImageError).toHaveBeenCalled());
       expect(editor.getHTML()).not.toContain('data:image');
-      expect(String(onImageError.mock.calls[0]![0])).toMatch(/exceeds/i);
+      expect(String(onImageError.mock.calls[0]![0])).toMatch(
+        /too large to insert/i,
+      );
     });
 
     it('does not throw when oversized and no onImageError is wired', async () => {

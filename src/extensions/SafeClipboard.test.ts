@@ -165,7 +165,7 @@ describe('sanitizeRichClipboardHtml', () => {
     ).toThrowError(
       expect.objectContaining({
         code: 'input_too_large',
-        message: 'Rich clipboard HTML exceeds the configured byte limit.',
+        message: 'The pasted content is too large to insert. Try pasting less content at once.',
       }),
     );
   });
@@ -176,7 +176,7 @@ describe('sanitizeRichClipboardHtml', () => {
     ).toThrowError(
       expect.objectContaining({
         code: 'invalid_html',
-        message: 'Rich clipboard HTML could not be sanitized.',
+        message: "This content can't be inserted here. Try pasting as plain text instead.",
       }),
     );
   });
@@ -373,7 +373,7 @@ describe('SafeClipboard extension', () => {
     expect(onError).toHaveBeenCalledWith(
       expect.objectContaining({
         code: 'invalid_html',
-        message: 'Rich clipboard HTML could not be sanitized.',
+        message: "This content can't be inserted here. Try pasting as plain text instead.",
       }),
     );
 

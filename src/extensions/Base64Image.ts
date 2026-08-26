@@ -118,7 +118,9 @@ export async function imageFileToInlineDataUri(
 /** Normalize a caught value to the Error contract exposed to hosts. */
 function normalizeImageError(error: unknown): Error {
   /* v8 ignore next -- all shipped validation and conversion paths throw Error. */
-  return error instanceof Error ? error : new Error('Image processing failed.');
+  return error instanceof Error
+    ? error
+    : new Error("This image couldn't be inserted. Try a different image file.");
 }
 
 export const Base64Image = Image.extend<Base64ImageOptions>({

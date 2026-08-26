@@ -19,12 +19,23 @@ export class Base64SizeError extends Error {
   readonly maxBytes: number;
   constructor(bytes: number, maxBytes: number) {
     super(
-      `Payload of ${bytes} bytes exceeds the configured limit of ${maxBytes} bytes.`,
+      `This file is too large to insert. Choose a file under ${formatByteLimit(maxBytes)}.`,
     );
     this.name = 'Base64SizeError';
     this.bytes = bytes;
     this.maxBytes = maxBytes;
   }
+}
+
+/** Render a byte limit in the largest exact unit users reason about. */
+function formatByteLimit(maxBytes: number): string {
+  if (maxBytes >= 1024 * 1024 && maxBytes % (1024 * 1024) === 0) {
+    return `${maxBytes / (1024 * 1024)} MB`;
+  }
+  if (maxBytes >= 1024 && maxBytes % 1024 === 0) {
+    return `${maxBytes / 1024} KB`;
+  }
+  return `${maxBytes} bytes`;
 }
 
 /** Error thrown when a string is not a well-formed data URI. */
@@ -224,7 +235,10 @@ async function readBlobBytes(blob: Blob): Promise<Uint8Array> {
       reader.onload = () =>
         resolve(new Uint8Array(reader.result as ArrayBuffer));
       reader.onerror = () =>
-        reject(reader.error ?? new Error('FileReader failed to read Blob.'));
+        reject(
+          reader.error ??
+            new Error("This file couldn't be read. Try again or choose a different file."),
+        );
       reader.readAsArrayBuffer(blob);
     });
   }

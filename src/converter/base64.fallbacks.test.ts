@@ -76,7 +76,7 @@ describe('readBlobBytes environment fallbacks', () => {
     vi.stubGlobal('FileReader', NullErrorReader);
     const fakeBlob = { type: 'image/png' } as unknown as Blob;
     await expect(blobToDataUri(fakeBlob)).rejects.toThrow(
-      /FileReader failed to read Blob/,
+      /This file couldn't be read/,
     );
   });
 
