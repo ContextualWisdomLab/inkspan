@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import {
   chmodSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   rmSync,
   writeFileSync,
@@ -42,6 +43,7 @@ const count = existsSync(state) ? Number(readFileSync(state, 'utf8')) : 0;
 writeFileSync(state, String(count + 1), 'utf8');
 process.stdout.write(\`${'${count === 0 ? first : moved}'}\\n\`);
 `;
+  mkdirSync(fakeBin, { recursive: true });
   writeFileSync(fakeGit, script, { encoding: 'utf8', mode: 0o755 });
   chmodSync(fakeGit, 0o755);
   return {
