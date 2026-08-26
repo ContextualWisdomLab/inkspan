@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import {
   existsSync,
   mkdtempSync,
@@ -11,8 +11,16 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const script = resolve(process.cwd(), 'benchmarks/measure-markdown.mjs');
-const SOURCE_COMMIT_SHA = 'a'.repeat(40);
-const RUNTIME_ID = 'node-22.18.0';
+const SOURCE_COMMIT_SHA = execFileSync(
+  'git',
+  ['rev-parse', '--verify', 'HEAD'],
+  {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  },
+).trim();
+const RUNTIME_ID = `node-${process.versions.node}`;
 const REFERENCE_HARDWARE_ID = 'github-actions-ubuntu-24.04-x64';
 
 function sha256(value: string) {
