@@ -244,7 +244,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
           editor.view.dom.ownerDocument.defaultView!.Event;
         editor.view.dom.dispatchEvent(new EventConstructor('compositionend'));
       }
-      editor.setEditable(editable);
+      editor.setEditable(editable, false);
     }, [editor, editable]);
 
     useEffect(() => {
