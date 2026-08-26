@@ -1,4 +1,4 @@
-import { useId, useRef } from 'react';
+import { useId, useRef, useState } from 'react';
 import {
   createReviewThreadPresentation,
   CwlReviewPresentationError,
@@ -258,6 +258,33 @@ function reviewThreadFocusIndex(
   }
 }
 
+function initialReviewThreadKey(
+  presentations: readonly CwlReviewThreadPresentation[],
+): string | null {
+  let firstThreadKey: string | null = null;
+  for (const presentation of presentations) {
+    firstThreadKey ??= presentation.threadKey;
+    if (presentation.selected) {
+      return presentation.threadKey;
+    }
+  }
+  return firstThreadKey;
+}
+
+function resolveReviewThreadKey(
+  presentations: readonly CwlReviewThreadPresentation[],
+  focusedThreadKey: string | null,
+): string | null {
+  if (focusedThreadKey !== null) {
+    for (const presentation of presentations) {
+      if (presentation.threadKey === focusedThreadKey) {
+        return focusedThreadKey;
+      }
+    }
+  }
+  return initialReviewThreadKey(presentations);
+}
+
 function invokeReviewIntent(
   callback: ReviewIntentCallback,
   presentation: CwlReviewThreadPresentation,
@@ -287,14 +314,17 @@ function invokeReviewIntent(
  * before rendering so malformed runtime values fail closed at the same public
  * presentation boundary rather than surfacing a native invocation TypeError.
  * Private failures thrown by validated intent callbacks are likewise normalized
- * to the public presentation error instead of leaking host details. Arrow
- * Up/Down and Home/End move DOM focus only among thread-selection targets;
- * keyboard traversal never commits host-controlled thread selection. Repeated
- * reply/resolve controls include the already validated thread label in their
- * accessible name so action lists remain disambiguated without changing visible
- * host copy. The component emits only intent callbacks with the detached, frozen
- * presentation snapshot; it does not authorize, persist, transport, mutate,
- * resolve, or reply to host-owned review records.
+ * to the public presentation error instead of leaking host details. Exactly one
+ * thread-selection target participates in the tab order: the host-selected
+ * thread is the initial rover when present, otherwise the first thread is. Once
+ * focus enters the list the rover is retained by stable validated `threadKey`.
+ * Arrow Up/Down and Home/End move that roving DOM focus only; keyboard traversal
+ * never commits host-controlled thread selection. Repeated reply/resolve controls
+ * include the already validated thread label in their accessible name so action
+ * lists remain disambiguated without changing visible host copy. The component
+ * emits only intent callbacks with the detached, frozen presentation snapshot;
+ * it does not authorize, persist, transport, mutate, resolve, or reply to
+ * host-owned review records.
  */
 export function CwlReviewThreadList({
   presentations,
@@ -305,6 +335,7 @@ export function CwlReviewThreadList({
 }: CwlReviewThreadListProps) {
   const listId = useId();
   const threadButtons = useRef<Array<HTMLButtonElement | null>>([]);
+  const [focusedThreadKey, setFocusedThreadKey] = useState<string | null>(null);
   const validatedPresentations =
     validateReviewThreadPresentations(presentations);
   const validatedLabels = validateReviewThreadListLabels(labels);
@@ -312,6 +343,10 @@ export function CwlReviewThreadList({
     onSelectThread,
     onReplyThread,
     onResolveThread,
+  );
+  const rovingThreadKey = resolveReviewThreadKey(
+    validatedPresentations,
+    focusedThreadKey,
   );
 
   return (
@@ -371,8 +406,10 @@ export function CwlReviewThreadList({
                   threadButtons.current[index] = button;
                 }}
                 type="button"
+                tabIndex={presentation.threadKey === rovingThreadKey ? 0 : -1}
                 aria-pressed={presentation.selected}
                 aria-describedby={summaryId}
+                onFocus={() => setFocusedThreadKey(presentation.threadKey)}
                 onClick={() =>
                   invokeReviewIntent(
                     validatedCallbacks.onSelectThread,
@@ -389,6 +426,9 @@ export function CwlReviewThreadList({
                     return;
                   }
                   event.preventDefault();
+                  setFocusedThreadKey(
+                    validatedPresentations[targetIndex]!.threadKey,
+                  );
                   threadButtons.current[targetIndex]!.focus();
                 }}
               >
