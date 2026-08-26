@@ -117,10 +117,13 @@ export async function imageFileToInlineDataUri(
 
 /** Normalize a caught value to the Error contract exposed to hosts. */
 function normalizeImageError(error: unknown): Error {
-  /* v8 ignore next -- all shipped validation and conversion paths throw Error. */
-  return error instanceof Error
-    ? error
-    : new Error("This image couldn't be inserted. Try a different image file.");
+  if (error instanceof Error) {
+    return error;
+  }
+  /* v8 ignore next -- shipped validation and conversion paths always throw
+   * Error subclasses; this fallback only guards hostile non-Error values
+   * thrown across the host boundary. */
+  return new Error("This image couldn't be inserted. Try a different image file.");
 }
 
 export const Base64Image = Image.extend<Base64ImageOptions>({
