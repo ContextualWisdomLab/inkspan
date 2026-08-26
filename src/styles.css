@@ -41,7 +41,7 @@
     --cwl-border: #3d444d;
     --cwl-bg: #0d1117;
     --cwl-surface: #161b22;
-    --cwl-accent: #4493f8;
+    --cwl-accent: #58a6ff;
     --cwl-accent-soft: #163356;
   }
 }
@@ -117,10 +117,6 @@
   outline: none;
   line-height: 1.6;
   font-size: 15px;
-}
-
-.cwl-editor__content:focus {
-  outline: none;
 }
 
 .cwl-editor__content:focus-visible {
@@ -381,6 +377,10 @@
     padding: 0;
     orphans: 3;
     widows: 3;
+  }
+
+  .cwl-editor__content:focus-visible {
+    outline: none;
   }
 
   .cwl-editor__content .is-editor-empty:first-child::before {
