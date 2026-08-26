@@ -122,8 +122,9 @@ function normalizeImageError(error: unknown): Error {
   }
   // Hostile non-Error values can only cross from host callbacks; shipped
   // validation and conversion paths always throw Error subclasses.
-  /* v8 ignore next */
+  /* v8 ignore start */
   return new Error("This image couldn't be inserted. Try a different image file.");
+  /* v8 ignore stop */
 }
 
 export const Base64Image = Image.extend<Base64ImageOptions>({
