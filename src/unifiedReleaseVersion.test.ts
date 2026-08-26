@@ -15,11 +15,16 @@ const changelog = repositoryFile('CHANGELOG.md');
 const officeVersion = officeManifest.match(/^version = "([^"]+)"$/mu)?.[1];
 
 const releaseSection = (headingPattern: RegExp): string => {
-  const headingIndex = changelog.search(headingPattern);
-  expect(headingIndex).toBeGreaterThanOrEqual(0);
-  const releaseTail = changelog.slice(headingIndex);
-  const nextReleaseIndex = releaseTail.slice(1).search(/^## \[/mu);
-  return nextReleaseIndex < 0 ? releaseTail : releaseTail.slice(0, nextReleaseIndex + 1);
+  const headingMatch = headingPattern.exec(changelog);
+  expect(headingMatch).not.toBeNull();
+  const headingIndex = headingMatch?.index ?? -1;
+  const afterHeadingIndex = headingIndex + (headingMatch?.[0].length ?? 0);
+  const nextReleaseMatch = /^## \[/mu.exec(changelog.slice(afterHeadingIndex));
+  const endIndex =
+    nextReleaseMatch?.index === undefined
+      ? changelog.length
+      : afterHeadingIndex + nextReleaseMatch.index;
+  return changelog.slice(headingIndex, endIndex);
 };
 
 const subsection = (release: string, heading: string): string => {
