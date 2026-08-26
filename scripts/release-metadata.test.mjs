@@ -18,12 +18,11 @@ test('binds package metadata to the current dated changelog release candidate', 
     'm',
   );
   const headingMatch = changelog.match(releaseHeading);
+  const unreleasedIndex = changelog.indexOf('## [Unreleased]');
 
   assert.notEqual(headingMatch, null);
-  assert.equal(
-    changelog.indexOf('## [Unreleased]') < (headingMatch?.index ?? -1),
-    true,
-  );
+  assert.notEqual(unreleasedIndex, -1);
+  assert.equal(unreleasedIndex < (headingMatch?.index ?? -1), true);
   assert.equal(
     changelog.includes(
       `Unified the npm editor and \`inkspan-office\` package manifests at **${packageManifest.version}**`,
