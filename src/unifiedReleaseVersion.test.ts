@@ -14,6 +14,23 @@ const changelog = repositoryFile('CHANGELOG.md');
 
 const officeVersion = officeManifest.match(/^version = "([^"]+)"$/mu)?.[1];
 
+const releaseSection = (version: string, headingPattern: RegExp): string => {
+  const headingIndex = changelog.search(headingPattern);
+  expect(headingIndex).toBeGreaterThanOrEqual(0);
+  const releaseTail = changelog.slice(headingIndex);
+  const nextReleaseIndex = releaseTail.slice(1).search(/^## \[/mu);
+  return nextReleaseIndex < 0 ? releaseTail : releaseTail.slice(0, nextReleaseIndex + 1);
+};
+
+const subsection = (release: string, heading: string): string => {
+  const marker = `### ${heading}`;
+  const start = release.indexOf(marker);
+  expect(start).toBeGreaterThanOrEqual(0);
+  const tail = release.slice(start + marker.length);
+  const nextHeading = tail.search(/^### /mu);
+  return nextHeading < 0 ? tail : tail.slice(0, nextHeading);
+};
+
 describe('unified stable Inkspan release version', () => {
   it('keeps npm and Office artifacts on one product version', () => {
     expect(officeVersion).toBeDefined();
@@ -27,9 +44,24 @@ describe('unified stable Inkspan release version', () => {
       `^## \\[${escapedVersion}\\] — 20[0-9]{2}-[0-9]{2}-[0-9]{2}$`,
       'mu',
     );
-    expect(changelog).toMatch(releaseHeading);
-    expect(changelog.indexOf('## [Unreleased]')).toBeLessThan(
-      changelog.search(releaseHeading),
+    const unreleasedIndex = changelog.indexOf('## [Unreleased]');
+    const currentReleaseIndex = changelog.search(releaseHeading);
+    expect(unreleasedIndex).toBeGreaterThanOrEqual(0);
+    expect(currentReleaseIndex).toBeGreaterThanOrEqual(0);
+    expect(unreleasedIndex).toBeLessThan(currentReleaseIndex);
+  });
+
+  it('preserves the current release category boundary for the SSR native form-field repair', () => {
+    const escapedVersion = rootManifest.version.split('.').join('\\.');
+    const releaseHeading = new RegExp(
+      `^## \\[${escapedVersion}\\] — 20[0-9]{2}-[0-9]{2}-[0-9]{2}$`,
+      'mu',
     );
+    const currentRelease = releaseSection(rootManifest.version, releaseHeading);
+    const ssrFormFieldEntry =
+      'Added the selected standalone Markdown or HTML value to an explicitly configured SSR native form field';
+
+    expect(subsection(currentRelease, 'Fixed')).toContain(ssrFormFieldEntry);
+    expect(subsection(currentRelease, 'Security')).not.toContain(ssrFormFieldEntry);
   });
 });
