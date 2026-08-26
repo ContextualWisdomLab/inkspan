@@ -118,14 +118,20 @@ export async function imageFileToInlineDataUri(
 /**
  * Normalize a caught value to the Error contract exposed to hosts.
  *
- * Shipped validation and conversion paths always throw `Error` subclasses,
- * so the Error passthrough is the only branch reachable in production; the
- * fallback exists because host callbacks and promise chains can reject with
- * hostile non-Error values, and users must still see actionable guidance.
+ * Native Errors may carry actionable Inkspan guidance and public subclass
+ * metadata, so preserve them unchanged. `structuredClone` performs the
+ * platform's native Error brand check without walking an untrusted value's
+ * prototype chain; proxies, non-Errors, and runtimes without structured clone
+ * fail closed to the bounded customer-facing fallback below.
  */
 export function normalizeImageError(error: unknown): Error {
-  if (error instanceof Error) {
-    return error;
+  try {
+    const cloned = structuredClone(error);
+    if (Object.prototype.toString.call(cloned) === '[object Error]') {
+      return error as Error;
+    }
+  } catch {
+    // Hostile proxies and unavailable structured-clone implementations fall through.
   }
   return new Error("This image couldn't be inserted. Try a different image file.");
 }
