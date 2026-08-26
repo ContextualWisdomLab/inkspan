@@ -262,6 +262,10 @@
     border-color: CanvasText;
   }
 
+  .cwl-editor__content:focus-visible {
+    outline-color: CanvasText;
+  }
+
   .cwl-toolbar,
   .cwl-collaboration-status {
     background: ButtonFace;
@@ -299,11 +303,6 @@
     opacity: 1;
     color: GrayText;
     border-color: GrayText;
-  }
-
-  .cwl-editor__content:focus-visible {
-    outline: 2px solid Highlight;
-    outline-offset: -2px;
   }
 
   .cwl-editor__content a {

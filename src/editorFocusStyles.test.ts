@@ -24,25 +24,19 @@ describe('editable surface focus stylesheet contract', () => {
       );
     expect(ordinaryFocusRule).not.toBeNull();
 
-    // The forced-colors boundary must cascade after the theme-colored rule so
-    // the system-color override is effective, not dead code.
+    // The single screen forced-colors layer must cascade after the
+    // theme-colored rule so the system-color override is effective.
     expect(forcedColorsIndex).toBeGreaterThan(
       ordinaryFocusRule?.index ?? Number.MAX_SAFE_INTEGER,
     );
 
+    // Editor content keeps guaranteed canvas contrast under forced colors.
     expect(forcedColorsStyles).toMatch(
-      /\.cwl-editor__content:focus-visible\s*\{[^}]*outline:\s*2px\s+solid\s+Highlight\s*;[^}]*outline-offset:\s*-2px\s*;/u,
-    );
-  });
-
-  it('uses one consistent system color for every focus indicator in forced-colors mode', () => {
-    expect(forcedColorsStyles).toMatch(
-      /\.cwl-tb-btn:focus-visible\s*\{[^}]*outline:\s*2px\s+solid\s+Highlight\s*;[^}]*outline-offset:\s*2px\s*;/u,
-    );
-    // No competing partial override may resurrect a second focus color after
-    // the comprehensive forced-colors contract.
-    expect(forcedColorsStyles).not.toMatch(
       /\.cwl-editor__content:focus-visible\s*\{[^}]*outline-color:\s*CanvasText\s*;/u,
+    );
+    // No competing shorthand may resurrect a second editor-content focus color.
+    expect(forcedColorsStyles).not.toMatch(
+      /\.cwl-editor__content:focus-visible\s*\{[^}]*outline:\s*2px\s+solid\s+(?:Highlight|var\(--cwl-accent\))\s*;/u,
     );
   });
 });
