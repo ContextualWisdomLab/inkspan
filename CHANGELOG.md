@@ -14,16 +14,6 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 ### Added
 - Named the repeating editor chrome as a host-facing theme-token catalog and Storybook inventory so hosts can override `--cwl-*` custom properties on `.cwl-editor` after checking WCAG 2.2 contrast, without editing Inkspan internals. Color catalog values now distinguish light, dark, and `@media print` remaps; forced-colors mode is not treated as a token assignment. Hosts can call `getEditorThemeTokenContrast()` to compare inventoried pairs, including `--cwl-accent` on `--cwl-accent-soft`, against the 4.5:1 text threshold via `meetsTextContrast`.
 - Added `docs/product-technical-gap-baseline.md` as the bounded product/technical gap baseline with a documented refresh procedure for the live open-PR/Issue queue, release/registry/alert state, and governance rules.
-
-### Security
-- Raised workspace-wide transitive development-tool overrides for `fast-uri`, `nanoid`, and `postcss` to patched minimums (fast-uri 3.1.5, nanoid 3.3.18, postcss 8.5.23), keeping the lockfile audit clean without changing runtime package authority.
-- Normalized isolated package-verifier temporary roots before containment checks on macOS.
-- Added a fail-closed draft release asset inventory gate that requires exactly one npm tarball, one Office wheel, `inkspan.spdx.json`, and `SHA256SUMS`, rejects stale or unexpected draft assets before immutable publication, and verifies every GitHub-reported `sha256:` asset digest against the transferred local file
-- Kept SSR document disclosure opt-in through `formFieldName`; hidden-field values remain client-controlled submission data and do not replace host authentication, authorization, tenant isolation, CSRF defenses, server validation, durable concurrency, or persistence controls
-- Kept collaborative Yjs document content out of server markup until the host-owned client collaboration lifecycle is bound
-- Added packed headless Markdown authority verification that rejects external runtime imports, dynamic module loaders, ambient network/environment credential access, React/TipTap/Yjs runtime coupling, CWL host coupling, and model credential references from the dedicated conversion artifact
-- Added OIDC Trusted Publishing for the exact validated npm tarball and Office wheel with registry-side credentials kept out of source, build jobs, and long-lived repository secrets; registry publication is verified against the exact artifact digests after publication.
-- Added the selected standalone Markdown or HTML value to an explicitly configured SSR native form field, preserving controlled-value precedence, external form association, React attribute escaping, and the synchronous post-hydration TipTap transaction mirror
 - Added `@contextualwisdomlab/cwl-editor/markdown` as a headless ESM/CommonJS/TypeScript conversion subpath exposing the existing deterministic Markdown/HTML/email/plain-text serializers while sharing framework-neutral safe-link and strict inline-raster policy with the editor instead of importing the React/TipTap extension graph
 - Added bounded `inspectDocumentEnvelopeIdentity()` and `inspectDocumentEnvelopeIdentityBytes()` routing metadata plus the framework-independent `envelope-identity` package subpath so hosts can select explicit schema migrations without exposing document bodies, weakening the strict current-schema parser, or moving migration/persistence authority into Inkspan
 - Added one optional construction-time `onSnapshotChange` callback to the framework-free autosave queue and durable autosave session so hosts can observe saving, pending, blocked, recovery, idle, and shutdown state without polling or introducing a subscriber collection
@@ -33,6 +23,18 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Added normalized programmatic editor placeholder semantics so visible placeholder guidance and `aria-placeholder` remain aligned for standalone and collaborative editing without unnecessary editor remounts.
 - Expanded deterministic DOCX fidelity with bounded informative inline PNG figures and alternative text, rich-text paragraph runs, and bounded paragraph and heading alignment while preserving fail-closed schema/runtime limits and Python 3.11–3.14 verification.
 - Added bounded relationship-backed external HTTP(S) hyperlinks to DOCX rich-text runs while preserving deterministic network-free rendering, existing run emphasis, fail-closed URI validation, redacted errors, and Python 3.11–3.14 verification.
+
+### Fixed
+- Added the selected standalone Markdown or HTML value to an explicitly configured SSR native form field, preserving controlled-value precedence, external form association, React attribute escaping, and the synchronous post-hydration TipTap transaction mirror
+
+### Security
+- Raised workspace-wide transitive development-tool overrides for `fast-uri`, `nanoid`, and `postcss` to patched minimums (fast-uri 3.1.5, nanoid 3.3.18, postcss 8.5.23), keeping the lockfile audit clean without changing runtime package authority.
+- Normalized isolated package-verifier temporary roots before containment checks on macOS.
+- Added a fail-closed draft release asset inventory gate that requires exactly one npm tarball, one Office wheel, `inkspan.spdx.json`, and `SHA256SUMS`, rejects stale or unexpected draft assets before immutable publication, and verifies every GitHub-reported `sha256:` asset digest against the transferred local file
+- Kept SSR document disclosure opt-in through `formFieldName`; hidden-field values remain client-controlled submission data and do not replace host authentication, authorization, tenant isolation, CSRF defenses, server validation, durable concurrency, or persistence controls
+- Kept collaborative Yjs document content out of server markup until the host-owned client collaboration lifecycle is bound
+- Added packed headless Markdown authority verification that rejects external runtime imports, dynamic module loaders, ambient network/environment credential access, React/TipTap/Yjs runtime coupling, CWL host coupling, and model credential references from the dedicated conversion artifact
+- Added OIDC Trusted Publishing for the exact validated npm tarball and Office wheel with registry-side credentials kept out of source, build jobs, and long-lived repository secrets; registry publication is verified against the exact artifact digests after publication.
 
 ### Reliability
 - Lifecycle observers receive only distinct frozen document-free snapshots; observer exceptions cannot alter save ordering, conflict/failure recovery, queue outcomes, or durable-validator handoff
