@@ -71,7 +71,9 @@ describe('protected capability documentation maturity', () => {
     expect(stylesheet).toContain('@media print');
     expect(adr).toContain('Status: Accepted');
     expect(architecture).toContain('Accepted ADR 0021');
-    expect(architecture).toContain('protected PR #116');
+    expect(architecture).toContain(
+      'CSS-only `@media print` presentation boundary governed by Accepted ADR 0021',
+    );
     expect(architecture).not.toContain('Proposed ADR 0021');
     expect(architecture).not.toContain('active PR #116');
     expect(architecture).not.toContain('Until #116 integrates');
@@ -92,5 +94,4 @@ describe('protected capability documentation maturity', () => {
     expect(trd).not.toContain('implemented_on_active_pr');
     expect(trd).not.toContain('Until protected integration');
   });
-
 });

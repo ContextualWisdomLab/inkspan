@@ -25,6 +25,8 @@ The protected standalone product provides:
 - dependency-locked Chromium/Firefox/WebKit rich-clipboard release assurance; and
 - a network-free Office renderer for deterministic DOCX, XLSX, and PPTX output.
 
+A named editor-chrome theme-token catalog and Storybook inventory for repeating toolbar/editor objects are Active PR / Proposed. Hosts override `--cwl-*` on `.cwl-editor`; Inkspan does not own Figma Variables, brand certification, or design-tool sync.
+
 Hosts own transport, authorization, tenant isolation, persistence, credentials, migration, retention, and model-use policy. They also own authentication, deployment, durable audit, print destination policy, and any durable PDF/print-service authority; persistence includes durable storage and commit authority.
 
 Inkspan therefore never opens a production collaboration connection, chooses a tenant, stores a provider secret, creates a durable database transaction, decides a retention schedule, authorizes an AI operation, or claims that a browser print destination constitutes a durable authorized export. A standalone adopter can provide those capabilities directly; a CWL host can provide them through shared platform services.
@@ -43,7 +45,7 @@ flowchart TB
   Selector[Protected text-position-selector subpath]
   Autosave[Protected autosave subpath]
   Converter[Protected converter subpath]
-  Markdown[Protected markdown subpath\nAccepted ADR 0020]
+  Markdown[Protected markdown subpath]
   SharedPolicy[Shared deterministic URI / inline-image policy]
   Serializers[Shared deterministic serializers]
 
@@ -58,7 +60,7 @@ flowchart TB
   Markdown --> Serializers
 ```
 
-The protected `@contextualwisdomlab/cwl-editor/markdown` package subpath is governed by Accepted ADR 0020. Protected PR #114 integrated this dependency-isolation boundary without creating a second serializer authority: the root package and the headless subpath share the same deterministic serializers and framework-neutral safe-link/inline-raster policy. The subpath is shipped on protected `main`; release candidates must regenerate its packed-artifact ESM, CommonJS, strict TypeScript, and runtime-authority evidence on the exact candidate head.
+Protected `main` includes the framework-independent `@contextualwisdomlab/cwl-editor/markdown` subpath under Accepted ADR 0020. It isolates dependency topology without creating a second serializer authority: the root package and the subpath share the same deterministic serializer and URI/inline-image policy modules. Packed ESM, CommonJS, and strict-TypeScript consumers are required evidence that the subpath remains browserless and independent of React, TipTap UI, Yjs, network, credential, and model authority.
 
 A framework-independent subpath must prove its declared dependency boundary from the packed npm artifact under ESM, CommonJS, and strict TypeScript consumers. Source-level import shape alone is insufficient release evidence.
 
@@ -66,7 +68,7 @@ A framework-independent subpath must prove its declared dependency boundary from
 
 Inkspan owns the CSS rules it ships for its editor. It does not own the operating system print spooler, printer, browser's pagination implementation, downstream PDF storage, or host disclosure policy.
 
-Protected `main` includes the CSS-only `@media print` boundary defined by Accepted ADR 0021 and integrated by protected PR #116. It:
+Protected `main` includes the CSS-only `@media print` presentation boundary governed by Accepted ADR 0021. The shipped boundary:
 
 - removes Inkspan-owned screen-only scroll/max-height clipping;
 - hides toolbar, collaboration status, remote caret/cursor-label, and placeholder UI from printed document output;
@@ -74,7 +76,7 @@ Protected `main` includes the CSS-only `@media print` boundary defined by Accept
 - uses conservative paged-fragmentation hints; and
 - keeps links distinguishable without relying on color alone.
 
-This protected presentation line does **not** create a JavaScript print mode, PDF service, page-number/header/footer authority, timestamp/signature claim, persistence layer, network requirement, credential, or model dependency. Browser/user-agent pagination and any durable print/PDF artifact remain host/user authority even though Inkspan's own print CSS is shipped.
+This protected presentation line does **not** create a JavaScript print mode, PDF service, page-number/header/footer authority, timestamp/signature claim, persistence layer, network requirement, credential, or model dependency. Browser print output remains a presentation representation; durable print/PDF authorization, storage, provenance, retention, and distribution remain host responsibilities.
 
 ## Modular MSA composition
 
