@@ -19,7 +19,7 @@ export class Base64SizeError extends Error {
   readonly maxBytes: number;
   constructor(bytes: number, maxBytes: number) {
     super(
-      `This file is too large to insert. Choose a file at or below ${formatByteLimit(maxBytes)}.`,
+      `This file is too large to insert because it exceeds the size limit. Choose a file at or below ${formatByteLimit(maxBytes)}.`,
     );
     this.name = 'Base64SizeError';
     this.bytes = bytes;
