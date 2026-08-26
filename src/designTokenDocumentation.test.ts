@@ -32,9 +32,11 @@ describe('editor design-token documentation contract', () => {
     expect(repositoryFile('docs/TRACEABILITY.md')).not.toContain('ADR 0027');
     expect(doctoring).toContain('ADR 0031');
     expect(doctoring).not.toContain('ADR 0027');
+    expect(operatorGuide).toContain('Status: Shipped protected-main truth (2026-08-25)');
+    expect(operatorGuide).not.toContain('Status: Active PR / Proposed');
     expect(operatorGuide).toContain('When a host overrides any color token');
     expect(operatorGuide).toContain('shipped dark active-toolbar pair uses');
-        expect(operatorGuide).toContain('getEditorThemeTokenContrast');
+    expect(operatorGuide).toContain('getEditorThemeTokenContrast');
     expect(operatorGuide).toContain("getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'dark')");
     expect(operatorGuide).toContain('`getEditorThemeTokenContrast()` checks only Inkspan catalog values');
     expect(operatorGuide).toContain(
@@ -43,6 +45,8 @@ describe('editor design-token documentation contract', () => {
     expect(operatorGuide).toContain('meetsTextContrast');
     expect(operatorGuide).toContain('contrastRatioFromHex');
     expect(operatorGuide).toContain('Do not edit Inkspan internals');
+    expect(operatorGuide).toContain('protected-main shipped evidence, not a host WCAG certification');
+    expect(operatorGuide).not.toContain('active-PR product evidence');
     expect(readme).toContain('catalog baseline');
     expect(readme).toContain('contrastRatioFromHex');
     expect(inventory).toContain('Editor Chrome / Toolbar Button States');
@@ -50,12 +54,12 @@ describe('editor design-token documentation contract', () => {
     expect(inventory).toContain('shipped Toolbar');
     expect(inventory).toContain(':focus-visible');
     expect(inventory).toContain('Shipped defaults require no host override');
-        expect(inventory).toContain('If re-theming, override `--cwl-accent`');
+    expect(inventory).toContain('If re-theming, override `--cwl-accent`');
     expect(doctoring).toContain('cwl-accent-soft');
     expect(doctoring).toContain('meets the WCAG 2.2 4.5:1');
     expect(doctoring).toContain('Inkspan now ships dark `--cwl-accent: #58a6ff`');
-        expect(doctoring).toContain('host-facing catalog of the nine shipped chrome tokens');
-        expect(doctoring).toContain('producing about 5.06:1');
+    expect(doctoring).toContain('host-facing catalog of the nine shipped chrome tokens');
+    expect(doctoring).toContain('producing about 5.06:1');
     expect(doctoring).toContain('Host overrides must still re-check their own resulting pairs');
     expect(doctoring).toContain('contrastRatioFromHex');
     expect(doctoring).not.toContain(
