@@ -214,6 +214,18 @@ describe('data URI parsing & decoding', () => {
     const uri = bytesToDataUri(PNG_BYTES);
     expect(() => dataUriToBytes(uri, { maxBytes: 4 })).toThrow(Base64SizeError);
   });
+  it('size guidance names the limit in exact human units', () => {
+    const renderLimit = (maxBytes: number): string =>
+      new Base64SizeError(PNG_BYTES.byteLength, maxBytes).message;
+    // Sub-kilobyte limits stay in bytes; whole KB and MB limits use the unit
+    // users reason about, so the next action ("choose a file under N") is
+    // readable without mental arithmetic.
+    expect(renderLimit(4)).toContain('under 4 bytes');
+    expect(renderLimit(2048)).toContain('under 2 KB');
+    expect(renderLimit(3 * 1024 * 1024)).toContain('under 3 MB');
+    // Non-aligned limits fall back to exact bytes rather than rounding.
+    expect(renderLimit(1500)).toContain('under 1500 bytes');
+  });
 });
 
 describe('full round-trip', () => {
