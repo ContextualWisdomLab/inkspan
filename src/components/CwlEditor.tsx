@@ -176,7 +176,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         if (!valueListener && !snapshotListener) return;
         emittingRef.current = true;
         try {
-          if (snapshotListener) {
+          if (snapshotListener && !instance.view.composing) {
             const snapshot = createEditorDocumentSnapshot(
               instance,
               modeRef.current,
