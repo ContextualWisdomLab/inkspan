@@ -26,6 +26,7 @@ const currentSourceCommitSha = execFileSync(
     stdio: ['ignore', 'pipe', 'pipe'],
   },
 ).trim();
+const currentRuntimeId = `node-${process.versions.node}`;
 
 afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) {
@@ -64,7 +65,7 @@ function benchmarkArguments(
     '--revision-artifact-sha256',
     revisionArtifactSha256,
     '--runtime-id',
-    'node-22.0.0',
+    currentRuntimeId,
     '--reference-hardware-id',
     `refhw-sha256-${'b'.repeat(64)}`,
     '--output',
@@ -142,7 +143,7 @@ describe('single-command benchmark suite contract', () => {
       documentProfile: 'small',
       sampleCount: 2,
       sourceCommitSha: currentSourceCommitSha,
-      runtimeId: 'node-22.0.0',
+      runtimeId: currentRuntimeId,
       referenceHardwareId: `refhw-sha256-${'b'.repeat(64)}`,
       markdownSamples: 'markdown/samples.json',
       markdownSummaryJson: 'markdown/summary/summary.json',
