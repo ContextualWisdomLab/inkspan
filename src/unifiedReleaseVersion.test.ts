@@ -14,7 +14,7 @@ const changelog = repositoryFile('CHANGELOG.md');
 
 const officeVersion = officeManifest.match(/^version = "([^"]+)"$/mu)?.[1];
 
-const releaseSection = (version: string, headingPattern: RegExp): string => {
+const releaseSection = (headingPattern: RegExp): string => {
   const headingIndex = changelog.search(headingPattern);
   expect(headingIndex).toBeGreaterThanOrEqual(0);
   const releaseTail = changelog.slice(headingIndex);
@@ -57,7 +57,7 @@ describe('unified stable Inkspan release version', () => {
       `^## \\[${escapedVersion}\\] — 20[0-9]{2}-[0-9]{2}-[0-9]{2}$`,
       'mu',
     );
-    const currentRelease = releaseSection(rootManifest.version, releaseHeading);
+    const currentRelease = releaseSection(releaseHeading);
     const ssrFormFieldEntry =
       'Added the selected standalone Markdown or HTML value to an explicitly configured SSR native form field';
 
