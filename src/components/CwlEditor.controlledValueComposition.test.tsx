@@ -91,4 +91,39 @@ describe('CwlEditor controlled value during composition', () => {
       'Original composing committed',
     );
   });
+
+  it('publishes the finalized composition snapshot when composition ends', async () => {
+    let editor: Editor | undefined;
+    const onDocumentChange = vi.fn();
+
+    render(
+      <CwlEditor
+        mode="markdown"
+        defaultValue="Original"
+        onDocumentChange={onDocumentChange}
+        onReady={(instance) => {
+          editor = instance;
+        }}
+      />,
+    );
+    await waitFor(() => expect(editor).toBeTruthy());
+    expect(onDocumentChange).not.toHaveBeenCalled();
+
+    const editable = editor!.view.dom;
+    fireEvent.compositionStart(editable, { data: '' });
+    act(() => {
+      editor!.chain().focus('end').insertContent(' composing').run();
+    });
+    expect(onDocumentChange).not.toHaveBeenCalled();
+
+    fireEvent.compositionEnd(editable, { data: '' });
+
+    await waitFor(() => {
+      expect(editor!.view.composing).toBe(false);
+      expect(onDocumentChange).toHaveBeenCalledTimes(1);
+    });
+    expect(onDocumentChange.mock.calls[0]![0].snapshot.value).toBe(
+      'Original composing',
+    );
+  });
 });
