@@ -21,6 +21,7 @@ const currentSourceCommitSha = execFileSync(
     stdio: ['ignore', 'pipe', 'pipe'],
   },
 ).trim();
+const currentRuntimeId = `node-${process.versions.node}`;
 
 function sha256(source: string): string {
   return createHash('sha256').update(source).digest('hex');
@@ -78,7 +79,7 @@ describe('single-command HTML serialization benchmark contract', () => {
           '--revision-artifact-sha256',
           sha256(revisionModuleSource),
           '--runtime-id',
-          'node-22.0.0',
+          currentRuntimeId,
           '--reference-hardware-id',
           `refhw-sha256-${'b'.repeat(64)}`,
           '--output',
