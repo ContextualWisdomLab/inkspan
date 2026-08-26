@@ -38,7 +38,7 @@ function markdownInvocation(
   root: string,
   sourceCommitSha: string,
   runtimeId: string,
-): { result: ReturnType<typeof spawnSync>; output: string } {
+) {
   const input = join(root, 'document.md');
   const modulePath = join(root, 'markdown.mjs');
   const output = join(root, 'markdown-samples.json');
@@ -83,7 +83,7 @@ function revisionInvocation(
   root: string,
   sourceCommitSha: string,
   runtimeId: string,
-): { result: ReturnType<typeof spawnSync>; output: string } {
+) {
   const input = join(root, 'document-envelope.json');
   const modulePath = join(root, 'revision.mjs');
   const output = join(root, 'revision-samples.json');
