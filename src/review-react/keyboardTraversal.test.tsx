@@ -25,14 +25,18 @@ function target(digest: string) {
   };
 }
 
-function presentation(threadKey: string, digest: string) {
+function presentation(
+  threadKey: string,
+  digest: string,
+  selected = false,
+) {
   return {
     contractVersion: 1,
     threadKey,
     target: target(digest),
     state: 'unresolved',
     commentCount: 1,
-    selected: false,
+    selected,
     canReply: false,
     canResolve: false,
   };
@@ -105,6 +109,41 @@ describe('CwlReviewThreadList keyboard traversal', () => {
     fireEvent.keyDown(last, { key: 'ArrowDown' });
     expect(last).toHaveFocus();
 
+    expect(onSelectThread).not.toHaveBeenCalled();
+  });
+
+  it('keeps exactly one thread-selection target in the tab order while arrow focus roves', () => {
+    const onSelectThread = vi.fn();
+    render(
+      <CwlReviewThreadList
+        presentations={[
+          presentation('thread_1', 'a'),
+          presentation('thread_2', 'b', true),
+          presentation('thread_3', 'c'),
+        ]}
+        labels={labels}
+        onSelectThread={onSelectThread}
+      />,
+    );
+
+    const first = screen.getByRole('button', { name: 'Thread 1' });
+    const second = screen.getByRole('button', { name: 'Thread 2' });
+    const third = screen.getByRole('button', { name: 'Thread 3' });
+
+    expect(first).toHaveAttribute('tabindex', '-1');
+    expect(second).toHaveAttribute('tabindex', '0');
+    expect(third).toHaveAttribute('tabindex', '-1');
+
+    second.focus();
+    fireEvent.keyDown(second, { key: 'ArrowDown' });
+    expect(third).toHaveFocus();
+    expect(second).toHaveAttribute('tabindex', '-1');
+    expect(third).toHaveAttribute('tabindex', '0');
+
+    fireEvent.keyDown(third, { key: 'Home' });
+    expect(first).toHaveFocus();
+    expect(first).toHaveAttribute('tabindex', '0');
+    expect(third).toHaveAttribute('tabindex', '-1');
     expect(onSelectThread).not.toHaveBeenCalled();
   });
 });
