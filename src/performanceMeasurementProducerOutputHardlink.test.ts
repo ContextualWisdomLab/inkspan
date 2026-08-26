@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import {
   linkSync,
   mkdtempSync,
@@ -16,8 +16,12 @@ const revisionScript = resolve(
   process.cwd(),
   'benchmarks/measure-revision-evidence.mjs',
 );
-const sourceCommitSha = 'a'.repeat(40);
-const runtimeId = 'node-22.18.0';
+const sourceCommitSha = execFileSync('git', ['rev-parse', '--verify', 'HEAD'], {
+  cwd: process.cwd(),
+  encoding: 'utf8',
+  stdio: ['ignore', 'pipe', 'pipe'],
+}).trim();
+const runtimeId = `node-${process.versions.node}`;
 const referenceHardwareId = 'github-actions-ubuntu-24.04-x64';
 
 function sha256(content: string): string {
