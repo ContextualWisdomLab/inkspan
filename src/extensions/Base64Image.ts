@@ -120,9 +120,9 @@ function normalizeImageError(error: unknown): Error {
   if (error instanceof Error) {
     return error;
   }
-  /* v8 ignore next -- shipped validation and conversion paths always throw
-   * Error subclasses; this fallback only guards hostile non-Error values
-   * thrown across the host boundary. */
+  // Hostile non-Error values can only cross from host callbacks; shipped
+  // validation and conversion paths always throw Error subclasses.
+  /* v8 ignore next */
   return new Error("This image couldn't be inserted. Try a different image file.");
 }
 
