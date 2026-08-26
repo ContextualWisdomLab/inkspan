@@ -115,16 +115,19 @@ export async function imageFileToInlineDataUri(
   return dataUri;
 }
 
-/** Normalize a caught value to the Error contract exposed to hosts. */
-function normalizeImageError(error: unknown): Error {
+/**
+ * Normalize a caught value to the Error contract exposed to hosts.
+ *
+ * Shipped validation and conversion paths always throw `Error` subclasses,
+ * so the Error passthrough is the only branch reachable in production; the
+ * fallback exists because host callbacks and promise chains can reject with
+ * hostile non-Error values, and users must still see actionable guidance.
+ */
+export function normalizeImageError(error: unknown): Error {
   if (error instanceof Error) {
     return error;
   }
-  // Hostile non-Error values can only cross from host callbacks; shipped
-  // validation and conversion paths always throw Error subclasses.
-  /* v8 ignore start */
   return new Error("This image couldn't be inserted. Try a different image file.");
-  /* v8 ignore stop */
 }
 
 export const Base64Image = Image.extend<Base64ImageOptions>({
