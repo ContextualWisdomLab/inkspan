@@ -23,13 +23,22 @@ interface BenchmarkSamples {
   readonly samples: number[];
 }
 
+const repositoryRoot = process.cwd();
 const measurementScript = resolve(
-  process.cwd(),
+  repositoryRoot,
   'benchmarks/measure-revision-evidence.mjs',
 );
-const summaryScript = resolve(process.cwd(), 'benchmarks/summarize-samples.mjs');
-const SOURCE_COMMIT_SHA = 'a'.repeat(40);
-const RUNTIME_ID = 'node-22.18.0';
+const summaryScript = resolve(repositoryRoot, 'benchmarks/summarize-samples.mjs');
+const SOURCE_COMMIT_SHA = execFileSync(
+  'git',
+  ['rev-parse', '--verify', 'HEAD'],
+  {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  },
+).trim();
+const RUNTIME_ID = `node-${process.versions.node}`;
 const HARDWARE_ID = 'github-actions-ubuntu-24.04-x64';
 
 function fileSha256(path: string): string {
@@ -100,7 +109,7 @@ describe('revision-evidence runtime measurement contract', () => {
       );
 
       execFileSync(process.execPath, argumentsFor(input, modulePath, samplesPath), {
-        cwd: process.cwd(),
+        cwd: repositoryRoot,
         stdio: ['ignore', 'pipe', 'pipe'],
       });
 
@@ -130,7 +139,7 @@ describe('revision-evidence runtime measurement contract', () => {
       execFileSync(
         process.execPath,
         [summaryScript, '--input', samplesPath, '--output', summaryDirectory],
-        { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] },
+        { cwd: repositoryRoot, stdio: ['ignore', 'pipe', 'pipe'] },
       );
       expect(
         JSON.parse(readFileSync(join(summaryDirectory, 'summary.json'), 'utf8')),
@@ -156,7 +165,7 @@ describe('revision-evidence runtime measurement contract', () => {
       const result = spawnSync(
         process.execPath,
         argumentsFor(input, modulePath, samplesPath),
-        { cwd: process.cwd(), encoding: 'utf8' },
+        { cwd: repositoryRoot, encoding: 'utf8' },
       );
 
       expect(result.status).toBe(1);
@@ -187,7 +196,7 @@ describe('revision-evidence runtime measurement contract', () => {
       const result = spawnSync(
         process.execPath,
         argumentsFor(input, modulePath, samplesPath),
-        { cwd: process.cwd(), encoding: 'utf8' },
+        { cwd: repositoryRoot, encoding: 'utf8' },
       );
 
       expect(result.status).toBe(1);
@@ -221,7 +230,7 @@ describe('revision-evidence runtime measurement contract', () => {
       const result = spawnSync(
         process.execPath,
         argumentsFor(input, modulePath, samplesPath),
-        { cwd: process.cwd(), encoding: 'utf8' },
+        { cwd: repositoryRoot, encoding: 'utf8' },
       );
 
       expect(result.status).toBe(1);
@@ -253,7 +262,7 @@ describe('revision-evidence runtime measurement contract', () => {
       const result = spawnSync(
         process.execPath,
         argumentsFor(input, modulePath, samplesPath),
-        { cwd: process.cwd(), encoding: 'utf8' },
+        { cwd: repositoryRoot, encoding: 'utf8' },
       );
 
       expect(result.status).toBe(1);
