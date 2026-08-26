@@ -23,3 +23,6 @@ htmlcov/
 
 # CodeGraph local index
 .codegraph/
+
+# Storybook local build output
+storybook-static/
