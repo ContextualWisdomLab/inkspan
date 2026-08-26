@@ -161,6 +161,18 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       content: editorValueToHtml(selectedDocumentValue, mode),
       editorProps: {
         attributes: editorAttributes,
+        handleDOMEvents: {
+          compositionstart: () => {
+            compositionActiveRef.current = true;
+            return false;
+          },
+          compositionend: () => {
+            queueMicrotask(() => {
+              compositionActiveRef.current = false;
+            });
+            return false;
+          },
+        },
       },
       onCreate: ({ editor: instance }) => {
         editorInstanceRef.current = instance;
@@ -220,27 +232,6 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     });
 
     useEditorHandle(ref, editor, modeRef);
-
-    useEffect(() => {
-      if (!editor) return;
-      const editableElement = editor.view.dom;
-      const beginComposition = () => {
-        compositionActiveRef.current = true;
-      };
-      const finishComposition = () => {
-        queueMicrotask(() => {
-          compositionActiveRef.current = false;
-        });
-      };
-
-      editableElement.addEventListener('compositionstart', beginComposition);
-      editableElement.addEventListener('compositionend', finishComposition);
-      return () => {
-        editableElement.removeEventListener('compositionstart', beginComposition);
-        editableElement.removeEventListener('compositionend', finishComposition);
-        compositionActiveRef.current = false;
-      };
-    }, [editor]);
 
     useEffect(() => {
       if (!editor) return;
