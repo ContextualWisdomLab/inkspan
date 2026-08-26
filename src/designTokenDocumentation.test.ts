@@ -55,6 +55,11 @@ describe('editor design-token documentation contract', () => {
     expect(inventory).toContain(':focus-visible');
     expect(inventory).toContain('Shipped defaults require no host override');
     expect(inventory).toContain('If re-theming, override `--cwl-accent`');
+    expect(doctoring).toContain('**Status:** Shipped protected-main truth (2026-08-25)');
+    expect(doctoring).not.toMatch(/\bactive(?:-| )PR\b|If integrated:|until integration|before integration/iu);
+    expect(doctoring).not.toContain('proposed inventory surface');
+    expect(doctoring).not.toContain('protected-main failing default');
+    expect(doctoring).not.toContain('protected main remains at the failing pre-repair pair');
     expect(doctoring).toContain('cwl-accent-soft');
     expect(doctoring).toContain('meets the WCAG 2.2 4.5:1');
     expect(doctoring).toContain('Inkspan now ships dark `--cwl-accent: #58a6ff`');
