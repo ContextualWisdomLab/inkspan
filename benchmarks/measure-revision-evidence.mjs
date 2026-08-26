@@ -406,6 +406,7 @@ async function main() {
   }
 
   verifyMeasuredModuleDigest(modulePath, args.artifactSha256);
+  assertMeasurementProvenance(args.sourceCommitSha, args.runtimeId);
   assertNoSymlinkOutputAncestors(args.outputPath);
   const outputMetadata = inspectOutputPath(args.outputPath);
   if (outputMetadata !== undefined && !outputMetadata.isFile()) {
