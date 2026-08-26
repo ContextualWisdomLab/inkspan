@@ -19,12 +19,23 @@ export class Base64SizeError extends Error {
   readonly maxBytes: number;
   constructor(bytes: number, maxBytes: number) {
     super(
-      `Payload of ${bytes} bytes exceeds the configured limit of ${maxBytes} bytes.`,
+      `This file is too large to insert. Choose a file at or below ${formatByteLimit(maxBytes)}.`,
     );
     this.name = 'Base64SizeError';
     this.bytes = bytes;
     this.maxBytes = maxBytes;
   }
+}
+
+/** Render a byte limit in the largest exact unit users reason about. */
+function formatByteLimit(maxBytes: number): string {
+  if (maxBytes >= 1024 * 1024 && maxBytes % (1024 * 1024) === 0) {
+    return `${maxBytes / (1024 * 1024)} MB`;
+  }
+  if (maxBytes >= 1024 && maxBytes % 1024 === 0) {
+    return `${maxBytes / 1024} KB`;
+  }
+  return `${maxBytes} bytes`;
 }
 
 /** Error thrown when a string is not valid forgiving-base64 data. */
