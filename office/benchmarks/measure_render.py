@@ -286,6 +286,9 @@ def _main(argv: list[str] | None = None) -> int:
             Path(args.input), expected_bytes, expected_sha256
         )
         samples = [_run_sample(payload_bytes, args.format, profile) for _ in range(iterations)]
+        observed_source_sha = _source_sha()
+        if observed_source_sha != source_sha:
+            raise BenchmarkContractError("benchmark source revision changed during measurement")
         duration_values = [float(sample["durationMs"]) for sample in samples]
         rss_values = [float(sample["peakRssBytes"]) for sample in samples]
         evidence = {
