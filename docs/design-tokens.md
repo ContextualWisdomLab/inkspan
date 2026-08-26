@@ -1,6 +1,6 @@
 # Editor chrome design tokens
 
-Status: Active PR / Proposed
+Status: Shipped protected-main truth (2026-08-25)
 
 Use this catalog when you need to re-theme Inkspan's repeating toolbar and editor chrome. Protected-main CSS defaults are the shipped presentation baseline; the shipped dark active-toolbar pair uses `--cwl-accent: #58a6ff` on `--cwl-accent-soft: #163356` and measures about 5.06:1. When a host overrides any color token, re-check WCAG 2.2 contrast for both body text (`--cwl-fg` on `--cwl-bg`) and active toolbar text (`--cwl-accent` on `--cwl-accent-soft`). Do not edit Inkspan internals.
 
@@ -35,7 +35,7 @@ void tokens;
 void dtcgGroup;
 ```
 
-The default-theme checks above are active-PR product evidence, not protected-main shipped evidence or a host WCAG certification. The stylesheet remains runtime presentation authority. `toDesignTokenFormatGroup()` is an interchange snapshot aligned to Design Tokens Format Module 2025.10; it is not complete DTCG conformance or Figma Variables sync.
+The default-theme checks above are protected-main shipped evidence, not a host WCAG certification. The stylesheet remains runtime presentation authority. `toDesignTokenFormatGroup()` is an interchange snapshot aligned to Design Tokens Format Module 2025.10; it is not complete DTCG conformance or Figma Variables sync.
 
 Preview the repeating objects in Storybook (`pnpm storybook`) using the inventory in [`storybook-inventory.md`](storybook-inventory.md).
 
