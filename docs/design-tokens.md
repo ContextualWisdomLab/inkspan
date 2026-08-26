@@ -2,7 +2,7 @@
 
 Status: Active PR / Proposed
 
-Use this catalog when you need to re-theme Inkspan's repeating toolbar and editor chrome. Protected-main CSS defaults remain the shipped presentation baseline; the Active-PR repaired dark active-toolbar pair uses `--cwl-accent: #58a6ff` on `--cwl-accent-soft: #163356` and measures about 5.06:1. When a host overrides any color token, re-check WCAG 2.2 contrast for both body text (`--cwl-fg` on `--cwl-bg`) and active toolbar text (`--cwl-accent` on `--cwl-accent-soft`). Do not edit Inkspan internals.
+Use this catalog when you need to re-theme Inkspan's repeating toolbar and editor chrome. Protected-main CSS defaults are the shipped presentation baseline; the shipped dark active-toolbar pair uses `--cwl-accent: #58a6ff` on `--cwl-accent-soft: #163356` and measures about 5.06:1. When a host overrides any color token, re-check WCAG 2.2 contrast for both body text (`--cwl-fg` on `--cwl-bg`) and active toolbar text (`--cwl-accent` on `--cwl-accent-soft`). Do not edit Inkspan internals.
 
 `getEditorThemeTokenContrast()` checks only Inkspan catalog values for the requested light/dark/print scheme; it does not read resolved host CSS. After an override, obtain the actual resolved hex colors from the host theme and call `contrastRatioFromHex(actualForegroundHex, actualBackgroundHex)` before shipping that theme.
 

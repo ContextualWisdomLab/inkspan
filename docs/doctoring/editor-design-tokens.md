@@ -1,7 +1,7 @@
 # Doctoring record: editor chrome design tokens
 
 **Date:** 2026-08-16  
-**Status:** Active PR / Proposed  
+**Status:** Shipped protected-main truth (2026-08-25)  
 **Decision owner:** ContextualWisdomLab  
 **Scope:** Named `--cwl-*` theme tokens, DTCG 2025.10 interchange snapshot, and Storybook inventory for repeating toolbar/editor objects.
 
@@ -9,7 +9,7 @@
 
 Hosts embed Inkspan and need to match brand color, radius, and font without forking `src/styles.css`. The protected stylesheet already uses `--cwl-*` custom properties, but buyers have no protected-main typed catalog, interchange snapshot, or Storybook inventory of the repeating toolbar button and editor chrome. Theme work therefore still requires reading CSS internals until this active PR integrates.
 
-The same inventory exposed an Inkspan-owned protected-main default-theme defect rather than a host-only customization problem: dark `.cwl-tb-btn.is-active` renders `--cwl-accent` text on `--cwl-accent-soft` at about 4.13:1, below the WCAG 2.2 4.5:1 threshold for normal text. This Active PR now carries dark `--cwl-accent: #58a6ff` against unchanged `--cwl-accent-soft: #163356`, producing about 5.06:1 for the active toolbar pair. That repaired value is active-PR evidence, not shipped protected-main truth, until integration. Host overrides must still re-check their own resulting pairs.
+The same inventory exposed an Inkspan-owned protected-main default-theme defect rather than a host-only customization problem: dark `.cwl-tb-btn.is-active` renders `--cwl-accent` text on `--cwl-accent-soft` at about 4.13:1, below the WCAG 2.2 4.5:1 threshold for normal text. Inkspan now ships dark `--cwl-accent: #58a6ff` against unchanged `--cwl-accent-soft: #163356`, producing about 5.06:1 for the active toolbar pair. That repaired value is shipped protected-main truth. Host overrides must still re-check their own resulting pairs.
 
 If contrast fails after a re-theme, override only the named tokens on `.cwl-editor` and re-check WCAG 2.2 text contrast for `--cwl-fg` on `--cwl-bg` and `--cwl-accent` on `--cwl-accent-soft`. `getEditorThemeTokenContrast()` reports Inkspan's catalog baseline only; after a host override, pass the actual resolved pair to `contrastRatioFromHex(actualForegroundHex, actualBackgroundHex)` before shipping. Do not disable forced-colors overrides.
 
@@ -18,7 +18,7 @@ If contrast fails after a re-theme, override only the named tokens on `.cwl-edit
 If integrated:
 
 1. Keep `src/styles.css` as runtime presentation authority.
-2. Publish `listEditorThemeTokens()` / `getEditorThemeToken()` / `getEditorThemeTokenContrast()` / `contrastRatioFromHex()` / `toDesignTokenFormatGroup()` as a host-facing catalog of the nine inventoried chrome tokens and theme evidence: the name-based contrast helper evaluates the catalog baseline, while the hex helper evaluates actual resolved host colors.
+2. Publish `listEditorThemeTokens()` / `getEditorThemeToken()` / `getEditorThemeTokenContrast()` / `contrastRatioFromHex()` / `toDesignTokenFormatGroup()` as a host-facing catalog of the nine shipped chrome tokens and theme evidence: the name-based contrast helper evaluates the catalog baseline, while the hex helper evaluates actual resolved host colors.
 3. Keep the catalog light/dark/print values synchronized with the stylesheet and require the inventoried active-toolbar text pair to meet the WCAG 2.2 4.5:1 threshold in Inkspan's own default themes.
 4. Reject unknown token names with a stable payload-redacted `EditorThemeTokenError`.
 5. Preview repeating `.cwl-tb-btn` states, the shipped Toolbar component, and token swatches in Storybook.

@@ -1,12 +1,12 @@
 # ADR 0031: Editor chrome design tokens and Storybook inventory
 
-Status: Proposed
+Status: Accepted (2026-08-25; integrated on protected `main` via #362)
 
 ## Context
 
-Inkspan ships repeating toolbar buttons, groups, and editor chrome styled through `--cwl-*` custom properties. Hosts already re-theme by overriding those properties, but the names, light/dark/print values, and buyer next action live only inside protected `src/styles.css`. There is no protected-main typed catalog, Design Tokens Format Module interchange snapshot, or Storybook inventory of the repeating objects; those capabilities are proposed on this active PR.
+Inkspan ships repeating toolbar buttons, groups, and editor chrome styled through `--cwl-*` custom properties. Hosts already re-theme by overriding those properties, but before this decision the names, light/dark/print values, and host next action lived only inside protected `src/styles.css`, with no typed catalog, Design Tokens Format Module interchange snapshot, or Storybook inventory of the repeating objects.
 
-Inventorying the actual active-toolbar foreground/background pair also exposed a product-owned accessibility defect: protected main's dark `--cwl-accent: #4493f8` on `--cwl-accent-soft: #163356` produces about 4.13:1 for 13px active-button text, below the WCAG 2.2 4.5:1 normal-text threshold. Treating that shipped-default failure as a host override responsibility would contradict Inkspan's ownership of its default presentation.
+Inventorying the actual active-toolbar foreground/background pair also exposed a product-owned accessibility defect: the former dark `--cwl-accent: #4493f8` on `--cwl-accent-soft: #163356` produced about 4.13:1 for 13px active-button text, below the WCAG 2.2 4.5:1 normal-text threshold. Treating that shipped-default failure as a host override responsibility would contradict Inkspan's ownership of its default presentation.
 
 ## Alternatives considered
 
@@ -18,7 +18,7 @@ Inventorying the actual active-toolbar foreground/background pair also exposed a
 
 ## Decision
 
-If integrated, Inkspan will publish a host-facing theme-token catalog for nine inventoried chrome tokens, a Design Tokens Format Module 2025.10 interchange snapshot, and a Storybook inventory of repeating toolbar/editor objects. Inkspan's inventoried normal-text pairs will be required to meet the WCAG 2.2 4.5:1 threshold in the resulting protected light/dark/print defaults; the active-PR candidate therefore uses `#58a6ff` on `#163356` for dark active-toolbar text, about 5.06:1. `getEditorThemeTokenContrast()` evaluates only the catalog values for a named scheme. Hosts overriding `--cwl-*` on `.cwl-editor` must pass their actual resolved foreground/background hex values to `contrastRatioFromHex()` and re-check their resulting body and active-toolbar pairs. Unknown token names fail closed. No Figma, network, persistence, credential, or model authority is added.
+Inkspan publishes a host-facing theme-token catalog for nine inventoried chrome tokens, a Design Tokens Format Module 2025.10 interchange snapshot, and a Storybook inventory of repeating toolbar/editor objects. Inkspan's inventoried normal-text pairs are required to meet the WCAG 2.2 4.5:1 threshold in the protected light/dark/print defaults; the integrated dark pair uses `#58a6ff` on `#163356` for dark active-toolbar text, about 5.06:1. `getEditorThemeTokenContrast()` evaluates only the catalog values for a named scheme. Hosts overriding `--cwl-*` on `.cwl-editor` must pass their actual resolved foreground/background hex values to `contrastRatioFromHex()` and re-check their resulting body and active-toolbar pairs. Unknown token names fail closed. No Figma, network, persistence, credential, or model authority is added.
 
 ## Consequences and ownership trade-offs
 
