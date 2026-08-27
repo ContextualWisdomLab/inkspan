@@ -62,7 +62,10 @@ describe('CwlEditor controlled value during composition', () => {
       />,
     );
     await waitFor(() => expect(editor).toBeTruthy());
+    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1));
+    expect(onChange).toHaveBeenLastCalledWith('Original');
     expect(onDocumentChange).not.toHaveBeenCalled();
+    onChange.mockClear();
 
     const editable = document.querySelector('.ProseMirror') as HTMLElement;
     expect(editable).toBe(editor!.view.dom);
@@ -80,14 +83,20 @@ describe('CwlEditor controlled value during composition', () => {
     expect(onDocumentChange).not.toHaveBeenCalled();
 
     fireEvent.compositionEnd(editable, { data: '' });
-    await waitFor(() => expect(editor!.view.composing).toBe(false));
+    await waitFor(() => {
+      expect(editor!.view.composing).toBe(false);
+      expect(onDocumentChange).toHaveBeenCalledTimes(1);
+    });
+    expect(onDocumentChange.mock.calls[0]![0].snapshot.value).toBe(
+      'Original composing',
+    );
 
     act(() => {
       editor!.chain().focus('end').insertContent(' committed').run();
     });
 
-    expect(onDocumentChange).toHaveBeenCalledTimes(1);
-    expect(onDocumentChange.mock.calls[0]![0].snapshot.value).toBe(
+    expect(onDocumentChange).toHaveBeenCalledTimes(2);
+    expect(onDocumentChange.mock.calls[1]![0].snapshot.value).toBe(
       'Original composing committed',
     );
   });
