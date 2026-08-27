@@ -91,6 +91,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     const isControlled = value !== undefined;
     const selectedDocumentValue = value ?? defaultValue ?? '';
     const emittingRef = useRef(false);
+    const compositionActiveRef = useRef(false);
     const editorInstanceRef = useRef<Editor | null>(null);
     const modeRef = useLatestRef(mode);
     const onChangeRef = useLatestRef(onChange);
@@ -113,6 +114,14 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       },
       [onClipboardErrorRef],
     );
+    const beginComposition = useCallback(() => {
+      compositionActiveRef.current = true;
+    }, []);
+    const endComposition = useCallback(() => {
+      queueMicrotask(() => {
+        compositionActiveRef.current = false;
+      });
+    }, []);
     const normalizedPlaceholder = useMemo(
       () => normalizeEditorPlaceholder(placeholder),
       [placeholder],
@@ -163,10 +172,15 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       },
       onCreate: ({ editor: instance }) => {
         editorInstanceRef.current = instance;
+        instance.view.dom.addEventListener('compositionstart', beginComposition);
+        instance.view.dom.addEventListener('compositionend', endComposition);
         onReadyRef.current?.(instance);
       },
       onDestroy: () => {
         const instance = editorInstanceRef.current!;
+        instance.view.dom.removeEventListener('compositionstart', beginComposition);
+        instance.view.dom.removeEventListener('compositionend', endComposition);
+        compositionActiveRef.current = false;
         onDestroyRef.current?.(instance);
         editorInstanceRef.current = null;
       },
@@ -176,7 +190,11 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         if (!valueListener && !snapshotListener) return;
         emittingRef.current = true;
         try {
-          if (snapshotListener) {
+          if (
+            snapshotListener &&
+            !compositionActiveRef.current &&
+            !instance.view.composing
+          ) {
             const snapshot = createEditorDocumentSnapshot(
               instance,
               modeRef.current,
@@ -226,7 +244,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
           editor.view.dom.ownerDocument.defaultView!.Event;
         editor.view.dom.dispatchEvent(new EventConstructor('compositionend'));
       }
-      editor.setEditable(editable);
+      editor.setEditable(editable, false);
     }, [editor, editable]);
 
     useEffect(() => {

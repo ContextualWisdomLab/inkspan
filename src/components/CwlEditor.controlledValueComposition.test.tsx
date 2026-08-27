@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/react';
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CwlEditor } from './CwlEditor.js';
 
 afterEach(cleanup);
@@ -43,5 +43,87 @@ describe('CwlEditor controlled value during composition', () => {
       expect(editor!.view.composing).toBe(false);
       expect(editor!.getText()).toBe('Latest host value');
     });
+  });
+
+  it('keeps intermediate composition text out of document snapshot callbacks', async () => {
+    let editor: Editor | undefined;
+    const onChange = vi.fn();
+    const onDocumentChange = vi.fn();
+
+    render(
+      <CwlEditor
+        mode="markdown"
+        defaultValue="Original"
+        onChange={onChange}
+        onDocumentChange={onDocumentChange}
+        onReady={(instance) => {
+          editor = instance;
+        }}
+      />,
+    );
+    await waitFor(() => expect(editor).toBeTruthy());
+    expect(onDocumentChange).not.toHaveBeenCalled();
+
+    const editable = document.querySelector('.ProseMirror') as HTMLElement;
+    expect(editable).toBe(editor!.view.dom);
+    fireEvent.compositionStart(editable, { data: '' });
+    expect(editor!.view.composing).toBe(true);
+    expect(onDocumentChange).not.toHaveBeenCalled();
+
+    act(() => {
+      editor!.chain().focus('end').insertContent(' composing').run();
+    });
+
+    expect(editor!.view.composing).toBe(true);
+    expect(editor!.getText()).toBe('Original composing');
+    expect(onChange).toHaveBeenLastCalledWith('Original composing');
+    expect(onDocumentChange).not.toHaveBeenCalled();
+
+    fireEvent.compositionEnd(editable, { data: '' });
+    await waitFor(() => expect(editor!.view.composing).toBe(false));
+
+    act(() => {
+      editor!.chain().focus('end').insertContent(' committed').run();
+    });
+
+    expect(onDocumentChange).toHaveBeenCalledTimes(1);
+    expect(onDocumentChange.mock.calls[0]![0].snapshot.value).toBe(
+      'Original composing committed',
+    );
+  });
+
+  it('publishes the finalized composition snapshot when composition ends', async () => {
+    let editor: Editor | undefined;
+    const onDocumentChange = vi.fn();
+
+    render(
+      <CwlEditor
+        mode="markdown"
+        defaultValue="Original"
+        onDocumentChange={onDocumentChange}
+        onReady={(instance) => {
+          editor = instance;
+        }}
+      />,
+    );
+    await waitFor(() => expect(editor).toBeTruthy());
+    expect(onDocumentChange).not.toHaveBeenCalled();
+
+    const editable = editor!.view.dom;
+    fireEvent.compositionStart(editable, { data: '' });
+    act(() => {
+      editor!.chain().focus('end').insertContent(' composing').run();
+    });
+    expect(onDocumentChange).not.toHaveBeenCalled();
+
+    fireEvent.compositionEnd(editable, { data: '' });
+
+    await waitFor(() => {
+      expect(editor!.view.composing).toBe(false);
+      expect(onDocumentChange).toHaveBeenCalledTimes(1);
+    });
+    expect(onDocumentChange.mock.calls[0]![0].snapshot.value).toBe(
+      'Original composing',
+    );
   });
 });
