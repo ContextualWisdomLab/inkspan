@@ -91,6 +91,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     const isControlled = value !== undefined;
     const selectedDocumentValue = value ?? defaultValue ?? '';
     const emittingRef = useRef(false);
+    const hasPublishedInitialLegacyValueRef = useRef(false);
     const compositionActiveRef = useRef(false);
     const compositionSnapshotPendingRef = useRef(false);
     const editorInstanceRef = useRef<Editor | null>(null);
@@ -257,7 +258,15 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         editor.view.dom.dispatchEvent(new EventConstructor('compositionend'));
       }
       editor.setEditable(editable, false);
-    }, [editor, editable]);
+      if (!hasPublishedInitialLegacyValueRef.current) {
+        hasPublishedInitialLegacyValueRef.current = true;
+        // Preserve the historical `onChange` initialization signal without
+        // misclassifying a non-document transaction as `onDocumentChange`.
+        onChangeRef.current?.(
+          editorHtmlToValue(editor.getHTML(), modeRef.current),
+        );
+      }
+    }, [editor, editable, modeRef, onChangeRef]);
 
     useEffect(() => {
       /* v8 ignore next -- the editor is created after client hydration. */
