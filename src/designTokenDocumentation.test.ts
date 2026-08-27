@@ -80,6 +80,9 @@ describe('editor design-token documentation contract', () => {
     expect(adr).toContain('Status: Accepted');
     expect(adr).toContain('Inkspan publishes a host-facing theme-token catalog');
     expect(adr).not.toContain('If integrated, Inkspan will publish a host-facing theme-token catalog');
+    expect(adr).not.toMatch(
+      /\bactive-PR candidate\b|The catalog is additive if integrated\.|The proposed catalog|This ADR stays Proposed until protected integration\.|Before integration, rollback removes/iu,
+    );
     expect(documentationFitness).toContain(
       '| Editor chrome design tokens / Storybook inventory | ADR 0031, `docs/design-tokens.md`, doctoring, token catalog, and Storybook stories | `present_current` | `implemented_on_protected_main` |',
     );
