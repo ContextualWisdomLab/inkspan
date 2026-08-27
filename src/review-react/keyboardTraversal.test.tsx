@@ -146,4 +146,40 @@ describe('CwlReviewThreadList keyboard traversal', () => {
     expect(third).toHaveAttribute('tabindex', '-1');
     expect(onSelectThread).not.toHaveBeenCalled();
   });
+
+  it('re-homes the rover when the focused thread disappears from host presentation state', () => {
+    const onSelectThread = vi.fn();
+    const { rerender } = render(
+      <CwlReviewThreadList
+        presentations={[
+          presentation('thread_1', 'a'),
+          presentation('thread_2', 'b'),
+          presentation('thread_3', 'c'),
+        ]}
+        labels={labels}
+        onSelectThread={onSelectThread}
+      />,
+    );
+
+    const second = screen.getByRole('button', { name: 'Thread 2' });
+    second.focus();
+    expect(second).toHaveAttribute('tabindex', '0');
+
+    rerender(
+      <CwlReviewThreadList
+        presentations={[
+          presentation('thread_1', 'a'),
+          presentation('thread_3', 'c', true),
+        ]}
+        labels={labels}
+        onSelectThread={onSelectThread}
+      />,
+    );
+
+    const first = screen.getByRole('button', { name: 'Thread 1' });
+    const selected = screen.getByRole('button', { name: 'Thread 2' });
+    expect(first).toHaveAttribute('tabindex', '-1');
+    expect(selected).toHaveAttribute('tabindex', '0');
+    expect(onSelectThread).not.toHaveBeenCalled();
+  });
 });
