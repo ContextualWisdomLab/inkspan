@@ -92,6 +92,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     const selectedDocumentValue = value ?? defaultValue ?? '';
     const emittingRef = useRef(false);
     const compositionActiveRef = useRef(false);
+    const compositionSnapshotPendingRef = useRef(false);
     const editorInstanceRef = useRef<Editor | null>(null);
     const modeRef = useLatestRef(mode);
     const onChangeRef = useLatestRef(onChange);
@@ -116,12 +117,19 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     );
     const beginComposition = useCallback(() => {
       compositionActiveRef.current = true;
+      compositionSnapshotPendingRef.current = false;
     }, []);
     const endComposition = useCallback(() => {
       queueMicrotask(() => {
         compositionActiveRef.current = false;
+        if (compositionSnapshotPendingRef.current) {
+          compositionSnapshotPendingRef.current = false;
+          const instance = editorInstanceRef.current!;
+          const snapshot = createEditorDocumentSnapshot(instance, modeRef.current);
+          onDocumentChangeRef.current?.({ editor: instance, snapshot });
+        }
       });
-    }, []);
+    }, [modeRef, onDocumentChangeRef]);
     const normalizedPlaceholder = useMemo(
       () => normalizeEditorPlaceholder(placeholder),
       [placeholder],
@@ -181,6 +189,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         instance.view.dom.removeEventListener('compositionstart', beginComposition);
         instance.view.dom.removeEventListener('compositionend', endComposition);
         compositionActiveRef.current = false;
+        compositionSnapshotPendingRef.current = false;
         onDestroyRef.current?.(instance);
         editorInstanceRef.current = null;
       },
@@ -202,6 +211,9 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
             valueListener?.(snapshot.value);
             snapshotListener({ editor: instance, snapshot });
           } else {
+            if (snapshotListener) {
+              compositionSnapshotPendingRef.current = true;
+            }
             valueListener?.(
               editorHtmlToValue(instance.getHTML(), modeRef.current),
             );
