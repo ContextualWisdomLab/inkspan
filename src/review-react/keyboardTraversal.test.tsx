@@ -162,7 +162,7 @@ describe('CwlReviewThreadList keyboard traversal', () => {
     );
 
     const second = screen.getByRole('button', { name: 'Thread 2' });
-    second.focus();
+    fireEvent.focus(second);
     expect(second).toHaveAttribute('tabindex', '0');
 
     rerender(
