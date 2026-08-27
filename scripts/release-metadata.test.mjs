@@ -9,6 +9,60 @@ function readRepositoryText(path) {
   return readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 }
 
+/** Find one real Markdown heading while ignoring fenced-code lookalikes. */
+function findMarkdownHeadingIndex(markdown, heading) {
+  let offset = 0;
+  let openFence = null;
+
+  for (const sourceLine of markdown.split('\n')) {
+    const line = sourceLine.endsWith('\r') ? sourceLine.slice(0, -1) : sourceLine;
+    const fenceStart = line.match(/^[ \t]{0,3}(`{3,}|~{3,})/u);
+
+    if (openFence === null && fenceStart !== null) {
+      openFence = fenceStart[1];
+    } else if (openFence !== null) {
+      const fenceEnd = line.match(/^[ \t]{0,3}(`{3,}|~{3,})[ \t]*$/u);
+      if (
+        fenceEnd !== null &&
+        fenceEnd[1][0] === openFence[0] &&
+        fenceEnd[1].length >= openFence.length
+      ) {
+        openFence = null;
+      }
+    } else if (line.trimEnd() === heading) {
+      return offset;
+    }
+
+    offset += sourceLine.length + 1;
+  }
+
+  return -1;
+}
+
+test('recognizes only a real Unreleased heading outside fenced code', () => {
+  assert.equal(
+    findMarkdownHeadingIndex(
+      'ordinary text mentioning ## [Unreleased]\n## [0.6.0] — 2026-08-25\n',
+      '## [Unreleased]',
+    ),
+    -1,
+  );
+  assert.equal(
+    findMarkdownHeadingIndex(
+      '```md\n## [Unreleased]\n```\n## [0.6.0] — 2026-08-25\n',
+      '## [Unreleased]',
+    ),
+    -1,
+  );
+  assert.equal(
+    findMarkdownHeadingIndex(
+      'Preface\n## [Unreleased]  \n## [0.6.0] — 2026-08-25\n',
+      '## [Unreleased]',
+    ),
+    'Preface\n'.length,
+  );
+});
+
 test('binds package metadata to the current dated changelog release candidate', () => {
   const packageManifest = JSON.parse(readRepositoryText('package.json'));
   const changelog = readRepositoryText('CHANGELOG.md');
@@ -18,7 +72,7 @@ test('binds package metadata to the current dated changelog release candidate', 
     'm',
   );
   const headingMatch = changelog.match(releaseHeading);
-  const unreleasedIndex = changelog.indexOf('## [Unreleased]');
+  const unreleasedIndex = findMarkdownHeadingIndex(changelog, '## [Unreleased]');
 
   assert.notEqual(headingMatch, null);
   assert.notEqual(unreleasedIndex, -1);
