@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const CANONICAL_MIT_LICENSE = `MIT License
@@ -30,8 +32,8 @@ interface PackageLicenseManifest {
   readonly license?: string;
 }
 
-interface NpmPackDryRunEntry {
-  readonly files?: readonly { readonly path?: string }[];
+interface NpmPackEntry {
+  readonly filename?: string;
 }
 
 describe('software and bundled-font license evidence', () => {
@@ -59,25 +61,48 @@ describe('software and bundled-font license evidence', () => {
     );
   });
 
-  it('retains both license families in the actual npm packlist', () => {
-    const packMetadata = JSON.parse(
-      execFileSync(
-        'npm',
-        ['pack', '--dry-run', '--json', '--ignore-scripts'],
-        { encoding: 'utf8' },
-      ),
-    ) as readonly NpmPackDryRunEntry[];
+  it('retains both license families in the actual npm tarball', () => {
+    const packRoot = mkdtempSync(join(tmpdir(), 'inkspan-license-pack-'));
 
-    expect(packMetadata).toHaveLength(1);
-    const packedPaths = packMetadata[0]?.files?.flatMap(({ path }) =>
-      path === undefined ? [] : [path],
-    ) ?? [];
-    expect(packedPaths).toEqual(
-      expect.arrayContaining([
-        'LICENSE',
-        'src/fonts/NOTICE',
-        'src/fonts/OFL.txt',
-      ]),
-    );
+    try {
+      const packMetadata = JSON.parse(
+        execFileSync(
+          'npm',
+          [
+            'pack',
+            '--json',
+            '--ignore-scripts',
+            '--pack-destination',
+            packRoot,
+          ],
+          { encoding: 'utf8' },
+        ),
+      ) as readonly NpmPackEntry[];
+
+      expect(packMetadata).toHaveLength(1);
+      const filename = packMetadata[0]?.filename;
+      expect(filename).toEqual(expect.any(String));
+      if (filename === undefined) {
+        throw new Error('npm pack did not report the generated tarball filename.');
+      }
+
+      const archivePaths = execFileSync(
+        'tar',
+        ['-tzf', join(packRoot, filename)],
+        { encoding: 'utf8' },
+      )
+        .split('\n')
+        .filter((path) => path.length > 0);
+
+      expect(archivePaths).toEqual(
+        expect.arrayContaining([
+          'package/LICENSE',
+          'package/src/fonts/NOTICE',
+          'package/src/fonts/OFL.txt',
+        ]),
+      );
+    } finally {
+      rmSync(packRoot, { recursive: true, force: true });
+    }
   });
 });
