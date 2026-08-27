@@ -295,11 +295,22 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         return;
       }
 
-      editor.view.dom.addEventListener('compositionend', synchronizeValue, {
-        once: true,
-      });
+      const synchronizeAfterComposition = () => {
+        // The composition lifecycle listener queues the committed local
+        // snapshot first. Defer host replacement to the next microtask so a
+        // controlled prop cannot overwrite that snapshot before publication.
+        queueMicrotask(synchronizeValue);
+      };
+      editor.view.dom.addEventListener(
+        'compositionend',
+        synchronizeAfterComposition,
+        { once: true },
+      );
       return () => {
-        editor.view.dom.removeEventListener('compositionend', synchronizeValue);
+        editor.view.dom.removeEventListener(
+          'compositionend',
+          synchronizeAfterComposition,
+        );
       };
     }, [editor, isControlled, value, mode]);
 
