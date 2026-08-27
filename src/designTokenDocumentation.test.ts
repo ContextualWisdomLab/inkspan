@@ -17,6 +17,7 @@ describe('editor design-token documentation contract', () => {
     const inventory = normalize(repositoryFile('docs/storybook-inventory.md'));
     const doctoring = repositoryFile('docs/doctoring/editor-design-tokens.md');
     const changelog = normalize(repositoryFile('CHANGELOG.md'));
+    const documentationFitness = repositoryFile('docs/DOCUMENTATION_FITNESS.md');
     const index = repositoryFile('docs/README.md');
     const adrIndex = repositoryFile('docs/adr/README.md');
     const adr = repositoryFile('docs/adr/0031-editor-design-tokens-storybook.md');
@@ -79,6 +80,12 @@ describe('editor design-token documentation contract', () => {
     expect(adr).toContain('Status: Accepted');
     expect(adr).toContain('Inkspan publishes a host-facing theme-token catalog');
     expect(adr).not.toContain('If integrated, Inkspan will publish a host-facing theme-token catalog');
+    expect(documentationFitness).toContain(
+      '| Editor chrome design tokens / Storybook inventory | ADR 0031, `docs/design-tokens.md`, doctoring, token catalog, and Storybook stories | `present_current` | `implemented_on_protected_main` |',
+    );
+    expect(documentationFitness).not.toContain(
+      'that lane is Active PR / Proposed and must not be described as shipped until protected integration',
+    );
     expect(changelog).toContain('Named the repeating editor chrome as a host-facing theme-token catalog');
     // The accent change is protected-integrated truth; the active-PR phrasing
     // must be gone once the release section ships it.
