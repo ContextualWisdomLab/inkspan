@@ -28,7 +28,7 @@ trusted source and raise only that ceiling. Do not remove the limits.
    closed-`details` first-summary path uses the same invariant.
 3. Keep dropped and hidden subtrees unvisited so their descendants do not
    consume budget. Preserve source order, allowlist, SafeLink, depth, and
-   redacted error text.
+   preserve the stable error codes while allowing the customer-facing messages to remain actionable.
 
 No network, persistence, credential, model, tenant, collaboration-provider, or
 durable-audit authority is added.
@@ -56,14 +56,21 @@ The cited Working Draft is work in progress and is not a conformance claim.
 
 ## Test-first evidence
 
-- RED `51f9edfdff7de9072cafa8cebaf068dc39f92208` on current protected
+- RED `51f9edfdff7de9072cafa8cebaf068dc39f92208` on protected
   `main@e8109ec2a17de8bd6594487aa12c8c8a93cb2c03` proved an ASCII
   nine-code-unit string under `maxHtmlBytes: 8` still called
   `TextEncoder.prototype.encode`, and a three-child fragment under
   `maxNodes: 2` performed three `NodeList.item()` reads before
   `node_limit_exceeded`.
 - GREEN `71654a8e59eecd72f2a23ebec173e4e537c927d9` rejects both cases at the
-  preflight boundary without changing codes or messages.
+  preflight boundary without changing the stable error codes.
+- Customer-guidance RED `37105d712c774b7ef638315d7d691311fd52c1ad`
+  required actionable, privacy-safe messages while the source still emitted
+  implementation-oriented text.
+- Customer-guidance GREEN `d0255ecb05e77b3c98f365c51fc3a15c630c736a`
+  keeps those codes stable while making size, complexity, nesting, and invalid
+  HTML rejections tell the customer what to do next. Exact-message regression
+  contracts remain redacted and contain no pasted source content.
 
 Predecessor Draft #164 remains historical. It is not current-main
 implementation authority.
@@ -72,18 +79,20 @@ implementation authority.
 
 The UTF-16 lower bound does not replace the exact UTF-8 check. Queue preflight
 counts enqueueable children of a surviving parent; it does not invent a second
-hidden-content policy. jsdom success is not Chromium, Firefox, or WebKit
-conformance. Cross-engine corpus evidence remains a 0.6.0 release-acceptance
-gate.
+hidden-content policy. Actionable customer-facing messages do not authorize
+rejected HTML and do not weaken the fail-closed empty-fragment behavior. jsdom
+success is not Chromium, Firefox, or WebKit conformance. Cross-engine corpus
+evidence remains a 0.6.0 release-acceptance gate.
 
 ## Rollback
 
 Rollback must remove the length preflight, the traversal-capacity guard, this
 record, the operator guidance, the documentation contract, and the changelog
 entry together. It must restore the previous encode-then-compare and
-visit-then-reject behavior only as one change. Rollback requires the same
-exact-head review, coverage, security, packaging, and independent-approval
-gates.
+visit-then-reject behavior only as one change. Any rollback of customer-facing
+message text must keep the stable codes and privacy-redaction contract intact.
+Rollback requires the same exact-head review, coverage, security, packaging,
+and independent-approval gates.
 
 ## References (APA 7th edition)
 
