@@ -23,6 +23,10 @@ describe('editor design-token documentation contract', () => {
     const adr = repositoryFile('docs/adr/0031-editor-design-tokens-storybook.md');
 
     expect(index).toContain('[`design-tokens.md`](design-tokens.md)');
+    expect(index).toContain(
+      '| [`design-tokens.md`](design-tokens.md) | Host-facing editor chrome tokens, DTCG 2025.10 interchange snapshot, and Storybook inventory (Implemented on protected main) |',
+    );
+    expect(index).not.toContain('Storybook inventory (Active PR / Proposed)');
     expect(adrIndex).toContain('[0031](0031-editor-design-tokens-storybook.md) | Accepted');
     expect(repositoryFile('docs/UML.md')).toContain('shipped editor chrome');
     expect(repositoryFile('docs/UML.md')).toContain('--cwl-*');
