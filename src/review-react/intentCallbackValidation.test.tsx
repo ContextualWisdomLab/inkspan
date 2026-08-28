@@ -73,9 +73,31 @@ function renderWithCallbacks(
   );
 }
 
-function expectRedactedIntentFailure(action: () => void): void {
-  expect(action).toThrow(CwlReviewPresentationError);
-  expect(action).toThrow('Review presentation metadata is invalid.');
+function expectRedactedIntentFailure(
+  action: () => void,
+  privateSentinel: string,
+): void {
+  const observedErrors: unknown[] = [];
+  const handleWindowError = (event: ErrorEvent): void => {
+    observedErrors.push(event.error);
+    event.preventDefault();
+  };
+
+  window.addEventListener('error', handleWindowError);
+  try {
+    action();
+  } finally {
+    window.removeEventListener('error', handleWindowError);
+  }
+
+  expect(observedErrors).toHaveLength(1);
+  const [error] = observedErrors;
+  expect(error).toBeInstanceOf(CwlReviewPresentationError);
+  expect(error).toMatchObject({
+    code: 'invalid_presentation',
+    message: 'Review presentation metadata is invalid.',
+  });
+  expect(String(error)).not.toContain(privateSentinel);
 }
 
 describe('CwlReviewThreadList intent callback validation', () => {
@@ -100,7 +122,7 @@ describe('CwlReviewThreadList intent callback validation', () => {
 
     expectRedactedIntentFailure(() => {
       fireEvent.click(screen.getByRole('button', { name: 'Thread 1' }));
-    });
+    }, 'private selection sentinel');
   });
 
   it('redacts a private host reply callback failure at the presentation boundary', () => {
@@ -112,7 +134,7 @@ describe('CwlReviewThreadList intent callback validation', () => {
 
     expectRedactedIntentFailure(() => {
       fireEvent.click(screen.getByRole('button', { name: 'Reply — Thread 1' }));
-    });
+    }, 'private reply sentinel');
   });
 
   it('redacts a private host resolve callback failure at the presentation boundary', () => {
@@ -124,6 +146,6 @@ describe('CwlReviewThreadList intent callback validation', () => {
 
     expectRedactedIntentFailure(() => {
       fireEvent.click(screen.getByRole('button', { name: 'Resolve — Thread 1' }));
-    });
+    }, 'private resolve sentinel');
   });
 });
