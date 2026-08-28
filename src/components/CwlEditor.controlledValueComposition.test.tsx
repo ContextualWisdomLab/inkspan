@@ -218,4 +218,57 @@ describe('CwlEditor controlled value during composition', () => {
     });
     expect(onDocumentChange).not.toHaveBeenCalled();
   });
+
+  it('drops a deferred controlled replacement when the editor is destroyed first', async () => {
+    let editor: Editor | undefined;
+    const onDocumentChange = vi.fn();
+    const captureEditor = (instance: Editor) => {
+      editor = instance;
+    };
+
+    const { rerender, unmount } = render(
+      <CwlEditor
+        mode="markdown"
+        value="Original"
+        onDocumentChange={onDocumentChange}
+        onReady={captureEditor}
+      />,
+    );
+    await waitFor(() => expect(editor).toBeTruthy());
+
+    const editable = editor!.view.dom;
+    fireEvent.compositionStart(editable, { data: '' });
+    act(() => {
+      editor!.chain().focus('end').insertContent(' composing').run();
+    });
+    expect(editor!.getText()).toBe('Original composing');
+    expect(onDocumentChange).not.toHaveBeenCalled();
+
+    await act(async () => {
+      rerender(
+        <CwlEditor
+          mode="markdown"
+          value="Host replacement"
+          onDocumentChange={onDocumentChange}
+          onReady={captureEditor}
+        />,
+      );
+    });
+    expect(editor!.view.composing).toBe(true);
+    expect(editor!.getText()).toBe('Original composing');
+
+    act(() => {
+      editable.dispatchEvent(
+        new CompositionEvent('compositionend', { bubbles: true, data: '' }),
+      );
+      unmount();
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(onDocumentChange).not.toHaveBeenCalled();
+    expect(editor!.getText()).toBe('Original composing');
+  });
 });
