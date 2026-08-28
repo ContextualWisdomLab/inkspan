@@ -19,8 +19,8 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const packageJson = JSON.parse(
   readFileSync(join(repositoryRoot, 'package.json'), 'utf8'),
 );
-const verificationRoot = mkdtempSync(
-  join(tmpdir(), 'inkspan-framework-free-evidence-'),
+const verificationRoot = realpathSync(
+  mkdtempSync(join(tmpdir(), 'inkspan-framework-free-evidence-')),
 );
 const extractionDirectory = join(verificationRoot, 'extracted');
 const consumerDirectory = join(verificationRoot, 'consumer');
