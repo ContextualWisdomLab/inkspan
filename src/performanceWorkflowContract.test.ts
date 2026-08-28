@@ -33,6 +33,11 @@ describe('performance evidence workflow contract', () => {
     expect(workflow).toContain('pnpm build');
     expect(workflow).toContain('pnpm pack --pack-destination');
     expect(workflow).toContain('node benchmarks/generate-corpus.mjs');
+    expect(workflow).toContain(
+      '"schemaId":"https://inkspan.io/schemas/document-envelope/v1"',
+    );
+    expect(workflow).toContain('"schemaVersion":1');
+    expect(workflow).toContain('"documentJson":{"type":"doc"');
     expect(workflow).toContain('node benchmarks/run-current-suite.mjs');
     expect(workflow).toContain('--profile small');
     expect(workflow).toContain('--samples 3');
