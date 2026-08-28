@@ -118,11 +118,13 @@ export async function imageFileToInlineDataUri(
 /**
  * Normalize a caught value to the Error contract exposed to hosts.
  *
- * Native Errors may carry actionable Inkspan guidance and public subclass
- * metadata, so preserve them unchanged. `structuredClone` performs the
- * platform's native Error brand check without walking an untrusted value's
- * prototype chain; proxies, non-Errors, and runtimes without structured clone
- * fail closed to the bounded customer-facing fallback below.
+ * Cloneable native Errors may carry actionable Inkspan guidance and public
+ * subclass metadata, so preserve them unchanged. `structuredClone` provides a
+ * platform-native brand check without walking an untrusted value's prototype
+ * chain. If cloning cannot establish that brand — including non-cloneable Error
+ * metadata, hostile proxies, or runtimes without structured clone — fail closed
+ * to the bounded customer-facing fallback below rather than invoke user-defined
+ * prototype/reflection traps.
  */
 export function normalizeImageError(error: unknown): Error {
   try {
