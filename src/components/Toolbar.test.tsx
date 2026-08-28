@@ -276,9 +276,7 @@ describe('Toolbar', () => {
       fireEvent.change(fileInput(), { target: { files: [file] } });
       await waitFor(() => expect(onImageError).toHaveBeenCalled());
       expect(editor.getHTML()).not.toContain('data:image');
-      expect(String(onImageError.mock.calls[0]![0])).toMatch(
-        /too large to insert/i,
-      );
+      expect(String(onImageError.mock.calls[0]![0])).toMatch(/exceeds/i);
     });
 
     it('does not throw when oversized and no onImageError is wired', async () => {

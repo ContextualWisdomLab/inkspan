@@ -25,7 +25,7 @@ export class Base64ImageSourceError extends Error {
   constructor(source: unknown) {
     const sourcePreview = redactImageSource(source);
     super(
-      "This image format can't be inserted. Use a PNG, JPEG, GIF, WebP, AVIF, BMP, or ICO image.",
+      `Image source must be a strict inline base64 raster data URI (${sourcePreview}).`,
     );
     this.name = 'Base64ImageSourceError';
     this.sourcePreview = sourcePreview;

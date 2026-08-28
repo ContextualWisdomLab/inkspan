@@ -121,7 +121,7 @@ describe('inline image helper (used by paste/drop/upload)', () => {
         maxDimension: 0,
         quality: 0.85,
       }),
-    ).rejects.toThrow(/too large to insert/);
+    ).rejects.toThrow(/exceeds/);
   });
 });
 
@@ -363,7 +363,7 @@ describe('CwlEditor onImageError (paste/drop commercial path)', () => {
     expect(handled).toBe(true);
 
     await waitFor(() => expect(onImageError).toHaveBeenCalled());
-    expect(String(onImageError.mock.calls[0]![0])).toMatch(/too large to insert/i);
+    expect(String(onImageError.mock.calls[0]![0])).toMatch(/exceeds/i);
     expect(ed!.getHTML()).not.toContain('data:image');
   });
 
@@ -448,7 +448,7 @@ describe('CwlEditor onImageError (paste/drop commercial path)', () => {
     expect(handled).toBe(true);
 
     await waitFor(() => expect(onImageError).toHaveBeenCalled());
-    expect(String(onImageError.mock.calls[0]![0])).toMatch(/too large to insert/i);
+    expect(String(onImageError.mock.calls[0]![0])).toMatch(/exceeds/i);
   });
 });
 
