@@ -3,6 +3,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -104,6 +105,26 @@ describe('deterministic synthetic performance corpus', () => {
 
       expect(() => runGenerator(outputDirectory)).toThrow();
       expect(readFileSync(victimPath, 'utf8')).toBe('buyer-owned evidence\n');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails closed instead of following a corpus output-directory symlink', () => {
+    const root = mkdtempSync(
+      join(tmpdir(), 'inkspan-benchmark-corpus-directory-symlink-'),
+    );
+    const outputDirectory = join(root, 'output');
+    const buyerOwnedDirectory = join(root, 'buyer-owned');
+    const sentinelPath = join(buyerOwnedDirectory, 'sentinel.txt');
+    try {
+      mkdirSync(buyerOwnedDirectory, { recursive: true });
+      writeFileSync(sentinelPath, 'buyer-owned evidence\n', 'utf8');
+      symlinkSync(buyerOwnedDirectory, outputDirectory, 'dir');
+
+      expect(() => runGenerator(outputDirectory)).toThrow();
+      expect(readdirSync(buyerOwnedDirectory)).toEqual(['sentinel.txt']);
+      expect(readFileSync(sentinelPath, 'utf8')).toBe('buyer-owned evidence\n');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
