@@ -115,27 +115,10 @@ export async function imageFileToInlineDataUri(
   return dataUri;
 }
 
-/**
- * Normalize a caught value to the Error contract exposed to hosts.
- *
- * Cloneable native Errors may carry actionable Inkspan guidance and public
- * subclass metadata, so preserve them unchanged. `structuredClone` provides a
- * platform-native brand check without walking an untrusted value's prototype
- * chain. If cloning cannot establish that brand — including non-cloneable Error
- * metadata, hostile proxies, or runtimes without structured clone — fail closed
- * to the bounded customer-facing fallback below rather than invoke user-defined
- * prototype/reflection traps.
- */
-export function normalizeImageError(error: unknown): Error {
-  try {
-    const cloned = structuredClone(error);
-    if (Object.prototype.toString.call(cloned) === '[object Error]') {
-      return error as Error;
-    }
-  } catch {
-    // Hostile proxies and unavailable structured-clone implementations fall through.
-  }
-  return new Error("This image couldn't be inserted. Try a different image file.");
+/** Normalize a caught value to the Error contract exposed to hosts. */
+function normalizeImageError(error: unknown): Error {
+  /* v8 ignore next -- all shipped validation and conversion paths throw Error. */
+  return error instanceof Error ? error : new Error('Image processing failed.');
 }
 
 export const Base64Image = Image.extend<Base64ImageOptions>({
