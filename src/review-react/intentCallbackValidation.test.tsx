@@ -90,14 +90,19 @@ function expectRedactedIntentFailure(
     window.removeEventListener('error', handleWindowError);
   }
 
-  expect(observedErrors).toHaveLength(1);
-  const [error] = observedErrors;
-  expect(error).toBeInstanceOf(CwlReviewPresentationError);
-  expect(error).toMatchObject({
-    code: 'invalid_presentation',
-    message: 'Review presentation metadata is invalid.',
-  });
-  expect(String(error)).not.toContain(privateSentinel);
+  // React's development event guard can report the same thrown handler error
+  // more than once through JSDOM's window boundary. Cardinality is a test
+  // harness detail; the contract is that every externally observed error is
+  // the stable, redacted Inkspan presentation error.
+  expect(observedErrors.length).toBeGreaterThan(0);
+  for (const error of observedErrors) {
+    expect(error).toBeInstanceOf(CwlReviewPresentationError);
+    expect(error).toMatchObject({
+      code: 'invalid_presentation',
+      message: 'Review presentation metadata is invalid.',
+    });
+    expect(String(error)).not.toContain(privateSentinel);
+  }
 }
 
 describe('CwlReviewThreadList intent callback validation', () => {
@@ -114,38 +119,38 @@ describe('CwlReviewThreadList intent callback validation', () => {
   });
 
   it('redacts a private host selection callback failure at the presentation boundary', () => {
-    renderWithCallbacks({
-      onSelectThread: () => {
-        throw new Error('private selection sentinel');
-      },
+    const callback = vi.fn(() => {
+      throw new Error('private selection sentinel');
     });
+    renderWithCallbacks({ onSelectThread: callback });
 
     expectRedactedIntentFailure(() => {
       fireEvent.click(screen.getByRole('button', { name: 'Thread 1' }));
     }, 'private selection sentinel');
+    expect(callback).toHaveBeenCalledTimes(1);
   });
 
   it('redacts a private host reply callback failure at the presentation boundary', () => {
-    renderWithCallbacks({
-      onReplyThread: () => {
-        throw new Error('private reply sentinel');
-      },
+    const callback = vi.fn(() => {
+      throw new Error('private reply sentinel');
     });
+    renderWithCallbacks({ onReplyThread: callback });
 
     expectRedactedIntentFailure(() => {
       fireEvent.click(screen.getByRole('button', { name: 'Reply — Thread 1' }));
     }, 'private reply sentinel');
+    expect(callback).toHaveBeenCalledTimes(1);
   });
 
   it('redacts a private host resolve callback failure at the presentation boundary', () => {
-    renderWithCallbacks({
-      onResolveThread: () => {
-        throw new Error('private resolve sentinel');
-      },
+    const callback = vi.fn(() => {
+      throw new Error('private resolve sentinel');
     });
+    renderWithCallbacks({ onResolveThread: callback });
 
     expectRedactedIntentFailure(() => {
       fireEvent.click(screen.getByRole('button', { name: 'Resolve — Thread 1' }));
     }, 'private resolve sentinel');
+    expect(callback).toHaveBeenCalledTimes(1);
   });
 });
