@@ -92,6 +92,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     const selectedDocumentValue = value ?? defaultValue ?? '';
     const emittingRef = useRef(false);
     const hasPublishedInitialLegacyValueRef = useRef(false);
+    const componentActiveRef = useRef(true);
     const compositionActiveRef = useRef(false);
     const compositionSnapshotPendingRef = useRef(false);
     const editorInstanceRef = useRef<Editor | null>(null);
@@ -107,6 +108,16 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     const onDestroyRef = useLatestRef(onDestroy);
     const formResetValueRef = useLatestRef(formResetValue);
     const onFormResetRef = useLatestRef(onFormReset);
+
+    useEffect(() => {
+      componentActiveRef.current = true;
+      return () => {
+        componentActiveRef.current = false;
+        compositionActiveRef.current = false;
+        compositionSnapshotPendingRef.current = false;
+      };
+    }, []);
+
     const reportImageError = useCallback((error: Error) => {
       onImageErrorRef.current?.(error);
     }, [onImageErrorRef]);
@@ -122,6 +133,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     }, []);
     const endComposition = useCallback(() => {
       queueMicrotask(() => {
+        if (!componentActiveRef.current) return;
         compositionActiveRef.current = false;
         if (compositionSnapshotPendingRef.current) {
           compositionSnapshotPendingRef.current = false;
