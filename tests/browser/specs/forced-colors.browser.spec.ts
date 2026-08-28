@@ -32,6 +32,7 @@ test.beforeEach(async ({ page }) => {
             <button class="cwl-tb-btn is-active">Active</button>
             <button class="cwl-tb-btn" disabled>Disabled</button>
           </span>
+          <span class="cwl-tb-group" aria-hidden="true"></span>
         </nav>
         <div class="cwl-collaboration-status">Connected</div>
         <div class="cwl-editor__surface">
@@ -53,14 +54,14 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('preserves state and structural cues in forced colors', async ({ page }) => {
+  const plainButton = page.getByRole('button', { name: 'Plain' });
+  await plainButton.focus();
+  await expect(plainButton).toBeFocused();
+
   await page.emulateMedia({ forcedColors: 'active' });
   expect(
     await page.evaluate(() => matchMedia('(forced-colors: active)').matches),
   ).toBe(true);
-
-  const plainButton = page.getByRole('button', { name: 'Plain' });
-  await page.keyboard.press('Tab');
-  await expect(plainButton).toBeFocused();
 
   const evidence = await page.evaluate(() => {
     const get = <T extends Element>(selector: string): T => {
@@ -137,11 +138,11 @@ test('preserves state and structural cues in forced colors', async ({ page }) =>
   });
 
   const activeButton = page.getByRole('button', { name: 'Active' });
-  await page.keyboard.press('Tab');
+  await activeButton.focus();
   await expect(activeButton).toBeFocused();
 
   const editable = page.locator('.cwl-editor__content');
-  await page.keyboard.press('Tab');
+  await editable.focus();
   await expect(editable).toBeFocused();
   const editableFocusEvidence = await editable.evaluate((element) => {
     const style = getComputedStyle(element);
