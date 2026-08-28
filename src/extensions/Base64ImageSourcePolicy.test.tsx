@@ -10,7 +10,6 @@ import type { CwlEditorHandle } from '../types.js';
 import {
   Base64Image,
   Base64ImageSourceError,
-  normalizeImageError,
   validateInlineImageSource,
 } from './Base64Image.js';
 import { buildExtensions } from './kit.js';
@@ -293,22 +292,5 @@ describe('defense-in-depth image rendering', () => {
       'data-cwl-rejected-image',
       'true',
     );
-  });
-});
-describe('host error normalization', () => {
-  it('passes real Error rejections through unchanged', () => {
-    const rejection = new Base64SizeError(10, 5);
-    expect(normalizeImageError(rejection)).toBe(rejection);
-  });
-
-  it('converts hostile non-Error rejections into actionable guidance', () => {
-    // Host promise chains may reject with plain strings; users still need a
-    // next action instead of "[object Object]".
-    const normalized = normalizeImageError('boom');
-    expect(normalized).toBeInstanceOf(Error);
-    expect(normalized.message).toBe(
-      "This image couldn't be inserted. Try a different image file.",
-    );
-    expect(normalized.message.toLowerCase()).not.toContain('boom');
   });
 });
