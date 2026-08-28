@@ -182,4 +182,40 @@ describe('CwlEditor controlled value during composition', () => {
       'Original composing',
     );
   });
+
+  it('drops a queued composition snapshot when the editor is destroyed first', async () => {
+    let editor: Editor | undefined;
+    const onDocumentChange = vi.fn();
+
+    const { unmount } = render(
+      <CwlEditor
+        mode="markdown"
+        defaultValue="Original"
+        onDocumentChange={onDocumentChange}
+        onReady={(instance) => {
+          editor = instance;
+        }}
+      />,
+    );
+    await waitFor(() => expect(editor).toBeTruthy());
+
+    const editable = editor!.view.dom;
+    fireEvent.compositionStart(editable, { data: '' });
+    act(() => {
+      editor!.chain().focus('end').insertContent(' composing').run();
+    });
+    expect(onDocumentChange).not.toHaveBeenCalled();
+
+    act(() => {
+      editable.dispatchEvent(
+        new CompositionEvent('compositionend', { bubbles: true, data: '' }),
+      );
+      unmount();
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(onDocumentChange).not.toHaveBeenCalled();
+  });
 });
