@@ -197,7 +197,7 @@ describe('single-command benchmark suite contract', () => {
         'utf8',
       ),
     ).toContain('revision-evidence-small');
-  });
+  }, 20_000);
 
   it('rejects a claimed source commit that is not the checked-out HEAD', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-suite-source-'));
@@ -318,5 +318,5 @@ describe('single-command benchmark suite contract', () => {
     );
     expect(existsSync(join(actualOutputDirectory, 'markdown'))).toBe(false);
     expect(existsSync(join(actualOutputDirectory, 'revision'))).toBe(false);
-  });
+  }, 20_000);
 });

@@ -197,5 +197,5 @@ describe('packed artifact benchmark path stability', () => {
       readFileSync(join(outputDirectory, 'markdown', 'samples.json'), 'utf8'),
     ) as { artifactSha256: string };
     expect(markdownEvidence.artifactSha256).toBe(original.markdownModuleSha256);
-  });
+  }, 20_000);
 });

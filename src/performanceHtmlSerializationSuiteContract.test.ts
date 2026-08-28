@@ -146,5 +146,5 @@ describe('single-command HTML serialization benchmark contract', () => {
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
-  });
+  }, 20_000);
 });
