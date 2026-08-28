@@ -8,27 +8,6 @@ const turndownStandaloneEntry = nodeRequire.resolve('turndown/lib/turndown.es.js
 const dominoStandaloneEntry = createRequire(turndownStandaloneEntry).resolve(
   '@mixmark-io/domino',
 );
-const turndownWindowProbe =
-  "var root = typeof window !== 'undefined' ? window : {};";
-const headlessTurndownWindowProbe =
-  "var root = typeof globalThis === 'object' && globalThis !== null ? Object.getOwnPropertyDescriptor(globalThis, 'window')?.value ?? {} : {};";
-
-const headlessTurndownWindowGuard = {
-  name: 'inkspan-headless-turndown-window-guard',
-  enforce: 'pre' as const,
-  transform(source: string, id: string) {
-    if (id.split('?')[0] !== turndownStandaloneEntry) return null;
-    if (!source.includes(turndownWindowProbe)) {
-      throw new Error(
-        'The pinned Turndown standalone entry changed its window initialization.',
-      );
-    }
-    return {
-      code: source.replace(turndownWindowProbe, headlessTurndownWindowProbe),
-      map: null,
-    };
-  },
-};
 
 // Headless deterministic serializer build: bundle the conversion dependencies so
 // consumers can use the public subpath without importing the React/TipTap graph.
@@ -47,7 +26,6 @@ export default defineConfig({
     mainFields: ['module', 'jsnext:main', 'jsnext', 'main'],
   },
   plugins: [
-    headlessTurndownWindowGuard,
     dts({
       include: [
         'src/markdown',
