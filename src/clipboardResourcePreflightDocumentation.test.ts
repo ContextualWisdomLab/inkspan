@@ -27,6 +27,12 @@ describe('clipboard resource-preflight documentation contract', () => {
     expect(operatorGuide).toContain(
       'before materializing those children',
     );
+    expect(operatorGuide).toContain(
+      'The machine-readable error codes remain stable, while customer-facing rejection messages give a bounded next action',
+    );
+    expect(doctoring).toContain(
+      'preserve the stable error codes while allowing the customer-facing messages to remain actionable',
+    );
     expect(doctoring).toContain('Unicode Standard');
     expect(doctoring).toContain('CWE-770');
     expect(doctoring).toContain('https://www.unicode.org/versions/Unicode16.0.0/');
