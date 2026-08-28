@@ -112,7 +112,7 @@ describe('Toolbar', () => {
       const italic = screen.getByRole('button', { name: /Italic/ });
       const insertTable = screen.getByRole('button', { name: /^Insert table$/ });
       const insertImage = screen.getByRole('button', {
-        name: /Insert inline image/,
+        name: /Insert inline \(base64\) image/,
       });
       const enabledButtons = (
         screen.getAllByRole('button') as HTMLButtonElement[]
@@ -149,7 +149,7 @@ describe('Toolbar', () => {
 
       const bold = screen.getByRole('button', { name: /Bold/ });
       const insertImage = screen.getByRole('button', {
-        name: /Insert inline image/,
+        name: /Insert inline \(base64\) image/,
       });
       fireEvent.focus(insertImage);
       expect(insertImage).toHaveAttribute('tabindex', '0');
