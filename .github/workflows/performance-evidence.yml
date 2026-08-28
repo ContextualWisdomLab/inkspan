@@ -1,0 +1,102 @@
+name: Performance Evidence
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/performance-evidence.yml'
+      - 'benchmarks/**'
+      - 'src/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'tsconfig.json'
+      - 'vite.config.ts'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: performance-evidence-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  packed-artifact-smoke:
+    name: packed-artifact-smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact pull-request head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Verify exact checkout
+        shell: bash
+        env:
+          INKSPAN_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          actual_head="$(git rev-parse HEAD)"
+          test "$actual_head" = "$INKSPAN_EXPECTED_HEAD_SHA"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install immutable dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packed library
+        run: pnpm build
+
+      - name: Produce bounded packed-artifact smoke evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          corpus_dir="${RUNNER_TEMP}/inkspan-benchmark-corpus"
+          revision_input="${RUNNER_TEMP}/inkspan-revision-input.json"
+          package_dir="${RUNNER_TEMP}/inkspan-package"
+          evidence_dir="${RUNNER_TEMP}/inkspan-performance-evidence"
+
+          rm -rf "$corpus_dir" "$package_dir" "$evidence_dir"
+          rm -f "$revision_input"
+
+          node benchmarks/generate-corpus.mjs --output "$corpus_dir"
+          printf '%s\n' '{"contractVersion":1,"mode":"markdown","document":"# Inkspan deterministic performance smoke"}' > "$revision_input"
+
+          mkdir -p "$package_dir"
+          pnpm pack --pack-destination "$package_dir"
+          mapfile -t packages < <(find "$package_dir" -maxdepth 1 -type f -name '*.tgz' -print)
+          test "${#packages[@]}" -eq 1
+          package="${packages[0]}"
+          package_sha256="$(sha256sum "$package" | cut -d' ' -f1)"
+          source_sha="$(git rev-parse HEAD)"
+          runtime_id="node-$(node -p 'process.versions.node')"
+
+          node benchmarks/run-current-suite.mjs \
+            --input "$corpus_dir/small.md" \
+            --revision-input "$revision_input" \
+            --package-tarball "$package" \
+            --package-sha256 "$package_sha256" \
+            --profile small \
+            --samples 3 \
+            --source-commit-sha "$source_sha" \
+            --runtime-id "$runtime_id" \
+            --reference-hardware-id github-actions-ubuntu-24.04-x64 \
+            --output "$evidence_dir"
+
+      - name: Upload bounded performance evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6.0.0
+        with:
+          name: performance-smoke-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/inkspan-performance-evidence
+          if-no-files-found: error
+          retention-days: 5
