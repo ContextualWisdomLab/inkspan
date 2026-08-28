@@ -70,7 +70,7 @@ jobs:
           rm -f "$revision_input"
 
           node benchmarks/generate-corpus.mjs --output "$corpus_dir"
-          printf '%s\n' '{"contractVersion":1,"mode":"markdown","document":"# Inkspan deterministic performance smoke"}' > "$revision_input"
+          printf '%s\n' '{"schemaId":"https://inkspan.io/schemas/document-envelope/v1","schemaVersion":1,"documentJson":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Inkspan deterministic performance smoke"}]}]}}' > "$revision_input"
 
           mkdir -p "$package_dir"
           pnpm pack --pack-destination "$package_dir"
