@@ -60,10 +60,10 @@ materializing those children. Dropped or hidden subtrees are never traversed
 and therefore do not consume descendant budget. The closed-`details` summary
 path uses the same queue invariant.
 
-These preflight checks do not change the redacted error codes or messages. They
-do not authorize the remaining HTML. See
-`docs/doctoring/clipboard-resource-preflight.md` for the standards basis,
-test-first evidence, residual risk, and rollback.
+The machine-readable error codes remain stable, while customer-facing rejection
+messages give a bounded next action. The preflight checks do not authorize the
+remaining HTML. See `docs/doctoring/clipboard-resource-preflight.md` for the
+standards basis, test-first evidence, residual risk, and rollback.
 
 ## Preserved structure
 
