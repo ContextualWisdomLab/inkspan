@@ -107,6 +107,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
     "test:package-config": "node --test ./scripts/revision-evidence-consumer-config.test.mjs ./scripts/release-metadata.test.mjs ./scripts/javascript-runtime-authority.test.mjs",
     "verify:package": "pnpm run test:package-config && node ./tests/package/verify-package.mjs && node ./tests/package/verify-editor-placeholder-package.mjs && node ./scripts/verify-canonical-envelope-package.mjs && node ./scripts/verify-revision-evidence-package.mjs && node ./scripts/verify-framework-free-revision-evidence-package.mjs && node ./scripts/verify-framework-free-envelope-identity-package.mjs && node ./tests/package/verify-framework-free-autosave-package.mjs && node ./scripts/verify-text-position-selector-package.mjs && node ./scripts/verify-text-position-selector-subpath-package.mjs && node ./scripts/verify-markdown-subpath-package.mjs"
   },
@@ -143,6 +145,9 @@
     "yjs": "^13.6.30"
   },
   "devDependencies": {
+    "@storybook/addon-docs": "^10.5.8",
+    "@storybook/react": "^10.5.8",
+    "@storybook/react-vite": "^10.5.8",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^14.5.2",
@@ -155,6 +160,7 @@
     "jsdom": "^25.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "storybook": "^10.5.8",
     "typescript": "^5.7.3",
     "vite": "^6.4.3",
     "vite-plugin-dts": "^4.5.0",
