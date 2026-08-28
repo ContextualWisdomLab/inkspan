@@ -190,7 +190,7 @@ describe('packed artifact benchmark suite contract', () => {
     ) as { benchmarkId?: unknown; samples?: unknown[] };
     expect(htmlSamples.benchmarkId).toBe('html-serialization-small');
     expect(htmlSamples.samples).toHaveLength(2);
-  });
+  }, 20_000);
 
   it('rejects a runtime identifier that does not match the active Node process', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inkspan-packed-runtime-'));

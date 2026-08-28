@@ -198,7 +198,18 @@ describe('deterministic benchmark sample statistics', () => {
       truncateSync(input, 16 * 1024 * 1024 + 1);
       writeFileSync(
         preload,
-        `import fs from 'node:fs';\nimport { syncBuiltinESMExports } from 'node:module';\nfs.readFileSync = () => { throw new Error('benchmark whole-file read sentinel'); };\nsyncBuiltinESMExports();\n`,
+        `import fs from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
+const originalReadFileSync = fs.readFileSync.bind(fs);
+const blockedInputPath = ${JSON.stringify(input)};
+fs.readFileSync = (path, ...argumentsList) => {
+  if (path === blockedInputPath) {
+    throw new Error('benchmark whole-file read sentinel');
+  }
+  return originalReadFileSync(path, ...argumentsList);
+};
+syncBuiltinESMExports();
+`,
         'utf8',
       );
 
