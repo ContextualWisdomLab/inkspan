@@ -32,7 +32,7 @@ describe('SafeClipboard fail-closed coverage contract', () => {
     ).toThrowError(
       expect.objectContaining({
         code: 'invalid_html',
-        message: "This content can't be inserted here. Try pasting as plain text instead.",
+        message: 'Rich clipboard HTML could not be sanitized.',
       }),
     );
   });
@@ -59,7 +59,7 @@ describe('SafeClipboard fail-closed coverage contract', () => {
   it('keeps the redacted sanitizer error class stable', () => {
     expect(new ClipboardSanitizationError('invalid_html')).toMatchObject({
       code: 'invalid_html',
-      message: "This content can't be inserted here. Try pasting as plain text instead.",
+      message: 'Rich clipboard HTML could not be sanitized.',
       name: 'ClipboardSanitizationError',
     });
   });

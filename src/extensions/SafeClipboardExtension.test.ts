@@ -114,7 +114,7 @@ describe('SafeClipboard TipTap v2 adapter', () => {
     expect(onError).toHaveBeenCalledWith(
       expect.objectContaining({
         code: 'invalid_html',
-        message: "This content can't be inserted here. Try pasting as plain text instead.",
+        message: 'Rich clipboard HTML could not be sanitized.',
       }),
     );
     expect(String(onError.mock.calls[0]?.[0])).not.toContain('private option');

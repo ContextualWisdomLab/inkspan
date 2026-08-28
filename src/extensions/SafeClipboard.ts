@@ -49,15 +49,13 @@ const ERROR_MESSAGES: Readonly<Record<ClipboardSanitizationErrorCode, string>> =
   Object.freeze({
     dom_unavailable:
       'Rich clipboard sanitization requires a DOM-capable document.',
-    input_too_large:
-      'The pasted content is too large to insert. Try pasting less content at once.',
+    input_too_large: 'Rich clipboard HTML exceeds the configured byte limit.',
     node_limit_exceeded:
-      'The pasted content is too complex to insert. Try pasting less content at once.',
+      'Rich clipboard HTML exceeds the configured node limit.',
     depth_limit_exceeded:
-      'The pasted content is too deeply nested to insert. Try pasting less content at once.',
+      'Rich clipboard HTML exceeds the configured depth limit.',
     invalid_configuration: 'Rich clipboard configuration is invalid.',
-    invalid_html:
-      "This content can't be inserted here. Try pasting as plain text instead.",
+    invalid_html: 'Rich clipboard HTML could not be sanitized.',
   });
 
 /** Error whose stable code and message never disclose clipboard content. */
