@@ -368,7 +368,7 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
           onClick={() => editor.chain().focus().deleteTable().run()}
         />
         <ToolbarButton
-          title="Insert inline (base64) image"
+          title="Insert inline image"
           label="🖼"
           onClick={() => fileInputRef.current?.click()}
         />
