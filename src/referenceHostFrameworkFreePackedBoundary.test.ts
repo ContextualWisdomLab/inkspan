@@ -115,6 +115,7 @@ assert.equal(
   markdown.markdownToHtml('**Buyer boundary**'),
   markdown.markdownToHtml('**Buyer boundary**'),
 );
+assert.equal(markdown.htmlToMarkdown('<p>Buyer boundary</p>'), 'Buyer boundary');
 
 for (const specifier of ['autosave', 'converter', 'markdown']) {
   const resolved = import.meta.resolve(\`${packageMetadata.name}/\${specifier}\`);
@@ -152,6 +153,7 @@ assert.deepEqual(
   [79, 75],
 );
 assert.equal(markdown.markdownToPlainText('# Buyer boundary'), 'Buyer boundary');
+assert.equal(markdown.htmlToMarkdown('<p>Buyer boundary</p>'), 'Buyer boundary');
 for (const specifier of ['autosave', 'converter', 'markdown']) {
   assert.match(
     require.resolve(\`${packageMetadata.name}/\${specifier}\`),
