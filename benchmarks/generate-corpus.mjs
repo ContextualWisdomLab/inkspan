@@ -6,7 +6,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 
 const RASTER_FIXTURES = Object.freeze([
   Object.freeze({
@@ -49,6 +49,23 @@ const SCRIPT_LABELS = Object.freeze([
 ]);
 
 let outputWriteCounter = 0;
+
+function assertSafeDirectoryChain(directoryPath) {
+  let currentPath = directoryPath;
+  while (true) {
+    const existing = lstatSync(currentPath, { throwIfNoEntry: false });
+    if (existing !== undefined && !existing.isDirectory()) {
+      throw new Error(
+        'Benchmark corpus output directory must not traverse symbolic links or non-directories.',
+      );
+    }
+    const parentPath = dirname(currentPath);
+    if (parentPath === currentPath) {
+      break;
+    }
+    currentPath = parentPath;
+  }
+}
 
 function writeRegularOutput(path, content) {
   const existing = lstatSync(path, { throwIfNoEntry: false });
@@ -129,7 +146,9 @@ function resolveOutputDirectory(argv) {
 }
 
 const outputDirectory = resolveOutputDirectory(process.argv.slice(2));
+assertSafeDirectoryChain(outputDirectory);
 mkdirSync(outputDirectory, { recursive: true });
+assertSafeDirectoryChain(outputDirectory);
 
 const profileManifest = {};
 for (const [profile, sections] of Object.entries(PROFILE_SECTIONS)) {
