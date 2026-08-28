@@ -180,6 +180,28 @@ export {
 } from './markdown/plainText.js';
 export type { PlainTextOptions } from './markdown/plainText.js';
 
+// Host-facing editor chrome theme tokens (CSS remains runtime authority).
+export {
+  EditorThemeTokenContrastError,
+  EditorThemeTokenError,
+  WCAG_NON_TEXT_CONTRAST_RATIO,
+  WCAG_TEXT_CONTRAST_RATIO,
+  contrastRatioFromHex,
+  getEditorThemeToken,
+  getEditorThemeTokenContrast,
+  listEditorThemeTokens,
+  toDesignTokenFormatGroup,
+} from './designTokens.js';
+export type {
+  DesignTokenFormatGroup,
+  DesignTokenFormatNode,
+  EditorThemeToken,
+  EditorThemeTokenContrast,
+  EditorThemeTokenName,
+  EditorThemeTokenRole,
+  EditorThemeTokenScheme,
+} from './designTokens.js';
+
 // Standalone, framework-agnostic base64 / data-URI converter.
 export * from './converter/index.js';
 export {

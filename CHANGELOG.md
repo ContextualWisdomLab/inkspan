@@ -6,6 +6,17 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 
 ## [Unreleased]
 
+### Added
+- Named the repeating editor chrome as a host-facing theme-token catalog and Storybook inventory so hosts can override `--cwl-*` custom properties on `.cwl-editor` after checking WCAG 2.2 contrast, without editing Inkspan internals. Color catalog values now distinguish light, dark, and `@media print` remaps; forced-colors mode is not treated as a token assignment. Hosts can call `getEditorThemeTokenContrast()` to compare inventoried pairs, including `--cwl-accent` on `--cwl-accent-soft`, against the 4.5:1 text threshold via `meetsTextContrast`.
+
+### Accessibility
+- Prepared the active-PR dark active-toolbar accent change from protected-main `#4493f8` to `#58a6ff`, increasing `--cwl-accent` text on `--cwl-accent-soft: #163356` from about 4.13:1 to about 5.06:1 so the candidate default 13px active-button text meets the WCAG 2.2 4.5:1 normal-text threshold; this remains active-PR evidence until protected integration. `getEditorThemeTokenContrast()` checks catalog values, and host overrides must be re-checked with `contrastRatioFromHex(actualForegroundHex, actualBackgroundHex)` using the actual resolved colors.
+- Restored a visible `:focus-visible` indicator on the editable textbox, mapped it to `CanvasText` in forced-colors mode, and suppresses that interactive focus chrome under `@media print`; dependency-locked Chromium, Firefox, and WebKit acceptance exercises the packed stylesheet on the real `role="textbox"` surface.
+
+### Security
+- Raised workspace-wide transitive development-tool overrides for `fast-uri`, `nanoid`, and `postcss` to patched minimums, keeping the lockfile audit clean without changing runtime package authority.
+- Normalized isolated package-verifier temporary roots before containment checks on macOS.
+
 ## [0.6.0] — 2026-08-10
 
 ### Release
@@ -15,7 +26,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Added the selected standalone Markdown or HTML value to an explicitly configured SSR native form field, preserving controlled-value precedence, external form association, React attribute escaping, and the synchronous post-hydration TipTap transaction mirror
 
 ### Security
-- Added a fail-closed draft release asset inventory gate that requires exactly one npm tarball, one Office wheel, and `SHA256SUMS`, rejects stale or unexpected draft assets before immutable publication, and verifies every GitHub-reported `sha256:` asset digest against the transferred local file
+- Added a fail-closed draft release asset inventory gate that requires exactly one npm tarball, one Office wheel, `inkspan.spdx.json`, and `SHA256SUMS`, rejects stale or unexpected draft assets before immutable publication, and verifies every GitHub-reported `sha256:` asset digest against the transferred local file
 - Kept SSR document disclosure opt-in through `formFieldName`; hidden-field values remain client-controlled submission data and do not replace host authentication, authorization, tenant isolation, CSRF defenses, server validation, durable concurrency, or persistence controls
 - Kept collaborative Yjs document content out of server markup until the host-owned client collaboration lifecycle is bound
 - Added packed headless Markdown authority verification that rejects external runtime imports, dynamic module loaders, ambient network/environment credential access, React/TipTap/Yjs runtime coupling, CWL host coupling, and model credential references from the dedicated conversion artifact
@@ -106,7 +117,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Corrected the autosave onboarding so initial and replacement validators are checked before use and come from the durable host's server-issued strong `ETag` rather than local revision evidence; missing, weak, or malformed validators fail closed in the example
 - Documented that host-owned save callbacks must apply their own timeout or abort signal because an unresolved callback intentionally retains the active single-flight operation; retry policy remains host-owned
 - Added a deterministic repository contract test and APA 7th-style doctoring for README, npm-search, Node.js package-export discoverability, RFC 9110 validator ownership, and quoted opaque-tag syntax
-- Added operator, doctoring, and release evidence for the durable autosave session, coherent recovery-time flush snapshots, host ownership boundaries, exact-head verification, and acquisition-review scope
+- Added operator, doctoring, and release evidence for the durable autosave session, coherent recovery-time flush snapshots, exact-head verification, and acquisition-review scope
 
 ## [0.5.28] — 2026-08-05
 
