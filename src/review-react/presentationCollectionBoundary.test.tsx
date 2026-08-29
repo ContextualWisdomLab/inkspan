@@ -89,6 +89,22 @@ describe('CwlReviewThreadList presentation collection boundary', () => {
     expect(getterCalls).toBe(0);
   });
 
+  it('does not trust caller-controlled array length reads', () => {
+    let lengthReads = 0;
+    const presentations = new Proxy([presentation()], {
+      get(target, property, receiver) {
+        if (property === 'length') {
+          lengthReads += 1;
+          return 0;
+        }
+        return Reflect.get(target, property, receiver);
+      },
+    });
+
+    expect(renderPresentations(presentations)).not.toThrow();
+    expect(lengthReads).toBe(0);
+  });
+
   it('rejects sparse presentation arrays instead of silently skipping holes', () => {
     expect(renderPresentations(new Array<unknown>(1))).toThrow(
       'Review presentation metadata is invalid.',
