@@ -71,6 +71,19 @@ function createPackedBenchmarkFixture(directory: string): {
     `export async function createDocumentEnvelopeRevisionEvidenceBytes() { return { revision: { digestHex: '${'c'.repeat(64)}' } }; }\n`,
     'utf8',
   );
+  writeFileSync(
+    join(distDirectory, 'cwl-autosave.js'),
+    [
+      'export function createDocumentAutosaveQueue({ save }) {',
+      '  return {',
+      '    async enqueue(evidence) { return await save(evidence); },',
+      '    async close() {},',
+      '  };',
+      '}',
+      '',
+    ].join('\n'),
+    'utf8',
+  );
 
   const packResult = JSON.parse(
     execFileSync(
@@ -174,6 +187,9 @@ describe('packed artifact benchmark suite contract', () => {
       packageName: '@contextualwisdomlab/cwl-editor',
       packageVersion: '0.0.0-benchmark-fixture',
       packageSha256: packed.packageSha256,
+      autosaveSamples: 'autosave/samples.json',
+      autosaveSummaryJson: 'autosave/summary/summary.json',
+      autosaveSummaryText: 'autosave/summary/summary.txt',
       htmlSerializationSamples: 'html-serialization/samples.json',
       htmlSerializationSummaryJson:
         'html-serialization/summary/summary.json',
@@ -181,6 +197,15 @@ describe('packed artifact benchmark suite contract', () => {
         'html-serialization/summary/summary.txt',
       status: 'completed',
     });
+
+    const autosaveSamples = JSON.parse(
+      readFileSync(
+        join(directory, 'evidence', 'autosave', 'samples.json'),
+        'utf8',
+      ),
+    ) as { benchmarkId?: unknown; samples?: unknown[] };
+    expect(autosaveSamples.benchmarkId).toBe('autosave-enqueue-small');
+    expect(autosaveSamples.samples).toHaveLength(2);
 
     const htmlSamples = JSON.parse(
       readFileSync(
