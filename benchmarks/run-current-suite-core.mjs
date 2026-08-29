@@ -56,6 +56,7 @@ const EXPECTED_PACKAGE_NAME = '@contextualwisdomlab/cwl-editor';
 const PACKAGE_MANIFEST_ENTRY = 'package/package.json';
 const MARKDOWN_MODULE_ENTRY = 'package/dist/cwl-markdown.js';
 const REVISION_MODULE_ENTRY = 'package/dist/cwl-revision-evidence.js';
+const AUTOSAVE_MODULE_ENTRY = 'package/dist/cwl-autosave.js';
 const OUTPUT_DIRECTORY_ERROR =
   'Benchmark suite output directory must be a non-symlink directory.';
 const OUTPUT_DIRECTORY_EXISTS_ERROR =
@@ -97,6 +98,25 @@ function measurementArguments({
   return Object.freeze([
     '--input',
     inputPath,
+    '--module',
+    modulePath,
+    '--profile',
+    shared.documentProfile,
+    '--samples',
+    shared.sampleCount,
+    '--source-commit-sha',
+    shared.sourceCommitSha,
+    '--artifact-sha256',
+    artifactSha256,
+    '--runtime-id',
+    shared.runtimeId,
+    '--reference-hardware-id',
+    shared.referenceHardwareId,
+  ]);
+}
+
+function autosaveMeasurementArguments({ modulePath, artifactSha256, shared }) {
+  return Object.freeze([
     '--module',
     modulePath,
     '--profile',
@@ -401,6 +421,7 @@ function preparePackedBenchmarkModules(args) {
     PACKAGE_MANIFEST_ENTRY,
     MARKDOWN_MODULE_ENTRY,
     REVISION_MODULE_ENTRY,
+    AUTOSAVE_MODULE_ENTRY,
   ]) {
     assertUniquePackedEntry(entries, entry);
   }
@@ -421,6 +442,11 @@ function preparePackedBenchmarkModules(args) {
     REVISION_MODULE_ENTRY,
     MAX_MODULE_BYTES,
   );
+  const autosaveModuleBytes = readPackedEntry(
+    args.packageTarballPath,
+    AUTOSAVE_MODULE_ENTRY,
+    MAX_MODULE_BYTES,
+  );
   verifyPackageDigest(args.packageTarballPath, args.packageSha256);
 
   const temporaryDirectory = mkdtempSync(
@@ -431,9 +457,11 @@ function preparePackedBenchmarkModules(args) {
     temporaryDirectory,
     'cwl-revision-evidence.mjs',
   );
+  const autosaveModulePath = join(temporaryDirectory, 'cwl-autosave.mjs');
   try {
     writeFileSync(markdownModulePath, markdownModuleBytes);
     writeFileSync(revisionModulePath, revisionModuleBytes);
+    writeFileSync(autosaveModulePath, autosaveModuleBytes);
   } catch {
     rmSync(temporaryDirectory, { recursive: true, force: true });
     throw new Error('Benchmark suite package modules could not be prepared.');
@@ -445,6 +473,8 @@ function preparePackedBenchmarkModules(args) {
     markdownArtifactSha256: moduleSha256(markdownModuleBytes),
     revisionModulePath,
     revisionArtifactSha256: moduleSha256(revisionModuleBytes),
+    autosaveModulePath,
+    autosaveArtifactSha256: moduleSha256(autosaveModuleBytes),
     packageEvidence: Object.freeze({
       packageName: manifest.name,
       packageVersion: manifest.version,
@@ -495,7 +525,7 @@ function runMeasurementAndSummary({
   );
 }
 
-function runSuite(args, markdownArguments, revisionArguments) {
+function runSuite(args, markdownArguments, revisionArguments, autosaveArguments) {
   const markdownSamplesPath = resolve(
     args.outputDirectory,
     'markdown',
@@ -533,9 +563,30 @@ function runSuite(args, markdownArguments, revisionArguments) {
     measurementFailure: 'Benchmark suite revision measurement failed.',
     summaryFailure: 'Benchmark suite revision summary failed.',
   });
+
+  if (autosaveArguments !== null) {
+    const autosaveSamplesPath = resolve(
+      args.outputDirectory,
+      'autosave',
+      'samples.json',
+    );
+    const autosaveSummaryDirectory = resolve(
+      args.outputDirectory,
+      'autosave',
+      'summary',
+    );
+    runMeasurementAndSummary({
+      measurementScript: 'measure-autosave.mjs',
+      measurementArguments: autosaveArguments,
+      samplesPath: autosaveSamplesPath,
+      summaryDirectory: autosaveSummaryDirectory,
+      measurementFailure: 'Benchmark suite autosave measurement failed.',
+      summaryFailure: 'Benchmark suite autosave summary failed.',
+    });
+  }
 }
 
-function suiteManifest(args, packageEvidence) {
+function suiteManifest(args, packageEvidence, includeAutosave) {
   return Object.freeze({
     contractVersion: 1,
     documentProfile: args.documentProfile,
@@ -550,6 +601,13 @@ function suiteManifest(args, packageEvidence) {
     revisionSamples: 'revision/samples.json',
     revisionSummaryJson: 'revision/summary/summary.json',
     revisionSummaryText: 'revision/summary/summary.txt',
+    ...(includeAutosave
+      ? {
+          autosaveSamples: 'autosave/samples.json',
+          autosaveSummaryJson: 'autosave/summary/summary.json',
+          autosaveSummaryText: 'autosave/summary/summary.txt',
+        }
+      : {}),
     status: 'completed',
   });
 }
@@ -580,13 +638,21 @@ function main(argv) {
           shared,
         })
       : resolved.revisionArguments;
+  const autosaveArguments =
+    resolved.mode === 'packed'
+      ? autosaveMeasurementArguments({
+          modulePath: preparedPackage.autosaveModulePath,
+          artifactSha256: preparedPackage.autosaveArtifactSha256,
+          shared,
+        })
+      : null;
   const packageEvidence =
     resolved.mode === 'packed' ? preparedPackage.packageEvidence : null;
 
   let createdOutputDirectory = false;
   try {
     createdOutputDirectory = prepareOutputDirectory(shared.outputDirectory);
-    runSuite(shared, markdownArguments, revisionArguments);
+    runSuite(shared, markdownArguments, revisionArguments, autosaveArguments);
     if (resolved.mode === 'packed') {
       verifyPackageDigest(resolved.packageTarballPath, resolved.packageSha256);
     }
@@ -605,7 +671,9 @@ function main(argv) {
   }
 
   process.stdout.write(
-    `${JSON.stringify(suiteManifest(shared, packageEvidence))}\n`,
+    `${JSON.stringify(
+      suiteManifest(shared, packageEvidence, resolved.mode === 'packed'),
+    )}\n`,
   );
 }
 
