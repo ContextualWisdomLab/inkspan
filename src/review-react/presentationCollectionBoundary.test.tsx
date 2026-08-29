@@ -108,4 +108,13 @@ describe('CwlReviewThreadList presentation collection boundary', () => {
       'Review presentation metadata is invalid.',
     );
   });
+
+  it('rejects collections with more than one host-selected thread', () => {
+    expect(
+      renderPresentations([
+        { ...presentation('thread_1'), selected: true },
+        { ...presentation('thread_2'), selected: true },
+      ]),
+    ).toThrow('Review presentation metadata is invalid.');
+  });
 });
