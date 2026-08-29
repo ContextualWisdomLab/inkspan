@@ -237,11 +237,18 @@ function validateReviewThreadPresentations(
     }
 
     const threadKeys = new Set<string>();
+    let selectedThreadCount = 0;
     for (const presentation of validatedPresentations) {
       if (threadKeys.has(presentation.threadKey)) {
         throw new CwlReviewPresentationError();
       }
       threadKeys.add(presentation.threadKey);
+      if (presentation.selected) {
+        selectedThreadCount += 1;
+        if (selectedThreadCount > 1) {
+          throw new CwlReviewPresentationError();
+        }
+      }
     }
     return validatedPresentations;
   } catch {
@@ -351,29 +358,30 @@ export function CwlReviewTargetMarker({
  * The collection is capped before any item inspection. Every array slot must be
  * a dense enumerable data property, so accessor-backed or sparse host entries
  * fail closed without invoking host accessors before the React-free review
- * validator inspects each value. Host labels must be exact enumerable data
- * fields and bounded non-empty visible strings. The required thread-label
- * factory may be accompanied by paired status/comment-summary factories;
- * supplying only one summary factory fails closed. Accessor-backed labels and
- * thrown/private label failures are normalized to the same redacted
- * presentation error before React commits inaccessible content. When summary
- * factories are present their localized visible output also describes the
- * thread-selection, reply, and resolve controls without changing action names.
- * Required and optional host intent callbacks are preflighted and snapshotted
- * before rendering so malformed runtime values fail closed at the same public
- * presentation boundary rather than surfacing a native invocation TypeError.
- * Private failures thrown by validated intent callbacks are likewise normalized
- * to the public presentation error instead of leaking host details. Exactly one
- * thread-selection target participates in the tab order: the host-selected
- * thread is the initial rover when present, otherwise the first thread is. Once
- * focus enters the list the rover is retained by stable validated `threadKey`.
- * Arrow Up/Down and Home/End move that roving DOM focus only; keyboard traversal
- * never commits host-controlled thread selection. Repeated reply/resolve controls
- * include the already validated thread label in their accessible name so action
- * lists remain disambiguated without changing visible host copy. The component
- * emits only intent callbacks with the detached, frozen presentation snapshot;
- * it does not authorize, persist, transport, mutate, resolve, or reply to
- * host-owned review records.
+ * validator inspects each value. Collections with multiple host-selected
+ * threads likewise fail closed so controlled selection remains unambiguous.
+ * Host labels must be exact enumerable data fields and bounded non-empty visible
+ * strings. The required thread-label factory may be accompanied by paired
+ * status/comment-summary factories; supplying only one summary factory fails
+ * closed. Accessor-backed labels and thrown/private label failures are normalized
+ * to the same redacted presentation error before React commits inaccessible
+ * content. When summary factories are present their localized visible output
+ * also describes the thread-selection, reply, and resolve controls without
+ * changing action names. Required and optional host intent callbacks are
+ * preflighted and snapshotted before rendering so malformed runtime values fail
+ * closed at the same public presentation boundary rather than surfacing a native
+ * invocation TypeError. Private failures thrown by validated intent callbacks
+ * are likewise normalized to the public presentation error instead of leaking
+ * host details. Exactly one thread-selection target participates in the tab
+ * order: the host-selected thread is the initial rover when present, otherwise
+ * the first thread is. Once focus enters the list the rover is retained by
+ * stable validated `threadKey`. Arrow Up/Down and Home/End move that roving DOM
+ * focus only; keyboard traversal never commits host-controlled thread selection.
+ * Repeated reply/resolve controls include the already validated thread label in
+ * their accessible name so action lists remain disambiguated without changing
+ * visible host copy. The component emits only intent callbacks with the detached,
+ * frozen presentation snapshot; it does not authorize, persist, transport,
+ * mutate, resolve, or reply to host-owned review records.
  */
 export function CwlReviewThreadList({
   presentations,
