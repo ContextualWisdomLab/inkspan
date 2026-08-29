@@ -17,7 +17,7 @@ describe('dependency update automation', () => {
         const config = normalizeYamlText(readFileSync(CONFIG_PATH, 'utf8'));
 
         expect(config).toMatch(/^version:\s*2\s*$/mu);
-        expect((config.match(/^-\s+package-ecosystem:/gmu) ?? []).length).toBe(2);
+        expect((config.match(/^\s*-\s+package-ecosystem:/gmu) ?? []).length).toBe(2);
 
         for (const [ecosystem, directory] of [
             ['github-actions', '/'],
@@ -25,7 +25,7 @@ describe('dependency update automation', () => {
         ] as const) {
             expect(config).toMatch(
                 new RegExp(
-                    String.raw`^-\s+package-ecosystem:\s*${escapeRegExp(ecosystem)}\s*$[\s\S]*?^\s+directory:\s*${escapeRegExp(directory)}\s*$[\s\S]*?^\s+schedule:\s*$\n^\s+interval:\s*weekly\s*$`,
+                    String.raw`^\s*-\s+package-ecosystem:\s*${escapeRegExp(ecosystem)}\s*$[\s\S]*?^\s+directory:\s*${escapeRegExp(directory)}\s*$[\s\S]*?^\s+schedule:\s*$\n^\s+interval:\s*weekly\s*$`,
                     'mu',
                 ),
             );
