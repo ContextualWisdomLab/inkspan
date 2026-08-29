@@ -75,6 +75,19 @@ function createPackedBenchmarkFixture(
     `export async function createDocumentEnvelopeRevisionEvidenceBytes() { return { revision: { digestHex: '${'e'.repeat(64)}' } }; }\n`,
     'utf8',
   );
+  writeFileSync(
+    join(distDirectory, 'cwl-autosave.js'),
+    [
+      'export function createDocumentAutosaveQueue({ save }) {',
+      '  return {',
+      '    async enqueue(evidence) { return await save(evidence); },',
+      '    async close() {},',
+      '  };',
+      '}',
+      '',
+    ].join('\n'),
+    'utf8',
+  );
 
   const packResult = JSON.parse(
     execFileSync(
