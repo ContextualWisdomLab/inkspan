@@ -8,9 +8,10 @@
  */
 
 import type { DocumentEnvelopeLimits } from '../documentEnvelope.js';
-import type {
-  CwlEditorDocumentRevision,
-  DocumentEnvelopeDigestProvider,
+import {
+  createDocumentEnvelopeRevision as computeDocumentEnvelopeRevision,
+  type CwlEditorDocumentRevision,
+  type DocumentEnvelopeDigestProvider,
 } from '../documentEnvelopeRevision.js';
 import {
   createDocumentEnvelopeTransitionEvidence,
@@ -77,6 +78,7 @@ export class CwlReviewPresentationError extends Error {
 /** Stable redacted failure codes for review-operation evidence. */
 export type CwlReviewOperationErrorCode =
   | 'invalid_operation'
+  | 'stale_operation'
   | 'stale_operation_changed'
   | 'accepted_operation_unchanged'
   | 'rejected_operation_changed';
@@ -86,6 +88,7 @@ const REVIEW_OPERATION_ERROR_MESSAGES: Record<
   string
 > = {
   invalid_operation: 'Review operation is invalid.',
+  stale_operation: 'Review operation targets a stale document revision.',
   stale_operation_changed: 'Stale review operations must not change the document.',
   accepted_operation_unchanged:
     'Accepted review operation must change the document revision.',
@@ -461,6 +464,41 @@ export function createReviewSuggestion(source: unknown): CwlReviewSuggestion {
   } catch {
     rejectReviewSuggestion();
   }
+}
+
+/**
+ * Validate that a suggestion still targets the exact current document revision.
+ *
+ * This is the fail-closed admission guard callers invoke immediately before an
+ * editor mutation. It returns only the detached/frozen validated suggestion and
+ * never copies the current document body into review evidence. Hosts retain
+ * authorization, persistence, conflict policy, and durable audit authority.
+ *
+ * @param suggestionSource - Untrusted provider-neutral insert/delete proposal.
+ * @param currentSource - Exact current document envelope before mutation.
+ * @param limits - Optional strict document-envelope resource limits.
+ * @param digestProvider - Optional SHA-256 provider for deterministic testing.
+ * @returns The detached validated suggestion when the exact revision matches.
+ * @throws {CwlReviewOperationError} When the suggestion targets another revision.
+ */
+export async function assertReviewSuggestionCurrentRevision(
+  suggestionSource: unknown,
+  currentSource: unknown,
+  limits?: DocumentEnvelopeLimits,
+  digestProvider?: DocumentEnvelopeDigestProvider | null,
+): Promise<CwlReviewSuggestion> {
+  const suggestion = createReviewSuggestion(suggestionSource);
+  const currentRevision = await computeDocumentEnvelopeRevision(
+    currentSource,
+    limits,
+    digestProvider,
+  );
+
+  if (currentRevision.digestHex !== suggestion.target.revision.digestHex) {
+    throw new CwlReviewOperationError('stale_operation');
+  }
+
+  return suggestion;
 }
 
 /**
