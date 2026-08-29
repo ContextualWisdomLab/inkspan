@@ -23,8 +23,8 @@ const repositoryRoot = resolve(
 const packageJson = JSON.parse(
   readFileSync(join(repositoryRoot, 'package.json'), 'utf8'),
 );
-const verificationRoot = mkdtempSync(
-  join(tmpdir(), 'inkspan-framework-free-autosave-'),
+const verificationRoot = realpathSync(
+  mkdtempSync(join(tmpdir(), 'inkspan-framework-free-autosave-')),
 );
 const extractionDirectory = join(verificationRoot, 'extracted');
 const consumerDirectory = join(verificationRoot, 'consumer');
