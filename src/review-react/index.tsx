@@ -44,6 +44,16 @@ export interface CwlReviewThreadListProps {
   readonly onResolveThread?: (thread: CwlReviewThreadPresentation) => void;
 }
 
+/** Controlled inputs for one accessible inline review-target marker. */
+export interface CwlReviewTargetMarkerProps {
+  /** Untrusted host presentation record validated before rendering. */
+  readonly presentation: unknown;
+  /** Host-supplied localized visible and accessible marker label. */
+  readonly label: string;
+  /** Selection intent; the host remains editor-selection authority. */
+  readonly onSelectThread: (thread: CwlReviewThreadPresentation) => void;
+}
+
 const REVIEW_LABEL_KEYS = ['region', 'thread', 'reply', 'resolve'] as const;
 const REVIEW_SUMMARY_LABEL_KEYS = ['status', 'comments'] as const;
 const MAX_REVIEW_LABEL_CODE_UNITS = 512;
@@ -294,6 +304,45 @@ function invokeReviewIntent(
   } catch {
     rejectReviewPresentation();
   }
+}
+
+/**
+ * Render one controlled accessible inline marker for a validated review target.
+ *
+ * The marker validates and detaches the host presentation before rendering,
+ * bounds visible copy through the same review presentation contract as the
+ * thread list, and preflights the selection callback. Its pressed state mirrors
+ * host-controlled selection and its data state gives hosts a non-authoritative
+ * presentation hook without copying comment bodies or actor data. Activation
+ * emits only the frozen presentation snapshot; the embedding host remains the
+ * authority that maps the revision-bound target to editor focus/selection and
+ * performs authorization, persistence, transport, or collaboration updates.
+ */
+export function CwlReviewTargetMarker({
+  presentation,
+  label,
+  onSelectThread,
+}: CwlReviewTargetMarkerProps) {
+  const validatedPresentation = createReviewThreadPresentation(presentation);
+  const validatedLabel = requireVisibleLabel(label);
+  const validatedCallback = validateReviewIntentCallbacks(
+    onSelectThread,
+    undefined,
+    undefined,
+  ).onSelectThread;
+
+  return (
+    <button
+      type="button"
+      aria-pressed={validatedPresentation.selected}
+      data-cwl-review-state={validatedPresentation.state}
+      onClick={() =>
+        invokeReviewIntent(validatedCallback, validatedPresentation)
+      }
+    >
+      {validatedLabel}
+    </button>
+  );
 }
 
 /**
