@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 const CONFIG_PATH = '.github/dependabot.yml';
 
 function normalizeYamlText(source: string): string {
-    return source.replaceAll('"', '');
+    return source.replace(/"/gu, '');
 }
 
 function escapeRegExp(source: string): string {
