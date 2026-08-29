@@ -295,6 +295,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       if (!editor || !isControlled || emittingRef.current) return;
 
       const synchronizeValue = () => {
+        if (!componentActiveRef.current) return;
         const current = editorHtmlToValue(editor.getHTML(), mode);
         if (current !== value) {
           /* v8 ignore next -- isControlled guarantees value is defined. */
