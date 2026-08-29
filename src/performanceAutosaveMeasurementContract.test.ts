@@ -32,7 +32,7 @@ function sha256(source: string): string {
 }
 
 describe('autosave enqueue performance measurement', () => {
-  it('measures deterministic queue admission without persisting document content', () => {
+  it('emits the canonical summarizable sample contract without persisting document content', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inkspan-autosave-measure-'));
     const modulePath = join(directory, 'autosave.mjs');
     const outputPath = join(directory, 'samples.json');
@@ -93,25 +93,39 @@ describe('autosave enqueue performance measurement', () => {
 
       const outputText = readFileSync(outputPath, 'utf8');
       const evidence = JSON.parse(outputText) as {
+        contractVersion?: unknown;
         benchmarkId?: unknown;
         unit?: unknown;
+        sourceCommitSha?: unknown;
+        artifactSha256?: unknown;
         documentProfile?: unknown;
-        operation?: unknown;
+        runtimeId?: unknown;
+        referenceHardwareId?: unknown;
         samples?: unknown[];
-        provenance?: Record<string, unknown>;
       };
       expect(evidence).toMatchObject({
+        contractVersion: 1,
         benchmarkId: 'autosave-enqueue-small',
         unit: 'ms',
+        sourceCommitSha,
+        artifactSha256: sha256(moduleSource),
         documentProfile: 'small',
-        operation: 'autosave-enqueue',
-        provenance: {
-          sourceCommitSha,
-          artifactSha256: sha256(moduleSource),
-          runtimeId,
-          referenceHardwareId,
-        },
+        runtimeId,
+        referenceHardwareId,
       });
+      expect(Object.keys(evidence).sort()).toEqual(
+        [
+          'artifactSha256',
+          'benchmarkId',
+          'contractVersion',
+          'documentProfile',
+          'referenceHardwareId',
+          'runtimeId',
+          'samples',
+          'sourceCommitSha',
+          'unit',
+        ].sort(),
+      );
       expect(evidence.samples).toHaveLength(2);
       expect(
         evidence.samples?.every(
