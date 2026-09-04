@@ -25,6 +25,8 @@ The protected standalone product provides:
 - dependency-locked Chromium/Firefox/WebKit rich-clipboard release assurance; and
 - a network-free Office renderer for deterministic DOCX, XLSX, and PPTX output.
 
+A named editor-chrome theme-token catalog and Storybook inventory for repeating toolbar/editor objects are Active PR / Proposed. Hosts override `--cwl-*` on `.cwl-editor`; Inkspan does not own Figma Variables, brand certification, or design-tool sync.
+
 Hosts own transport, authorization, tenant isolation, persistence, credentials, migration, retention, and model-use policy. They also own authentication, deployment, durable audit, print destination policy, and any durable PDF/print-service authority; persistence includes durable storage and commit authority.
 
 Inkspan therefore never opens a production collaboration connection, chooses a tenant, stores a provider secret, creates a durable database transaction, decides a retention schedule, authorizes an AI operation, or claims that a browser print destination constitutes a durable authorized export. A standalone adopter can provide those capabilities directly; a CWL host can provide them through shared platform services.
