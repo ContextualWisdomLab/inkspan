@@ -615,6 +615,16 @@ function runSuite(args, markdownArguments, revisionArguments, autosaveArguments)
       'autosave-coalescing',
       'summary',
     );
+    const autosaveCommitSamplesPath = resolve(
+      args.outputDirectory,
+      'autosave-commit',
+      'samples.json',
+    );
+    const autosaveCommitSummaryDirectory = resolve(
+      args.outputDirectory,
+      'autosave-commit',
+      'summary',
+    );
     runMeasurementAndSummary({
       measurementScript: 'measure-autosave.mjs',
       measurementArguments: autosaveArguments,
@@ -630,6 +640,14 @@ function runSuite(args, markdownArguments, revisionArguments, autosaveArguments)
       summaryDirectory: autosaveCoalescingSummaryDirectory,
       measurementFailure: 'Benchmark suite autosave coalescing measurement failed.',
       summaryFailure: 'Benchmark suite autosave coalescing summary failed.',
+    });
+    runMeasurementAndSummary({
+      measurementScript: 'measure-autosave.mjs',
+      measurementArguments: [...autosaveArguments, '--operation', 'commit'],
+      samplesPath: autosaveCommitSamplesPath,
+      summaryDirectory: autosaveCommitSummaryDirectory,
+      measurementFailure: 'Benchmark suite autosave commit measurement failed.',
+      summaryFailure: 'Benchmark suite autosave commit summary failed.',
     });
   }
 }
@@ -662,6 +680,9 @@ function suiteManifest(args, packageEvidence, includeAutosave) {
             'autosave-coalescing/summary/summary.json',
           autosaveCoalescingSummaryText:
             'autosave-coalescing/summary/summary.txt',
+          autosaveCommitSamples: 'autosave-commit/samples.json',
+          autosaveCommitSummaryJson: 'autosave-commit/summary/summary.json',
+          autosaveCommitSummaryText: 'autosave-commit/summary/summary.txt',
         }
       : {}),
     status: 'completed',

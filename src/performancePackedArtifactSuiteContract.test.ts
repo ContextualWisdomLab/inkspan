@@ -202,6 +202,9 @@ describe('packed artifact benchmark suite contract', () => {
         'autosave-coalescing/summary/summary.json',
       autosaveCoalescingSummaryText:
         'autosave-coalescing/summary/summary.txt',
+      autosaveCommitSamples: 'autosave-commit/samples.json',
+      autosaveCommitSummaryJson: 'autosave-commit/summary/summary.json',
+      autosaveCommitSummaryText: 'autosave-commit/summary/summary.txt',
       htmlSerializationSamples: 'html-serialization/samples.json',
       htmlSerializationSummaryJson:
         'html-serialization/summary/summary.json',
@@ -227,6 +230,15 @@ describe('packed artifact benchmark suite contract', () => {
     ) as { benchmarkId?: unknown; samples?: unknown[] };
     expect(coalescingSamples.benchmarkId).toBe('autosave-coalescing-small');
     expect(coalescingSamples.samples).toHaveLength(2);
+
+    const commitSamples = JSON.parse(
+      readFileSync(
+        join(directory, 'evidence', 'autosave-commit', 'samples.json'),
+        'utf8',
+      ),
+    ) as { benchmarkId?: unknown; samples?: unknown[] };
+    expect(commitSamples.benchmarkId).toBe('autosave-commit-small');
+    expect(commitSamples.samples).toHaveLength(2);
 
     const htmlSamples = JSON.parse(
       readFileSync(

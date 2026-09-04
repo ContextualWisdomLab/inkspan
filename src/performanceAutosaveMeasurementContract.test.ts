@@ -209,4 +209,44 @@ describe('autosave enqueue performance measurement', () => {
       rmSync(directory, { recursive: true, force: true });
     }
   });
+
+  it('measures saved-result classification after the host save completes', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inkspan-autosave-commit-'));
+    const modulePath = join(directory, 'autosave.mjs');
+    const outputPath = join(directory, 'samples.json');
+    const moduleSource = `export function createDocumentAutosaveQueue(options) {
+  return {
+    enqueue(evidence) {
+      return Promise.resolve(options.save(evidence)).then(() => ({ status: 'saved' }));
+    },
+    async close() {},
+  };
+}\n`;
+    try {
+      writeFileSync(modulePath, moduleSource, 'utf8');
+      const result = spawnSync(process.execPath, [
+        measurementScript,
+        '--module', modulePath,
+        '--profile', 'small',
+        '--samples', '2',
+        '--source-commit-sha', sourceCommitSha,
+        '--artifact-sha256', sha256(moduleSource),
+        '--runtime-id', runtimeId,
+        '--reference-hardware-id', referenceHardwareId,
+        '--operation', 'commit',
+        '--output', outputPath,
+      ], {
+        cwd: repositoryRoot,
+        encoding: 'utf8',
+      });
+
+      expect(result.status).toBe(0);
+      expect(JSON.parse(readFileSync(outputPath, 'utf8'))).toMatchObject({
+        benchmarkId: 'autosave-commit-small',
+        samples: [expect.any(Number), expect.any(Number)],
+      });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
 });

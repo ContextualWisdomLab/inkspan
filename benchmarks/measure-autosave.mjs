@@ -123,7 +123,11 @@ function resolveArguments(argv) {
     throw new Error('Autosave benchmark reference hardware ID is invalid.');
   }
   const operation = values['--operation'] ?? 'enqueue';
-  if (operation !== 'enqueue' && operation !== 'coalescing') {
+  if (
+    operation !== 'enqueue' &&
+    operation !== 'coalescing' &&
+    operation !== 'commit'
+  ) {
     throw new Error('Autosave benchmark operation is invalid.');
   }
 
@@ -463,6 +467,44 @@ async function measureOneCoalescing(createDocumentAutosaveQueue, evidence) {
   return elapsed;
 }
 
+async function measureOneCommit(createDocumentAutosaveQueue, evidence) {
+  let saveCalls = 0;
+  let releaseSave;
+  const queue = createDocumentAutosaveQueue({
+    save: () => {
+      saveCalls += 1;
+      return new Promise((resolve) => {
+        releaseSave = () => resolve(Object.freeze({ status: 'saved' }));
+      });
+    },
+  });
+  if (
+    typeof queue !== 'object' ||
+    queue === null ||
+    typeof queue.enqueue !== 'function'
+  ) {
+    throw new Error('Measured autosave module returned an invalid queue.');
+  }
+  const active = queue.enqueue(evidence);
+  await Promise.resolve();
+  if (typeof releaseSave !== 'function' || saveCalls !== 1) {
+    throw new Error('Measured autosave commit setup is invalid.');
+  }
+
+  const start = performance.now();
+  releaseSave();
+  const outcome = await active;
+  const elapsed = performance.now() - start;
+  if (outcome?.status !== 'saved') {
+    throw new Error('Measured autosave commit result is invalid.');
+  }
+  if (!Number.isFinite(elapsed) || elapsed < 0) {
+    throw new Error('Autosave measurement produced invalid runtime evidence.');
+  }
+  if (typeof queue.close === 'function') await queue.close();
+  return elapsed;
+}
+
 function writeMeasurementOutput(path, content) {
   assertNoSymlinkOutputAncestors(path);
   try {
@@ -501,8 +543,11 @@ async function main() {
   }
   const evidence = await createSyntheticRevisionEvidence(args);
 
-  const measure =
-    args.operation === 'enqueue' ? measureOneEnqueue : measureOneCoalescing;
+  const measure = {
+    enqueue: measureOneEnqueue,
+    coalescing: measureOneCoalescing,
+    commit: measureOneCommit,
+  }[args.operation];
   await measure(measuredModule.createDocumentAutosaveQueue, evidence);
   const samples = [];
   for (let index = 0; index < args.sampleCount; index += 1) {
