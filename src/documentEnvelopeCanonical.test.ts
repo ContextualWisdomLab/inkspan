@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DOCUMENT_ENVELOPE_SCHEMA_ID,
   DOCUMENT_ENVELOPE_SCHEMA_VERSION,
@@ -10,6 +10,10 @@ import {
   serializeDocumentEnvelope,
 } from './documentEnvelopeCanonical.js';
 import * as publicApi from './index.js';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('canonical document envelope serialization', () => {
   it('sorts object properties recursively while preserving array order', () => {
@@ -103,6 +107,80 @@ describe('canonical document envelope serialization', () => {
 
     expect(new TextDecoder().decode(bytes)).toBe(text);
     expect([...bytes.slice(0, 3)]).not.toEqual([0xef, 0xbb, 0xbf]);
+  });
+
+  it('rejects a configured canonical output ceiling before UTF-8 allocation', () => {
+    const envelope = createDocumentEnvelope({
+      type: 'doc',
+      attrs: { label: 'bounded-output' },
+    });
+    const encode = vi.spyOn(TextEncoder.prototype, 'encode');
+    let failure: unknown;
+
+    try {
+      encodeDocumentEnvelope(envelope, { maxUtf8Bytes: 16 });
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(encode).not.toHaveBeenCalled();
+    expect(failure).toBeInstanceOf(DocumentEnvelopeError);
+    expect(failure).toMatchObject({
+      message: 'Canonical document envelope exceeds the configured UTF-8 byte limit',
+    });
+  });
+
+  it('exact-checks UTF-8 bytes when code-unit length alone fits', () => {
+    const envelope = createDocumentEnvelope({
+      type: 'doc',
+      attrs: { label: 'é' },
+    });
+    const serialized = serializeDocumentEnvelope(envelope);
+    const encode = vi.spyOn(TextEncoder.prototype, 'encode');
+
+    expect(() =>
+      encodeDocumentEnvelope(envelope, { maxUtf8Bytes: serialized.length }),
+    ).toThrowError(
+      'Canonical document envelope exceeds the configured UTF-8 byte limit',
+    );
+    expect(encode).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts canonical bytes exactly at the configured output ceiling', () => {
+    const envelope = createDocumentEnvelope({
+      type: 'doc',
+      attrs: { label: 'é' },
+    });
+    const serialized = serializeDocumentEnvelope(envelope);
+    const exactBytes = new TextEncoder().encode(serialized);
+
+    expect(
+      encodeDocumentEnvelope(envelope, { maxUtf8Bytes: exactBytes.byteLength }),
+    ).toEqual(exactBytes);
+  });
+
+  it.each([
+    ['wrong type', '16'],
+    ['fractional', 1.5],
+    ['zero', 0],
+  ])('fails closed for %s canonical output limits', (_label, maxUtf8Bytes) => {
+    const envelope = createDocumentEnvelope({
+      type: 'doc',
+      attrs: { label: 'private-document' },
+    });
+    let failure: unknown;
+
+    try {
+      encodeDocumentEnvelope(envelope, { maxUtf8Bytes } as never);
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(failure).toBeInstanceOf(DocumentEnvelopeError);
+    expect(failure).toMatchObject({
+      message: 'Canonical document envelope UTF-8 byte limit must be a positive safe integer',
+    });
+    expect(String(failure)).not.toContain('private-document');
   });
 
   it.each([

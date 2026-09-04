@@ -73,6 +73,7 @@ export {
   encodeDocumentEnvelope,
   serializeDocumentEnvelope,
 } from './documentEnvelopeCanonical.js';
+export type { DocumentEnvelopeEncodingOptions } from './documentEnvelopeCanonical.js';
 export {
   restoreDocumentEnvelopeBytesIfMatch,
   restoreDocumentEnvelopeIfMatch,
@@ -138,26 +139,46 @@ export {
 } from './extensions/SafeClipboardExtension.js';
 export type { SafeClipboardOptions } from './extensions/SafeClipboardExtension.js';
 export {
+  DEFAULT_SAFE_LINK_MAX_HREF_BYTES,
+  MAXIMUM_SAFE_LINK_MAX_HREF_BYTES,
   SafeLink,
   SafeLinkHrefError,
   isSafeLinkHref,
   safeLinkPluginKey,
   validateSafeLinkHref,
 } from './extensions/SafeLink.js';
+export type {
+  SafeLinkHrefErrorCode,
+  SafeLinkValidationOptions,
+} from './extensions/SafeLink.js';
 export { buildExtensions } from './extensions/kit.js';
 export type { BuildExtensionsOptions } from './extensions/kit.js';
 
 // Markdown <-> HTML serialization (base64 image round-trip safe).
+export { htmlToMarkdown } from './markdown/serializer.js';
+export type { HtmlToMarkdownOptions } from './markdown/serializer.js';
 export {
-  markdownToHtml,
-  htmlToMarkdown,
-  normalizeMarkdown,
   markdownToEmailHtml,
-} from './markdown/serializer.js';
+  markdownToHtml,
+  normalizeMarkdown,
+} from './markdown/resourceBoundMarkdown.js';
 export type {
-  HtmlToMarkdownOptions,
   MarkdownToEmailHtmlOptions,
-} from './markdown/serializer.js';
+  MarkdownToHtmlOptions,
+  NormalizeMarkdownOptions,
+} from './markdown/resourceBoundMarkdown.js';
+export {
+  DEFAULT_HTML_TO_MARKDOWN_MAX_BYTES,
+  MAXIMUM_HTML_TO_MARKDOWN_MAX_BYTES,
+  HtmlToMarkdownResourceError,
+} from './markdown/htmlToMarkdownResourcePolicy.js';
+export type { HtmlToMarkdownResourceErrorCode } from './markdown/htmlToMarkdownResourcePolicy.js';
+export {
+  DEFAULT_MARKDOWN_TO_HTML_MAX_BYTES,
+  MAXIMUM_MARKDOWN_TO_HTML_MAX_BYTES,
+  MarkdownToHtmlResourceError,
+} from './markdown/markdownToHtmlResourcePolicy.js';
+export type { MarkdownToHtmlResourceErrorCode } from './markdown/markdownToHtmlResourcePolicy.js';
 
 // Deterministic Markdown/HTML -> plain-text projection for AI/indexing paths.
 export {
@@ -165,6 +186,28 @@ export {
   markdownToPlainText,
 } from './markdown/plainText.js';
 export type { PlainTextOptions } from './markdown/plainText.js';
+
+// Host-facing editor chrome theme tokens (CSS remains runtime authority).
+export {
+  EditorThemeTokenContrastError,
+  EditorThemeTokenError,
+  WCAG_NON_TEXT_CONTRAST_RATIO,
+  WCAG_TEXT_CONTRAST_RATIO,
+  contrastRatioFromHex,
+  getEditorThemeToken,
+  getEditorThemeTokenContrast,
+  listEditorThemeTokens,
+  toDesignTokenFormatGroup,
+} from './designTokens.js';
+export type {
+  DesignTokenFormatGroup,
+  DesignTokenFormatNode,
+  EditorThemeToken,
+  EditorThemeTokenContrast,
+  EditorThemeTokenName,
+  EditorThemeTokenRole,
+  EditorThemeTokenScheme,
+} from './designTokens.js';
 
 // Standalone, framework-agnostic base64 / data-URI converter.
 export * from './converter/index.js';

@@ -47,6 +47,24 @@ describe('package entry point', () => {
     expect(typeof api.markdownToEmailHtml).toBe('function');
     expect(typeof api.markdownToPlainText).toBe('function');
     expect(typeof api.htmlToPlainText).toBe('function');
+    expect(api.DEFAULT_HTML_TO_MARKDOWN_MAX_BYTES).toBe(16_777_216);
+    expect(api.MAXIMUM_HTML_TO_MARKDOWN_MAX_BYTES).toBe(67_108_864);
+    expect(typeof api.HtmlToMarkdownResourceError).toBe('function');
+    expect(api.DEFAULT_MARKDOWN_TO_HTML_MAX_BYTES).toBe(16_777_216);
+    expect(api.MAXIMUM_MARKDOWN_TO_HTML_MAX_BYTES).toBe(67_108_864);
+    expect(typeof api.MarkdownToHtmlResourceError).toBe('function');
+  });
+
+  it('re-exports the editor theme token catalog', () => {
+    expect(typeof api.listEditorThemeTokens).toBe('function');
+    expect(typeof api.getEditorThemeToken).toBe('function');
+    expect(typeof api.getEditorThemeTokenContrast).toBe('function');
+    expect(typeof api.contrastRatioFromHex).toBe('function');
+    expect(api.WCAG_TEXT_CONTRAST_RATIO).toBe(4.5);
+    expect(api.WCAG_NON_TEXT_CONTRAST_RATIO).toBe(3);
+    expect(typeof api.toDesignTokenFormatGroup).toBe('function');
+    expect(typeof api.EditorThemeTokenError).toBe('function');
+    expect(typeof api.EditorThemeTokenContrastError).toBe('function');
   });
 
   it('re-exports the standalone base64 converter', () => {
