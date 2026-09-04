@@ -61,7 +61,7 @@ describe('CwlReviewSuggestionDecision', () => {
       />,
     );
 
-    expect(screen.getByRole('region')).toHaveAttribute(
+    expect(screen.getByRole('group')).toHaveAttribute(
       'data-cwl-review-print',
       'exclude',
     );
@@ -77,7 +77,7 @@ describe('CwlReviewSuggestionDecision', () => {
         printMode="include"
       />,
     );
-    expect(screen.getByRole('region')).toHaveAttribute(
+    expect(screen.getByRole('group')).toHaveAttribute(
       'data-cwl-review-print',
       'include',
     );

@@ -382,12 +382,11 @@ export function CwlReviewSuggestionDecision({
   }
 
   return (
-    <section
+    <fieldset
       className="cwl-review cwl-review__suggestion"
-      aria-label={validatedLabel}
       data-cwl-review-print={validatedPrintMode}
     >
-      <span className="cwl-review__summary">{validatedLabel}</span>
+      <legend className="cwl-review__summary">{validatedLabel}</legend>
       <button
         className="cwl-review__action"
         type="button"
@@ -414,7 +413,7 @@ export function CwlReviewSuggestionDecision({
       >
         {validatedRejectLabel}
       </button>
-    </section>
+    </fieldset>
   );
 }
 

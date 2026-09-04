@@ -277,6 +277,10 @@
   display: flex;
   align-items: center;
   gap: var(--cwl-space-2);
+  min-inline-size: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
 }
 
 .cwl-review__threads ul {

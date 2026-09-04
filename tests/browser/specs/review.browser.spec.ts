@@ -69,7 +69,7 @@ test('prints review summaries only after explicit opt-in', async ({ page }) => {
   ).toBeHidden();
 
   await page.evaluate(() => window.mountInkspanSuggestionProbe('include'));
-  const suggestion = page.getByRole('region', {
+  const suggestion = page.getByRole('group', {
     name: 'Delete suggested wording',
   });
   await expect(suggestion).toBeVisible();
@@ -117,11 +117,11 @@ test('preserves selected and keyboard focus cues in forced colors', async ({
 
 test('exposes keyboard-operable suggestion decision intents', async ({ page }) => {
   await page.evaluate(() => window.mountInkspanSuggestionProbe());
-  const region = page.getByRole('region', { name: 'Delete suggested wording' });
-  const accept = region.getByRole('button', {
+  const group = page.getByRole('group', { name: 'Delete suggested wording' });
+  const accept = group.getByRole('button', {
     name: 'Accept — Delete suggested wording',
   });
-  const reject = region.getByRole('button', {
+  const reject = group.getByRole('button', {
     name: 'Reject — Delete suggested wording',
   });
 
