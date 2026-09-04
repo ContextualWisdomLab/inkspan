@@ -19,6 +19,11 @@ export interface ScopedCollaborationProvider extends CollaborationProviderLike {
   dispose(): void;
 }
 
+interface ScopedListenerWrapper {
+  callback: (...args: unknown[]) => void;
+  deactivate(): void;
+}
+
 const CURSOR_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const NUMERIC_IDENTIFIER_PATTERN = /^\d+$/;
 const FALLBACK_CURSOR_COLOR = '#475569';
@@ -102,7 +107,7 @@ export function createScopedCollaborationProvider(
   const source = readCompatibleCollaborationAwareness(provider);
   const listenerWrappers: Record<
     CollaborationAwarenessEvent,
-    Map<(...args: unknown[]) => void, (...args: unknown[]) => void>
+    Map<(...args: unknown[]) => void, ScopedListenerWrapper>
   > = {
     change: new Map(),
     update: new Map(),
@@ -125,10 +130,13 @@ export function createScopedCollaborationProvider(
       const wrapper = (...args: unknown[]) => {
         if (active) listener(...args);
       };
+      const deactivate = () => {
+        active = false;
+      };
       try {
         source.on(event, wrapper);
       } catch {
-        active = false;
+        deactivate();
         try {
           source.off(event, wrapper);
         } catch {
@@ -136,13 +144,17 @@ export function createScopedCollaborationProvider(
         }
         throw new Error('collaboration awareness listener registration failed');
       }
-      listenerWrappers[event].set(listener, wrapper);
+      listenerWrappers[event].set(listener, {
+        callback: wrapper,
+        deactivate,
+      });
     },
     off: (event, listener) => {
       const wrapper = listenerWrappers[event].get(listener);
       if (!wrapper) return;
+      wrapper.deactivate();
       try {
-        source.off(event, wrapper);
+        source.off(event, wrapper.callback);
       } catch {
         throw new Error('collaboration awareness listener removal failed');
       }
@@ -158,8 +170,9 @@ export function createScopedCollaborationProvider(
       disposed = true;
       for (const event of ['change', 'update'] as const) {
         for (const wrapper of listenerWrappers[event].values()) {
+          wrapper.deactivate();
           try {
-            source.off(event, wrapper);
+            source.off(event, wrapper.callback);
           } catch {
             // Host-owned listener teardown must not abort remaining cleanup or
             // leak a private provider failure through React effect disposal.
