@@ -53,6 +53,10 @@ Local SHA-256 revisions identify deterministic content equality only. Selection 
 
 Concurrent editors, delayed digests, stale selections, ambiguous transport failure, or stale durable validators can cause lost updates or false success. Inkspan must bind asynchronous evidence to one immutable local state, keep autosave single-flight with bounded pending work, fail closed on ambiguous durable outcomes, and require explicit recovery from blocked conflict/failure states. Hosts own atomic persistence transactions and durable conflict resolution.
 
+### Review suggestions and transaction admission
+
+An untrusted review suggestion can target a stale revision, an unsupported projection boundary, or a range that no longer denotes the intended content. The Active PR / Proposed editor adapter validates the bounded proposal, hashes the captured document, verifies that the live `EditorState` did not change during hashing, and maps only an exact version-1 text boundary before dispatching one insert/delete transaction. Any mismatch fails closed without mutation. Hosts still authorize the actor and own durable exact-once decisions, audit, persistence, and re-anchoring; undoing a local transaction does not erase or rewrite host review history.
+
 ### Collaboration and Yjs
 
 Inkspan may bind to Yjs-compatible document/awareness surfaces but does not own provider creation, room authorization, tenant identity, persistence, retention, or durable audit. Yjs updates and awareness metadata can contain sensitive tenant information. Host providers must authenticate rooms, authorize membership, bound awareness disclosure, and apply retention/encryption policy. Inkspan must not silently create a network provider or elevate an awareness update into authorization.

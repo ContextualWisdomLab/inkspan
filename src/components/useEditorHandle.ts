@@ -31,6 +31,7 @@ import {
 } from '../documentSchema.js';
 import { createTextPositionSelector } from '../textPositionSelectorEvidence.js';
 import type { CwlEditorHandle, EditorMode } from '../types.js';
+import { applyReviewSuggestionDecision } from '../review/editorMutation.js';
 import { createEditorDocumentSnapshot } from './editorDocumentSnapshot.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
 
@@ -128,6 +129,21 @@ export function useEditorHandle(
         );
         return Object.freeze({ revision, selector, textProjection });
       },
+      applyReviewSuggestionDecision: (
+        suggestion,
+        action,
+        limits,
+        digestProvider,
+      ) =>
+        editor
+          ? applyReviewSuggestionDecision(
+              editor,
+              suggestion,
+              action,
+              limits,
+              digestProvider,
+            )
+          : Promise.resolve(null),
       setValue: (next: string) => {
         if (!editor) return;
         editor.commands.setContent(

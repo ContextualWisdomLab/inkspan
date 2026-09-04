@@ -172,6 +172,9 @@ import {
 import type {
   CwlEditorDocumentRevisionEvidence,
 } from '${packageName}/revision-evidence';
+import type {
+  CwlReviewOperationResult,
+} from '${packageName}/review';
 
 const renderMarkdown: (markdown: string) => string = markdownToHtml;
 const safeHref: string = validateSafeLinkHref('/documents/current');
@@ -200,6 +203,8 @@ const expectedStrongEntityTag = '"sha256-' + '0'.repeat(64) + '"';
 const currentSnapshot: CwlEditorDocumentSnapshot = editorHandle.getSnapshot();
 const currentRevision: Promise<CwlEditorDocumentRevision | null> =
   editorHandle.getDocumentEnvelopeRevision(undefined, digestProvider);
+const reviewDecision: Promise<CwlReviewOperationResult | null> =
+  editorHandle.applyReviewSuggestionDecision({}, 'accept', undefined, digestProvider);
 const conditionalRestore: Promise<CwlEditorIfMatchRestoreResult | null> =
   editorHandle.restoreDocumentEnvelopeIfMatch(
     expectedStrongEntityTag,
@@ -272,6 +277,7 @@ void [
   documentSnapshot,
   currentSnapshot,
   currentRevision,
+  reviewDecision,
   conditionalRestore,
   conditionalEvidence,
   conditionalByteRestoreResult,

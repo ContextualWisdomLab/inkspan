@@ -181,6 +181,12 @@ editorRef.current?.focus();
 `insertValue` is mode-aware, inserts at the current selection, and triggers the
 normal `onChange` path without wiping the document.
 
+The Active PR / Proposed review surface also exposes
+`applyReviewSuggestionDecision()`. After host authorization, `accept` applies
+one exact-revision insert/delete transaction that participates in editor
+undo/redo; `reject` preserves the document. A concurrent edit or repeated
+accept fails stale instead of re-anchoring the proposal.
+
 ### Atomic revision-envelope capture
 
 Autosave, AI, template, and review operations should capture their document and

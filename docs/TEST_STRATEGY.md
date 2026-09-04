@@ -55,12 +55,13 @@ At minimum, maintain regressions for:
 - SSR client-controlled form values, escaping, hydration continuity, reset behavior, and absence of server editor construction;
 - autosave stale validators, conflict/failure recovery, ambiguous transport outcomes, duplicate/no-op lifecycle transitions, callback exceptions, queue bounds, flush/close behavior, and durable-validator coherence;
 - selection/revision races and document movement during asynchronous hashing;
+- review suggestion decisions covering insert, delete, reject, repeated accept, Unicode projection boundaries, out-of-range selectors, undo/redo, and document movement during asynchronous hashing;
 - Office formula prefixes, invalid XML characters, malicious strings, path/publication races, invalid worksheet names, invalid freeze panes, cyclic input, pathological nesting, excessive container size, and partial write failure;
 - package/release stale draft assets, unexpected or non-regular local entries, exact four-file inventory violations, incomplete remote uploads, GitHub-vs-local digest mismatch, stale exact-head evidence, mutable provenance inputs, and isolated packed-consumer behavior.
 
 ## Concurrency and failure testing
 
-Use deterministic barriers/fakes for local concurrency and real process/file boundaries where required. Prove that an observer exception cannot alter queue ordering; a stale digest cannot bind to a later editor state; an ambiguous durable save does not advance a validator; close/recovery does not leak waiters; and file publication either completes under the documented contract or fails without silently replacing unrelated content.
+Use deterministic barriers/fakes for local concurrency and real process/file boundaries where required. Prove that an observer exception cannot alter queue ordering; a stale digest cannot bind to a later editor state or review transaction; an ambiguous durable save does not advance a validator; close/recovery does not leak waiters; and file publication either completes under the documented contract or fails without silently replacing unrelated content.
 
 Host persistence transactions, tenant isolation, distributed collaboration authorization, durable audit storage, and production network retry policy are host-owned and must be tested by the embedding product. Inkspan tests verify only the explicit adapter contract at those boundaries.
 
