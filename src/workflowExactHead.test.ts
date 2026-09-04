@@ -68,6 +68,20 @@ const browserJob = workflowJob(workflow, 'browser-release-evidence', 'office');
 const officeJob = workflowJob(workflow, 'office');
 
 describe('exact-head CI workflow contract', () => {
+  it('cancels only superseded runs for the same repository and PR while keeping full main compatibility coverage', () => {
+    expect(workflow).toContain(
+      "group: ${{ github.workflow }}-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}",
+    );
+    expect(workflow).toContain('cancel-in-progress: true');
+    expect(officeJob).toContain(
+      "python-version: ${{ github.event_name == 'pull_request' && fromJSON('[\"3.14\"]') || fromJSON('[\"3.11\", \"3.12\", \"3.13\", \"3.14\"]') }}",
+    );
+    expect(releaseWorkflow).toContain(
+      'group: ${{ github.workflow }}-${{ github.repository }}-${{ github.ref_name }}',
+    );
+    expect(releaseWorkflow).toContain('cancel-in-progress: false');
+  });
+
   it('uses a fixed runner and checks out the immutable current PR head in every job', () => {
     expect(workflow).not.toContain('ubuntu-latest');
     for (const job of [buildJob, browserJob, officeJob]) {
