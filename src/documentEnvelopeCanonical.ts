@@ -20,6 +20,7 @@ const INVALID_UNICODE_MESSAGE =
   'Document envelope must contain valid Unicode scalar strings';
 const NEGATIVE_ZERO_MESSAGE =
   'Document envelope must not contain negative zero';
+const UTF8_ENCODER = new TextEncoder();
 
 /**
  * Serialize a valid Inkspan envelope to deterministic RFC 8785 JSON.
@@ -58,7 +59,7 @@ export function serializeValidatedDocumentEnvelope(
 export function encodeValidatedDocumentEnvelope(
   envelope: CwlEditorDocumentEnvelope,
 ): Uint8Array<ArrayBuffer> {
-  return new TextEncoder().encode(
+  return UTF8_ENCODER.encode(
     serializeValidatedDocumentEnvelope(envelope),
   );
 }
