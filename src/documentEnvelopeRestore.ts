@@ -1,4 +1,4 @@
-import type { Editor } from '@tiptap/react';
+import type { Editor } from '@tiptap/core';
 import {
   parseDocumentEnvelope,
   parseDocumentEnvelopeBytes,
@@ -113,7 +113,7 @@ export function applyPreparedDocumentEnvelope(
   editor: Editor,
   prepared: PreparedDocumentEnvelope,
 ): CwlEditorDocumentEnvelope {
-  editor.commands.setContent(prepared.documentNode, false);
+  editor.commands.setContent(prepared.documentNode, { emitUpdate: false });
   if (!editor.state.doc.eq(prepared.documentNode)) {
     throw new DocumentEnvelopeRestoreError();
   }
