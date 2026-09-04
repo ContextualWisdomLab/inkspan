@@ -123,7 +123,7 @@ function packedSuiteArguments(options: {
   writeFileSync(htmlInputPath, '<h1>Packed buyer benchmark</h1>\n', 'utf8');
   writeFileSync(
     revisionInputPath,
-    '{"contractVersion":1,"mode":"markdown","document":"# Packed buyer benchmark"}\n',
+    '{"schemaId":"https://inkspan.io/schemas/document-envelope/v1","schemaVersion":1,"documentJson":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Packed buyer benchmark"}]}]}}\n',
     'utf8',
   );
   return [

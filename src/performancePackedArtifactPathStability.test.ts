@@ -166,7 +166,7 @@ describe('packed artifact benchmark path stability', () => {
     writeFileSync(markdownInputPath, '# Stable packed artifact\n', 'utf8');
     writeFileSync(
       revisionInputPath,
-      '{"contractVersion":1,"mode":"markdown","document":"# Stable packed artifact"}\n',
+      '{"schemaId":"https://inkspan.io/schemas/document-envelope/v1","schemaVersion":1,"documentJson":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Stable packed artifact"}]}]}}\n',
       'utf8',
     );
 

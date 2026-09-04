@@ -117,6 +117,8 @@ function measurementArguments({
 
 function autosaveMeasurementArguments({ modulePath, artifactSha256, shared }) {
   return Object.freeze([
+    '--input',
+    shared.revisionInputPath,
     '--module',
     modulePath,
     '--profile',
