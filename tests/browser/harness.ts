@@ -1,4 +1,6 @@
 import { Editor } from '@tiptap/core';
+import { createElement } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
 import {
   ClipboardSanitizationError,
   buildExtensions,
@@ -6,6 +8,7 @@ import {
   type ClipboardConfig,
   type ClipboardSanitizationErrorCode,
 } from 'inkspan-browser-under-test';
+import { CwlReviewThreadList } from 'inkspan-review-react-under-test';
 
 interface BrowserClipboardProbeRequest {
   readonly sourceHtml: string;
@@ -23,6 +26,11 @@ interface BrowserHostileDocumentProbeResult {
   readonly message: string;
 }
 
+interface BrowserReviewIntent {
+  readonly action: 'select' | 'reply' | 'resolve';
+  readonly threadKey: string;
+}
+
 declare global {
   interface Window {
     runInkspanClipboardProbe(
@@ -31,8 +39,75 @@ declare global {
     runInkspanHostileDocumentProbe(
       sourceHtml: string,
     ): BrowserHostileDocumentProbeResult;
+    mountInkspanReviewProbe(): void;
+    readInkspanReviewIntents(): readonly BrowserReviewIntent[];
   }
 }
+
+const reviewIntents: BrowserReviewIntent[] = [];
+let reviewRoot: Root | null = null;
+
+const reviewRevision = Object.freeze({
+  algorithm: 'SHA-256' as const,
+  digestHex: 'a'.repeat(64),
+  strongEntityTag: `"sha256-${'a'.repeat(64)}"`,
+});
+
+const reviewPresentation = (
+  threadKey: string,
+  selected: boolean,
+  state: 'unresolved' | 'resolved',
+  canReply: boolean,
+  canResolve: boolean,
+) => ({
+  contractVersion: 1,
+  threadKey,
+  target: {
+    contractVersion: 1,
+    revision: reviewRevision,
+    selector: { type: 'TextPositionSelector', start: 0, end: 1 },
+    projection: { id: 'inkspan-prosemirror-text', version: 1 },
+  },
+  state,
+  commentCount: state === 'resolved' ? 3 : 1,
+  selected,
+  canReply,
+  canResolve,
+});
+
+window.mountInkspanReviewProbe = (): void => {
+  const container = document.querySelector<HTMLElement>('#harness');
+  if (!container) throw new Error('Review harness container is missing.');
+  reviewIntents.length = 0;
+  reviewRoot?.unmount();
+  reviewRoot = createRoot(container);
+  reviewRoot.render(
+    createElement(CwlReviewThreadList, {
+      presentations: [
+        reviewPresentation('alpha', false, 'unresolved', true, true),
+        reviewPresentation('beta', true, 'unresolved', false, true),
+        reviewPresentation('gamma', false, 'resolved', true, false),
+      ],
+      labels: {
+        region: 'Document review',
+        thread: (thread) => `Thread ${thread.threadKey}`,
+        status: (thread) =>
+          thread.state === 'resolved' ? 'Resolved' : 'Unresolved',
+        comments: (thread) => `${thread.commentCount} comments`,
+        reply: 'Reply',
+        resolve: 'Resolve',
+      },
+      onSelectThread: (thread) =>
+        reviewIntents.push({ action: 'select', threadKey: thread.threadKey }),
+      onReplyThread: (thread) =>
+        reviewIntents.push({ action: 'reply', threadKey: thread.threadKey }),
+      onResolveThread: (thread) =>
+        reviewIntents.push({ action: 'resolve', threadKey: thread.threadKey }),
+    }),
+  );
+};
+
+window.readInkspanReviewIntents = () => structuredClone(reviewIntents);
 
 window.runInkspanClipboardProbe = (
   request: BrowserClipboardProbeRequest,
