@@ -69,7 +69,11 @@ function createPackedBenchmarkFixture(directory: string): {
   writeFileSync(
     join(distDirectory, 'cwl-revision-evidence.js'),
     `const revision = { digestHex: '${'c'.repeat(64)}' };
-export async function createDocumentEnvelopeRevisionEvidenceBytes() { return { revision }; }
+export async function createDocumentEnvelopeRevisionEvidenceBytes(source, limits, provider) {
+  if (!provider) return { revision };
+  const digestHex = Buffer.from(await provider.digest('SHA-256', source)).toString('hex');
+  return { revision: { digestHex } };
+}
 export async function createDocumentEnvelopeTransitionEvidenceBytes() { return { previousRevision: revision, resultingRevision: revision, changed: false }; }
 `,
     'utf8',
@@ -205,6 +209,11 @@ describe('packed artifact benchmark suite contract', () => {
       autosaveCommitSamples: 'autosave-commit/samples.json',
       autosaveCommitSummaryJson: 'autosave-commit/summary/summary.json',
       autosaveCommitSummaryText: 'autosave-commit/summary/summary.txt',
+      canonicalizationSamples: 'envelope-canonicalization/samples.json',
+      canonicalizationSummaryJson:
+        'envelope-canonicalization/summary/summary.json',
+      canonicalizationSummaryText:
+        'envelope-canonicalization/summary/summary.txt',
       htmlSerializationSamples: 'html-serialization/samples.json',
       htmlSerializationSummaryJson:
         'html-serialization/summary/summary.json',
@@ -239,6 +248,17 @@ describe('packed artifact benchmark suite contract', () => {
     ) as { benchmarkId?: unknown; samples?: unknown[] };
     expect(commitSamples.benchmarkId).toBe('autosave-commit-small');
     expect(commitSamples.samples).toHaveLength(2);
+
+    const canonicalizationSamples = JSON.parse(
+      readFileSync(
+        join(directory, 'evidence', 'envelope-canonicalization', 'samples.json'),
+        'utf8',
+      ),
+    ) as { benchmarkId?: unknown; samples?: unknown[] };
+    expect(canonicalizationSamples.benchmarkId).toBe(
+      'envelope-canonicalization-small',
+    );
+    expect(canonicalizationSamples.samples).toHaveLength(2);
 
     const htmlSamples = JSON.parse(
       readFileSync(

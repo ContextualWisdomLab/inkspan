@@ -49,7 +49,7 @@ function argumentsFor(
   input: string,
   modulePath: string,
   output: string,
-  operation?: 'transition',
+  operation?: 'transition' | 'canonicalization',
 ): string[] {
   return [
     measurementScript,
@@ -177,6 +177,38 @@ export async function createDocumentEnvelopeTransitionEvidenceBytes() { return {
 
       expect(JSON.parse(readFileSync(samplesPath, 'utf8'))).toMatchObject({
         benchmarkId: 'transition-evidence-large',
+        artifactSha256: fileSha256(modulePath),
+        samples: expect.any(Array),
+      });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('isolates strict envelope canonicalization from digest-provider cost', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-canonicalization-measurement-'));
+    const input = join(root, 'large.json');
+    const modulePath = join(root, 'packed-revision-evidence.mjs');
+    const samplesPath = join(root, 'samples.json');
+    try {
+      writeSyntheticEnvelope(input);
+      writeFileSync(
+        modulePath,
+        `export async function createDocumentEnvelopeRevisionEvidenceBytes(source, limits, provider) {
+  const digest = await provider.digest('SHA-256', source);
+  return { revision: { digestHex: Buffer.from(digest).toString('hex') } };
+}\n`,
+        'utf8',
+      );
+
+      execFileSync(
+        process.execPath,
+        argumentsFor(input, modulePath, samplesPath, 'canonicalization'),
+        { cwd: repositoryRoot, stdio: ['ignore', 'pipe', 'pipe'] },
+      );
+
+      expect(JSON.parse(readFileSync(samplesPath, 'utf8'))).toMatchObject({
+        benchmarkId: 'envelope-canonicalization-large',
         artifactSha256: fileSha256(modulePath),
         samples: expect.any(Array),
       });

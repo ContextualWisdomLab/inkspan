@@ -568,6 +568,16 @@ function runSuite(args, markdownArguments, revisionArguments, autosaveArguments)
     'transition',
     'summary',
   );
+  const canonicalizationSamplesPath = resolve(
+    args.outputDirectory,
+    'envelope-canonicalization',
+    'samples.json',
+  );
+  const canonicalizationSummaryDirectory = resolve(
+    args.outputDirectory,
+    'envelope-canonicalization',
+    'summary',
+  );
 
   runMeasurementAndSummary({
     measurementScript: 'measure-markdown.mjs',
@@ -593,8 +603,19 @@ function runSuite(args, markdownArguments, revisionArguments, autosaveArguments)
     measurementFailure: 'Benchmark suite transition measurement failed.',
     summaryFailure: 'Benchmark suite transition summary failed.',
   });
-
   if (autosaveArguments !== null) {
+    runMeasurementAndSummary({
+      measurementScript: 'measure-revision-evidence.mjs',
+      measurementArguments: [
+        ...revisionArguments,
+        '--operation',
+        'canonicalization',
+      ],
+      samplesPath: canonicalizationSamplesPath,
+      summaryDirectory: canonicalizationSummaryDirectory,
+      measurementFailure: 'Benchmark suite envelope canonicalization measurement failed.',
+      summaryFailure: 'Benchmark suite envelope canonicalization summary failed.',
+    });
     const autosaveSamplesPath = resolve(
       args.outputDirectory,
       'autosave',
@@ -672,6 +693,11 @@ function suiteManifest(args, packageEvidence, includeAutosave) {
     transitionSummaryText: 'transition/summary/summary.txt',
     ...(includeAutosave
       ? {
+          canonicalizationSamples: 'envelope-canonicalization/samples.json',
+          canonicalizationSummaryJson:
+            'envelope-canonicalization/summary/summary.json',
+          canonicalizationSummaryText:
+            'envelope-canonicalization/summary/summary.txt',
           autosaveSamples: 'autosave/samples.json',
           autosaveSummaryJson: 'autosave/summary/summary.json',
           autosaveSummaryText: 'autosave/summary/summary.txt',

@@ -96,7 +96,11 @@ function resolveArguments(argv) {
     throw new Error('Revision benchmark reference hardware ID is invalid.');
   }
   const operation = values['--operation'] ?? 'revision';
-  if (operation !== 'revision' && operation !== 'transition') {
+  if (
+    operation !== 'revision' &&
+    operation !== 'transition' &&
+    operation !== 'canonicalization'
+  ) {
     throw new Error('Revision benchmark operation is invalid.');
   }
 
@@ -336,12 +340,32 @@ function writeMeasurementOutput(path, content) {
 }
 
 async function runMeasuredEvidence(createEvidence, source, operation) {
+  let digestCalls = 0;
+  const canonicalizationDigestProvider = {
+    digest(algorithm, canonicalSource) {
+      digestCalls += 1;
+      if (
+        algorithm !== 'SHA-256' ||
+        !ArrayBuffer.isView(canonicalSource) ||
+        canonicalSource.byteLength === 0
+      ) {
+        throw new Error('invalid canonical source');
+      }
+      return Promise.resolve(new Uint8Array(32).buffer);
+    },
+  };
   let evidence;
   try {
     evidence =
-      operation === 'revision'
-        ? await createEvidence(source)
-        : await createEvidence(source, source);
+      operation === 'transition'
+        ? await createEvidence(source, source)
+        : await createEvidence(
+            source,
+            undefined,
+            operation === 'canonicalization'
+              ? canonicalizationDigestProvider
+              : undefined,
+          );
   } catch {
     throw new Error('Measured revision-evidence execution failed.');
   }
@@ -352,11 +376,12 @@ async function runMeasuredEvidence(createEvidence, source, operation) {
       throw new Error('invalid revision evidence');
     }
     revisions =
-      operation === 'revision'
-        ? [evidence.revision]
-        : [evidence.previousRevision, evidence.resultingRevision];
+      operation === 'transition'
+        ? [evidence.previousRevision, evidence.resultingRevision]
+        : [evidence.revision];
     if (
       (operation === 'transition' && typeof evidence.changed !== 'boolean') ||
+      (operation === 'canonicalization' && digestCalls !== 1) ||
       revisions.some(
         (revision) => typeof revision !== 'object' || revision === null,
       ) ||
@@ -398,15 +423,15 @@ async function main() {
 
   const measuredModule = await loadMeasuredModule(modulePath);
   const createEvidence =
-    args.operation === 'revision'
-      ? measuredModule.createDocumentEnvelopeRevisionEvidenceBytes
-      : measuredModule.createDocumentEnvelopeTransitionEvidenceBytes;
+    args.operation === 'transition'
+      ? measuredModule.createDocumentEnvelopeTransitionEvidenceBytes
+      : measuredModule.createDocumentEnvelopeRevisionEvidenceBytes;
   if (typeof createEvidence !== 'function') {
     throw new Error(
       `Measured revision module must export ${
-        args.operation === 'revision'
-          ? 'createDocumentEnvelopeRevisionEvidenceBytes'
-          : 'createDocumentEnvelopeTransitionEvidenceBytes'
+        args.operation === 'transition'
+          ? 'createDocumentEnvelopeTransitionEvidenceBytes'
+          : 'createDocumentEnvelopeRevisionEvidenceBytes'
       }().`,
     );
   }
@@ -442,7 +467,10 @@ async function main() {
     `${JSON.stringify(
       {
         contractVersion: 1,
-        benchmarkId: `${args.operation}-evidence-${args.profile}`,
+        benchmarkId:
+          args.operation === 'canonicalization'
+            ? `envelope-canonicalization-${args.profile}`
+            : `${args.operation}-evidence-${args.profile}`,
         unit: 'ms',
         sourceCommitSha: args.sourceCommitSha,
         artifactSha256: args.artifactSha256,

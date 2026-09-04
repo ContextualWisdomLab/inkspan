@@ -73,7 +73,11 @@ function createPackedBenchmarkFixture(
   writeFileSync(
     join(distDirectory, 'cwl-revision-evidence.js'),
     `const revision = { digestHex: '${'e'.repeat(64)}' };
-export async function createDocumentEnvelopeRevisionEvidenceBytes() { return { revision }; }
+export async function createDocumentEnvelopeRevisionEvidenceBytes(source, limits, provider) {
+  if (!provider) return { revision };
+  const digestHex = Buffer.from(await provider.digest('SHA-256', source)).toString('hex');
+  return { revision: { digestHex } };
+}
 export async function createDocumentEnvelopeTransitionEvidenceBytes() { return { previousRevision: revision, resultingRevision: revision, changed: false }; }
 `,
     'utf8',
