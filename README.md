@@ -50,6 +50,7 @@ Office Open XML renderer for DOCX, XLSX, and PPTX.
   or runtime font request.
 - **Standalone conversion utilities** — browser/Node data-URI and base64 helpers
   are available without React or TipTap.
+- **Framework-neutral writing diagnostics** — `@contextualwisdomlab/cwl-editor/writing-diagnostics` validates host-supplied revision-bound diagnostics and resolves exact text-position ranges without importing React, Yjs, a model SDK, credentials, or network authority. Semantic judgment and mutation remain host-owned.
 - **AI-authored Office files** — a network-free Python package renders strict
   JSON to DOCX, XLSX, or PPTX with formula-injection protection, losslessness
   checks, atomic publication, and a bundled JSON Schema.
@@ -70,6 +71,7 @@ runtime.
 | Envelope identity | `@contextualwisdomlab/cwl-editor/envelope-identity` | Framework-independent bounded schema identity for host-owned migration routing |
 | Revision evidence | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent canonical envelope, strong revision, and transition evidence |
 | Text-position selector | `@contextualwisdomlab/cwl-editor/text-position-selector` | React-free deterministic W3C `TextPositionSelector` projection core |
+| Writing diagnostics | `@contextualwisdomlab/cwl-editor/writing-diagnostics` | React-free revision-bound diagnostic validation and exact text-position projection/resolution core |
 | Autosave | `@contextualwisdomlab/cwl-editor/autosave` | Provider-neutral bounded single-flight persistence coordination |
 | Headless Markdown | `@contextualwisdomlab/cwl-editor/markdown` | React-free deterministic Markdown/HTML/email/plain-text conversion |
 | Styles | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
