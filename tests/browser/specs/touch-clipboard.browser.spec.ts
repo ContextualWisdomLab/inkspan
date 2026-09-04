@@ -123,6 +123,7 @@ test('keeps enabled toolbar targets touch-operable without hover on a narrow vie
   );
 
   await expect(bold).toHaveAttribute('aria-pressed', 'true');
+  await expect(editable).toBeFocused();
   await expectNoHorizontalDocumentOverflow(page);
 
   await page.setViewportSize({ width: 320, height: 568 });
