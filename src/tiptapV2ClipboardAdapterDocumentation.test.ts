@@ -6,6 +6,7 @@ const adapterPath = 'src/extensions/SafeClipboardExtension.ts';
 const kitPath = 'src/extensions/kit.ts';
 const lockPath = 'pnpm-lock.yaml';
 const workspacePath = 'pnpm-workspace.yaml';
+const packagePath = 'package.json';
 const reactPatchPath = 'patches/@tiptap__react@3.30.4.patch';
 const changelogPath = 'CHANGELOG.md';
 
@@ -21,6 +22,9 @@ describe('TipTap SafeClipboard adapter doctoring', () => {
     const kit = readRepositoryText(kitPath);
     const lock = readRepositoryText(lockPath);
     const workspace = readRepositoryText(workspacePath);
+    const manifest = JSON.parse(readRepositoryText(packagePath)) as {
+      dependencies?: Record<string, string>;
+    };
     const reactPatch = readRepositoryText(reactPatchPath);
     const changelog = readRepositoryText(changelogPath);
 
@@ -30,6 +34,8 @@ describe('TipTap SafeClipboard adapter doctoring', () => {
     expect(doctoring).toContain('TipTap 3.30.4 package family');
     expect(doctoring).toContain('packed strict-TypeScript consumer check');
     expect(workspace).toContain("'@tiptap/react@3.30.4':");
+    expect(manifest.dependencies?.['@tiptap/y-tiptap']).toBe('3.0.9');
+    expect(manifest.dependencies).not.toHaveProperty('y-prosemirror');
     expect(reactPatch).toContain('EditorStateSnapshot<Editor>');
     expect(doctoring).toContain('addProseMirrorPlugins');
     expect(doctoring).toContain('transformPastedHTML');

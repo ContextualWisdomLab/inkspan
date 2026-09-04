@@ -48,7 +48,7 @@ export function SharedDocument({
 
 The collaboration entrypoint is built separately from the ordinary editor.
 Applications importing only `@contextualwisdomlab/cwl-editor` do not include
-Yjs, `y-prosemirror`, or the TipTap collaboration extensions in their browser
+Yjs, `@tiptap/y-tiptap`, or the TipTap collaboration extensions in their browser
 bundle.
 
 ## Ownership boundary
