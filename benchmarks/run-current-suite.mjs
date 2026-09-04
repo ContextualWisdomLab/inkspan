@@ -31,6 +31,11 @@ const MAX_CHILD_OUTPUT_BYTES = 4 * 1024 * 1024;
 const READ_CHUNK_BYTES = 64 * 1024;
 const READ_ONLY_NOFOLLOW = constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0);
 const PACKED_MARKDOWN_MODULE_ENTRY = 'package/dist/cwl-markdown.js';
+const CORPUS_LOCK_PATH = resolve(benchmarkDirectory, 'corpus.lock.json');
+const MAX_CORPUS_INPUT_BYTES = 16 * 1024 * 1024;
+const MAX_CORPUS_LOCK_BYTES = 1024 * 1024;
+const CORPUS_MISMATCH_ERROR =
+  'Benchmark suite inputs must match the committed corpus profile.';
 const legacyFlags = Object.freeze([
   '--input',
   '--module',
@@ -158,48 +163,40 @@ function claimedLegacySourceCommitSha(argv) {
   return undefined;
 }
 
-function readPackedTarballSnapshot(path) {
+function readRegularFileSnapshot(path, maximumBytes, invalidMessage, oversizedMessage) {
   let pathMetadata;
   try {
     pathMetadata = lstatSync(path, { throwIfNoEntry: false });
   } catch {
-    throw new Error(
-      'Benchmark suite package tarball must be a regular non-symlink file.',
-    );
+    throw new Error(invalidMessage);
   }
   if (
     pathMetadata === undefined ||
     pathMetadata.isSymbolicLink() ||
     !pathMetadata.isFile()
   ) {
-    throw new Error(
-      'Benchmark suite package tarball must be a regular non-symlink file.',
-    );
+    throw new Error(invalidMessage);
   }
 
   let descriptor;
   try {
     descriptor = openSync(path, READ_ONLY_NOFOLLOW);
   } catch {
-    throw new Error(
-      'Benchmark suite package tarball must be a regular non-symlink file.',
-    );
+    throw new Error(invalidMessage);
   }
   try {
     const metadata = fstatSync(descriptor);
     if (!metadata.isFile()) {
-      throw new Error(
-        'Benchmark suite package tarball must be a regular non-symlink file.',
-      );
+      throw new Error(invalidMessage);
     }
-    if (metadata.size > MAX_PACKAGE_BYTES) {
-      throw new Error('Benchmark suite package tarball exceeds the supported size.');
+    if (metadata.size > maximumBytes) {
+      throw new Error(oversizedMessage);
     }
 
     const chunks = [];
     let totalBytes = 0;
-    while (totalBytes <= MAX_PACKAGE_BYTES) {
-      const remainingBudget = MAX_PACKAGE_BYTES + 1 - totalBytes;
+    while (totalBytes <= maximumBytes) {
+      const remainingBudget = maximumBytes + 1 - totalBytes;
       const chunk = Buffer.allocUnsafe(
         Math.min(READ_CHUNK_BYTES, remainingBudget),
       );
@@ -212,14 +209,73 @@ function readPackedTarballSnapshot(path) {
       );
       if (bytesRead === 0) break;
       totalBytes += bytesRead;
-      if (totalBytes > MAX_PACKAGE_BYTES) {
-        throw new Error('Benchmark suite package tarball exceeds the supported size.');
+      if (totalBytes > maximumBytes) {
+        throw new Error(oversizedMessage);
       }
       chunks.push(chunk.subarray(0, bytesRead));
     }
     return Buffer.concat(chunks, totalBytes);
   } finally {
     closeSync(descriptor);
+  }
+}
+
+function readPackedTarballSnapshot(path) {
+  return readRegularFileSnapshot(
+    path,
+    MAX_PACKAGE_BYTES,
+    'Benchmark suite package tarball must be a regular non-symlink file.',
+    'Benchmark suite package tarball exceeds the supported size.',
+  );
+}
+
+function assertPackedCorpusInputs(argv) {
+  const flags = matchesArguments(argv, packedHtmlFlags)
+    ? packedHtmlFlags
+    : matchesArguments(argv, packedFlags)
+      ? packedFlags
+      : null;
+  if (flags === null) return;
+
+  const values = valuesForArguments(argv, flags);
+  let lock;
+  try {
+    lock = JSON.parse(
+      readRegularFileSnapshot(
+        CORPUS_LOCK_PATH,
+        MAX_CORPUS_LOCK_BYTES,
+        CORPUS_MISMATCH_ERROR,
+        CORPUS_MISMATCH_ERROR,
+      ).toString('utf8'),
+    );
+  } catch {
+    throw new Error(CORPUS_MISMATCH_ERROR);
+  }
+  const profile = lock?.profiles?.[values['--profile']];
+  const inputs = [
+    ['--input', 'bytes', 'sha256'],
+    ['--revision-input', 'envelopeBytes', 'envelopeSha256'],
+    ...(flags === packedHtmlFlags
+      ? [['--html-input', 'htmlBytes', 'htmlSha256']]
+      : []),
+  ];
+  try {
+    for (const [flag, byteKey, digestKey] of inputs) {
+      const bytes = readRegularFileSnapshot(
+        values[flag],
+        MAX_CORPUS_INPUT_BYTES,
+        CORPUS_MISMATCH_ERROR,
+        CORPUS_MISMATCH_ERROR,
+      );
+      if (
+        bytes.byteLength !== profile?.[byteKey] ||
+        createHash('sha256').update(bytes).digest('hex') !== profile?.[digestKey]
+      ) {
+        throw new Error(CORPUS_MISMATCH_ERROR);
+      }
+    }
+  } catch {
+    throw new Error(CORPUS_MISMATCH_ERROR);
   }
 }
 
@@ -546,6 +602,7 @@ function runExistingSuite(argv) {
 function main(argv) {
   assertCleanSourceCheckout(repositoryRoot);
   assertFreshOutputDirectory(argv);
+  assertPackedCorpusInputs(argv);
   const expectedLegacySourceCommitSha = claimedLegacySourceCommitSha(argv);
   if (expectedLegacySourceCommitSha !== undefined) {
     assertCleanSourceCheckout(repositoryRoot, expectedLegacySourceCommitSha);

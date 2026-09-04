@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -127,16 +128,19 @@ function packedSuiteArguments(options: {
   sourceCommitSha?: string;
   tarballPath: string;
 }): string[] {
-  const markdownInputPath = join(options.directory, 'input.md');
-  const htmlInputPath = join(options.directory, 'input.html');
-  const revisionInputPath = join(options.directory, 'document-envelope.json');
-  writeFileSync(markdownInputPath, '# Packed buyer benchmark\n', 'utf8');
-  writeFileSync(htmlInputPath, '<h1>Packed buyer benchmark</h1>\n', 'utf8');
-  writeFileSync(
-    revisionInputPath,
-    '{"schemaId":"https://inkspan.io/schemas/document-envelope/v1","schemaVersion":1,"documentJson":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Packed buyer benchmark"}]}]}}\n',
-    'utf8',
+  const corpusDirectory = join(options.directory, 'corpus');
+  execFileSync(
+    process.execPath,
+    [
+      resolve(repositoryRoot, 'benchmarks/generate-corpus.mjs'),
+      '--output',
+      corpusDirectory,
+    ],
+    { cwd: repositoryRoot, stdio: ['ignore', 'pipe', 'pipe'] },
   );
+  const markdownInputPath = join(corpusDirectory, 'small.md');
+  const htmlInputPath = join(corpusDirectory, 'small.html');
+  const revisionInputPath = join(corpusDirectory, 'small.envelope.json');
   return [
     suitePath,
     '--input',
@@ -296,6 +300,33 @@ describe('packed artifact benchmark suite contract', () => {
     expect(result.stderr).toBe(
       'Benchmark suite runtime ID must match the active Node runtime.\n',
     );
+  });
+
+  it('rejects a profile label whose packed-suite inputs do not match the committed corpus', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inkspan-packed-corpus-'));
+    temporaryDirectories.push(directory);
+    const packed = createPackedBenchmarkFixture(directory);
+    const args = packedSuiteArguments({
+      directory,
+      packageSha256: packed.packageSha256,
+      runtimeId: activeRuntimeId,
+      tarballPath: packed.tarballPath,
+    });
+    writeFileSync(join(directory, 'corpus', 'small.html'), '<p>tiny</p>\n');
+
+    const result = spawnSync(process.execPath, args, {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 15_000,
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe(
+      'Benchmark suite inputs must match the committed corpus profile.\n',
+    );
+    expect(existsSync(join(directory, 'evidence'))).toBe(false);
   });
 
   it('rejects source provenance that does not match the benchmark checkout', () => {
