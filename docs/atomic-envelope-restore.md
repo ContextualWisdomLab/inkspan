@@ -35,7 +35,7 @@ Restore performs these operations in order:
 4. validate the Inkspan envelope schema identifier and version;
 5. detach and deeply freeze the document JSON;
 6. reconstruct and recursively check the complete document against the active ProseMirror schema;
-7. dispatch one TipTap `setContent(..., false)` replacement;
+7. dispatch one TipTap `setContent(..., { emitUpdate: false })` replacement;
 8. verify that the resulting active document is structurally equal to the prepared document.
 
 Any failure before step 7 leaves the current document unchanged. A ProseMirror transaction filter may reject a schema-valid replacement at step 7; Inkspan then throws `DocumentEnvelopeRestoreError` and never reports the operation as successful. Inkspan's built-in safe-link and inline-image policies reject unsafe replacements without changing the document.
@@ -87,7 +87,7 @@ The helper adds no database, credential, environment-variable, transport, provid
 
 ## Primary references
 
-- [TipTap v2 `setContent` command](https://v2.tiptap.dev/docs/editor/api/commands/content/set-content)
+- [TipTap `setContent` command](https://tiptap.dev/docs/editor/api/commands/content/set-content)
 - [ProseMirror `PluginSpec.filterTransaction`](https://prosemirror.net/docs/ref/#state.PluginSpec.filterTransaction)
 - [ProseMirror `Schema.nodeFromJSON()` and `Node.check()`](https://prosemirror.net/docs/ref/#model.Schema.nodeFromJSON)
 - [RFC 8259: The JavaScript Object Notation (JSON) Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259)

@@ -23,7 +23,7 @@ export interface EditorFormFieldProps {
  *
  * Named fields subscribe only to document-changing transactions, avoiding a
  * full Markdown/HTML serialization on cursor movement while still observing
- * programmatic `setContent(..., false)` calls that intentionally suppress the
+ * programmatic `setContent(..., { emitUpdate: false })` calls that suppress the
  * higher-level TipTap update event. The field's native value is written
  * synchronously before returning from each document transaction, so immediate
  * `FormData` construction or browser submission cannot observe a React-batched

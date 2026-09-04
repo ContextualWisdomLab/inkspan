@@ -59,7 +59,7 @@ window.runInkspanClipboardProbe = (
       return Object.freeze({ sanitizedHtml, documentJson: null, errorCode });
     }
 
-    editor.commands.setContent(sanitizedHtml, false);
+    editor.commands.setContent(sanitizedHtml, { emitUpdate: false });
     return Object.freeze({
       sanitizedHtml,
       documentJson: editor.getJSON(),

@@ -132,7 +132,7 @@ export function useEditorHandle(
         if (!editor) return;
         editor.commands.setContent(
           editorValueToHtml(next, modeRef.current),
-          false,
+          { emitUpdate: false },
         );
       },
       validateDocumentEnvelope: (source, limits) =>
@@ -182,7 +182,7 @@ export function useEditorHandle(
       setDocumentJson: (documentJson) => {
         if (!editor) return;
         const documentNode = parseDocumentJsonForEditor(editor, documentJson);
-        editor.commands.setContent(documentNode, false);
+        editor.commands.setContent(documentNode, { emitUpdate: false });
       },
       insertValue: (next: string) => {
         if (!editor) return;

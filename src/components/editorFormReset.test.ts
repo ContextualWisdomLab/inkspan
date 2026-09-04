@@ -31,7 +31,9 @@ describe('editor form reset application', () => {
       onFormReset,
     });
 
-    expect(setContent).toHaveBeenCalledWith('<p>Reset baseline</p>', false);
+    expect(setContent).toHaveBeenCalledWith('<p>Reset baseline</p>', {
+      emitUpdate: false,
+    });
     expect(onChange).toHaveBeenCalledWith('<p>Reset baseline</p>');
     expect(onFormReset).toHaveBeenCalledWith({ editor, event });
   });
@@ -66,6 +68,8 @@ describe('editor form reset application', () => {
         event: new Event('reset'),
       }),
     ).not.toThrow();
-    expect(setContent).toHaveBeenCalledWith('<p>Reset baseline</p>', false);
+    expect(setContent).toHaveBeenCalledWith('<p>Reset baseline</p>', {
+      emitUpdate: false,
+    });
   });
 });

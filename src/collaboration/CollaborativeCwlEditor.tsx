@@ -1,5 +1,5 @@
 import Collaboration from '@tiptap/extension-collaboration';
-import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
+import CollaborationCaret from '@tiptap/extension-collaboration-caret';
 import { type Editor, useEditor } from '@tiptap/react';
 import {
   forwardRef,
@@ -198,7 +198,7 @@ export const CollaborativeCwlEditor = forwardRef<
           }),
           ...(scopedProvider && cursorUser
             ? [
-                CollaborationCursor.configure({
+                CollaborationCaret.configure({
                   provider: scopedProvider,
                   user: cursorUser,
                   render: renderCollaborationCursor,

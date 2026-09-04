@@ -187,8 +187,8 @@ editor or coupling its core package to organization infrastructure.
 
 ## Primary references
 
-- [TipTap v2 Collaboration](https://v2.tiptap.dev/docs/editor/extensions/functionality/collaboration)
-- [TipTap v2 Collaboration Cursor](https://v2.tiptap.dev/docs/editor/extensions/functionality/collaboration-cursor)
+- [TipTap Collaboration](https://tiptap.dev/docs/editor/extensions/functionality/collaboration)
+- [TipTap Collaboration Caret](https://tiptap.dev/docs/editor/extensions/functionality/collaboration-caret)
 - [Yjs Awareness and Presence](https://docs.yjs.dev/getting-started/adding-awareness)
 - [WAI-ARIA `status` role](https://www.w3.org/TR/wai-aria-1.2/#status)
 - [WCAG relative luminance definition](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)
