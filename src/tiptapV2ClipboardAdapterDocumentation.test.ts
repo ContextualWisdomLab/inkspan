@@ -12,7 +12,7 @@ function readRepositoryText(path: string): string {
   return readFileSync(path, 'utf8');
 }
 
-describe('TipTap v2 SafeClipboard adapter doctoring', () => {
+describe('TipTap SafeClipboard adapter doctoring', () => {
   it('records the locked-version root cause and actual ProseMirror registration path', () => {
     const doctoring = readRepositoryText(doctoringPath);
     const adapter = readRepositoryText(adapterPath);
@@ -21,8 +21,8 @@ describe('TipTap v2 SafeClipboard adapter doctoring', () => {
     const changelog = readRepositoryText(changelogPath);
 
     expect(lock).toContain("'@tiptap/core':");
-    expect(lock).toContain('version: 2.27.2');
-    expect(doctoring).toContain('@tiptap/core 2.27.2');
+    expect(lock).toContain('specifier: 3.30.4');
+    expect(doctoring).toContain('TipTap 3.30.4 package family');
     expect(doctoring).toContain('addProseMirrorPlugins');
     expect(doctoring).toContain('transformPastedHTML');
     expect(doctoring).toContain('before ProseMirror parses');

@@ -3,11 +3,8 @@
  * Kept separate from React so hosts may reuse it in headless workflows.
  */
 import StarterKit from '@tiptap/starter-kit';
-import Placeholder from '@tiptap/extension-placeholder';
-import Table from '@tiptap/extension-table';
-import TableRow from '@tiptap/extension-table-row';
-import TableHeader from '@tiptap/extension-table-header';
-import TableCell from '@tiptap/extension-table-cell';
+import { Placeholder } from '@tiptap/extensions';
+import { Table, TableRow, TableHeader, TableCell } from '@tiptap/extension-table';
 import type { Extensions } from '@tiptap/react';
 import { Base64Image } from './Base64Image.js';
 import type {
@@ -43,12 +40,16 @@ export function buildExtensions(
 ): Extensions {
   const image = options.image ?? {};
   const historyConfiguration = options.disableHistory
-    ? { history: false as const }
+    ? { undoRedo: false as const }
     : {};
 
   return [
     StarterKit.configure({
       heading: { levels: [1, 2, 3, 4, 5, 6] },
+      link: false,
+      listKeymap: false,
+      underline: false,
+      trailingNode: false,
       codeBlock: {
         HTMLAttributes: { class: 'cwl-code-block' },
       },

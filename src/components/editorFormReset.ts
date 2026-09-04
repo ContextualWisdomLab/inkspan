@@ -37,7 +37,9 @@ export function applyEditorFormReset({
   onFormReset,
 }: ApplyEditorFormResetOptions): void {
   if (resetValue !== undefined) {
-    editor.commands.setContent(editorValueToHtml(resetValue, mode), false);
+    editor.commands.setContent(editorValueToHtml(resetValue, mode), {
+      emitUpdate: false,
+    });
     onChange?.(editorHtmlToValue(editor.getHTML(), mode));
   }
   onFormReset?.({ editor, event });
