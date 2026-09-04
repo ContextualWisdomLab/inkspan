@@ -26,3 +26,9 @@ htmlcov/
 
 # Storybook local build output
 storybook-static/
+
+# Scratch registries written into the working tree by an external
+# contextual-orchestrator agent runtime when it is invoked from this
+# directory. They are not Inkspan source or contracts.
+registered_agents.json
+task_agent_mapping.json
