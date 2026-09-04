@@ -64,4 +64,49 @@ describe('print stylesheet contract', () => {
     expect(browserSpecification).not.toContain('/src/styles.css');
     expect(browserConfiguration).toContain('pnpm --dir ../.. build');
   });
+
+  it('styles diagnostic ranges by priority without generated-text dependence', () => {
+    expect(styles).toContain('.cwl-writing-diagnostic--advisory');
+    expect(styles).toContain('.cwl-writing-diagnostic--important');
+    expect(styles).toContain('.cwl-writing-diagnostic--critical');
+    expect(styles).toContain('text-decoration-line: underline');
+    expect(styles).toContain('.cwl-writing-diagnostics__item:focus-visible');
+    expect(styles).toContain(
+      '.cwl-writing-diagnostics__actions button:focus-visible',
+    );
+    expect(styles).not.toMatch(
+      /\.cwl-writing-diagnostics[^\{]*::(?:before|after)\s*\{[^}]*content\s*:/u,
+    );
+  });
+
+  it('keeps the empty-guidance focus handoff visibly perceivable', () => {
+    expect(styles).toMatch(
+      /\.cwl-writing-diagnostics:focus-visible[\s\S]*\{[^}]*outline:\s*2px solid var\(--cwl-accent\)\s*;[^}]*outline-offset:\s*2px\s*;/u,
+    );
+  });
+
+  it('preserves forced-colors, reduced-motion, and touch-target guidance', () => {
+    expect(styles).toMatch(
+      /@media\s*\(forced-colors:\s*active\)[\s\S]*\.cwl-writing-diagnostic[\s\S]*CanvasText/u,
+    );
+    expect(styles).toContain('@media (prefers-reduced-motion: reduce)');
+    expect(styles).toContain('min-height: 44px');
+    expect(styles).toContain('min-width: 44px');
+  });
+
+  it('prints no guidance by default and only a compact opted-in appendix', () => {
+    const printIndex = styles.indexOf('@media print');
+    expect(printIndex).toBeGreaterThan(-1);
+    const printStyles = styles.slice(printIndex);
+
+    expect(printStyles).toMatch(
+      /\.cwl-writing-diagnostics\s*\{[^}]*display:\s*none\s*!important\s*;/u,
+    );
+    expect(printStyles).toMatch(
+      /\.cwl-writing-diagnostics\[data-print-enabled='true'\]\s*\{[^}]*display:\s*block\s*!important\s*;/u,
+    );
+    expect(printStyles).toMatch(
+      /\.cwl-writing-diagnostics__actions[\s\S]*\.cwl-writing-diagnostics__navigation[\s\S]*\{[^}]*display:\s*none\s*!important\s*;/u,
+    );
+  });
 });

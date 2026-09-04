@@ -16,6 +16,7 @@
   --cwl-surface: #f6f8fa;
   --cwl-accent: #0969da;
   --cwl-accent-soft: #ddf4ff;
+  --cwl-critical: #cf222e;
   --cwl-radius: 8px;
   /* Bundled Noto Sans stack: covers Latin/Vietnamese + Korean + Japanese +
      Simplified & Traditional Chinese. Override --cwl-font to re-theme. */
@@ -43,6 +44,7 @@
     --cwl-surface: #161b22;
     --cwl-accent: #58a6ff;
     --cwl-accent-soft: #163356;
+    --cwl-critical: #ff7b72;
   }
 }
 
@@ -126,8 +128,26 @@
 
 @media (forced-colors: active) {
   .cwl-tb-btn:focus-visible,
+  .cwl-writing-diagnostics:focus-visible,
+  .cwl-writing-diagnostics__item:focus-visible,
+  .cwl-writing-diagnostics__actions button:focus-visible,
+  .cwl-writing-diagnostics__navigation-button:focus-visible {
+    outline-color: CanvasText;
+  }
+
   .cwl-editor__content:focus-visible {
     outline-color: CanvasText;
+  }
+
+  .cwl-writing-diagnostic {
+    text-decoration-color: CanvasText;
+  }
+
+  .cwl-writing-diagnostics,
+  .cwl-writing-diagnostics__item,
+  .cwl-writing-diagnostics__actions button,
+  .cwl-writing-diagnostics__navigation-button {
+    border-color: CanvasText;
   }
 }
 
@@ -262,6 +282,183 @@
   padding-top: calc(16px + 1.6em);
 }
 
+.cwl-writing-diagnostic {
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-thickness: 0.12em;
+  text-underline-offset: 0.16em;
+}
+
+.cwl-writing-diagnostic--advisory {
+  text-decoration-color: var(--cwl-muted);
+}
+
+.cwl-writing-diagnostic--important {
+  text-decoration-color: var(--cwl-accent);
+}
+
+.cwl-writing-diagnostic--critical {
+  text-decoration-color: var(--cwl-critical);
+}
+
+.cwl-writing-diagnostics {
+  border-top: 1px solid var(--cwl-border);
+  border-bottom: 1px solid var(--cwl-border);
+  background: var(--cwl-surface);
+  padding: 12px;
+}
+
+.cwl-writing-diagnostics__header,
+.cwl-writing-diagnostics__item-header,
+.cwl-writing-diagnostics__actions,
+.cwl-writing-diagnostics__navigation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cwl-writing-diagnostics__header {
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.cwl-writing-diagnostics__summary,
+.cwl-writing-diagnostics__item-header h3,
+.cwl-writing-diagnostics__item p,
+.cwl-writing-diagnostics__status,
+.cwl-writing-diagnostics__conflict {
+  margin: 0;
+}
+
+.cwl-writing-diagnostics__summary {
+  font-weight: 700;
+}
+
+.cwl-writing-diagnostics__list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style-position: inside;
+}
+
+.cwl-writing-diagnostics__item {
+  border: 1px solid var(--cwl-border);
+  border-left-width: 4px;
+  border-radius: var(--cwl-radius);
+  background: var(--cwl-bg);
+  padding: 12px;
+}
+
+.cwl-writing-diagnostics__item--advisory {
+  border-left-color: var(--cwl-muted);
+}
+
+.cwl-writing-diagnostics__item--important {
+  border-left-color: var(--cwl-accent);
+}
+
+.cwl-writing-diagnostics__item--critical {
+  border-left-color: var(--cwl-critical);
+}
+
+.cwl-writing-diagnostics:focus-visible,
+.cwl-writing-diagnostics__item:focus-visible,
+.cwl-writing-diagnostics__actions button:focus-visible,
+.cwl-writing-diagnostics__navigation-button:focus-visible {
+  outline: 2px solid var(--cwl-accent);
+  outline-offset: 2px;
+}
+
+.cwl-writing-diagnostics__item-header {
+  margin-bottom: 8px;
+}
+
+.cwl-writing-diagnostics__item-header h3 {
+  flex: 1 1 16rem;
+  font-size: 0.95rem;
+}
+
+.cwl-writing-diagnostics__item-header span {
+  border: 1px solid var(--cwl-border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--cwl-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.cwl-writing-diagnostics__replacement {
+  margin-top: 8px !important;
+  border-left: 3px solid var(--cwl-accent);
+  padding-left: 10px;
+  white-space: pre-wrap;
+}
+
+.cwl-writing-diagnostics__actions {
+  margin-top: 10px;
+}
+
+.cwl-writing-diagnostics__actions button,
+.cwl-writing-diagnostics__navigation-button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--cwl-border);
+  border-radius: 6px;
+  background: var(--cwl-bg);
+  color: var(--cwl-fg);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 8px 10px;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.cwl-writing-diagnostics__actions button:hover:not(:disabled),
+.cwl-writing-diagnostics__navigation-button:hover:not(:disabled) {
+  border-color: var(--cwl-accent);
+  background: var(--cwl-accent-soft);
+}
+
+.cwl-writing-diagnostics__actions button:disabled,
+.cwl-writing-diagnostics__navigation-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cwl-writing-diagnostics__status {
+  min-height: 1.5em;
+  margin-top: 8px;
+  color: var(--cwl-muted);
+}
+
+.cwl-writing-diagnostics__conflict {
+  margin-top: 8px;
+  border: 1px solid var(--cwl-critical);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--cwl-critical);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cwl-writing-diagnostics__actions button,
+  .cwl-writing-diagnostics__navigation-button {
+    transition: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .cwl-writing-diagnostics__actions button,
+  .cwl-writing-diagnostics__navigation-button {
+    flex: 1 1 auto;
+  }
+}
+
 @media print {
   .cwl-editor {
     --cwl-fg: #000000;
@@ -271,6 +468,7 @@
     --cwl-surface: #ffffff;
     --cwl-accent: #000000;
     --cwl-accent-soft: #ffffff;
+    --cwl-critical: #000000;
 
     overflow: visible;
     border: 0;
@@ -331,5 +529,31 @@
 
   .cwl-editor__surface:has(.collaboration-cursor__caret) .cwl-editor__content {
     padding-top: 0;
+  }
+
+  .cwl-writing-diagnostics {
+    display: none !important;
+  }
+
+  .cwl-writing-diagnostics[data-print-enabled='true'] {
+    display: block !important;
+    border: 1px solid #000000;
+    margin-top: 1rem;
+    padding: 0.5rem;
+  }
+
+  .cwl-writing-diagnostics__actions,
+  .cwl-writing-diagnostics__navigation {
+    display: none !important;
+  }
+
+  .cwl-writing-diagnostics__status,
+  .cwl-writing-diagnostics__conflict {
+    display: none !important;
+  }
+
+  .cwl-writing-diagnostics__item {
+    break-inside: avoid;
+    border-color: #000000;
   }
 }
