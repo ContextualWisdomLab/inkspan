@@ -1,11 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
 
 type InputHarness = {
+  getDocumentChanges: () => string[];
   getHtml: () => string;
   getText: () => string;
   isComposing: () => boolean;
+  insertText: (text: string) => boolean;
   redo: () => boolean;
   setEditable: (editable: boolean) => boolean;
+  setControlledHtml: (html: string) => boolean;
   setHtml: (html: string) => boolean;
   undo: () => boolean;
 };
@@ -215,6 +218,64 @@ test('tracks a synthetic composition lifecycle without inventing OS IME evidence
   await expect(
     page.locator('[data-inkspan-form-field][name="message_body"]'),
   ).toHaveValue(committedHtml);
+});
+
+test('publishes the composed revision before applying a newer controlled value', async ({
+  page,
+}) => {
+  await page.goto('/tests/browser/input-harness.html?controlled=1');
+
+  const editable = page.locator('.ProseMirror');
+  await editable.click();
+  await editable.evaluate((element) => {
+    element.dispatchEvent(
+      new CompositionEvent('compositionstart', { bubbles: true, data: '' }),
+    );
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.inkspanInputHarness as InputHarness).isComposing(),
+      ),
+    )
+    .toBe(true);
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).insertText('작성 중'),
+    ),
+  ).toBe(true);
+
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).setControlledHtml(
+        '<p>저장된 개정</p>',
+      ),
+    ),
+  ).toBe(true);
+  await expect(editable).toHaveText('작성 중');
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).getDocumentChanges(),
+    ),
+  ).toEqual([]);
+
+  await editable.evaluate((element) => {
+    element.dispatchEvent(
+      new CompositionEvent('compositionend', { bubbles: true, data: '' }),
+    );
+  });
+
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.inkspanInputHarness as InputHarness).getDocumentChanges(),
+      ),
+    )
+    .toEqual(['<p>작성 중</p>']);
+  await expect(editable).toHaveText('저장된 개정');
+  await expect(
+    page.locator('[data-inkspan-form-field][name="message_body"]'),
+  ).toHaveValue('<p>저장된 개정</p>');
 });
 
 test('keeps committed text and editor focus when the toolbar is used during composition', async ({
