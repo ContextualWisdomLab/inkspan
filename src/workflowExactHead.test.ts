@@ -74,7 +74,7 @@ describe('exact-head CI workflow contract', () => {
     );
     expect(workflow).toContain('cancel-in-progress: true');
     expect(officeJob).toContain(
-      "python-version: ${{ github.event_name == 'pull_request' && fromJSON('[\"3.14\"]') || fromJSON('[\"3.11\", \"3.12\", \"3.13\", \"3.14\"]') }}",
+      "python-version: ${{ github.event_name == 'pull_request' && fromJSON('[\"3.11\", \"3.14\"]') || fromJSON('[\"3.11\", \"3.12\", \"3.13\", \"3.14\"]') }}",
     );
     expect(releaseWorkflow).toContain(
       'group: ${{ github.workflow }}-${{ github.repository }}-${{ github.ref_name }}',
