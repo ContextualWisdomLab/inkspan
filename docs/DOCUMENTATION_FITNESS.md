@@ -56,6 +56,7 @@ Document fitness and implementation maturity are independent. A `present_current
 | Unified stable registry release train | ADR 0019, protected release workflow and release doctoring | `present_current` | `implemented_on_protected_main` | Stable npm/Office version equality, OIDC Trusted Publishing, exact-artifact publication and post-publication digest verification are source-integrated; live registry publication remains separate operational evidence. |
 | Framework-neutral Markdown package boundary | ADR 0020, protected `@contextualwisdomlab/cwl-editor/markdown` package subpath and shared policy modules from #114 | `present_current` | `implemented_on_protected_main` | Server/worker consumers can reuse deterministic Markdown/HTML/email/plain-text conversion without evaluating the React/TipTap editor graph. |
 | CSS paged-media print boundary | ADR 0021, protected `src/styles.css`, packaged stylesheet evidence and real-browser print tests from #116/#127 | `present_current` | `implemented_on_protected_main` | Declarative print output removes screen-only clipping/chrome while preserving authored content without creating a durable PDF service. |
+| Editor chrome design tokens / Storybook inventory | ADR 0031, `docs/design-tokens.md`, doctoring, token catalog, and Storybook stories | `present_current` | `implemented_on_active_pr` | Hosts can name, override, and preview repeating toolbar/editor tokens without treating the interchange snapshot as shipped protected-main authority. |
 | Informative DOCX PNG figures | ADR 0022, Office schema/renderer/tests and guidance | `present_current` | `implemented_on_protected_main` | Strict bounded inline PNG figures preserve informative alternative text without remote-resource or arbitrary OOXML authority. |
 | DOCX bounded rich-text runs | ADR 0023, Office schema/renderer/tests and doctoring | `present_current` | `implemented_on_protected_main` | Ordered bold/italic/underline runs preserve common inline fidelity under one bounded deterministic contract. |
 | DOCX bounded paragraph alignment | ADR 0024, Office schema/renderer/tests, Office guidance and doctoring | `present_current` | `implemented_on_protected_main` | `paragraph` and `rich_paragraph` preserve explicit left/center/right/justify alignment while omission retains inherited/default behavior. |
@@ -68,6 +69,7 @@ Document fitness and implementation maturity are independent. A `present_current
 | TRACEABILITY | `docs/TRACEABILITY.md` | `present_current` | Protected requirements/standards/evidence mapping | Acquisition reviewers can distinguish protected evidence from active or planned work. |
 | Contributor/agent authority | `AGENTS.md`, `CLAUDE.md`, `docs/README.md` | `present_current` | Protected-main-first decision discipline | Agents are directed back to the same canonical graph rather than parallel private memory. |
 | Autonomous maintenance governance | `AGENTS.md`, `CLAUDE.md` plus the external scheduler | `present_current` | `out_of_scope` as Inkspan runtime behavior | Work-conserving execution, user-redirection incident recovery, lane-local waiting and external scheduler authority are reconstructable without pretending automation is an Inkspan API. |
+| Product/technical gap baseline | `docs/product-technical-gap-baseline.md` | `present_current` | Dated operational snapshot; protected-main authority remains separate | Buyer-visible gaps, active PR lanes, release blockers, and the next executable loop are discoverable without promoting active-PR work to shipped behavior. |
 
 ## Conversation-to-GitHub reconciliation
 
@@ -82,6 +84,7 @@ The documentation pack is substantially complete for acquisition review, but rep
 1. The protected manifests now agree at `0.6.0`, while registry operational acceptance remains open under issue #118 because the exact protected release still needs its tag/GitHub Release, live npm/PyPI Trusted Publisher execution, and public artifact digest verification.
 2. Future protected-source changes must continue to reconcile PRD/TRD/Architecture/ADR/UML/DATA_MODEL/security/test/operability/traceability semantics rather than treating this baseline as permanently complete.
 3. Documentation becoming mergeable, green, or protected-merged is never a reason for the commercial loop to stop; the next safe product, release, security, accessibility, package, Office-fidelity, or interoperability lane continues.
+4. Hosts still need a named, Storybook-previewable chrome-token catalog so brand theming does not require editing Inkspan internals; that lane is Active PR / Proposed and must not be described as shipped until protected integration.
 
 ## Sufficiency decision
 
