@@ -30,6 +30,11 @@ for the installed runtime, while current mutable documentation is useful design
 context but not evidence that an API existed in this historical dependency
 version. Inkspan now locks the coherent TipTap 3.30.4 package family; the same
 real-pipeline tests prove that the adapter remains registered after migration.
+The published `@tiptap/react` 3.30.4 ESM and CommonJS declarations qualify four
+`Editor` references through an internal namespace that does not export that
+type. The lockfile applies one bounded patch to those declarations, and the
+packed strict-TypeScript consumer check prevents the broken public types from
+shipping.
 
 The practical result was a false assurance gap: direct sanitizer unit tests were
 green, but the real `editor.view` paste pipeline had no SafeClipboard

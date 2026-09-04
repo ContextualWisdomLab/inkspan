@@ -5,6 +5,8 @@ const doctoringPath = 'docs/doctoring/tiptap-v2-prosemirror-paste-adapter.md';
 const adapterPath = 'src/extensions/SafeClipboardExtension.ts';
 const kitPath = 'src/extensions/kit.ts';
 const lockPath = 'pnpm-lock.yaml';
+const workspacePath = 'pnpm-workspace.yaml';
+const reactPatchPath = 'patches/@tiptap__react@3.30.4.patch';
 const changelogPath = 'CHANGELOG.md';
 
 /** Read one authoritative repository artifact for deterministic contract tests. */
@@ -18,11 +20,16 @@ describe('TipTap SafeClipboard adapter doctoring', () => {
     const adapter = readRepositoryText(adapterPath);
     const kit = readRepositoryText(kitPath);
     const lock = readRepositoryText(lockPath);
+    const workspace = readRepositoryText(workspacePath);
+    const reactPatch = readRepositoryText(reactPatchPath);
     const changelog = readRepositoryText(changelogPath);
 
     expect(lock).toContain("'@tiptap/core':");
     expect(lock).toContain('specifier: 3.30.4');
     expect(doctoring).toContain('TipTap 3.30.4 package family');
+    expect(doctoring).toContain('packed strict-TypeScript consumer check');
+    expect(workspace).toContain("'@tiptap/react@3.30.4':");
+    expect(reactPatch).toContain('EditorStateSnapshot<Editor>');
     expect(doctoring).toContain('addProseMirrorPlugins');
     expect(doctoring).toContain('transformPastedHTML');
     expect(doctoring).toContain('before ProseMirror parses');
