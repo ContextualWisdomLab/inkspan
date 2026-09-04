@@ -1,6 +1,6 @@
 # LLM writing diagnostics: measurement and editor-boundary doctoring
 
-**Status:** Proposed design evidence; no shipped Inkspan diagnostic feature is claimed.  
+**Status:** Proposed design evidence; no shipped Inkspan diagnostic feature is claimed.
 **Date:** 2026-08-12
 
 ## Decision supported by this record
