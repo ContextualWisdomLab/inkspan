@@ -72,6 +72,7 @@ runtime.
 | Text-position selector | `@contextualwisdomlab/cwl-editor/text-position-selector` | React-free deterministic W3C `TextPositionSelector` projection core |
 | Autosave | `@contextualwisdomlab/cwl-editor/autosave` | Provider-neutral bounded single-flight persistence coordination |
 | Headless Markdown | `@contextualwisdomlab/cwl-editor/markdown` | React-free deterministic Markdown/HTML/email/plain-text conversion |
+| DOCX import | `@contextualwisdomlab/cwl-editor/docx` | Active-PR bounded, framework-neutral WordprocessingML import into inert Inkspan document data |
 | Styles | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
 | Full fonts | `@contextualwisdomlab/cwl-editor/fonts.css` | KR/EN/JP/SC/TC/VI offline font bundle |
 | Latin fonts | `@contextualwisdomlab/cwl-editor/fonts-latin.css` | Smaller Latin/Vietnamese-only bundle |
@@ -236,7 +237,6 @@ policy. See [`docs/selection-lifecycle.md`](docs/selection-lifecycle.md) and
 
 Delayed autosave, AI, template, and review results can be applied under the
 strong revision from which they started:
-
 ```tsx
 const result = await editorRef.current?.restoreDocumentEnvelopeIfMatch(
   expectedRevision.strongEntityTag,
