@@ -58,6 +58,7 @@ describe('CwlEditor writing-diagnostic application', () => {
       handleRef.current!.getEditor()!.commands.setTextSelection({ from: 1, to: 6 });
     });
     const hostileTagName = ['scr', 'ipt'].join('');
+    // nosemgrep: javascript.lang.security.audit.unknown-value-with-script-tag.unknown-value-with-script-tag -- controlled XSS regression fixture; line 85 proves no element is created.
     const replacement = `<${hostileTagName}>alert(1)</${hostileTagName}>`;
     const diagnostic = await exactDiagnostic(handleRef.current!, replacement);
 
