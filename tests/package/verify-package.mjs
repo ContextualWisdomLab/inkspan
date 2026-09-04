@@ -154,6 +154,7 @@ function verifyConsumerTypes() {
     `import {
   createDocumentEnvelopeRevision,
   DocumentEnvelopeRestoreError,
+  buildExtensions,
   markdownToHtml,
   restoreDocumentEnvelopeBytesIfMatch,
   restoreDocumentEnvelopeIfMatch,
@@ -170,6 +171,7 @@ function verifyConsumerTypes() {
   type CwlEditorSelectionSnapshot,
   type DocumentEnvelopeDigestProvider,
 } from '${packageName}';
+import { Extension, type Editor } from '@tiptap/core';
 import {
   createDocumentAutosaveQueue,
   type DocumentAutosaveRequestOutcome,
@@ -199,6 +201,9 @@ type EditorDocumentChangeCallback = NonNullable<
   CwlEditorProps['onDocumentChange']
 >;
 declare const editorHandle: CwlEditorHandle;
+const hostExtension = Extension.create({ name: 'packedConsumerExtension' });
+const extensions = buildExtensions({ additionalExtensions: [hostExtension] });
+const editor: Editor | null = editorHandle.getEditor();
 declare const documentChangeEvent: CwlEditorDocumentChangeEvent;
 declare const documentSnapshot: CwlEditorDocumentSnapshot;
 declare const resetEvent: CwlEditorFormResetEvent;
@@ -280,6 +285,8 @@ void [
   conditionalByteRestore,
   restoreError,
   dataUri,
+  extensions,
+  editor,
   editorHandle,
   documentChangeEvent,
   documentSnapshot,

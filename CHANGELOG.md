@@ -14,9 +14,22 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Restored a visible `:focus-visible` indicator on the editable textbox, mapped it to `CanvasText` in forced-colors mode, and suppresses that interactive focus chrome under `@media print`; dependency-locked Chromium, Firefox, and WebKit acceptance exercises the packed stylesheet on the real `role="textbox"` surface.
 
 ### Security
-- Patched an editor dependency vulnerability while preserving the existing formatting, collaboration-presence, safe-link, and exact document-restore behavior.
 - Raised workspace-wide transitive development-tool overrides for `fast-uri`, `nanoid`, and `postcss` to patched minimums, keeping the lockfile audit clean without changing runtime package authority.
 - Normalized isolated package-verifier temporary roots before containment checks on macOS.
+
+## [0.7.0] — 2026-09-05
+
+### Release
+- Unified the npm editor and `inkspan-office` package manifests at **0.7.0** for the TipTap v3 migration release candidate; protected integration and registry publication remain separate acceptance gates.
+
+### Breaking
+- Upgraded the public TipTap editor ABI from v2 to the coherent TipTap 3.30.4 package family. Hosts that consume `CwlEditorHandle.getEditor()` or pass TipTap extensions to `buildExtensions()` must upgrade those host imports and extensions to v3; v2 and v3 editor graphs must not be mixed.
+
+### Migration and rollback
+- Upgrade Inkspan and every host-owned TipTap extension as one dependency-lock change, then re-run the host's editor, collaboration, and packed-consumer checks. Before adoption, rollback restores Inkspan 0.6.x and the host TipTap 2 dependency graph together; the document-envelope schema is unchanged and needs no stored-document migration.
+
+### Security
+- Patched the TipTap runtime advisory while preserving formatting, collaboration presence, safe-link enforcement, and exact document restore behavior within the new v3 ABI.
 
 ## [0.6.0] — 2026-08-10
 
