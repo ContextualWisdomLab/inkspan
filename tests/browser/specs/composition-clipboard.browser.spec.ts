@@ -2,7 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 
 type InputHarness = {
   getDocumentChanges: () => string[];
+  getDocumentChangeRevisionTags: () => Promise<string[]>;
   getHtml: () => string;
+  getRevisionTag: () => Promise<string>;
   getText: () => string;
   isComposing: () => boolean;
   insertText: (text: string) => boolean;
@@ -258,6 +260,11 @@ test('publishes the composed revision before applying a newer controlled value',
       (window.inkspanInputHarness as InputHarness).getDocumentChanges(),
     ),
   ).toEqual([]);
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).getDocumentChangeRevisionTags(),
+    ),
+  ).toEqual([]);
 
   await editable.evaluate((element) => {
     element.dispatchEvent(
@@ -272,7 +279,16 @@ test('publishes the composed revision before applying a newer controlled value',
       ),
     )
     .toEqual(['<p>작성 중</p>']);
+  const [composedRevisionTag] = await page.evaluate(() =>
+    (window.inkspanInputHarness as InputHarness).getDocumentChangeRevisionTags(),
+  );
+  expect(composedRevisionTag).toMatch(/^"sha256-[0-9a-f]{64}"$/u);
   await expect(editable).toHaveText('저장된 개정');
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).getRevisionTag(),
+    ),
+  ).not.toBe(composedRevisionTag);
   await expect(
     page.locator('[data-inkspan-form-field][name="message_body"]'),
   ).toHaveValue('<p>저장된 개정</p>');

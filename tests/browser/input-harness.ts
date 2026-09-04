@@ -1,7 +1,12 @@
 import type { Editor } from '@tiptap/core';
-import { createElement } from 'react';
+import { createElement, createRef } from 'react';
 import { createRoot } from 'react-dom/client';
-import { CwlEditor } from 'inkspan-browser-under-test';
+import {
+  createDocumentEnvelope,
+  createDocumentEnvelopeRevision,
+  CwlEditor,
+  type CwlEditorHandle,
+} from 'inkspan-browser-under-test';
 import '../../src/styles.css';
 
 declare global {
@@ -9,6 +14,8 @@ declare global {
     inkspanInputHarness: {
       getHtml: () => string;
       getDocumentChanges: () => string[];
+      getDocumentChangeRevisionTags: () => Promise<string[]>;
+      getRevisionTag: () => Promise<string>;
       getText: () => string;
       isComposing: () => boolean;
       insertText: (text: string) => boolean;
@@ -34,11 +41,14 @@ let editor: Editor | null = null;
 let editable = true;
 let controlledHtml = '';
 const documentChanges: string[] = [];
+const documentChangeRevisionTags: Promise<string>[] = [];
+const editorHandle = createRef<CwlEditorHandle>();
 let root = createRoot(element);
 
 const renderEditor = () => {
   root.render(
     createElement(CwlEditor, {
+      ref: editorHandle,
       mode: 'html',
       ...(controlled ? { value: controlledHtml } : { defaultValue: '' }),
       editable,
@@ -51,6 +61,11 @@ const renderEditor = () => {
         : undefined,
       onDocumentChange: ({ snapshot }) => {
         documentChanges.push(snapshot.value);
+        documentChangeRevisionTags.push(
+          createDocumentEnvelopeRevision(
+            createDocumentEnvelope(snapshot.documentJson),
+          ).then((revision) => revision.strongEntityTag),
+        );
       },
       onReady: (instance: Editor) => {
         editor = instance;
@@ -71,6 +86,11 @@ renderEditor();
 window.inkspanInputHarness = Object.freeze({
   getHtml: () => getEditor().getHTML(),
   getDocumentChanges: () => [...documentChanges],
+  getDocumentChangeRevisionTags: () =>
+    Promise.all(documentChangeRevisionTags),
+  getRevisionTag: async () =>
+    (await editorHandle.current?.getDocumentEnvelopeRevision())
+      ?.strongEntityTag ?? '',
   getText: () => getEditor().getText(),
   isComposing: () => getEditor().view.composing,
   insertText: (text: string) => getEditor().commands.insertContent(text),
