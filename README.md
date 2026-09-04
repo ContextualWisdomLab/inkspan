@@ -96,11 +96,13 @@ same v3 package family; do not mix v2 and v3 extensions or ProseMirror graphs.
 Hosts that use only `CwlEditor` props still need to test their editor workflows
 before adopting the new minor release.
 
-To roll back before adopting 0.7.0, restore Inkspan 0.6.x and the host's TipTap
-2 dependencies together. The document-envelope schema is unchanged, so this
-rollback needs no stored-document migration. After adopting 0.7.0 APIs, revert
-host extension code and dependency locks as one reviewed change rather than
-downgrading Inkspan alone.
+To roll back before adopting 0.7.0, restore the latest verified released
+Inkspan 0.5.x editor and the host's TipTap 2 dependencies together. Do not use
+an unpublished 0.6.x source candidate as a rollback target. The document-envelope
+schema is unchanged, so this rollback needs no stored-document migration. After
+adopting 0.7.0 APIs, revert host extension code and dependency locks as one
+reviewed change rather than downgrading
+Inkspan alone.
 
 ### Quick start
 
