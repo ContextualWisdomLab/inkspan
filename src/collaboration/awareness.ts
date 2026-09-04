@@ -125,6 +125,11 @@ export function createScopedCollaborationProvider(
       try {
         source.on(event, wrapper);
       } catch {
+        try {
+          source.off(event, wrapper);
+        } catch {
+          // The host may reject rollback too; preserve the stable public error.
+        }
         throw new Error('collaboration awareness listener registration failed');
       }
       listenerWrappers[event].set(listener, wrapper);
