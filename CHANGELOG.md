@@ -14,6 +14,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Restored a visible `:focus-visible` indicator on the editable textbox, mapped it to `CanvasText` in forced-colors mode, and suppresses that interactive focus chrome under `@media print`; dependency-locked Chromium, Firefox, and WebKit acceptance exercises the packed stylesheet on the real `role="textbox"` surface.
 
 ### Security
+- Patched an editor dependency vulnerability while preserving the existing formatting, collaboration-presence, safe-link, and exact document-restore behavior.
 - Raised workspace-wide transitive development-tool overrides for `fast-uri`, `nanoid`, and `postcss` to patched minimums, keeping the lockfile audit clean without changing runtime package authority.
 - Normalized isolated package-verifier temporary roots before containment checks on macOS.
 

@@ -1,8 +1,8 @@
-# TipTap v2 ProseMirror paste adapter
+# TipTap ProseMirror paste adapter
 
 ## Decision
 
-Inkspan registers SafeClipboard through a TipTap v2 extension whose
+Inkspan registers SafeClipboard through a TipTap v3 extension whose
 `addProseMirrorPlugins` hook returns a ProseMirror `Plugin` with a
 `transformPastedHTML` editor property. That property receives rich clipboard
 HTML before ProseMirror parses it into an editor document.
@@ -16,7 +16,7 @@ retention, migration, and model-use policy.
 
 ## Root cause
 
-Inkspan locks `@tiptap/core 2.27.2`. The first implementation placed a
+Inkspan previously locked `@tiptap/core 2.27.2`. The first implementation placed a
 `transformPastedHTML` field directly on a TipTap extension configuration and its
 unit tests invoked that field manually. That appeared consistent with current
 TipTap documentation, but it did not prove registration in the installed v2
@@ -28,7 +28,13 @@ plugins. It does not collect an arbitrary direct extension
 `transformPastedHTML` field into editor props. The locked source is authoritative
 for the installed runtime, while current mutable documentation is useful design
 context but not evidence that an API existed in this historical dependency
-version.
+version. Inkspan now locks the coherent TipTap 3.30.4 package family; the same
+real-pipeline tests prove that the adapter remains registered after migration.
+The published `@tiptap/react` 3.30.4 ESM and CommonJS declarations qualify four
+`Editor` references through an internal namespace that does not export that
+type. The lockfile applies one bounded patch to those declarations, and the
+packed strict-TypeScript consumer check prevents the broken public types from
+shipping.
 
 The practical result was a false assurance gap: direct sanitizer unit tests were
 green, but the real `editor.view` paste pipeline had no SafeClipboard
@@ -57,7 +63,7 @@ result is not completion evidence for a later exact head.
 
 ## Ordering and residual host boundary
 
-TipTap v2.27.2 sorts extension priorities from higher to lower when resolving
+TipTap v3.30.4 sorts extension priorities from higher to lower when resolving
 extensions and again when assembling ProseMirror plugins. ProseMirror checks
 plugin-provided editor properties in plugin order. SafeClipboard therefore uses
 a deliberately low priority so ordinary host transforms run first and the
@@ -107,6 +113,6 @@ TipTap GmbH. (n.d.). *Extension API*. TipTap Editor Docs. Retrieved August 7,
 2026, from
 https://tiptap.dev/docs/editor/extensions/custom-extensions/create-new/extension
 
-TipTap GmbH. (2025). *ExtensionManager.ts (Version 2.27.2)* [Source code].
-GitHub. Retrieved August 7, 2026, from
-https://github.com/ueberdosis/tiptap/blob/%40tiptap/core%402.27.2/packages/core/src/ExtensionManager.ts
+TipTap GmbH. (2026). *ExtensionManager.ts (Version 3.30.4)* [Source code].
+GitHub. Retrieved September 4, 2026, from
+https://github.com/ueberdosis/tiptap/blob/%40tiptap/core%403.30.4/packages/core/src/ExtensionManager.ts
