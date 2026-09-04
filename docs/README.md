@@ -16,6 +16,7 @@ This directory is the discoverable index for Inkspan's product, technical, secur
 | [`PRD.md`](PRD.md) | Product users, jobs, buyer outcomes, non-goals, acceptance and claim boundaries |
 | [`TRD.md`](TRD.md) | Technical invariants, runtime boundaries, failure semantics and release evidence |
 | [`CONTRACTS.md`](CONTRACTS.md) | Public package/API/event/schema/plugin/collaboration and host-integration contracts |
+| [`document-autosave.md`](document-autosave.md) | Provider-neutral local autosave ordering, durable-validator handoff, recovery, lifecycle observation, and host-owned persistence boundary |
 | [`package-distribution.md`](package-distribution.md) | Buyer-facing public npm package entrypoints, packaged contents, runtime dependency boundaries, and consumer verification |
 | [`email-output.md`](email-output.md) | Deterministic email fragment/full-document authority, language/direction metadata, accessibility and host-owned transport boundary |
 | [`print-output.md`](print-output.md) | Browser print/paged-media presentation, accessibility/fidelity limits, host-owned governed-export boundary, and rollback |
@@ -31,6 +32,10 @@ This directory is the discoverable index for Inkspan's product, technical, secur
 Root `SECURITY.md` is now implemented on protected `main` and remains the normative reporting/disclosure policy. ADR 0017 records the durable architecture/process decision and ownership/claim boundaries without duplicating policy prose. `CHANGELOG.md` records shipped/reviewable change history, while `AGENTS.md` and `CLAUDE.md` point contributors back to this canonical graph rather than becoming parallel architecture specifications.
 
 Dated reassessments capture a reviewed source generation and its active or operational deltas without placing mutable workflow-run identities into timeless architecture. They do not override protected `main`, accepted ADRs, or current exact-head evidence.
+
+## Active implementation records
+
+Active-PR doctoring must remain explicitly non-shipped and must not replace the protected-main authority above. The current autosave reliability proposal is recorded in [`doctoring/durable-etag-resource-boundary.md`](doctoring/durable-etag-resource-boundary.md); its 64 Ki local validator ceiling is **Active PR / Proposed** until integrated into protected `main` with required exact-head evidence.
 
 ## Status discipline
 
