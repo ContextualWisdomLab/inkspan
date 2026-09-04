@@ -80,13 +80,17 @@ function projectDocumentPrefix(documentNode: ProseMirrorNode, to: number): strin
   return documentNode.textBetween(0, to, BLOCK_SEPARATOR, LEAF_TEXT);
 }
 
-/** Count Unicode code points without exposing JavaScript UTF-16 code-unit offsets. */
+/** Count Unicode code points without materializing a second prefix-sized array. */
 function codePointLength(value: string): number {
-  return Array.from(value).length;
+  let length = 0;
+  for (const codePoint of value) {
+    if (codePoint.length > 0) length += 1;
+  }
+  return length;
 }
 
-/** Require a position to coincide with a Unicode grapheme-cluster boundary. */
-function assertGraphemeBoundary(text: string, codeUnitOffset: number): void {
+/** Resolve one grapheme segmenter before any caller-supplied document projection work. */
+function createGraphemeSegmenter(): GraphemeSegmenter {
   const Segmenter = (
     Intl as unknown as { Segmenter?: GraphemeSegmenterConstructor }
   ).Segmenter;
@@ -94,14 +98,36 @@ function assertGraphemeBoundary(text: string, codeUnitOffset: number): void {
     throw new TextPositionSelectorEvidenceError('segmenter_unavailable');
   }
 
-  const boundaries = new Set<number>([0, text.length]);
-  for (const segment of new Segmenter(undefined, { granularity: 'grapheme' }).segment(
-    text,
-  )) {
-    boundaries.add(segment.index);
+  return new Segmenter(undefined, { granularity: 'grapheme' });
+}
+
+/** Advance one shared segmentation iterator until the requested boundary is proven. */
+function assertGraphemeBoundary(
+  segments: Iterator<GraphemeSegment>,
+  textLength: number,
+  codeUnitOffset: number,
+): void {
+  if (codeUnitOffset === 0 || codeUnitOffset === textLength) return;
+
+  for (let next = segments.next(); !next.done; next = segments.next()) {
+    if (next.value.index === codeUnitOffset) return;
+    if (next.value.index > codeUnitOffset) break;
   }
-  if (!boundaries.has(codeUnitOffset)) {
-    throw new TextPositionSelectorEvidenceError('grapheme_boundary');
+
+  throw new TextPositionSelectorEvidenceError('grapheme_boundary');
+}
+
+/** Require both positions to coincide with Unicode grapheme-cluster boundaries. */
+function assertGraphemeBoundaries(
+  segmenter: GraphemeSegmenter,
+  text: string,
+  startCodeUnitOffset: number,
+  endCodeUnitOffset: number,
+): void {
+  const segments = segmenter.segment(text)[Symbol.iterator]();
+  assertGraphemeBoundary(segments, text.length, startCodeUnitOffset);
+  if (endCodeUnitOffset !== startCodeUnitOffset) {
+    assertGraphemeBoundary(segments, text.length, endCodeUnitOffset);
   }
 }
 
@@ -112,9 +138,9 @@ function assertGraphemeBoundary(text: string, codeUnitOffset: number): void {
  * blocks, and U+FFFC OBJECT REPLACEMENT CHARACTER for non-text leaf nodes. The
  * returned offsets count Unicode code points. Selection boundaries must also be
  * Unicode grapheme-cluster boundaries; runtimes without `Intl.Segmenter` fail
- * closed instead of publishing ambiguous evidence. The caller must bind the
- * result to the same immutable document revision; this helper contains no
- * selected text.
+ * closed before document projection instead of publishing ambiguous evidence.
+ * The caller must bind the result to the same immutable document revision; this
+ * helper contains no selected text.
  */
 export function createTextPositionSelector(
   documentNode: ProseMirrorNode,
@@ -123,12 +149,12 @@ export function createTextPositionSelector(
   selector: CwlEditorTextPositionSelector;
   textProjection: CwlEditorTextProjectionIdentity;
 }> {
+  const segmenter = createGraphemeSegmenter();
   const fullText = projectDocumentPrefix(documentNode, documentNode.content.size);
   const startPrefix = projectDocumentPrefix(documentNode, selection.from);
   const endPrefix = projectDocumentPrefix(documentNode, selection.to);
 
-  assertGraphemeBoundary(fullText, startPrefix.length);
-  assertGraphemeBoundary(fullText, endPrefix.length);
+  assertGraphemeBoundaries(segmenter, fullText, startPrefix.length, endPrefix.length);
 
   const selector = Object.freeze({
     type: 'TextPositionSelector' as const,
