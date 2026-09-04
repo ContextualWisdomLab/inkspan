@@ -1,14 +1,12 @@
 """Cross-file contract for the Python versions advertised by Inkspan Office."""
 
 from pathlib import Path
-import json
 import re
 import tomllib
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 SUPPORTED_PYTHON_VERSIONS = ("3.11", "3.12", "3.13", "3.14")
-PULL_REQUEST_PYTHON_VERSIONS = ("3.11", "3.14")
 PYTHON_312_LXML_LINUX_SHA256 = (
     "bc783ee3147e60a25aa0445ea82b3e8aabb83b240f2b95d32cb75587ff781814"
 )
@@ -35,7 +33,7 @@ def _workflow_job_block(workflow: str, job_name: str) -> str:
 
 
 def test_python_support_range_matches_classifiers_and_ci_matrix() -> None:
-    """Require PR boundary coverage and full protected-main compatibility coverage."""
+    """Require package metadata and the Office CI job to cover the same minors."""
 
     pyproject = tomllib.loads(_repository_text("office/pyproject.toml"))
     project = pyproject["project"]
@@ -52,14 +50,10 @@ def test_python_support_range_matches_classifiers_and_ci_matrix() -> None:
     office_job = _workflow_job_block(workflow, "office")
     assert "runs-on: ubuntu-24.04" in office_job
     assert "runs-on: ubuntu-latest" not in office_job
-    matrix_match = re.search(
-        r"python-version:\s*\$\{\{\s*github\.event_name == 'pull_request'\s*"
-        r"&&\s*fromJSON\('([^']+)'\)\s*\|\|\s*fromJSON\('([^']+)'\)\s*\}\}",
-        office_job,
-    )
+    matrix_match = re.search(r'python-version:\s*\[([^\]]+)\]', office_job)
     assert matrix_match is not None
-    assert tuple(json.loads(matrix_match.group(1))) == PULL_REQUEST_PYTHON_VERSIONS
-    assert tuple(json.loads(matrix_match.group(2))) == SUPPORTED_PYTHON_VERSIONS
+    matrix_versions = tuple(re.findall(r'"(3\.\d+)"', matrix_match.group(1)))
+    assert matrix_versions == SUPPORTED_PYTHON_VERSIONS
 
 
 def test_python_support_documentation_matches_the_fixed_ci_environment() -> None:
