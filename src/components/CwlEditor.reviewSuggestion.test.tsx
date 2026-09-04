@@ -126,6 +126,31 @@ describe('CwlEditor review suggestion decisions', () => {
     expect(handle.getHTML()).toBe('<p>Alpha beta</p>');
   });
 
+  it('fails stale when the editor changes while accepted evidence is created', async () => {
+    const { handle, revision } = await reviewFixture();
+    let digestCount = 0;
+    const provider: DocumentEnvelopeDigestProvider = {
+      async digest(_algorithm, source) {
+        digestCount += 1;
+        const digest = await crypto.subtle.digest('SHA-256', source);
+        if (digestCount === 3) {
+          act(() => handle.setValue('Newer document'));
+        }
+        return digest;
+      },
+    };
+
+    await expect(
+      handle.applyReviewSuggestionDecision(
+        suggestion(revision, 'insert'),
+        'accept',
+        undefined,
+        provider,
+      ),
+    ).rejects.toMatchObject({ code: 'stale_operation' });
+    expect(handle.getHTML()).toBe('<p>Newer document</p>');
+  });
+
   it('maps Unicode code-point offsets without splitting graphemes', async () => {
     const { handle, revision } = await reviewFixture('A😀B');
     const proposal = suggestion(revision, 'insert');
