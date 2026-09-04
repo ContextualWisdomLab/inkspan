@@ -52,7 +52,7 @@ describe('CwlReviewSuggestionDecision', () => {
   });
 
   it('defaults to print exclusion and disables unavailable decisions', () => {
-    render(
+    const { rerender } = render(
       <CwlReviewSuggestionDecision
         suggestion={suggestion()}
         label="Insert suggested wording"
@@ -67,6 +67,20 @@ describe('CwlReviewSuggestionDecision', () => {
     );
     expect(screen.getByRole('button', { name: /Accept/u })).toBeDisabled();
     expect(screen.getByRole('button', { name: /Reject/u })).toBeDisabled();
+
+    rerender(
+      <CwlReviewSuggestionDecision
+        suggestion={suggestion()}
+        label="Insert suggested wording"
+        acceptLabel="Accept"
+        rejectLabel="Reject"
+        printMode="include"
+      />,
+    );
+    expect(screen.getByRole('region')).toHaveAttribute(
+      'data-cwl-review-print',
+      'include',
+    );
   });
 
   it('fails closed on malformed suggestion decision inputs', () => {
@@ -98,6 +112,17 @@ describe('CwlReviewSuggestionDecision', () => {
           acceptLabel="Accept"
           rejectLabel="Reject"
           onAccept={'invalid' as never}
+        />,
+      ),
+    ).toThrow('Review presentation metadata is invalid.');
+    expect(() =>
+      render(
+        <CwlReviewSuggestionDecision
+          suggestion={suggestion()}
+          label="Insert suggested wording"
+          acceptLabel="Accept"
+          rejectLabel="Reject"
+          onReject={42 as never}
         />,
       ),
     ).toThrow('Review presentation metadata is invalid.');

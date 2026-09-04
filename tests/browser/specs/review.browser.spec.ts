@@ -67,6 +67,15 @@ test('prints review summaries only after explicit opt-in', async ({ page }) => {
   await expect(
     region.getByRole('button', { name: 'Resolve — Thread beta' }),
   ).toBeHidden();
+
+  await page.evaluate(() => window.mountInkspanSuggestionProbe('include'));
+  const suggestion = page.getByRole('region', {
+    name: 'Delete suggested wording',
+  });
+  await expect(suggestion).toBeVisible();
+  await expect(suggestion.getByText('Delete suggested wording')).toBeVisible();
+  await expect(suggestion.getByRole('button', { name: /Accept/u })).toBeHidden();
+  await expect(suggestion.getByRole('button', { name: /Reject/u })).toBeHidden();
 });
 
 test('reflows review actions without hiding content on narrow screens', async ({

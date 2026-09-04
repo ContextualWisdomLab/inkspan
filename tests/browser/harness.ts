@@ -43,7 +43,7 @@ declare global {
       sourceHtml: string,
     ): BrowserHostileDocumentProbeResult;
     mountInkspanReviewProbe(printMode?: 'exclude' | 'include'): void;
-    mountInkspanSuggestionProbe(): void;
+    mountInkspanSuggestionProbe(printMode?: 'exclude' | 'include'): void;
     readInkspanReviewIntents(): readonly BrowserReviewIntent[];
   }
 }
@@ -112,7 +112,7 @@ window.mountInkspanReviewProbe = (printMode = 'exclude'): void => {
   );
 };
 
-window.mountInkspanSuggestionProbe = (): void => {
+window.mountInkspanSuggestionProbe = (printMode = 'exclude'): void => {
   const container = document.querySelector<HTMLElement>('#harness');
   if (!container) throw new Error('Review harness container is missing.');
   reviewIntents.length = 0;
@@ -129,6 +129,7 @@ window.mountInkspanSuggestionProbe = (): void => {
       label: 'Delete suggested wording',
       acceptLabel: 'Accept',
       rejectLabel: 'Reject',
+      printMode,
       onAccept: () =>
         reviewIntents.push({ action: 'accept', threadKey: 'suggestion' }),
       onReject: () =>
