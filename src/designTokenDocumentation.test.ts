@@ -34,6 +34,7 @@ describe('editor design-token documentation contract', () => {
     expect(doctoring).not.toContain('ADR 0027');
     expect(operatorGuide).toContain('When a host overrides any color token');
     expect(operatorGuide).toContain('shipped dark active-toolbar pair uses');
+    expect(operatorGuide).not.toContain('Active-PR repaired dark active-toolbar pair uses');
     expect(operatorGuide).toContain('getEditorThemeTokenContrast');
     expect(operatorGuide).toContain("getEditorThemeTokenContrast('cwl-accent', 'cwl-accent-soft', 'dark')");
     expect(operatorGuide).toContain('`getEditorThemeTokenContrast()` checks only Inkspan catalog values');
@@ -50,10 +51,12 @@ describe('editor design-token documentation contract', () => {
     expect(inventory).toContain('shipped Toolbar');
     expect(inventory).toContain(':focus-visible');
     expect(inventory).toContain('Shipped defaults require no host override');
+    expect(inventory).not.toContain('Active-PR repaired defaults require no host override');
     expect(inventory).toContain('If re-theming, override `--cwl-accent`');
     expect(doctoring).toContain('cwl-accent-soft');
     expect(doctoring).toContain('meets the WCAG 2.2 4.5:1');
     expect(doctoring).toContain('Protected `main` now ships dark `--cwl-accent: #58a6ff`');
+    expect(doctoring).not.toContain('This Active PR now carries dark `--cwl-accent: #58a6ff`');
     expect(doctoring).toContain('host-facing catalog of the nine inventoried chrome tokens');
     expect(doctoring).not.toContain('host-facing catalog of the nine shipped chrome tokens');
     expect(doctoring).toContain('producing about 5.06:1');
@@ -69,9 +72,12 @@ describe('editor design-token documentation contract', () => {
     expect(doctoring).toContain('https://www.w3.org/TR/WCAG22/');
     expect(doctoring).toContain('https://storybook.js.org/docs/get-started/frameworks/react-vite');
     expect(adr).toContain('Status: Accepted');
+    expect(adr).not.toContain('Status: Proposed');
     expect(adr).toContain('Inkspan publishes a host-facing theme-token catalog');
+    expect(adr).not.toContain('If integrated, Inkspan will publish a host-facing theme-token catalog');
     expect(changelog).toContain('Named the repeating editor chrome as a host-facing theme-token catalog');
     expect(changelog).toContain('Raised the shipped dark active-toolbar accent');
+    expect(changelog).not.toContain('Prepared the active-PR dark active-toolbar accent');
     expect(repositoryFile('.storybook/main.ts')).toContain("@storybook/react-vite");
     expect(repositoryFile('stories/EditorChrome.stories.tsx')).toContain('cwl-tb-btn');
     expect(repositoryFile('stories/EditorChrome.stories.tsx')).toContain('autoFocus');

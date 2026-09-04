@@ -128,8 +128,8 @@ function verifyPackedFiles(filePaths) {
   const reactDeclarationImports = [...filePaths]
     .filter((filePath) => filePath.endsWith('.d.ts'))
     .filter((filePath) =>
-      readFileSync(join(repositoryRoot, filePath), 'utf8').includes(
-        "from '@tiptap/react'",
+      /["']@tiptap\/react(?:\/[^"']*)?["']/u.test(
+        readFileSync(join(repositoryRoot, filePath), 'utf8'),
       ),
     );
   assert.deepEqual(
