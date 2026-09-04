@@ -14,6 +14,7 @@ const requiredFiles = [
   'SECURITY.md',
   'docs/README.md',
   'docs/DOCUMENTATION_FITNESS.md',
+  'docs/product-technical-gap-baseline.md',
   'docs/PRD.md',
   'docs/TRD.md',
   'docs/CONTRACTS.md',
@@ -77,6 +78,7 @@ describe('canonical product documentation graph', () => {
       '../ARCHITECTURE.md',
       '../SECURITY.md',
       'DOCUMENTATION_FITNESS.md',
+      'product-technical-gap-baseline.md',
       'PRD.md',
       'TRD.md',
       'CONTRACTS.md',
@@ -260,6 +262,7 @@ describe('canonical product documentation graph', () => {
       'TEST_STRATEGY',
       'OPERABILITY',
       'TRACEABILITY',
+      'Product/technical gap baseline',
     ]) {
       expect(fitness).toContain(documentFamily);
     }
