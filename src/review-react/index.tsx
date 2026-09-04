@@ -495,7 +495,7 @@ export function CwlReviewThreadList({
               : undefined;
 
           return (
-            <li key={presentation.threadKey}>
+            <li className="cwl-review__item" key={presentation.threadKey}>
               <button
                 className="cwl-review__thread"
                 ref={(button) => {
@@ -531,7 +531,7 @@ export function CwlReviewThreadList({
                 {threadLabel}
               </button>
               {semanticSummary === undefined ? null : (
-                <span id={summaryId}>
+                <span className="cwl-review__summary" id={summaryId}>
                   <span>{semanticSummary.status}</span>{' '}
                   <span>{semanticSummary.comments}</span>
                 </span>

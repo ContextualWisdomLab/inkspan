@@ -68,3 +68,40 @@ test('prints review summaries only after explicit opt-in', async ({ page }) => {
     region.getByRole('button', { name: 'Resolve — Thread beta' }),
   ).toBeHidden();
 });
+
+test('reflows review actions without hiding content on narrow screens', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+
+  const item = page.locator('.cwl-review__item').first();
+  const thread = item.locator('.cwl-review__thread');
+  const reply = item.getByRole('button', { name: 'Reply — Thread alpha' });
+
+  await expect(item).toBeVisible();
+  await expect(thread).toBeVisible();
+  await expect(reply).toBeVisible();
+  expect(await item.evaluate((element) => getComputedStyle(element).gridTemplateColumns)).not.toBe(
+    'none',
+  );
+  await expect(thread).toHaveCSS('grid-column', '1 / -1');
+});
+
+test('preserves selected and keyboard focus cues in forced colors', async ({
+  page,
+}) => {
+  await page.emulateMedia({ forcedColors: 'active' });
+
+  const selected = page.getByRole('button', {
+    name: 'Thread beta',
+    exact: true,
+  });
+  await selected.focus();
+
+  expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(
+    true,
+  );
+  await expect(selected).toBeFocused();
+  await expect(selected).toHaveCSS('outline-style', 'solid');
+  await expect(selected).toHaveCSS('outline-width', '2px');
+});
