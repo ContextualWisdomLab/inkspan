@@ -121,10 +121,14 @@ export function createScopedCollaborationProvider(
       source.setLocalStateField(field, value),
     on: (event, listener) => {
       if (listenerWrappers[event].has(listener)) return;
-      const wrapper = (...args: unknown[]) => listener(...args);
+      let active = true;
+      const wrapper = (...args: unknown[]) => {
+        if (active) listener(...args);
+      };
       try {
         source.on(event, wrapper);
       } catch {
+        active = false;
         try {
           source.off(event, wrapper);
         } catch {
