@@ -12,7 +12,7 @@ Inkspan is a modular authoring surface for applications and AI systems, combinin
 - Provider-neutral Yjs collaboration with host-owned transport, authorization, persistence, and lifecycle.
 - Revision, transition, selection, and autosave evidence for conflict-aware host persistence.
 - Offline multilingual typography and email-ready serialization.
-- Network-free JSON-to-DOCX/XLSX/PPTX rendering through the bundled Python Office package.
+- Network-free JSON-to-DOCX/XLSX/PPTX rendering through the separately installed Inkspan Office Python package.
 
 ## Onboarding
 
@@ -22,7 +22,7 @@ Install the React package and styles:
 pnpm add @contextualwisdomlab/cwl-editor react react-dom
 ```
 
-Start with the [repository README](../README.md) for component usage, host APIs, security boundaries, collaboration, persistence evidence, migration routing, email output, and Office rendering.
+Start with the [repository README](https://github.com/ContextualWisdomLab/inkspan#readme) for component usage, host APIs, security boundaries, collaboration, persistence evidence, migration routing, email output, and Office rendering.
 
 ## Architecture and integration
 
@@ -30,6 +30,7 @@ Inkspan owns deterministic editor/document semantics and reusable local evidence
 
 Useful references include:
 
+- [Canonical documentation index](README.md)
 - [Server rendering](server-rendering.md)
 - [Safe hyperlink policy](link-security.md)
 - [Accessibility](accessibility.md)
@@ -39,7 +40,7 @@ Useful references include:
 
 ## Releases and verification
 
-Use protected-branch history, package releases, current checks, and repository test evidence to determine what is shipped. This source page is only a publication prerequisite; GitHub Pages should be treated as live only after repository settings and the published HTTPS endpoint are verified.
+Use the [release evidence authority](adr/0010-release-evidence-authority.md) and [release security contract](release-security.md) to determine what is shipped. Release only the exact integrated protected-main head after its version identity, artifact inventory and digests, package-consumer evidence, required test, security and accessibility gates, SBOM and provenance, formal review, and repository-protection evidence all pass. Missing, conflicting, stale, or unverified evidence fails closed; a package release or green checks alone are insufficient. This source page is only a publication prerequisite; GitHub Pages should be treated as live only after repository settings and the published HTTPS endpoint are verified.
 
 - [Repository](https://github.com/ContextualWisdomLab/inkspan)
 - [Ask DeepWiki](https://deepwiki.com/ContextualWisdomLab/inkspan)
