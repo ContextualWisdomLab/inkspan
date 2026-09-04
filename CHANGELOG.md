@@ -17,6 +17,9 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Raised workspace-wide transitive development-tool overrides for `fast-uri`, `nanoid`, and `postcss` to patched minimums, keeping the lockfile audit clean without changing runtime package authority.
 - Normalized isolated package-verifier temporary roots before containment checks on macOS.
 
+### Reliability
+- Reject obviously oversized rich clipboard HTML from UTF-16 code-unit length before allocating a UTF-8 copy, and reject broad source trees before materializing children beyond `maxNodes`.
+
 ## [0.6.0] — 2026-08-10
 
 ### Release

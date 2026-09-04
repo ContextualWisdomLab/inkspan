@@ -49,13 +49,15 @@ const ERROR_MESSAGES: Readonly<Record<ClipboardSanitizationErrorCode, string>> =
   Object.freeze({
     dom_unavailable:
       'Rich clipboard sanitization requires a DOM-capable document.',
-    input_too_large: 'Rich clipboard HTML exceeds the configured byte limit.',
+    input_too_large:
+      'The pasted content is too large to insert. Try pasting less content at once.',
     node_limit_exceeded:
-      'Rich clipboard HTML exceeds the configured node limit.',
+      'The pasted content is too complex to insert. Try pasting less content at once.',
     depth_limit_exceeded:
-      'Rich clipboard HTML exceeds the configured depth limit.',
+      'The pasted content is too deeply nested to insert. Try pasting less content at once.',
     invalid_configuration: 'Rich clipboard configuration is invalid.',
-    invalid_html: 'Rich clipboard HTML could not be sanitized.',
+    invalid_html:
+      "This content can't be inserted here. Try pasting as plain text instead.",
   });
 
 const CLIPBOARD_SANITIZATION_ERRORS = new WeakSet<object>();
@@ -455,14 +457,30 @@ function normalizedOutputElement(sourceName: string): string | null {
   return ALLOWED_ELEMENTS.has(normalized) ? normalized : null;
 }
 
+/** Reject before queued traversal frames can exceed the configured node budget. */
+function assertTraversalCapacity(
+  stack: TraversalFrame[],
+  visitedNodes: number,
+  additionalNodes: number,
+  maxNodes: number,
+): void {
+  if (additionalNodes > maxNodes - visitedNodes - stack.length) {
+    throw new ClipboardSanitizationError('node_limit_exceeded');
+  }
+}
+
 /** Push child frames in reverse so iterative traversal preserves source order. */
 function pushChildren(
   stack: TraversalFrame[],
   sourceNode: globalThis.Node,
   outputParent: globalThis.Node,
   depth: number,
+  visitedNodes: number,
+  maxNodes: number,
 ): void {
-  for (let index = sourceNode.childNodes.length - 1; index >= 0; index -= 1) {
+  const childCount = sourceNode.childNodes.length;
+  assertTraversalCapacity(stack, visitedNodes, childCount, maxNodes);
+  for (let index = childCount - 1; index >= 0; index -= 1) {
     const child = sourceNode.childNodes.item(index);
     if (child) stack.push({ sourceNode: child, outputParent, depth });
   }
@@ -474,10 +492,13 @@ function pushClosedDetailsSummary(
   sourceElement: Element,
   outputParent: globalThis.Node,
   depth: number,
+  visitedNodes: number,
+  maxNodes: number,
 ): void {
   for (let index = 0; index < sourceElement.children.length; index += 1) {
     const child = sourceElement.children.item(index);
     if (child?.localName.toLowerCase() !== 'summary') continue;
+    assertTraversalCapacity(stack, visitedNodes, 1, maxNodes);
     stack.push({ sourceNode: child, outputParent, depth });
     return;
   }
@@ -499,6 +520,7 @@ export function sanitizeRichClipboardHtml(
     throw new ClipboardSanitizationError('invalid_html');
   }
   if (
+    sourceHtml.length > resolvedConfig.maxHtmlBytes ||
     new TextEncoder().encode(sourceHtml).byteLength > resolvedConfig.maxHtmlBytes
   ) {
     throw new ClipboardSanitizationError('input_too_large');
@@ -516,7 +538,14 @@ export function sanitizeRichClipboardHtml(
     sourceTemplate.innerHTML = sourceHtml;
     const outputContainer = inertDocument.createElement('div');
     const stack: TraversalFrame[] = [];
-    pushChildren(stack, sourceTemplate.content, outputContainer, 1);
+    pushChildren(
+      stack,
+      sourceTemplate.content,
+      outputContainer,
+      1,
+      0,
+      resolvedConfig.maxNodes,
+    );
     let visitedNodes = 0;
 
     while (stack.length > 0) {
@@ -524,9 +553,6 @@ export function sanitizeRichClipboardHtml(
       /* v8 ignore next -- stack length guarantees a frame. */
       if (!frame) continue;
       visitedNodes += 1;
-      if (visitedNodes > resolvedConfig.maxNodes) {
-        throw new ClipboardSanitizationError('node_limit_exceeded');
-      }
       if (frame.depth > resolvedConfig.maxDepth) {
         throw new ClipboardSanitizationError('depth_limit_exceeded');
       }
@@ -556,6 +582,8 @@ export function sanitizeRichClipboardHtml(
           sourceElement,
           frame.outputParent,
           frame.depth + 1,
+          visitedNodes,
+          resolvedConfig.maxNodes,
         );
         continue;
       }
@@ -584,7 +612,14 @@ export function sanitizeRichClipboardHtml(
       }
 
       if (sourceName !== 'br' && sourceName !== 'hr') {
-        pushChildren(stack, sourceElement, childParent, frame.depth + 1);
+        pushChildren(
+          stack,
+          sourceElement,
+          childParent,
+          frame.depth + 1,
+          visitedNodes,
+          resolvedConfig.maxNodes,
+        );
       }
     }
     return outputContainer.innerHTML;
