@@ -46,6 +46,12 @@ describe('scoped collaboration provider cleanup containment', () => {
     expect(observed).toBeUndefined();
     expect(offCalls).toBe(2);
     expect(sourceListeners.update.size).toBe(0);
+    expect(sourceListeners.change.size).toBe(1);
+
+    for (const retainedHostListener of sourceListeners.change) {
+      retainedHostListener({ stale: true });
+    }
+    expect(changeListener).not.toHaveBeenCalled();
 
     scoped.dispose();
     expect(offCalls).toBe(2);
