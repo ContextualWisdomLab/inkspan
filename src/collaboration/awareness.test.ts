@@ -61,6 +61,97 @@ describe('collaboration awareness validation', () => {
     expect(() => serializeCollaborationUser(user)).toThrow(expected);
   });
 
+  it.each([
+    ['userId', 42, 'collaboration userId must be a string'],
+    ['displayName', {}, 'collaboration displayName must be a string'],
+    ['cursorColor', null, 'collaboration cursorColor must be a string'],
+  ] as const)('rejects malformed %s before normalization', (field, value, message) => {
+    expect(() =>
+      serializeCollaborationUser({
+        userId: 'editor-alice',
+        displayName: 'Alice',
+        cursorColor: '#123456',
+        [field]: value,
+      } as never),
+    ).toThrowError(new Error(message));
+  });
+
+  it('bounds normalized public identity without splitting Unicode code points', () => {
+    const boundedName = `${'A'.repeat(79)}😀`;
+    const boundedId = `${'a'.repeat(79)}😀`;
+
+    expect(
+      serializeCollaborationUser({
+        userId: boundedId,
+        displayName: `${boundedName}tail`,
+        cursorColor: '#123456',
+      }),
+    ).toEqual({ id: boundedId, name: boundedName, color: '#123456' });
+
+    const arrayFrom = vi.spyOn(Array, 'from');
+    expect(() =>
+      serializeCollaborationUser({
+        userId: `editor-${'a'.repeat(74)}`,
+        displayName: 'Alice',
+        cursorColor: '#123456',
+      }),
+    ).toThrow(/userId.*80/);
+    expect(arrayFrom).not.toHaveBeenCalled();
+    arrayFrom.mockRestore();
+  });
+
+  it.each(['userId', 'displayName', 'cursorColor'] as const)(
+    'rejects oversized %s before normalization',
+    (field) => {
+      const originalTrim = String.prototype.trim;
+      let oversizedTrimObserved = false;
+      const trimSpy = vi
+        .spyOn(String.prototype, 'trim')
+        .mockImplementation(function (this: string) {
+          if (this.length > 1_024) oversizedTrimObserved = true;
+          return originalTrim.call(this);
+        });
+
+      try {
+        expect(() =>
+          serializeCollaborationUser({
+            userId: 'editor-alice',
+            displayName: 'Alice',
+            cursorColor: '#123456',
+            [field]: ' '.repeat(1_025),
+          }),
+        ).toThrow();
+        expect(oversizedTrimObserved).toBe(false);
+      } finally {
+        trimSpy.mockRestore();
+      }
+    },
+  );
+
+  it.each(['userId', 'displayName', 'cursorColor'] as const)(
+    'redacts hostile %s property failures',
+    (field) => {
+      const privateFailure = { marker: 'private-local-user-sentinel' };
+      const user = new Proxy(
+        {
+          userId: 'editor-alice',
+          displayName: 'Alice',
+          cursorColor: '#123456',
+        },
+        {
+          get(target, property, receiver) {
+            if (property === field) throw privateFailure;
+            return Reflect.get(target, property, receiver);
+          },
+        },
+      );
+
+      expect(() => serializeCollaborationUser(user)).toThrowError(
+        new Error(`collaboration ${field} must be a string`),
+      );
+    },
+  );
+
   it('allows collaboration without an awareness provider', () => {
     expect(() =>
       assertCollaborationConfiguration(undefined, undefined),
