@@ -22,6 +22,7 @@ This record maps durable Inkspan product decisions to authoritative standards, p
 | Clipboard resource preflight | Reject UTF-16 length above `maxHtmlBytes` before UTF-8 allocation, and reject `visited + queued + enqueueable > maxNodes` before child materialization | Unicode Standard 16.0 §3.9; ECMA-262 string length; WHATWG DOM `NodeList`; CWE-770; W3C Clipboard API | Active-PR doctoring `docs/doctoring/clipboard-resource-preflight.md`, operator guide, and SafeClipboard preflight/traversal regressions | Proposed until protected `main`; jsdom proof is not cross-engine conformance or a claim that remaining HTML is trusted |
 | Cross-engine release assurance | The same committed synthetic adversarial corpus runs under required Chromium, Firefox, and WebKit projects; exact package-lock and packed npm artifact SHA-256 digests are required, and only focused standards-grounded safe differences may be admitted | WHATWG HTML Living Standard; W3C Clipboard API and events; Playwright 1.62 release notes and browser/project documentation | ADR 0016, protected-main browser evidence source/workflows, TEST_STRATEGY, OPERABILITY and UML | Protected-main implementation is the release-policy authority; every release candidate must regenerate fresh exact-source/lock/run/browser evidence bound to the exact packed npm artifact SHA-256 and does not claim byte-identical browser serialization or branded enterprise-policy coverage |
 | CSS paged-media output | Shipped editor CSS has a declarative print boundary that removes interactive chrome and screen clipping while preserving authored document flow and bounded fragmentation behavior | W3C Media Queries Level 3; CSS Fragmentation Level 3; CSS Paged Media Level 3 as tracked draft input | protected-main #116 packaged stylesheet, real-browser print-media evidence, ADR 0021, print doctoring and tests | `implemented_on_protected_main`; browser print styling does not create a durable PDF service, page-number/header authority, persistence, signing, or PDF-conformance claim |
+| Editor chrome design tokens | Repeating toolbar/editor surfaces share named `--cwl-*` custom properties; hosts override those properties on `.cwl-editor` and preview them in Storybook | Design Tokens Format Module 2025.10; WCAG 2.2 contrast including inventoried `--cwl-accent` on `--cwl-accent-soft`; Storybook React/Vite | Active-PR doctoring `docs/doctoring/editor-design-tokens.md`, operator guide, ADR 0031, token catalog tests, and Storybook inventory | Proposed until protected `main`; the interchange snapshot is not complete DTCG conformance, Figma Variables sync, or a host WCAG certification |
 | Editor integration | Public behavior must exercise the actual TipTap/ProseMirror integration path, not an inert extension field or test-only hook | official TipTap and ProseMirror documentation for the locked dependency line | integration tests and package consumers | Inkspan does not claim compatibility with untested major-version integration semantics |
 | Collaboration | Inkspan provides provider-neutral editor/Yjs bindings; host owns provider lifecycle, room authorization, awareness privacy, persistence and audit | official Yjs/provider documentation plus Inkspan public contract | collaboration tests and architecture ownership matrix | No network-provider or tenant-authorization authority is implied |
 | Secure development | Security controls are developed test-first, with exact-head scanning/review/package evidence and root-cause regression | NIST SP 800-218 SSDF 1.1 | CI/security/SAST/package/provenance gates, doctoring and regression history | Repository evidence is not a claim of complete SSDF organizational conformance |
@@ -38,6 +39,8 @@ This record maps durable Inkspan product decisions to authoritative standards, p
 Bray, T. (Ed.). (2015). *The I-JSON Message Format* (RFC 7493). RFC Editor. https://doi.org/10.17487/RFC7493
 
 Bray, T. (Ed.). (2017). *The JavaScript Object Notation (JSON) Data Interchange Format* (RFC 8259; STD 90). RFC Editor. https://doi.org/10.17487/RFC8259
+
+Design Tokens Community Group. (2025, October 28). *Design Tokens Format Module 2025.10* (Final Community Group Report). World Wide Web Consortium. https://www.w3.org/community/reports/design-tokens/CG-FINAL-format-20251028/
 
 Ecma International. (2021). *ECMA-376: Office Open XML file formats* (5th ed.). https://ecma-international.org/publications-and-standards/standards/ecma-376/
 
@@ -78,6 +81,8 @@ Souppaya, M., Scarfone, K., & Dodson, D. (2022). *Secure Software Development Fr
 Unicode Consortium. (2024). *The Unicode Standard, Version 16.0.0*. https://www.unicode.org/versions/Unicode16.0.0/
 
 Web Hypertext Application Technology Working Group. (2026). *DOM Standard*. Retrieved August 16, 2026, from https://dom.spec.whatwg.org/
+
+Storybook. (n.d.). *Storybook for React with Vite*. Retrieved August 16, 2026, from https://storybook.js.org/docs/get-started/frameworks/react-vite
 
 Web Hypertext Application Technology Working Group. (2026). *HTML Standard: Parsing HTML documents* (Living Standard). Retrieved August 10, 2026, from https://html.spec.whatwg.org/multipage/parsing.html
 

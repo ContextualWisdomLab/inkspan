@@ -60,6 +60,8 @@ const ERROR_MESSAGES: Readonly<Record<ClipboardSanitizationErrorCode, string>> =
       "This content can't be inserted here. Try pasting as plain text instead.",
   });
 
+const CLIPBOARD_SANITIZATION_ERRORS = new WeakSet<object>();
+
 /** Error whose stable code and message never disclose clipboard content. */
 export class ClipboardSanitizationError extends Error {
   /** Machine-readable rejection category safe for host telemetry. */
@@ -70,7 +72,17 @@ export class ClipboardSanitizationError extends Error {
     super(ERROR_MESSAGES[code]);
     this.name = 'ClipboardSanitizationError';
     this.code = code;
+    CLIPBOARD_SANITIZATION_ERRORS.add(this);
   }
+}
+
+/** Return whether an unknown value is a genuine module-created sanitizer error. */
+export function isClipboardSanitizationError(
+  value: unknown,
+): value is ClipboardSanitizationError {
+  return (
+    (typeof value === 'object' && value !== null) || typeof value === 'function'
+  ) && CLIPBOARD_SANITIZATION_ERRORS.has(value as object);
 }
 
 interface ResolvedClipboardConfig {
@@ -243,7 +255,7 @@ function resolveClipboardConfig(
     });
   } catch (error) {
     if (
-      error instanceof ClipboardSanitizationError &&
+      isClipboardSanitizationError(error) &&
       error.code === 'invalid_configuration'
     ) {
       throw error;
@@ -612,7 +624,7 @@ export function sanitizeRichClipboardHtml(
     }
     return outputContainer.innerHTML;
   } catch (error) {
-    if (error instanceof ClipboardSanitizationError) throw error;
+    if (isClipboardSanitizationError(error)) throw error;
     throw new ClipboardSanitizationError('invalid_html');
   }
 }
@@ -655,10 +667,9 @@ export const SafeClipboard = Extension.create<SafeClipboardOptions>({
           : this.options.config;
       return sanitizeRichClipboardHtml(html, config, this.options.document);
     } catch (error) {
-      const clipboardError =
-        error instanceof ClipboardSanitizationError
-          ? error
-          : new ClipboardSanitizationError('invalid_html');
+      const clipboardError = isClipboardSanitizationError(error)
+        ? error
+        : new ClipboardSanitizationError('invalid_html');
       try {
         this.options.onError?.(clipboardError);
       } catch {
