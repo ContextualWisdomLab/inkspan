@@ -50,6 +50,20 @@ export type {
   TextPositionSelectorEvidenceErrorCode,
 } from './textPositionSelectorEvidence.js';
 
+// Host-owned, revision-scoped writing diagnostic contract.
+export {
+  DEFAULT_WRITING_DIAGNOSTIC_LIMITS,
+  WritingDiagnosticError,
+  validateWritingDiagnostics,
+} from './writingDiagnostics.js';
+export type {
+  CwlWritingDiagnostic,
+  CwlWritingDiagnosticPriority,
+  CwlWritingDiagnosticProvenance,
+  WritingDiagnosticErrorCode,
+  WritingDiagnosticLimits,
+} from './writingDiagnostics.js';
+
 // Versioned, lossless persistence boundary.
 export {
   DEFAULT_DOCUMENT_ENVELOPE_LIMITS,

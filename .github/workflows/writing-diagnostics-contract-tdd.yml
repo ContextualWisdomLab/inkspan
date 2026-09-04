@@ -1,0 +1,130 @@
+name: Writing Diagnostics Contract TDD
+
+on:
+  push:
+    branches:
+      - feat/writing-diagnostics-contract
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: writing-diagnostics-contract-tdd-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  focused-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Collect focused contract coverage
+        id: focused_coverage
+        continue-on-error: true
+        run: >-
+          pnpm exec vitest run
+          src/writingDiagnostics.test.ts
+          src/writingDiagnosticsBoundary.test.ts
+          src/writingDiagnosticsExports.test.ts
+          --coverage
+          --coverage.include=src/writingDiagnostics.ts
+          --coverage.reporter=text
+          --coverage.reporter=json
+          --coverage.reporter=json-summary
+      - name: Report and enforce exact contract coverage
+        run: |
+          node <<'NODE'
+          const { readFileSync } = require('node:fs');
+          const coverage = JSON.parse(readFileSync('coverage/coverage-final.json', 'utf8'));
+          const [filePath, fileCoverage] = Object.entries(coverage).find(
+            ([candidate]) => candidate.endsWith('/src/writingDiagnostics.ts'),
+          ) ?? [];
+          if (!filePath || !fileCoverage) {
+            console.error('::error file=src/writingDiagnostics.ts,line=1::Focused coverage record is missing.');
+            process.exit(1);
+          }
+
+          const missingStatementLines = [...new Set(
+            Object.entries(fileCoverage.s)
+              .filter(([, count]) => count === 0)
+              .map(([id]) => fileCoverage.statementMap[id].start.line),
+          )].sort((a, b) => a - b);
+          const missingFunctionLines = [...new Set(
+            Object.entries(fileCoverage.f)
+              .filter(([, count]) => count === 0)
+              .map(([id]) => fileCoverage.fnMap[id].decl.start.line),
+          )].sort((a, b) => a - b);
+          const missingBranches = [];
+          for (const [id, counts] of Object.entries(fileCoverage.b)) {
+            counts.forEach((count, index) => {
+              if (count === 0) {
+                const branch = fileCoverage.branchMap[id];
+                const location = branch.locations?.[index] ?? branch.loc;
+                missingBranches.push(`${location.start.line}:${index}`);
+              }
+            });
+          }
+
+          const total = (values) => Object.values(values).reduce(
+            (sum, value) => sum + (Array.isArray(value) ? value.length : 1),
+            0,
+          );
+          const covered = (values) => Object.values(values).reduce(
+            (sum, value) => sum + (Array.isArray(value)
+              ? value.filter((count) => count > 0).length
+              : Number(value > 0)),
+            0,
+          );
+          const statementTotal = total(fileCoverage.s);
+          const statementCovered = covered(fileCoverage.s);
+          const functionTotal = total(fileCoverage.f);
+          const functionCovered = covered(fileCoverage.f);
+          const branchTotal = total(fileCoverage.b);
+          const branchCovered = covered(fileCoverage.b);
+          console.log(
+            `::notice file=src/writingDiagnostics.ts,line=1::` +
+            `Statements ${statementCovered}/${statementTotal}; ` +
+            `functions ${functionCovered}/${functionTotal}; ` +
+            `branches ${branchCovered}/${branchTotal}.`,
+          );
+
+          if (
+            missingStatementLines.length ||
+            missingFunctionLines.length ||
+            missingBranches.length ||
+            process.env.FOCUSED_COVERAGE_OUTCOME !== 'success'
+          ) {
+            console.error(
+              `::error file=src/writingDiagnostics.ts,line=1::` +
+              `Missing statement lines: ${missingStatementLines.join(', ') || 'none'}; ` +
+              `missing function lines: ${missingFunctionLines.join(', ') || 'none'}; ` +
+              `missing branches line:index: ${missingBranches.join(', ') || 'none'}.`,
+            );
+            process.exit(1);
+          }
+          NODE
+        env:
+          FOCUSED_COVERAGE_OUTCOME: ${{ steps.focused_coverage.outcome }}
+      - name: Typecheck public source contracts
+        run: pnpm typecheck
+      - name: Run complete production coverage gate
+        run: pnpm coverage
+      - name: Build all package entrypoints
+        run: pnpm build
+      - name: Verify isolated package consumers
+        run: pnpm verify:package
+      - name: Build the demonstration application
+        run: pnpm build:demo
