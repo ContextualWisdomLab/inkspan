@@ -282,8 +282,23 @@
   .cwl-toolbar,
   .cwl-collaboration-status,
   .collaboration-cursor__caret,
-  .collaboration-cursor__label {
+  .collaboration-cursor__label,
+  .cwl-review[data-cwl-review-print='exclude'] {
     display: none !important;
+  }
+
+  .cwl-review[data-cwl-review-print='include'] .cwl-review__action {
+    display: none !important;
+  }
+
+  .cwl-review[data-cwl-review-print='include'].cwl-review__target,
+  .cwl-review[data-cwl-review-print='include'] .cwl-review__thread {
+    appearance: none;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
   }
 
   .cwl-editor__surface {

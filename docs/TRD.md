@@ -58,7 +58,7 @@ The React-free text-position-selector package surface is also protected-main beh
 
 The proposed React-free review surface validates bounded thread presentations and insert/delete proposals against the versioned text-position projection and exact canonical document revision. It returns detached frozen metadata and revision-only operation evidence. A stale proposal may be classified only when the document stayed unchanged; an accepted operation that changed nothing, a rejected operation that changed content, or any stale operation paired with a mutation fails closed.
 
-The proposed React surface is controlled and intent-only. Native buttons, one roving thread-selection tab stop, Arrow Up/Down and Home/End focus movement, host-supplied localized labels, and semantic status/comment summaries provide the bounded interaction layer. Inkspan does not apply the editor transaction, authorize the actor, persist or resolve a thread, send notifications, create durable audit, or re-anchor a target across revisions.
+The proposed React surface is controlled and intent-only. Native buttons, one roving thread-selection tab stop, Arrow Up/Down and Home/End focus movement, host-supplied localized labels, and semantic status/comment summaries provide the bounded interaction layer. Review presentation is excluded from print by default; explicit inclusion retains bounded labels and summaries while suppressing reply/resolve controls. Inkspan does not apply the editor transaction, authorize the actor, persist or resolve a thread, send notifications, create durable audit, or re-anchor a target across revisions.
 
 ## Autosave state machine and durable concurrency
 

@@ -30,12 +30,17 @@ export interface CwlReviewThreadListLabels {
   readonly resolve: string;
 }
 
+/** Whether validated review presentation participates in browser print output. */
+export type CwlReviewPrintMode = 'exclude' | 'include';
+
 /** Controlled inputs and intent callbacks for the review-thread list. */
 export interface CwlReviewThreadListProps {
   /** Untrusted host presentation records validated before rendering. */
   readonly presentations: readonly unknown[];
   /** Host-supplied localized visible and accessible copy. */
   readonly labels: CwlReviewThreadListLabels;
+  /** Defaults to `exclude` so review chrome never enters print accidentally. */
+  readonly printMode?: CwlReviewPrintMode;
   /** Selection intent; the host remains the controlled-state authority. */
   readonly onSelectThread: (thread: CwlReviewThreadPresentation) => void;
   /** Optional reply intent; absence keeps reply controls disabled. */
@@ -50,6 +55,8 @@ export interface CwlReviewTargetMarkerProps {
   readonly presentation: unknown;
   /** Host-supplied localized visible and accessible marker label. */
   readonly label: string;
+  /** Defaults to `exclude` so review chrome never enters print accidentally. */
+  readonly printMode?: CwlReviewPrintMode;
   /** Selection intent; the host remains editor-selection authority. */
   readonly onSelectThread: (thread: CwlReviewThreadPresentation) => void;
 }
@@ -96,6 +103,12 @@ function requireVisibleLabel(value: unknown): string {
     rejectReviewPresentation();
   }
   return value;
+}
+
+function validateReviewPrintMode(value: unknown): CwlReviewPrintMode {
+  if (value === undefined || value === 'exclude') return 'exclude';
+  if (value === 'include') return value;
+  rejectReviewPresentation();
 }
 
 function validateReviewThreadListLabels(
@@ -341,10 +354,12 @@ function invokeReviewIntent(
 export function CwlReviewTargetMarker({
   presentation,
   label,
+  printMode,
   onSelectThread,
 }: CwlReviewTargetMarkerProps) {
   const validatedPresentation = createReviewThreadPresentation(presentation);
   const validatedLabel = requireVisibleLabel(label);
+  const validatedPrintMode = validateReviewPrintMode(printMode);
   const validatedCallback = validateReviewIntentCallbacks(
     onSelectThread,
     undefined,
@@ -353,9 +368,11 @@ export function CwlReviewTargetMarker({
 
   return (
     <button
+      className="cwl-review cwl-review__target"
       type="button"
       aria-pressed={validatedPresentation.selected}
       data-cwl-review-state={validatedPresentation.state}
+      data-cwl-review-print={validatedPrintMode}
       onClick={() =>
         invokeReviewIntent(validatedCallback, validatedPresentation)
       }
@@ -401,6 +418,7 @@ export function CwlReviewTargetMarker({
 export function CwlReviewThreadList({
   presentations,
   labels,
+  printMode,
   onSelectThread,
   onReplyThread,
   onResolveThread,
@@ -411,6 +429,7 @@ export function CwlReviewThreadList({
   const validatedPresentations =
     validateReviewThreadPresentations(presentations);
   const validatedLabels = validateReviewThreadListLabels(labels);
+  const validatedPrintMode = validateReviewPrintMode(printMode);
   const validatedCallbacks = validateReviewIntentCallbacks(
     onSelectThread,
     onReplyThread,
@@ -422,7 +441,11 @@ export function CwlReviewThreadList({
   );
 
   return (
-    <section aria-label={validatedLabels.region}>
+    <section
+      className="cwl-review cwl-review__threads"
+      aria-label={validatedLabels.region}
+      data-cwl-review-print={validatedPrintMode}
+    >
       <ul>
         {validatedPresentations.map((presentation, index) => {
           const threadLabel = createThreadLabel(
@@ -474,6 +497,7 @@ export function CwlReviewThreadList({
           return (
             <li key={presentation.threadKey}>
               <button
+                className="cwl-review__thread"
                 ref={(button) => {
                   threadButtons.current[index] = button;
                 }}
@@ -513,6 +537,7 @@ export function CwlReviewThreadList({
                 </span>
               )}
               <button
+                className="cwl-review__action"
                 type="button"
                 aria-label={`${validatedLabels.reply} — ${threadLabel}`}
                 aria-describedby={summaryId}
@@ -522,6 +547,7 @@ export function CwlReviewThreadList({
                 {validatedLabels.reply}
               </button>
               <button
+                className="cwl-review__action"
                 type="button"
                 aria-label={`${validatedLabels.resolve} — ${threadLabel}`}
                 aria-describedby={summaryId}

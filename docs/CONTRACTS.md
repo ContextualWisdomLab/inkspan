@@ -53,7 +53,7 @@ The proposed `./review` subpath accepts only versioned, bounded, provider-neutra
 
 Classification is evidence, not mutation authority. The host applies any authorized editor transaction and owns reviewer/thread identity, permissions, transport, durable persistence, resolution, notifications, audit, retention, and cross-revision re-anchoring. Acceptance must produce a changed revision; rejection must preserve the revision; a stale target paired with any document change fails closed.
 
-The proposed `./review-react` subpath renders controlled native-button target markers and thread lists from the validated presentation contract. It exposes selection, reply, and resolve intents only. Host-controlled selection remains authoritative, unavailable actions remain disabled, keyboard focus traversal does not commit selection, and host callbacks cannot turn presentation state into authorization or durable success.
+The proposed `./review-react` subpath renders controlled native-button target markers and thread lists from the validated presentation contract. It exposes selection, reply, and resolve intents only. Host-controlled selection remains authoritative, unavailable actions remain disabled, keyboard focus traversal does not commit selection, and host callbacks cannot turn presentation state into authorization or durable success. Review presentation defaults to `printMode="exclude"`; explicit `include` prints bounded labels and status/comment summaries while suppressing reply/resolve controls.
 
 ## W3C text-position selector evidence contract
 

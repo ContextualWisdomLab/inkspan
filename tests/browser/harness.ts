@@ -39,7 +39,7 @@ declare global {
     runInkspanHostileDocumentProbe(
       sourceHtml: string,
     ): BrowserHostileDocumentProbeResult;
-    mountInkspanReviewProbe(): void;
+    mountInkspanReviewProbe(printMode?: 'exclude' | 'include'): void;
     readInkspanReviewIntents(): readonly BrowserReviewIntent[];
   }
 }
@@ -75,7 +75,7 @@ const reviewPresentation = (
   canResolve,
 });
 
-window.mountInkspanReviewProbe = (): void => {
+window.mountInkspanReviewProbe = (printMode = 'exclude'): void => {
   const container = document.querySelector<HTMLElement>('#harness');
   if (!container) throw new Error('Review harness container is missing.');
   reviewIntents.length = 0;
@@ -97,6 +97,7 @@ window.mountInkspanReviewProbe = (): void => {
         reply: 'Reply',
         resolve: 'Resolve',
       },
+      printMode,
       onSelectThread: (thread) =>
         reviewIntents.push({ action: 'select', threadKey: thread.threadKey }),
       onReplyThread: (thread) =>

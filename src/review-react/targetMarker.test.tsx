@@ -37,6 +37,32 @@ function presentation(overrides: Record<string, unknown> = {}) {
 }
 
 describe('CwlReviewTargetMarker', () => {
+  it('uses the fail-safe print default and rejects unsupported print modes', () => {
+    render(
+      <CwlReviewTargetMarker
+        presentation={presentation()}
+        label="Review target"
+        onSelectThread={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('button')).toHaveAttribute(
+      'data-cwl-review-print',
+      'exclude',
+    );
+    cleanup();
+
+    expect(() =>
+      render(
+        <CwlReviewTargetMarker
+          presentation={presentation()}
+          label="Review target"
+          printMode={'unsafe' as 'include'}
+          onSelectThread={vi.fn()}
+        />,
+      ),
+    ).toThrow('Review presentation metadata is invalid.');
+  });
+
   it('renders one accessible controlled inline target marker and emits only a detached host intent', () => {
     const source = presentation();
     const onSelectThread = vi.fn();

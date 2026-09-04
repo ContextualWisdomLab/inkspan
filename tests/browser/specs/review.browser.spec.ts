@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/tests/browser/harness.html');
+  await page.addStyleTag({ url: '/dist/cwl-editor.css' });
   await page.evaluate(() => window.mountInkspanReviewProbe());
 });
 
@@ -51,4 +52,19 @@ test('keeps review focus and host intent deterministic across real engines', asy
   await expect(
     region.getByRole('button', { name: 'Resolve — Thread gamma' }),
   ).toBeDisabled();
+});
+
+test('prints review summaries only after explicit opt-in', async ({ page }) => {
+  const region = page.getByRole('region', { name: 'Document review' });
+  await page.emulateMedia({ media: 'print' });
+  await expect(region).toBeHidden();
+
+  await page.evaluate(() => window.mountInkspanReviewProbe('include'));
+  await expect(region).toBeVisible();
+  await expect(
+    region.getByRole('button', { name: 'Thread beta', exact: true }),
+  ).toBeVisible();
+  await expect(
+    region.getByRole('button', { name: 'Resolve — Thread beta' }),
+  ).toBeHidden();
 });

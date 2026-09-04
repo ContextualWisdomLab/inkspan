@@ -157,6 +157,7 @@ const html = renderToStaticMarkup(React.createElement(CwlReviewThreadList, {
 }));
 assert.match(html, /aria-label="Document review"/u);
 assert.match(html, /aria-pressed="true"/u);
+assert.match(html, /data-cwl-review-print="exclude"/u);
 assert.match(html, />Reply</u);
 assert.match(html, new RegExp('<button[^>]*disabled=""[^>]*>Reply</button>', 'u'));
 `,
@@ -172,10 +173,12 @@ const { CwlReviewThreadList } = require('${packageJson.name}/review-react');
 const html = renderToStaticMarkup(React.createElement(CwlReviewThreadList, {
   presentations: [${JSON.stringify(presentationFixture('b'))}],
   labels: ${labelsSource},
+  printMode: 'include',
   onSelectThread() {},
 }));
 assert.match(html, /aria-label="Document review"/u);
 assert.match(html, /aria-pressed="true"/u);
+assert.match(html, /data-cwl-review-print="include"/u);
 assert.match(html, />Resolve</u);
 assert.match(html, new RegExp('<button[^>]*disabled=""[^>]*>Resolve</button>', 'u'));
 `,
@@ -192,9 +195,11 @@ function verifyDeclarationConsumer() {
     sourcePath,
     `import {
   CwlReviewThreadList,
+  type CwlReviewPrintMode,
   type CwlReviewThreadListLabels,
   type CwlReviewThreadListProps,
 } from '${packageJson.name}/review-react';
+const printMode: CwlReviewPrintMode = 'include';
 const labels: CwlReviewThreadListLabels = {
   region: 'Document review',
   thread: (thread, index) => String(index) + thread.state,
@@ -204,12 +209,13 @@ const labels: CwlReviewThreadListLabels = {
 const props: CwlReviewThreadListProps = {
   presentations: [],
   labels,
+  printMode,
   onSelectThread(thread) {
     void thread.threadKey;
   },
 };
 const component: typeof CwlReviewThreadList = CwlReviewThreadList;
-void [props, component];
+void [props, component, printMode];
 `,
     'utf8',
   );

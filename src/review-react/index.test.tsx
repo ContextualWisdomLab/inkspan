@@ -64,6 +64,33 @@ function expectInvalidLabels(candidate: unknown) {
 }
 
 describe('CwlReviewThreadList', () => {
+  it('defaults review print output to excluded and accepts explicit inclusion', () => {
+    const { rerender } = render(
+      <CwlReviewThreadList
+        presentations={[presentation('thread_1')]}
+        labels={labels}
+        onSelectThread={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('region')).toHaveAttribute(
+      'data-cwl-review-print',
+      'exclude',
+    );
+
+    rerender(
+      <CwlReviewThreadList
+        presentations={[presentation('thread_1')]}
+        labels={labels}
+        printMode="include"
+        onSelectThread={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('region')).toHaveAttribute(
+      'data-cwl-review-print',
+      'include',
+    );
+  });
+
   it('renders a controlled accessible thread list and emits detached presentation intents', () => {
     const onSelectThread = vi.fn();
     const onReplyThread = vi.fn();
