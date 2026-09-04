@@ -49,6 +49,13 @@ function applyForgedMeta(state: EditorState, meta: unknown): EditorState {
 }
 
 describe('WritingDiagnostics transaction metadata boundary', () => {
+  it('returns no decorations when the plugin is absent', () => {
+    const plugin = createWritingDiagnosticsPlugin();
+    const state = EditorState.create({ schema });
+
+    expect(plugin.props.decorations?.(state)).toBeNull();
+  });
+
   it('ignores null, primitive, unknown, and revoked metadata without throwing', () => {
     let state = stateWithText();
     const initial = pluginState(state);
@@ -115,6 +122,32 @@ describe('WritingDiagnostics transaction metadata boundary', () => {
     expect(pluginState(state).generation).toBe(-1);
   });
 
+  it('contains hostile object reflection failures', () => {
+    let state = stateWithText();
+    const prototypeTrap = new Proxy(diagnostic(), {
+      getPrototypeOf() {
+        throw new Error('private prototype detail');
+      },
+    });
+    const descriptorTrap = new Proxy(diagnostic(), {
+      getOwnPropertyDescriptor() {
+        throw new Error('private descriptor detail');
+      },
+    });
+
+    for (const candidate of [prototypeTrap, descriptorTrap]) {
+      const previous = pluginState(state);
+      expect(() => {
+        state = applyForgedMeta(state, {
+          type: 'install',
+          generation: 1,
+          diagnostics: [candidate],
+        });
+      }).not.toThrow();
+      expect(pluginState(state)).toBe(previous);
+    }
+  });
+
   it('rejects extra, symbol, inherited, missing, and non-enumerable fields', () => {
     let state = stateWithText();
     const inherited = Object.assign(
@@ -169,7 +202,13 @@ describe('WritingDiagnostics transaction metadata boundary', () => {
       diagnostic({ priority: 'urgent' as CwlResolvedWritingDiagnosticDecoration['priority'] }),
     ];
 
-    for (const diagnostics of [tooMany, ...invalid.map((item) => [item])]) {
+    for (const diagnostics of [
+      tooMany,
+      ...invalid.map((item) => [item]),
+      [null],
+      [false],
+      [[]],
+    ]) {
       const previous = pluginState(state);
       state = applyForgedMeta(state, {
         type: 'install',
