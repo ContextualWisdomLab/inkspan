@@ -115,8 +115,20 @@ function measurementArguments({
   ]);
 }
 
-function autosaveMeasurementArguments({ modulePath, artifactSha256, shared }) {
+function autosaveMeasurementArguments({
+  modulePath,
+  artifactSha256,
+  revisionModulePath,
+  revisionArtifactSha256,
+  shared,
+}) {
   return Object.freeze([
+    '--input',
+    shared.revisionInputPath,
+    '--revision-module',
+    revisionModulePath,
+    '--revision-artifact-sha256',
+    revisionArtifactSha256,
     '--module',
     modulePath,
     '--profile',
@@ -643,6 +655,8 @@ function main(argv) {
       ? autosaveMeasurementArguments({
           modulePath: preparedPackage.autosaveModulePath,
           artifactSha256: preparedPackage.autosaveArtifactSha256,
+          revisionModulePath: preparedPackage.revisionModulePath,
+          revisionArtifactSha256: preparedPackage.revisionArtifactSha256,
           shared,
         })
       : null;

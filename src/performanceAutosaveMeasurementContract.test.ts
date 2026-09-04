@@ -35,11 +35,14 @@ describe('autosave enqueue performance measurement', () => {
   it('emits the canonical summarizable sample contract without persisting document content', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inkspan-autosave-measure-'));
     const modulePath = join(directory, 'autosave.mjs');
+    const revisionModulePath = join(directory, 'revision.mjs');
+    const inputPath = join(directory, 'document-envelope.json');
     const outputPath = join(directory, 'samples.json');
     const moduleSource = [
       'export function createDocumentAutosaveQueue(options) {',
       '  return Object.freeze({',
       '    async enqueue(evidence) {',
+      "      if (evidence.envelope.documentJson.content[0].content[0].text !== 'profile-bound synthetic input') throw new Error('wrong profile input');",
       '      const result = await options.save(evidence);',
       "      if (result?.status !== 'saved') throw new Error('save failed');",
       '      return Object.freeze({',
@@ -55,14 +58,36 @@ describe('autosave enqueue performance measurement', () => {
       '}',
       '',
     ].join('\n');
+    const revisionModuleSource = [
+      "import { createHash } from 'node:crypto';",
+      'function freeze(value) { if (value && typeof value === \'object\') { for (const child of Object.values(value)) freeze(child); Object.freeze(value); } return value; }',
+      'export async function createDocumentEnvelopeRevisionEvidenceBytes(source) {',
+      "  const envelope = freeze(JSON.parse(Buffer.from(source).toString('utf8')));",
+      "  const digestHex = createHash('sha256').update(source).digest('hex');",
+      '  return Object.freeze({ envelope, revision: Object.freeze({ algorithm: \'SHA-256\', digestHex, strongEntityTag: `"sha256-${digestHex}"` }) });',
+      '}',
+      '',
+    ].join('\n');
 
     try {
       writeFileSync(modulePath, moduleSource, 'utf8');
+      writeFileSync(revisionModulePath, revisionModuleSource, 'utf8');
+      writeFileSync(
+        inputPath,
+        '{"schemaId":"https://inkspan.io/schemas/document-envelope/v1","schemaVersion":1,"documentJson":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"profile-bound synthetic input"}]}]}}\n',
+        'utf8',
+      );
 
       const result = spawnSync(
         process.execPath,
         [
           measurementScript,
+          '--input',
+          inputPath,
+          '--revision-module',
+          revisionModulePath,
+          '--revision-artifact-sha256',
+          sha256(revisionModuleSource),
           '--module',
           modulePath,
           '--profile',
