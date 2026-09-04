@@ -91,15 +91,30 @@ export async function applyReviewSuggestionDecision(
       suggestion.kind === 'insert'
         ? state.tr.insertText(suggestion.text, from)
         : state.tr.delete(from, to);
+    const resultingEnvelope = createDocumentEnvelope(
+      transaction.doc.toJSON(),
+      limits,
+    );
+    const result = await createReviewOperationResult(
+      suggestion,
+      action,
+      previousEnvelope,
+      resultingEnvelope,
+      limits,
+      digestProvider,
+    );
+    if (editor.state !== state) {
+      throw new CwlReviewOperationError('stale_operation');
+    }
     editor.view.dispatch(transaction);
+    return result;
   }
 
-  const resultingEnvelope = createDocumentEnvelope(editor.state.doc.toJSON(), limits);
   return createReviewOperationResult(
     suggestion,
     action,
     previousEnvelope,
-    resultingEnvelope,
+    previousEnvelope,
     limits,
     digestProvider,
   );

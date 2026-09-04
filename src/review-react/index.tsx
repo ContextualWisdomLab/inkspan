@@ -333,7 +333,7 @@ function invokeReviewIntent(
   presentation: CwlReviewThreadPresentation,
 ): void {
   try {
-    callback(presentation);
+    void Promise.resolve(callback(presentation)).catch(() => undefined);
   } catch {
     rejectReviewPresentation();
   }

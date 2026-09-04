@@ -107,6 +107,25 @@ describe('CwlEditor review suggestion decisions', () => {
     expect(handle.getHTML()).toBe('<p>Newer document</p>');
   });
 
+  it('does not mutate when accepted-operation evidence cannot be created', async () => {
+    const { handle, revision } = await reviewFixture();
+    const provider: DocumentEnvelopeDigestProvider = {
+      async digest() {
+        throw new Error('private digest failure');
+      },
+    };
+
+    await expect(
+      handle.applyReviewSuggestionDecision(
+        suggestion(revision, 'insert'),
+        'accept',
+        undefined,
+        provider,
+      ),
+    ).rejects.toThrow('Document envelope SHA-256 digest could not be created');
+    expect(handle.getHTML()).toBe('<p>Alpha beta</p>');
+  });
+
   it('maps Unicode code-point offsets without splitting graphemes', async () => {
     const { handle, revision } = await reviewFixture('A😀B');
     const proposal = suggestion(revision, 'insert');

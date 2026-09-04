@@ -105,6 +105,26 @@ function expectRedactedIntentFailure(
   }
 }
 
+async function expectRedactedAsyncIntentFailure(
+  action: () => void,
+): Promise<void> {
+  const unhandledReasons: unknown[] = [];
+  const handleUnhandledRejection = (event: PromiseRejectionEvent): void => {
+    unhandledReasons.push(event.reason);
+    event.preventDefault();
+  };
+
+  window.addEventListener('unhandledrejection', handleUnhandledRejection);
+  try {
+    action();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  } finally {
+    window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+  }
+
+  expect(unhandledReasons).toEqual([]);
+}
+
 describe('CwlReviewThreadList intent callback validation', () => {
   it('fails closed before rendering when the required selection callback is malformed', () => {
     expectInvalidIntentCallbacks({ onSelectThread: null });
@@ -151,6 +171,18 @@ describe('CwlReviewThreadList intent callback validation', () => {
     expectRedactedIntentFailure(() => {
       fireEvent.click(screen.getByRole('button', { name: 'Resolve — Thread 1' }));
     }, 'private resolve sentinel');
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it('redacts a rejected async host callback at the presentation boundary', async () => {
+    const callback = vi.fn(async () => {
+      throw new Error('private async selection sentinel');
+    });
+    renderWithCallbacks({ onSelectThread: callback });
+
+    await expectRedactedAsyncIntentFailure(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Thread 1' }));
+    });
     expect(callback).toHaveBeenCalledTimes(1);
   });
 });
