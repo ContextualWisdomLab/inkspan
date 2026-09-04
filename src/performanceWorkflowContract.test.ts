@@ -21,6 +21,10 @@ describe('performance evidence workflow contract', () => {
     expect(workflow).toContain("cron: '17 3 * * 1'");
     expect(workflow).toContain('workflow_dispatch:');
     expect(workflow).toContain('permissions:\n  contents: read');
+    expect(workflow).toContain(
+      "group: ${{ github.workflow }}-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}",
+    );
+    expect(workflow).toContain('cancel-in-progress: true');
     expect(workflow).toContain('runs-on: ubuntu-24.04');
     expect(workflow).toContain('timeout-minutes: 20');
     expect(workflow).toContain(
