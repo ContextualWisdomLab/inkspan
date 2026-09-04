@@ -1,3 +1,5 @@
+import { Editor } from '@tiptap/core';
+import StarterKit from '@tiptap/starter-kit';
 import { Schema } from '@tiptap/pm/model';
 import { EditorState } from '@tiptap/pm/state';
 import { EditorView } from '@tiptap/pm/view';
@@ -80,6 +82,35 @@ describe('WritingDiagnostics extension contract', () => {
   it('exposes one stable TipTap extension and plugin key', () => {
     expect(WritingDiagnostics.name).toBe('writingDiagnostics');
     expect(typeof writingDiagnosticsPluginKey.getState).toBe('function');
+  });
+
+  it('validates and dispatches the public TipTap commands', () => {
+    const editor = new Editor({
+      extensions: [StarterKit, WritingDiagnostics],
+      content: '<p>Alpha beta gamma</p>',
+    });
+
+    expect(editor.can().installWritingDiagnostics(1, [diagnostic()])).toBe(true);
+    expect(editor.commands.installWritingDiagnostics(1, [diagnostic()])).toBe(true);
+    expect(editor.can().focusWritingDiagnostic(1, 'diag-1')).toBe(true);
+    expect(editor.commands.focusWritingDiagnostic(1, 'diag-1')).toBe(true);
+    expect(editor.can().clearWritingDiagnostics()).toBe(true);
+    expect(editor.commands.clearWritingDiagnostics()).toBe(true);
+
+    expect(editor.commands.installWritingDiagnostics(Number.NaN, [])).toBe(false);
+    expect(editor.commands.installWritingDiagnostics(-1, [])).toBe(false);
+    expect(
+      editor.commands.installWritingDiagnostics(2, [diagnostic({ from: -1 })]),
+    ).toBe(false);
+    expect(editor.commands.focusWritingDiagnostic(Number.NaN, 'diag-1')).toBe(false);
+    expect(editor.commands.focusWritingDiagnostic(-1, 'diag-1')).toBe(false);
+    expect(
+      editor.commands.focusWritingDiagnostic(1, 1 as unknown as string),
+    ).toBe(false);
+    expect(editor.commands.focusWritingDiagnostic(1, '')).toBe(false);
+    expect(editor.commands.focusWritingDiagnostic(1, 'x'.repeat(257))).toBe(false);
+
+    editor.destroy();
   });
 
   it('starts empty without mutating the document or rendering decorations', () => {
@@ -199,6 +230,13 @@ describe('WritingDiagnostics extension contract', () => {
       installWritingDiagnostics(state.tr, 9, [diagnostic()]),
     );
     expect(pluginState(state)).toBe(cleared);
+  });
+
+  it('keeps an already empty state when cleared', () => {
+    const state = stateWithText();
+    expect(
+      pluginState(state.apply(clearWritingDiagnostics(state.tr))),
+    ).toBe(pluginState(state));
   });
 
   it('clears before processing metadata on every document-changing transaction', () => {
