@@ -4,11 +4,12 @@ import {
   type CwlEditorDocumentEnvelope,
   type DocumentEnvelopeLimits,
 } from './documentEnvelope.js';
-import type {
-  CwlEditorDocumentRevision,
-  DocumentEnvelopeDigestProvider,
+import {
+  createValidatedDocumentEnvelopeRevisionWithResolvedProvider,
+  resolveDocumentEnvelopeDigestProvider,
+  type CwlEditorDocumentRevision,
+  type DocumentEnvelopeDigestProvider,
 } from './documentEnvelopeRevision.js';
-import { createValidatedDocumentEnvelopeRevisionEvidence } from './documentRevisionEvidence.js';
 
 /** Canonical identifier for Inkspan's first compact transition-evidence schema. */
 export const DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_ID =
@@ -45,10 +46,11 @@ type DocumentEnvelopeParser = (
 /**
  * Derive compact transition evidence from two envelope objects or JSON texts.
  *
- * Both inputs pass the strict versioned-envelope boundary before either digest
- * begins. Successful operations hash the previous canonical envelope first and
- * the resulting canonical envelope second, then return frozen revision-only
- * evidence without retaining either complete document in the result.
+ * The SHA-256 capability is captured before either caller-controlled source is
+ * reflected or parsed. Both inputs then pass the strict versioned-envelope
+ * boundary before either digest begins. Successful operations hash the previous
+ * canonical envelope first and the resulting canonical envelope second with
+ * that same captured capability, then return frozen revision-only evidence.
  */
 export function createDocumentEnvelopeTransitionEvidence(
   previousSource: unknown,
@@ -68,9 +70,10 @@ export function createDocumentEnvelopeTransitionEvidence(
 /**
  * Derive compact transition evidence from two strict UTF-8 envelope byte views.
  *
- * Malformed UTF-8, byte-order marks, duplicate object names, unsupported
- * versions, and resource-limit violations fail before hashing. Equivalent
- * noncanonical JSON encodings normalize to the same revision pair.
+ * Provider capability failure precedes byte-source processing. After provider
+ * preflight, malformed UTF-8, byte-order marks, duplicate object names,
+ * unsupported versions, and resource-limit violations still fail before
+ * hashing. Equivalent noncanonical JSON encodings normalize to the same pair.
  */
 export function createDocumentEnvelopeTransitionEvidenceBytes(
   previousSource: unknown,
@@ -87,7 +90,7 @@ export function createDocumentEnvelopeTransitionEvidenceBytes(
   );
 }
 
-/** Parse both documents, hash them sequentially, and expose revisions only. */
+/** Preflight one provider, parse both documents, then hash them sequentially. */
 async function createTransitionEvidence(
   previousSource: unknown,
   resultingSource: unknown,
@@ -95,27 +98,26 @@ async function createTransitionEvidence(
   digestProvider: DocumentEnvelopeDigestProvider | null | undefined,
   parse: DocumentEnvelopeParser,
 ): Promise<CwlEditorDocumentTransitionEvidence> {
+  const resolvedProvider = resolveDocumentEnvelopeDigestProvider(digestProvider);
   const previousEnvelope = parse(previousSource, limits);
   const resultingEnvelope = parse(resultingSource, limits);
 
-  const previousEvidence =
-    await createValidatedDocumentEnvelopeRevisionEvidence(
+  const previousRevision =
+    await createValidatedDocumentEnvelopeRevisionWithResolvedProvider(
       previousEnvelope,
-      digestProvider,
+      resolvedProvider,
     );
-  const resultingEvidence =
-    await createValidatedDocumentEnvelopeRevisionEvidence(
+  const resultingRevision =
+    await createValidatedDocumentEnvelopeRevisionWithResolvedProvider(
       resultingEnvelope,
-      digestProvider,
+      resolvedProvider,
     );
 
   return Object.freeze({
     schemaId: DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_ID,
     schemaVersion: DOCUMENT_TRANSITION_EVIDENCE_SCHEMA_VERSION,
-    previousRevision: previousEvidence.revision,
-    resultingRevision: resultingEvidence.revision,
-    changed:
-      previousEvidence.revision.digestHex !==
-      resultingEvidence.revision.digestHex,
+    previousRevision,
+    resultingRevision,
+    changed: previousRevision.digestHex !== resultingRevision.digestHex,
   });
 }
