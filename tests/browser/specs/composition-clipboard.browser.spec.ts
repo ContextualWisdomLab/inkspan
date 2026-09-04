@@ -217,6 +217,62 @@ test('tracks a synthetic composition lifecycle without inventing OS IME evidence
   ).toHaveValue(committedHtml);
 });
 
+test('keeps committed text and editor focus when the toolbar is used during composition', async ({
+  page,
+}) => {
+  await page.goto('/tests/browser/input-harness.html?toolbar=1');
+
+  const editable = page.locator('.ProseMirror');
+  await editable.click();
+  await page.keyboard.insertText('한글');
+  const committedHtml = await page.evaluate(() =>
+    (window.inkspanInputHarness as InputHarness).getHtml(),
+  );
+
+  await editable.evaluate((element) => {
+    element.dispatchEvent(
+      new CompositionEvent('compositionstart', { bubbles: true, data: '' }),
+    );
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.inkspanInputHarness as InputHarness).isComposing(),
+      ),
+    )
+    .toBe(true);
+
+  const bold = page.getByRole('button', { name: 'Bold (Ctrl/Cmd+B)' });
+  await bold.click();
+  await expect(bold).toHaveAttribute('aria-pressed', 'true');
+  await expect(editable).toBeFocused();
+  await expect(
+    page.locator('[data-inkspan-form-field][name="message_body"]'),
+  ).toHaveValue(committedHtml);
+
+  await editable.evaluate((element) => {
+    element.dispatchEvent(
+      new CompositionEvent('compositionend', { bubbles: true, data: '' }),
+    );
+  });
+  await page.keyboard.insertText(' 입력');
+
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.inkspanInputHarness as InputHarness).getText(),
+      ),
+    )
+    .toBe('한글 입력');
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.inkspanInputHarness as InputHarness).getHtml(),
+      ),
+    )
+    .toContain('<strong> 입력</strong>');
+});
+
 test('does not admit committed input when read-only begins during composition', async ({
   page,
 }) => {
