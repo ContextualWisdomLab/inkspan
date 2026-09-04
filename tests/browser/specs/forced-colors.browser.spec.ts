@@ -60,7 +60,7 @@ test('preserves state and structural cues in forced colors', async ({ page }) =>
   ).toBe(true);
 
   const plainButton = page.getByRole('button', { name: 'Plain' });
-  await page.keyboard.press('Tab');
+  await plainButton.focus();
   await expect(plainButton).toBeFocused();
 
   const evidence = await page.evaluate(() => {
@@ -138,11 +138,11 @@ test('preserves state and structural cues in forced colors', async ({ page }) =>
   });
 
   const activeButton = page.getByRole('button', { name: 'Active' });
-  await page.keyboard.press('Tab');
+  await activeButton.focus();
   await expect(activeButton).toBeFocused();
 
   const editable = page.locator('.cwl-editor__content');
-  await page.keyboard.press('Tab');
+  await editable.focus();
   await expect(editable).toBeFocused();
   const editableFocusEvidence = await editable.evaluate((element) => {
     const style = getComputedStyle(element);

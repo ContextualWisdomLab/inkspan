@@ -14,6 +14,7 @@ import {
   buildEditorAccessibilityAttributes,
   normalizeEditorPlaceholder,
 } from './editorAccessibility.js';
+import { synchronizeControlledEditorValue } from './editorControlledValueSync.js';
 import { createEditorDocumentSnapshot } from './editorDocumentSnapshot.js';
 import { applyEditorFormReset } from './editorFormReset.js';
 import { editorHtmlToValue, editorValueToHtml } from './editorSerialization.js';
@@ -65,9 +66,35 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     },
     ref,
   ) {
+    if (value !== undefined && typeof value !== 'string') {
+      throw new RangeError('editor value must be a string when provided');
+    }
+    if (defaultValue !== undefined && typeof defaultValue !== 'string') {
+      throw new RangeError(
+        'editor default value must be a string when provided',
+      );
+    }
+    if (formResetValue !== undefined && typeof formResetValue !== 'string') {
+      throw new RangeError(
+        'editor form reset value must be a string when provided',
+      );
+    }
+    if (typeof editable !== 'boolean') {
+      throw new RangeError('editor editable state must be a boolean when provided');
+    }
+    if (typeof hideToolbar !== 'boolean') {
+      throw new RangeError(
+        'editor toolbar visibility state must be a boolean when provided',
+      );
+    }
+
     const isControlled = value !== undefined;
     const selectedDocumentValue = value ?? defaultValue ?? '';
     const emittingRef = useRef(false);
+    const hasPublishedInitialLegacyValueRef = useRef(false);
+    const componentActiveRef = useRef(true);
+    const compositionActiveRef = useRef(false);
+    const compositionSnapshotPendingRef = useRef(false);
     const editorInstanceRef = useRef<Editor | null>(null);
     const modeRef = useLatestRef(mode);
     const onChangeRef = useLatestRef(onChange);
@@ -81,6 +108,16 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     const onDestroyRef = useLatestRef(onDestroy);
     const formResetValueRef = useLatestRef(formResetValue);
     const onFormResetRef = useLatestRef(onFormReset);
+
+    useEffect(() => {
+      componentActiveRef.current = true;
+      return () => {
+        componentActiveRef.current = false;
+        compositionActiveRef.current = false;
+        compositionSnapshotPendingRef.current = false;
+      };
+    }, []);
+
     const reportImageError = useCallback((error: Error) => {
       onImageErrorRef.current?.(error);
     }, [onImageErrorRef]);
@@ -90,6 +127,22 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       },
       [onClipboardErrorRef],
     );
+    const beginComposition = useCallback(() => {
+      compositionActiveRef.current = true;
+      compositionSnapshotPendingRef.current = false;
+    }, []);
+    const endComposition = useCallback(() => {
+      queueMicrotask(() => {
+        if (!componentActiveRef.current) return;
+        compositionActiveRef.current = false;
+        if (compositionSnapshotPendingRef.current) {
+          compositionSnapshotPendingRef.current = false;
+          const instance = editorInstanceRef.current!;
+          const snapshot = createEditorDocumentSnapshot(instance, modeRef.current);
+          onDocumentChangeRef.current?.({ editor: instance, snapshot });
+        }
+      });
+    }, [modeRef, onDocumentChangeRef]);
     const normalizedPlaceholder = useMemo(
       () => normalizeEditorPlaceholder(placeholder),
       [placeholder],
@@ -140,10 +193,16 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       },
       onCreate: ({ editor: instance }) => {
         editorInstanceRef.current = instance;
+        instance.view.dom.addEventListener('compositionstart', beginComposition);
+        instance.view.dom.addEventListener('compositionend', endComposition);
         onReadyRef.current?.(instance);
       },
       onDestroy: () => {
         const instance = editorInstanceRef.current!;
+        instance.view.dom.removeEventListener('compositionstart', beginComposition);
+        instance.view.dom.removeEventListener('compositionend', endComposition);
+        compositionActiveRef.current = false;
+        compositionSnapshotPendingRef.current = false;
         onDestroyRef.current?.(instance);
         editorInstanceRef.current = null;
       },
@@ -153,7 +212,11 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
         if (!valueListener && !snapshotListener) return;
         emittingRef.current = true;
         try {
-          if (snapshotListener) {
+          if (
+            snapshotListener &&
+            !compositionActiveRef.current &&
+            !instance.view.composing
+          ) {
             const snapshot = createEditorDocumentSnapshot(
               instance,
               modeRef.current,
@@ -161,6 +224,9 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
             valueListener?.(snapshot.value);
             snapshotListener({ editor: instance, snapshot });
           } else {
+            if (snapshotListener) {
+              compositionSnapshotPendingRef.current = true;
+            }
             valueListener?.(
               editorHtmlToValue(instance.getHTML(), modeRef.current),
             );
@@ -193,8 +259,26 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     useEditorHandle(ref, editor, modeRef);
 
     useEffect(() => {
-      editor?.setEditable(editable);
-    }, [editor, editable]);
+      if (!editor) return;
+      if (!editable && editor.view.composing) {
+        // ProseMirror treats compositionend as an edit event, so it will stop
+        // processing that event after editability has already been revoked.
+        // Drain the active local composition first to avoid stranding its
+        // internal composing state across the read-only transition.
+        const EventConstructor =
+          editor.view.dom.ownerDocument.defaultView!.Event;
+        editor.view.dom.dispatchEvent(new EventConstructor('compositionend'));
+      }
+      editor.setEditable(editable, false);
+      if (!hasPublishedInitialLegacyValueRef.current) {
+        hasPublishedInitialLegacyValueRef.current = true;
+        // Preserve the historical `onChange` initialization signal without
+        // misclassifying a non-document transaction as `onDocumentChange`.
+        onChangeRef.current?.(
+          editorHtmlToValue(editor.getHTML(), modeRef.current),
+        );
+      }
+    }, [editor, editable, modeRef, onChangeRef]);
 
     useEffect(() => {
       /* v8 ignore next -- the editor is created after client hydration. */
@@ -209,12 +293,38 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
 
     useEffect(() => {
       if (!editor || !isControlled || emittingRef.current) return;
-      const current = editorHtmlToValue(editor.getHTML(), mode);
-      if (current !== value) {
-        /* v8 ignore next -- isControlled guarantees value is defined. */
-        const next = editorValueToHtml(value ?? '', mode);
-        editor.commands.setContent(next, false);
+
+      const synchronizeValue = () => {
+        if (!componentActiveRef.current) return;
+        const current = editorHtmlToValue(editor.getHTML(), mode);
+        if (current !== value) {
+          /* v8 ignore next -- isControlled guarantees value is defined. */
+          synchronizeControlledEditorValue(editor, value ?? '', mode);
+        }
+      };
+
+      if (!editor.view.composing) {
+        synchronizeValue();
+        return;
       }
+
+      const synchronizeAfterComposition = () => {
+        // The composition lifecycle listener queues the committed local
+        // snapshot first. Defer host replacement to the next microtask so a
+        // controlled prop cannot overwrite that snapshot before publication.
+        queueMicrotask(synchronizeValue);
+      };
+      editor.view.dom.addEventListener(
+        'compositionend',
+        synchronizeAfterComposition,
+        { once: true },
+      );
+      return () => {
+        editor.view.dom.removeEventListener(
+          'compositionend',
+          synchronizeAfterComposition,
+        );
+      };
     }, [editor, isControlled, value, mode]);
 
     const handleFormReset = useCallback(
