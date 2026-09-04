@@ -15,8 +15,8 @@ if (editor && validateDocumentEnvelopeBytesForEditor(editor, storedBytes)) {
     restoreDocumentEnvelopeBytes(editor, storedBytes);
   } catch (error) {
     if (error instanceof DocumentEnvelopeRestoreError) {
-      // An active ProseMirror transaction policy refused or transformed the
-      // otherwise valid document. Do not record the operation as restored.
+      // An active ProseMirror transaction policy or transaction observer
+      // prevented exact local application. Do not record the operation as restored.
     }
     throw error;
   }
@@ -35,12 +35,17 @@ Restore performs these operations in order:
 4. validate the Inkspan envelope schema identifier and version;
 5. detach and deeply freeze the document JSON;
 6. reconstruct and recursively check the complete document against the active ProseMirror schema;
-7. dispatch one TipTap `setContent(..., false)` replacement;
-8. verify that the resulting active document is structurally equal to the prepared document.
+7. construct the same complete replacement on the captured editor state and run ProseMirror transaction filtering/appending as a detached preflight;
+8. reject before live dispatch if the preflight refuses or transforms the prepared document;
+9. dispatch one TipTap `setContent(..., false)` replacement;
+10. verify that the resulting active document is structurally equal to the prepared document; and
+11. if live dispatch diverges or throws after the editor view accepted the replacement, make a best-effort restoration of the captured local ProseMirror state before throwing `DocumentEnvelopeRestoreError`.
 
-Any failure before step 7 leaves the current document unchanged. A ProseMirror transaction filter may reject a schema-valid replacement at step 7; Inkspan then throws `DocumentEnvelopeRestoreError` and never reports the operation as successful. Inkspan's built-in safe-link and inline-image policies reject unsafe replacements without changing the document.
+Malformed or incompatible input fails before any editor mutation. Deterministic transaction filters and append-transaction transformations are exercised on detached state first, so a known policy rejection or transformation leaves the live editor unchanged. Inkspan's built-in safe-link and inline-image policies therefore reject unsafe replacements without changing the document.
 
-A host-supplied plugin can instead transform a dispatched transaction. Inkspan detects the non-exact result and throws `DocumentEnvelopeRestoreError`, but the plugin may already have changed the editor state. Hosts that install transforming transaction plugins must treat this error as an indeterminate local state, inspect or reload the current document, and must not record the incoming envelope as the applied revision.
+A host-supplied plugin can be stateful, non-deterministic, or perform external side effects while a transaction is dispatched. If such a plugin accepts the detached preflight but transforms the live replacement, Inkspan restores the captured **local ProseMirror editor state** and reports `DocumentEnvelopeRestoreError`. A TipTap transaction observer can also throw after the editor view has already accepted the requested replacement; Inkspan catches that live-dispatch failure, attempts the same captured-state rollback, and exposes only the bounded `DocumentEnvelopeRestoreError` rather than reflecting private observer details.
+
+The rollback covers the local document, selection, and ProseMirror plugin-state snapshot represented by the captured editor state when the editor view accepts `updateState()`. That local rollback is intentionally **best effort**: a hostile or failing plugin view may itself reject the restoration. Inkspan suppresses such rollback-hook failures so private plugin or observer details do not replace the redacted restore error, but it does not falsely claim the original local state was restored when the host's own view hooks make restoration impossible. Inkspan likewise cannot retract an external network, telemetry, storage, or other side effect that a host plugin chose to emit during live dispatch. Hosts remain responsible for making those effects transactional or compensating when they install such plugins.
 
 Successful restore suppresses the normal update callback so loading an already-persisted artifact does not immediately enqueue a duplicate autosave. The restore functions return the validated, detached, frozen envelope that was exactly applied. This allows a host to associate the accepted artifact with its own audit, revision, or optimistic-concurrency record without retaining the caller's mutable input object.
 
@@ -48,15 +53,15 @@ Successful restore suppresses the normal update callback so loading an already-p
 
 The validation helpers run envelope parsing, resource checks, and active-schema reconstruction without mutating the editor. They return `false` for malformed, oversized, incompatible, or unsupported input instead of exposing source data through an error message. Use them for file-picker feedback, migration routing, and import previews.
 
-A `true` result means the source can be prepared under the current envelope and ProseMirror schema. It is not a promise that every active transaction policy will accept the later replacement. Restore remains the authoritative application gate and can still raise `DocumentEnvelopeRestoreError`. UI enablement based on a validation helper must therefore preserve a visible restore-error path rather than assuming the subsequent command cannot fail.
+A `true` result means the source can be prepared under the current envelope and ProseMirror schema. It is not a promise that every active transaction policy will accept the later replacement: validation intentionally does not dispatch or preflight host transaction plugins. Restore remains the authoritative application gate and can still raise `DocumentEnvelopeRestoreError`. UI enablement based on a validation helper must therefore preserve a visible restore-error path rather than assuming the subsequent command cannot fail.
 
 Restore functions preserve typed failure categories:
 
 - `DocumentEnvelopeError` for malformed, oversized, duplicate-name, encoding, schema-ID, or version failures;
 - `DocumentSchemaError` when the envelope is valid but its document tree is incompatible with the active extension schema;
-- `DocumentEnvelopeRestoreError` when an active ProseMirror policy refuses or transforms the prepared replacement.
+- `DocumentEnvelopeRestoreError` when an active ProseMirror policy refuses or transforms the prepared replacement, or live dispatch/observation prevents exact local application.
 
-These errors contain no document text, URLs, inline image payloads, tenant identifiers, or source JSON.
+These errors contain no document text, URLs, inline image payloads, tenant identifiers, source JSON, or private host-plugin/observer failure detail.
 
 ## Collaboration and authorization
 
@@ -88,7 +93,9 @@ The helper adds no database, credential, environment-variable, transport, provid
 ## Primary references
 
 - [TipTap v2 `setContent` command](https://v2.tiptap.dev/docs/editor/api/commands/content/set-content)
+- [ProseMirror `EditorState.applyTransaction()`](https://prosemirror.net/docs/ref/#state.EditorState.applyTransaction)
 - [ProseMirror `PluginSpec.filterTransaction`](https://prosemirror.net/docs/ref/#state.PluginSpec.filterTransaction)
+- [ProseMirror `PluginSpec.appendTransaction`](https://prosemirror.net/docs/ref/#state.PluginSpec.appendTransaction)
 - [ProseMirror `Schema.nodeFromJSON()` and `Node.check()`](https://prosemirror.net/docs/ref/#model.Schema.nodeFromJSON)
 - [RFC 8259: The JavaScript Object Notation (JSON) Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259)
 - [RFC 7493: The I-JSON Message Format](https://www.rfc-editor.org/rfc/rfc7493)
