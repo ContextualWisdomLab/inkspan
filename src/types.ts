@@ -13,6 +13,11 @@ import type {
   ClipboardConfig,
   ClipboardSanitizationError,
 } from './extensions/SafeClipboard.js';
+import type {
+  CwlWritingDiagnostic,
+  WritingDiagnosticError,
+} from './writingDiagnostics.js';
+import type { CwlWritingDiagnosticActionEvent } from './components/useWritingDiagnosticsController.js';
 
 /** Which document surface the editor reads from and writes to. */
 export type EditorMode = 'markdown' | 'html';
@@ -253,6 +258,27 @@ export interface CwlEditorHandle {
    * safe-link, and inline-image transaction boundaries as other editor writes.
    */
   insertDocumentJson(documentJson: JSONContent | JSONContent[]): void;
+  /** Focus the exact current range for one active writing diagnostic. */
+  focusWritingDiagnostic(diagnosticId: string): boolean;
+  /**
+   * Apply one active diagnostic only after exact-current-revision verification.
+   * Ordinary stale and conflict outcomes resolve to a typed event or `null`.
+   */
+  applyWritingDiagnostic(
+    diagnosticId: string,
+  ): Promise<CwlWritingDiagnosticActionEvent | null>;
+  /** Report an explicit ignore action without mutating authored content. */
+  ignoreWritingDiagnostic(
+    diagnosticId: string,
+  ): CwlWritingDiagnosticActionEvent | null;
+  /** Remove one diagnostic from local presentation without editing the document. */
+  dismissWritingDiagnostic(
+    diagnosticId: string,
+  ): CwlWritingDiagnosticActionEvent | null;
+  /** Request an explanation through the host-owned action callback contract. */
+  requestWritingDiagnosticExplanation(
+    diagnosticId: string,
+  ): CwlWritingDiagnosticActionEvent | null;
   /** Empty the document. */
   clear(): void;
   /** `true` when the document has no meaningful content. */
@@ -375,4 +401,16 @@ export interface CwlEditorProps {
   ariaInvalid?: boolean | 'grammar' | 'spelling';
   /** Whether the host form requires editor input before submission. */
   ariaRequired?: boolean;
+  /** Host-supplied diagnostics already produced by a trusted external reviewer. */
+  writingDiagnostics?: readonly CwlWritingDiagnostic[];
+  /** Privacy-minimized observer for explicit diagnostic actions. */
+  onWritingDiagnosticAction?: (
+    event: CwlWritingDiagnosticActionEvent,
+  ) => void;
+  /** Redacted observer for structural verification failures. */
+  onWritingDiagnosticsError?: (error: WritingDiagnosticError) => void;
+  /** Accessible name for the built-in writing-guidance region. */
+  writingDiagnosticsLabel?: string;
+  /** Include a compact diagnostic appendix in printed output. */
+  printWritingDiagnostics?: boolean;
 }

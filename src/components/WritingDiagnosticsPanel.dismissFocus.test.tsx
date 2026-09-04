@@ -1,5 +1,11 @@
 import { useState } from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type {
   CwlVerifiedWritingDiagnostic,
@@ -58,6 +64,7 @@ function Harness({
     diagnostics,
     digestProvider: null,
     focusDiagnostic: () => true,
+    applyDiagnostic: async () => null,
     ignoreDiagnostic: () => null,
     dismissDiagnostic: (diagnosticId) => {
       const target = diagnostics.find(
@@ -86,10 +93,23 @@ function Harness({
   );
 }
 
+function focusButton(button: HTMLElement): void {
+  act(() => {
+    button.focus();
+  });
+}
+
+async function dismissDiagnostic(button: HTMLElement): Promise<void> {
+  await act(async () => {
+    fireEvent.click(button);
+    await Promise.resolve();
+  });
+}
+
 afterEach(cleanup);
 
 describe('WritingDiagnosticsPanel dismissal focus', () => {
-  it('moves focus to the next diagnostic when the focused card is dismissed', () => {
+  it('moves focus to the next diagnostic when the focused card is dismissed', async () => {
     render(
       <Harness
         initialDiagnostics={[
@@ -100,10 +120,10 @@ describe('WritingDiagnosticsPanel dismissal focus', () => {
     );
 
     const dismiss = screen.getByRole('button', { name: 'Dismiss First diagnostic' });
-    dismiss.focus();
+    focusButton(dismiss);
     expect(dismiss).toHaveFocus();
 
-    fireEvent.click(dismiss);
+    await dismissDiagnostic(dismiss);
 
     const items = screen.getAllByRole('listitem');
     expect(items).toHaveLength(1);
@@ -111,7 +131,7 @@ describe('WritingDiagnosticsPanel dismissal focus', () => {
     expect(items[0]).toHaveFocus();
   });
 
-  it('moves focus to the previous diagnostic when the last card is dismissed', () => {
+  it('moves focus to the previous diagnostic when the last card is dismissed', async () => {
     render(
       <Harness
         initialDiagnostics={[
@@ -122,10 +142,10 @@ describe('WritingDiagnosticsPanel dismissal focus', () => {
     );
 
     const dismiss = screen.getByRole('button', { name: 'Dismiss Second diagnostic' });
-    dismiss.focus();
+    focusButton(dismiss);
     expect(dismiss).toHaveFocus();
 
-    fireEvent.click(dismiss);
+    await dismissDiagnostic(dismiss);
 
     const items = screen.getAllByRole('listitem');
     expect(items).toHaveLength(1);
@@ -133,7 +153,7 @@ describe('WritingDiagnosticsPanel dismissal focus', () => {
     expect(items[0]).toHaveFocus();
   });
 
-  it('moves focus to the guidance region when the only card is dismissed', () => {
+  it('moves focus to the guidance region when the only card is dismissed', async () => {
     render(
       <Harness
         initialDiagnostics={[verifiedDiagnostic('only', 'Only diagnostic')]}
@@ -141,10 +161,10 @@ describe('WritingDiagnosticsPanel dismissal focus', () => {
     );
 
     const dismiss = screen.getByRole('button', { name: 'Dismiss Only diagnostic' });
-    dismiss.focus();
+    focusButton(dismiss);
     expect(dismiss).toHaveFocus();
 
-    fireEvent.click(dismiss);
+    await dismissDiagnostic(dismiss);
 
     expect(screen.queryAllByRole('listitem')).toHaveLength(0);
     expect(
