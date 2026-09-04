@@ -24,8 +24,9 @@ describe('TipTap SafeClipboard adapter doctoring', () => {
     const reactPatch = readRepositoryText(reactPatchPath);
     const changelog = readRepositoryText(changelogPath);
 
-    expect(lock).toContain("'@tiptap/core':");
-    expect(lock).toContain('specifier: 3.30.4');
+    expect(lock).toMatch(
+      /^\s+'@tiptap\/core':\n\s+specifier: 3\.30\.4$/mu,
+    );
     expect(doctoring).toContain('TipTap 3.30.4 package family');
     expect(doctoring).toContain('packed strict-TypeScript consumer check');
     expect(workspace).toContain("'@tiptap/react@3.30.4':");

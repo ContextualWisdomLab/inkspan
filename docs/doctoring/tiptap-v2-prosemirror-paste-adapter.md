@@ -115,4 +115,4 @@ https://tiptap.dev/docs/editor/extensions/custom-extensions/create-new/extension
 
 TipTap GmbH. (2026). *ExtensionManager.ts (Version 3.30.4)* [Source code].
 GitHub. Retrieved September 4, 2026, from
-https://github.com/ueberdosis/tiptap/blob/%40tiptap/core%403.30.4/packages/core/src/ExtensionManager.ts
+https://github.com/ueberdosis/tiptap/blob/v3.30.4/packages/core/src/ExtensionManager.ts
