@@ -19,10 +19,44 @@ export interface ScopedCollaborationProvider extends CollaborationProviderLike {
   dispose(): void;
 }
 
+interface ScopedListenerWrapper {
+  callback: (...args: unknown[]) => void;
+  deactivate(): void;
+}
+
 const CURSOR_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const NUMERIC_IDENTIFIER_PATTERN = /^\d+$/;
 const FALLBACK_CURSOR_COLOR = '#475569';
 const MAX_CURSOR_LABEL_LENGTH = 80;
+
+/** Read and validate the host-owned awareness capability without leaking failures. */
+function readCompatibleCollaborationAwareness(
+  provider: CollaborationProviderLike,
+): CollaborationAwareness {
+  try {
+    const awareness = provider.awareness as
+      | Partial<CollaborationAwareness>
+      | undefined;
+    if (
+      awareness !== undefined &&
+      typeof awareness.clientID === 'number' &&
+      awareness.states instanceof Map &&
+      typeof awareness.getLocalState === 'function' &&
+      typeof awareness.getStates === 'function' &&
+      typeof awareness.setLocalStateField === 'function' &&
+      typeof awareness.on === 'function' &&
+      typeof awareness.off === 'function'
+    ) {
+      return awareness as CollaborationAwareness;
+    }
+  } catch {
+    // Normalize host capability access failures at the public Inkspan boundary.
+  }
+
+  throw new Error(
+    'collaboration provider must expose a compatible Yjs awareness instance',
+  );
+}
 
 /** Validate and serialize the only public fields permitted in awareness. */
 export function serializeCollaborationUser(
@@ -60,23 +94,7 @@ export function assertCollaborationConfiguration(
   }
   if (!provider) return;
 
-  const awareness = provider.awareness as
-    | Partial<CollaborationAwareness>
-    | undefined;
-  if (
-    !awareness ||
-    typeof awareness.clientID !== 'number' ||
-    !(awareness.states instanceof Map) ||
-    typeof awareness.getLocalState !== 'function' ||
-    typeof awareness.getStates !== 'function' ||
-    typeof awareness.setLocalStateField !== 'function' ||
-    typeof awareness.on !== 'function' ||
-    typeof awareness.off !== 'function'
-  ) {
-    throw new Error(
-      'collaboration provider must expose a compatible Yjs awareness instance',
-    );
-  }
+  readCompatibleCollaborationAwareness(provider);
 }
 
 /**
@@ -86,10 +104,10 @@ export function assertCollaborationConfiguration(
 export function createScopedCollaborationProvider(
   provider: CollaborationProviderLike,
 ): ScopedCollaborationProvider {
-  const source = provider.awareness;
+  const source = readCompatibleCollaborationAwareness(provider);
   const listenerWrappers: Record<
     CollaborationAwarenessEvent,
-    Map<(...args: unknown[]) => void, (...args: unknown[]) => void>
+    Map<(...args: unknown[]) => void, ScopedListenerWrapper>
   > = {
     change: new Map(),
     update: new Map(),
@@ -108,14 +126,38 @@ export function createScopedCollaborationProvider(
       source.setLocalStateField(field, value),
     on: (event, listener) => {
       if (listenerWrappers[event].has(listener)) return;
-      const wrapper = (...args: unknown[]) => listener(...args);
-      listenerWrappers[event].set(listener, wrapper);
-      source.on(event, wrapper);
+      let active = true;
+      const wrapper = (...args: unknown[]) => {
+        if (active) listener(...args);
+      };
+      const deactivate = () => {
+        active = false;
+      };
+      try {
+        source.on(event, wrapper);
+      } catch {
+        deactivate();
+        try {
+          source.off(event, wrapper);
+        } catch {
+          // The host may reject rollback too; preserve the stable public error.
+        }
+        throw new Error('collaboration awareness listener registration failed');
+      }
+      listenerWrappers[event].set(listener, {
+        callback: wrapper,
+        deactivate,
+      });
     },
     off: (event, listener) => {
       const wrapper = listenerWrappers[event].get(listener);
       if (!wrapper) return;
-      source.off(event, wrapper);
+      wrapper.deactivate();
+      try {
+        source.off(event, wrapper.callback);
+      } catch {
+        throw new Error('collaboration awareness listener removal failed');
+      }
       listenerWrappers[event].delete(listener);
     },
   };
@@ -128,7 +170,13 @@ export function createScopedCollaborationProvider(
       disposed = true;
       for (const event of ['change', 'update'] as const) {
         for (const wrapper of listenerWrappers[event].values()) {
-          source.off(event, wrapper);
+          wrapper.deactivate();
+          try {
+            source.off(event, wrapper.callback);
+          } catch {
+            // Host-owned listener teardown must not abort remaining cleanup or
+            // leak a private provider failure through React effect disposal.
+          }
         }
         listenerWrappers[event].clear();
       }
@@ -136,25 +184,30 @@ export function createScopedCollaborationProvider(
   };
 }
 
-/** Count remote awareness clients carrying a valid public user identifier. */
+/** Count remote awareness clients without leaking host awareness failures. */
 export function countRemoteCollaborators(
   awareness: CollaborationAwareness | undefined,
 ): number {
   if (!awareness) return 0;
-  let count = 0;
-  for (const [clientId, state] of awareness.getStates()) {
-    if (clientId === awareness.clientID) continue;
-    const user = state.user;
-    if (
-      typeof user === 'object' &&
-      user !== null &&
-      typeof (user as Record<string, unknown>).id === 'string' &&
-      (user as Record<string, unknown>).id !== ''
-    ) {
-      count += 1;
+  try {
+    const localClientId = awareness.clientID;
+    let count = 0;
+    for (const [clientId, state] of awareness.getStates()) {
+      if (clientId === localClientId) continue;
+      const user = state.user;
+      if (
+        typeof user === 'object' &&
+        user !== null &&
+        typeof (user as Record<string, unknown>).id === 'string' &&
+        (user as Record<string, unknown>).id !== ''
+      ) {
+        count += 1;
+      }
     }
+    return count;
+  } catch {
+    return 0;
   }
-  return count;
 }
 
 /** Convert a host connection state into concise status-region text. */
