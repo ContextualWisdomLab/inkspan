@@ -16,6 +16,29 @@ describe('toUint8Array with a non-Uint8Array view', () => {
     expect(out).toBeInstanceOf(Uint8Array);
     expect(Array.from(out)).toEqual([8, 7, 6]);
   });
+
+  it('does not let a later ArrayBuffer.isView replacement become classification authority', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(ArrayBuffer, 'isView');
+    if (descriptor === undefined) {
+      throw new Error('ArrayBuffer.isView descriptor is unavailable.');
+    }
+    const privateSentinel = new Error('private ArrayBuffer.isView sentinel');
+    Object.defineProperty(ArrayBuffer, 'isView', {
+      ...descriptor,
+      value(): boolean {
+        throw privateSentinel;
+      },
+    });
+
+    try {
+      const src = new Uint8Array([9, 8, 7, 6, 5]);
+      const view = new Int8Array(src.buffer, 1, 3);
+      const out = toUint8Array(view);
+      expect(Array.from(out)).toEqual([8, 7, 6]);
+    } finally {
+      Object.defineProperty(ArrayBuffer, 'isView', descriptor);
+    }
+  });
 });
 
 // Note: the `btoa`/`atob` fallback in bytesToBase64/base64ToBytes only runs in
@@ -29,21 +52,113 @@ describe('readBlobBytes environment fallbacks', () => {
     0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
   ]);
 
-  it('uses Blob.arrayBuffer when the blob implements it', async () => {
-    const fakeBlob = {
-      type: 'application/octet-stream',
-      arrayBuffer: () => Promise.resolve(BYTES.buffer.slice(0)),
-    } as unknown as Blob;
-    const uri = await blobToDataUri(fakeBlob);
-    expect(uri.startsWith('data:application/octet-stream;base64,')).toBe(true);
+  const withoutPlatformArrayBuffer = async (
+    action: () => Promise<void>,
+  ): Promise<void> => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      Blob.prototype,
+      'arrayBuffer',
+    );
+    if (descriptor === undefined) {
+      await action();
+      return;
+    }
+    if (!Reflect.deleteProperty(Blob.prototype, 'arrayBuffer')) {
+      throw new Error('Blob.prototype.arrayBuffer is not configurable.');
+    }
+    try {
+      await action();
+    } finally {
+      Object.defineProperty(Blob.prototype, 'arrayBuffer', descriptor);
+    }
+  };
+
+  const withPlatformArrayBuffer = async (
+    action: () => Promise<void>,
+  ): Promise<void> => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      Blob.prototype,
+      'arrayBuffer',
+    );
+    Object.defineProperty(Blob.prototype, 'arrayBuffer', {
+      configurable: true,
+      writable: true,
+      value(this: Blob): Promise<ArrayBuffer> {
+        void this;
+        return Promise.resolve(BYTES.buffer.slice(0));
+      },
+    });
+    try {
+      await action();
+    } finally {
+      if (descriptor === undefined) {
+        Reflect.deleteProperty(Blob.prototype, 'arrayBuffer');
+      } else {
+        Object.defineProperty(Blob.prototype, 'arrayBuffer', descriptor);
+      }
+    }
+  };
+
+  it('uses the platform Blob.arrayBuffer capability without consulting the instance', async () => {
+    await withPlatformArrayBuffer(async () => {
+      let instanceReads = 0;
+      const blob = new Blob([BYTES], { type: 'application/octet-stream' });
+      Object.defineProperty(blob, 'arrayBuffer', {
+        configurable: true,
+        get() {
+          instanceReads += 1;
+          throw new Error('caller Blob arrayBuffer getter executed');
+        },
+      });
+
+      const uri = await blobToDataUri(blob);
+      expect(uri).toBe('data:application/octet-stream;base64,AQIDBA==');
+      expect(instanceReads).toBe(0);
+    });
+  });
+
+  it('does not let a later Blob.prototype.arrayBuffer replacement become payload authority', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      Blob.prototype,
+      'arrayBuffer',
+    );
+    Object.defineProperty(Blob.prototype, 'arrayBuffer', {
+      configurable: true,
+      writable: true,
+      value(this: Blob): Promise<ArrayBuffer> {
+        void this;
+        return Promise.resolve(BYTES.buffer.slice(0));
+      },
+    });
+
+    try {
+      vi.resetModules();
+      const { blobToDataUri: isolatedBlobToDataUri } = await import('./base64.js');
+      const blob = new Blob([BYTES], { type: 'application/octet-stream' });
+
+      Object.defineProperty(Blob.prototype, 'arrayBuffer', {
+        configurable: true,
+        writable: true,
+        value(): Promise<ArrayBuffer> {
+          return Promise.resolve(new Uint8Array([9, 9, 9, 9]).buffer);
+        },
+      });
+
+      const uri = await isolatedBlobToDataUri(blob);
+      expect(uri).toBe('data:application/octet-stream;base64,AQIDBA==');
+    } finally {
+      if (descriptor === undefined) {
+        Reflect.deleteProperty(Blob.prototype, 'arrayBuffer');
+      } else {
+        Object.defineProperty(Blob.prototype, 'arrayBuffer', descriptor);
+      }
+      vi.resetModules();
+    }
   });
 
   it('falls back to application/octet-stream for a typeless, unsniffable blob', async () => {
-    const fakeBlob = {
-      type: '',
-      arrayBuffer: () => Promise.resolve(new Uint8Array([0, 1, 2, 3]).buffer.slice(0)),
-    } as unknown as Blob;
-    const uri = await blobToDataUri(fakeBlob);
+    const blob = new Blob([new Uint8Array([0, 1, 2, 3])]);
+    const uri = await blobToDataUri(blob);
     expect(uri.startsWith('data:application/octet-stream;base64,')).toBe(true);
   });
 
@@ -58,9 +173,10 @@ describe('readBlobBytes environment fallbacks', () => {
       }
     }
     vi.stubGlobal('FileReader', FailingReader);
-    // No `arrayBuffer` method -> the FileReader branch is taken.
-    const fakeBlob = { type: 'image/png' } as unknown as Blob;
-    await expect(blobToDataUri(fakeBlob)).rejects.toThrow('reader boom');
+    await withoutPlatformArrayBuffer(async () => {
+      const blob = new Blob([PNG], { type: 'image/png' });
+      await expect(blobToDataUri(blob)).rejects.toThrow('reader boom');
+    });
   });
 
   it('rejects with a synthesized error when FileReader has no error object', async () => {
@@ -74,10 +190,12 @@ describe('readBlobBytes environment fallbacks', () => {
       }
     }
     vi.stubGlobal('FileReader', NullErrorReader);
-    const fakeBlob = { type: 'image/png' } as unknown as Blob;
-    await expect(blobToDataUri(fakeBlob)).rejects.toThrow(
-      /FileReader failed to read Blob/,
-    );
+    await withoutPlatformArrayBuffer(async () => {
+      const blob = new Blob([PNG], { type: 'image/png' });
+      await expect(blobToDataUri(blob)).rejects.toThrow(
+        /FileReader failed to read Blob/,
+      );
+    });
   });
 
   it('reads through Response when neither arrayBuffer nor FileReader exist', async () => {
@@ -91,8 +209,10 @@ describe('readBlobBytes environment fallbacks', () => {
         }
       },
     );
-    const fakeBlob = { type: 'image/png' } as unknown as Blob;
-    const uri = await blobToDataUri(fakeBlob);
-    expect(uri.startsWith('data:image/png;base64,')).toBe(true);
+    await withoutPlatformArrayBuffer(async () => {
+      const blob = new Blob([PNG], { type: 'image/png' });
+      const uri = await blobToDataUri(blob);
+      expect(uri.startsWith('data:image/png;base64,')).toBe(true);
+    });
   });
 });

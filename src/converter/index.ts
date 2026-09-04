@@ -10,6 +10,7 @@
  */
 export {
   Base64SizeError,
+  Base64ParseError,
   DataUriParseError,
   bytesToBase64,
   base64ToBytes,
