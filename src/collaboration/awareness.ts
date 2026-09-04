@@ -28,6 +28,62 @@ const CURSOR_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const NUMERIC_IDENTIFIER_PATTERN = /^\d+$/;
 const FALLBACK_CURSOR_COLOR = '#475569';
 const MAX_CURSOR_LABEL_LENGTH = 80;
+const MAX_PUBLIC_IDENTIFIER_LENGTH = 80;
+const MAX_LOCAL_FIELD_SOURCE_LENGTH = 1_024;
+type CollaborationUserField = 'userId' | 'displayName' | 'cursorColor';
+
+/** Reject malformed or oversized local identity fields before normalization. */
+function assertCollaborationUserStringField(
+  field: CollaborationUserField,
+  value: unknown,
+): asserts value is string {
+  if (typeof value !== 'string') {
+    throw new Error(`collaboration ${field} must be a string`);
+  }
+  if (value.length > MAX_LOCAL_FIELD_SOURCE_LENGTH) {
+    throw new Error(
+      `collaboration ${field} must be at most ${MAX_LOCAL_FIELD_SOURCE_LENGTH} UTF-16 code units before normalization`,
+    );
+  }
+}
+
+/** Read one host-owned local identity field without leaking getter failures. */
+function readCollaborationUserStringField(
+  user: CollaborationUser,
+  field: CollaborationUserField,
+): string {
+  let value: unknown;
+  try {
+    value = user[field];
+  } catch {
+    throw new Error(`collaboration ${field} must be a string`);
+  }
+  assertCollaborationUserStringField(field, value);
+  return value;
+}
+
+/** Trim and bound a public cursor label without splitting Unicode code points. */
+function truncateCursorLabel(value: string): string {
+  const trimmed = value.trim();
+  let bounded = '';
+  let count = 0;
+  for (const codePoint of trimmed) {
+    if (count >= MAX_CURSOR_LABEL_LENGTH) break;
+    bounded += codePoint;
+    count += 1;
+  }
+  return bounded;
+}
+
+/** Return whether public awareness metadata exceeds its Unicode code-point bound. */
+function exceedsPublicIdentifierLength(value: string): boolean {
+  let count = 0;
+  for (const _codePoint of value) {
+    count += 1;
+    if (count > MAX_PUBLIC_IDENTIFIER_LENGTH) return true;
+  }
+  return false;
+}
 
 /** Read and validate the host-owned awareness capability without leaking failures. */
 function readCompatibleCollaborationAwareness(
@@ -62,15 +118,23 @@ function readCompatibleCollaborationAwareness(
 export function serializeCollaborationUser(
   user: CollaborationUser,
 ): CollaborationCursorUser {
-  const id = user.userId.trim();
-  const name = user.displayName.trim();
-  const color = user.cursorColor.trim();
+  const sourceId = readCollaborationUserStringField(user, 'userId');
+  const sourceName = readCollaborationUserStringField(user, 'displayName');
+  const sourceColor = readCollaborationUserStringField(user, 'cursorColor');
+  const id = sourceId.trim();
+  const name = truncateCursorLabel(sourceName);
+  const color = sourceColor.trim();
 
   if (id === '') {
     throw new Error('collaboration userId must not be empty');
   }
   if (NUMERIC_IDENTIFIER_PATTERN.test(id)) {
     throw new Error('collaboration userId must be descriptive and nonnumeric');
+  }
+  if (exceedsPublicIdentifierLength(id)) {
+    throw new Error(
+      'collaboration userId must be at most 80 Unicode code points',
+    );
   }
   if (name === '') {
     throw new Error('collaboration displayName must not be empty');
