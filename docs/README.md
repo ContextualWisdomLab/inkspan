@@ -11,6 +11,7 @@ This directory is the discoverable index for Inkspan's product, technical, secur
 | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | Current protected-main implementation architecture and bounded-context ownership |
 | [`../SECURITY.md`](../SECURITY.md) | Protected-main private vulnerability reporting, supported security lines, coordinated disclosure, and claim limits |
 | [`DOCUMENTATION_FITNESS.md`](DOCUMENTATION_FITNESS.md) | Acquisition completeness matrix, implementation maturity, deliberate non-applicability and remaining canonical gaps |
+| [`product-technical-gap-baseline.md`](product-technical-gap-baseline.md) | Dated protected-main product/technical gap baseline and durable maintenance priorities; lifecycle decisions require decision-time live refetch rather than static PR/check snapshots |
 | [`assessments/2026-08-10-conversation-documentation-reassessment.md`](assessments/2026-08-10-conversation-documentation-reassessment.md) | Dated whole-conversation reassessment, protected/operational deltas, and scheduler-control remediation |
 | [`PRD.md`](PRD.md) | Product users, jobs, buyer outcomes, non-goals, acceptance and claim boundaries |
 | [`TRD.md`](TRD.md) | Technical invariants, runtime boundaries, failure semantics and release evidence |
@@ -19,6 +20,7 @@ This directory is the discoverable index for Inkspan's product, technical, secur
 | [`package-distribution.md`](package-distribution.md) | Buyer-facing public npm package entrypoints, packaged contents, runtime dependency boundaries, and consumer verification |
 | [`email-output.md`](email-output.md) | Deterministic email fragment/full-document authority, language/direction metadata, accessibility and host-owned transport boundary |
 | [`print-output.md`](print-output.md) | Browser print/paged-media presentation, accessibility/fidelity limits, host-owned governed-export boundary, and rollback |
+| [`design-tokens.md`](design-tokens.md) | Host-facing editor chrome tokens, DTCG 2025.10 interchange snapshot, and Storybook inventory (Active PR / Proposed) |
 | [`UML.md`](UML.md) | Component, sequence, state and authority-flow diagrams |
 | [`DATA_MODEL.md`](DATA_MODEL.md) | Conceptual evidence/domain model and persistence ownership |
 | [`THREAT_MODEL.md`](THREAT_MODEL.md) | Trust boundaries, abuse cases, security/privacy controls and residual risks |
