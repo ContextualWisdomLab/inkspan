@@ -23,7 +23,11 @@ trustPolicyIgnoreAfter: 43200
 #   - vite<6.4.3:   GHSA-fx2h-pf6j-xcff / GHSA-4w7w-66w2-5vf9 / GHSA-v6wh-96g9-6wx3
 #     (vitest's @vitest/mocker still resolves a transitive vite@5)
 #   - esbuild<0.25: GHSA-67mh-4wv8-2f99 (dragged in by the transitive vite@5)
-#   - fast-uri<3.1.5: GHSA-v2hh-gcrm-f6hx / GHSA-7p8r-x3mc-p8w7 (via ajv in vite-plugin-dts)
+#   - fast-uri<3.1.6: GHSA-v2hh-gcrm-f6hx / GHSA-7p8r-x3mc-p8w7 /
+#     GHSA-5jgf-p345-68v8 / GHSA-f65p-4m7j-42xc / GHSA-fph4-wmhf-6fwf /
+#     GHSA-jqff-g426-hqxp (via ajv in vite-plugin-dts)
+#   - browserslist<4.28.7: GHSA-c83g-rgw3-j3cx / GHSA-73wf-gq98-2v4g
+#     (via Babel in Storybook and Vite's React plugin)
 #   - nanoid<3.3.18: GHSA-2v37-7h3g-55p8 (via postcss)
 #   - postcss<=8.5.22: GHSA-r28c-9q8g-f849 / GHSA-fxqj-rqcc-2cmp (source-map path traversal via vite)
 #   - brace-expansion<=5.0.7: GHSA-mh99-v99m-4gvg (unbounded-expansion DoS). The
@@ -33,7 +37,8 @@ trustPolicyIgnoreAfter: 43200
 overrides:
   vite: ^6.4.3
   esbuild: ^0.25.0
-  fast-uri: ^3.1.5
+  fast-uri: ^3.1.6
+  browserslist: ^4.28.7
   nanoid: ^3.3.18
   postcss: ^8.5.23
   brace-expansion: ^5.0.8
