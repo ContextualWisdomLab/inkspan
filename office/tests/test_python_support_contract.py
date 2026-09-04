@@ -50,19 +50,10 @@ def test_python_support_range_matches_classifiers_and_ci_matrix() -> None:
     office_job = _workflow_job_block(workflow, "office")
     assert "runs-on: ubuntu-24.04" in office_job
     assert "runs-on: ubuntu-latest" not in office_job
-    matrix_match = re.search(
-        r"python-version:\s*\$\{\{\s*github\.event_name\s*==\s*'pull_request'"
-        r"\s*&&\s*fromJSON\('(\[[^']+\])'\)\s*\|\|\s*"
-        r"fromJSON\('(\[[^']+\])'\)\s*\}\}",
-        office_job,
-    )
+    matrix_match = re.search(r'python-version:\s*\[([^\]]+)\]', office_job)
     assert matrix_match is not None
-    pull_request_versions, push_versions = (
-        tuple(re.findall(r'"(3\.\d+)"', versions))
-        for versions in matrix_match.groups()
-    )
-    assert pull_request_versions == (SUPPORTED_PYTHON_VERSIONS[-1],)
-    assert push_versions == SUPPORTED_PYTHON_VERSIONS
+    matrix_versions = tuple(re.findall(r'"(3\.\d+)"', matrix_match.group(1)))
+    assert matrix_versions == SUPPORTED_PYTHON_VERSIONS
 
 
 def test_python_support_documentation_matches_the_fixed_ci_environment() -> None:
