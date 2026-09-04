@@ -10,12 +10,15 @@ on:
       - 'pnpm-lock.yaml'
       - 'tsconfig.json'
       - 'vite.config.ts'
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: performance-evidence-${{ github.event.pull_request.number }}
+  group: performance-evidence-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -23,20 +26,23 @@ env:
 
 jobs:
   packed-artifact-smoke:
-    name: packed-artifact-smoke
+    name: packed-artifact-${{ matrix.profile }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(github.event_name == 'pull_request' && '{"include":[{"profile":"small","samples":3}]}' || '{"include":[{"profile":"small","samples":25},{"profile":"medium","samples":25},{"profile":"large","samples":25},{"profile":"stress","samples":25}]}') }}
     steps:
       - name: Checkout exact pull-request head
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Verify exact checkout
         shell: bash
         env:
-          INKSPAN_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          INKSPAN_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
           actual_head="$(git rev-parse HEAD)"
@@ -78,13 +84,13 @@ jobs:
           runtime_id="node-$(node -p 'process.versions.node')"
 
           node benchmarks/run-current-suite.mjs \
-            --input "$corpus_dir/small.md" \
-            --html-input "$corpus_dir/small.html" \
-            --revision-input "$corpus_dir/small.envelope.json" \
+            --input "$corpus_dir/${{ matrix.profile }}.md" \
+            --html-input "$corpus_dir/${{ matrix.profile }}.html" \
+            --revision-input "$corpus_dir/${{ matrix.profile }}.envelope.json" \
             --package-tarball "$package" \
             --package-sha256 "$package_sha256" \
-            --profile small \
-            --samples 3 \
+            --profile "${{ matrix.profile }}" \
+            --samples "${{ matrix.samples }}" \
             --source-commit-sha "$source_sha" \
             --runtime-id "$runtime_id" \
             --reference-hardware-id github-actions-ubuntu-24.04-x64 \
@@ -93,7 +99,7 @@ jobs:
       - name: Upload bounded performance evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6.0.0
         with:
-          name: performance-smoke-${{ github.event.pull_request.head.sha }}
+          name: performance-${{ matrix.profile }}-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ runner.temp }}/inkspan-performance-evidence
           if-no-files-found: error
           retention-days: 5

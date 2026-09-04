@@ -18,6 +18,8 @@ describe('performance evidence workflow contract', () => {
 
     expect(workflow).toContain('name: Performance Evidence');
     expect(workflow).toContain('pull_request:');
+    expect(workflow).toContain("cron: '17 3 * * 1'");
+    expect(workflow).toContain('workflow_dispatch:');
     expect(workflow).toContain('permissions:\n  contents: read');
     expect(workflow).toContain('runs-on: ubuntu-24.04');
     expect(workflow).toContain('timeout-minutes: 20');
@@ -25,7 +27,7 @@ describe('performance evidence workflow contract', () => {
       'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1',
     );
     expect(workflow).toContain(
-      'ref: ${{ github.event.pull_request.head.sha }}',
+      'ref: ${{ github.event.pull_request.head.sha || github.sha }}',
     );
     expect(workflow).toContain('persist-credentials: false');
     expect(workflow).toContain('Verify exact checkout');
@@ -33,13 +35,21 @@ describe('performance evidence workflow contract', () => {
     expect(workflow).toContain('pnpm build');
     expect(workflow).toContain('pnpm pack --pack-destination');
     expect(workflow).toContain('node benchmarks/generate-corpus.mjs');
-    expect(workflow).toContain('--html-input "$corpus_dir/small.html"');
     expect(workflow).toContain(
-      '--revision-input "$corpus_dir/small.envelope.json"',
+      '"profile":"small","samples":3',
+    );
+    for (const profile of ['small', 'medium', 'large', 'stress']) {
+      expect(workflow).toContain(`"profile":"${profile}","samples":25`);
+    }
+    expect(workflow).toContain(
+      '--html-input "$corpus_dir/${{ matrix.profile }}.html"',
+    );
+    expect(workflow).toContain(
+      '--revision-input "$corpus_dir/${{ matrix.profile }}.envelope.json"',
     );
     expect(workflow).toContain('node benchmarks/run-current-suite.mjs');
-    expect(workflow).toContain('--profile small');
-    expect(workflow).toContain('--samples 3');
+    expect(workflow).toContain('--profile "${{ matrix.profile }}"');
+    expect(workflow).toContain('--samples "${{ matrix.samples }}"');
     expect(workflow).toContain(
       '--reference-hardware-id github-actions-ubuntu-24.04-x64',
     );
