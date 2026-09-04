@@ -46,7 +46,12 @@ function resolveArguments(argv) {
     '--reference-hardware-id',
     '--output',
   ];
-  const inputFlags = ['--input', ...legacyFlags];
+  const inputFlags = [
+    '--input',
+    '--revision-module',
+    '--revision-artifact-sha256',
+    ...legacyFlags,
+  ];
   const expectedFlags =
     argv.length === inputFlags.length * 2 ? inputFlags : legacyFlags;
   if (
@@ -55,7 +60,7 @@ function resolveArguments(argv) {
     expectedFlags.some((_, index) => argv[index * 2 + 1]?.length === 0)
   ) {
     throw new Error(
-      'Usage: node benchmarks/measure-autosave.mjs [--input <document-envelope.json>] --module <packed-autosave-module> --profile <small|medium|large|stress> --samples <count> --source-commit-sha <sha> --artifact-sha256 <sha256> --runtime-id <runtime> --reference-hardware-id <hardware> --output <samples.json>',
+      'Usage: node benchmarks/measure-autosave.mjs [--input <document-envelope.json> --revision-module <packed-revision-module> --revision-artifact-sha256 <sha256>] --module <packed-autosave-module> --profile <small|medium|large|stress> --samples <count> --source-commit-sha <sha> --artifact-sha256 <sha256> --runtime-id <runtime> --reference-hardware-id <hardware> --output <samples.json>',
     );
   }
 
@@ -88,6 +93,15 @@ function resolveArguments(argv) {
       'Autosave benchmark artifact digest must be a lowercase 64-character SHA-256.',
     );
   }
+  const revisionArtifactSha256 = values['--revision-artifact-sha256'];
+  if (
+    values['--input'] !== undefined &&
+    !SHA256_PATTERN.test(revisionArtifactSha256)
+  ) {
+    throw new Error(
+      'Autosave benchmark revision artifact digest must be a lowercase 64-character SHA-256.',
+    );
+  }
   const runtimeId = values['--runtime-id'];
   if (!RUNTIME_ID_PATTERN.test(runtimeId)) {
     throw new Error('Autosave benchmark runtime ID is invalid.');
@@ -100,6 +114,8 @@ function resolveArguments(argv) {
   return Object.freeze({
     inputPath:
       values['--input'] === undefined ? null : resolve(values['--input']),
+    revisionModulePath: values['--revision-module'],
+    revisionArtifactSha256,
     modulePath: values['--module'],
     profile,
     sampleCount,
@@ -300,7 +316,8 @@ async function loadMeasuredModule(modulePath) {
   }
 }
 
-function createSyntheticRevisionEvidence(inputPath) {
+async function createSyntheticRevisionEvidence(args) {
+  const inputPath = args.inputPath;
   if (inputPath !== null) {
     const source = readBoundedRegularFile(
       inputPath,
@@ -308,30 +325,27 @@ function createSyntheticRevisionEvidence(inputPath) {
       'Autosave benchmark input must be a regular non-symlink file.',
       'Autosave benchmark input exceeds the supported size.',
     );
-    let envelope;
+    const revisionModulePath = resolveLocalModule(args.revisionModulePath);
+    verifyMeasuredModuleDigest(
+      revisionModulePath,
+      args.revisionArtifactSha256,
+    );
+    const revisionModule = await loadMeasuredModule(revisionModulePath);
+    if (
+      typeof revisionModule.createDocumentEnvelopeRevisionEvidenceBytes !==
+      'function'
+    ) {
+      throw new Error(
+        'Measured revision module must export createDocumentEnvelopeRevisionEvidenceBytes().',
+      );
+    }
     try {
-      envelope = JSON.parse(source.toString('utf8'));
+      return await revisionModule.createDocumentEnvelopeRevisionEvidenceBytes(
+        source,
+      );
     } catch {
       throw new Error('Autosave benchmark input must be a valid document envelope.');
     }
-    if (
-      envelope?.schemaId !==
-        'https://inkspan.io/schemas/document-envelope/v1' ||
-      envelope.schemaVersion !== 1 ||
-      typeof envelope.documentJson !== 'object' ||
-      envelope.documentJson === null
-    ) {
-      throw new Error('Autosave benchmark input must be a valid document envelope.');
-    }
-    const digestHex = createHash('sha256').update(source).digest('hex');
-    return Object.freeze({
-      envelope,
-      revision: Object.freeze({
-        algorithm: 'SHA-256',
-        digestHex,
-        strongEntityTag: `"sha256-${digestHex}"`,
-      }),
-    });
   }
   const textNode = Object.freeze({ type: 'text', text: SYNTHETIC_DOCUMENT_LABEL });
   const paragraph = Object.freeze({
@@ -429,7 +443,7 @@ async function main() {
       'Measured autosave module must export createDocumentAutosaveQueue().',
     );
   }
-  const evidence = createSyntheticRevisionEvidence(args.inputPath);
+  const evidence = await createSyntheticRevisionEvidence(args);
 
   await measureOneEnqueue(measuredModule.createDocumentAutosaveQueue, evidence);
   const samples = [];
