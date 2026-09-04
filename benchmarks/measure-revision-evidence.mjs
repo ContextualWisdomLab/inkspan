@@ -359,6 +359,11 @@ async function runMeasuredEvidence(createEvidence, source, operation) {
       (operation === 'transition' && typeof evidence.changed !== 'boolean') ||
       revisions.some(
         (revision) => typeof revision !== 'object' || revision === null,
+      ) ||
+      revisions.some(
+        (revision) =>
+          typeof revision.digestHex !== 'string' ||
+          !SHA256_PATTERN.test(revision.digestHex),
       )
     ) {
       throw new Error('invalid revision evidence');
@@ -367,15 +372,6 @@ async function runMeasuredEvidence(createEvidence, source, operation) {
     throw new Error('Measured revision-evidence result is invalid.');
   }
 
-  if (
-    revisions.some(
-      (revision) =>
-        typeof revision.digestHex !== 'string' ||
-        !SHA256_PATTERN.test(revision.digestHex),
-    )
-  ) {
-    throw new Error('Measured revision-evidence result is invalid.');
-  }
 }
 
 async function main() {
