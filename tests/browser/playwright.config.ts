@@ -2,7 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 const HARNESS_ORIGIN = 'http://127.0.0.1:4173';
 const HARNESS_URL = `${HARNESS_ORIGIN}/tests/browser/harness.html`;
-const ENGINE_BROWSER_SPECS = /(?:clipboard|focus|print)\.browser\.spec\.ts/u;
+const ENGINE_BROWSER_SPECS =
+  /(?:clipboard|focus|print|writing-diagnostics)\.browser\.spec\.ts/u;
 
 export default defineConfig({
   testDir: './specs',
@@ -37,6 +38,11 @@ export default defineConfig({
       name: 'webkit',
       testMatch: ENGINE_BROWSER_SPECS,
       use: { ...devices['Desktop Safari'], browserName: 'webkit' },
+    },
+    {
+      name: 'chromium-mobile-diagnostics',
+      testMatch: /writing-diagnostics\.browser\.spec\.ts/u,
+      use: { ...devices['Pixel 7'], browserName: 'chromium' },
     },
     {
       name: 'consensus',

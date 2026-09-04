@@ -79,7 +79,8 @@ function runReleaseInventory(
     const localFiles = {
       'inkspan.tgz': 'npm-package',
       'inkspan_office.whl': 'office-wheel',
-      'inkspan.spdx.json': '{"spdxVersion":"SPDX-2.3","packages":[]}',
+      'editor-package.spdx.json': '{"spdxVersion":"SPDX-2.3","packages":[]}',
+      'office-package.spdx.json': '{"spdxVersion":"SPDX-2.3","packages":[]}',
       SHA256SUMS: 'checksums',
     } as const;
     for (const [name, content] of Object.entries(localFiles)) {
@@ -154,10 +155,11 @@ describe('release draft asset inventory contract', () => {
       localValidationIndex,
       attestIndex,
     );
-    expect(localValidationStep).toContain('expected_asset_count=4');
+    expect(localValidationStep).toContain('expected_asset_count=5');
     expect(localValidationStep).toContain('*.tgz');
     expect(localValidationStep).toContain('*.whl');
-    expect(localValidationStep).toContain('inkspan.spdx.json');
+    expect(localValidationStep).toContain('editor-package.spdx.json');
+    expect(localValidationStep).toContain('office-package.spdx.json');
     expect(localValidationStep).toContain('SHA256SUMS');
     expect(localValidationStep).toContain(
       'Unexpected local release artifact set',
@@ -197,7 +199,7 @@ describe('release draft asset inventory contract', () => {
     expect(inventoryStep).toContain('Draft release asset digest mismatch');
   });
 
-  it('admits only the expected npm, wheel, SBOM, and checksum artifact set', () => {
+  it('admits only the expected npm, wheel, package SBOMs, and checksum set', () => {
     const inventoryIndex = workflow.indexOf(
       '- name: Verify exact draft release asset inventory',
     );
@@ -206,10 +208,11 @@ describe('release draft asset inventory contract', () => {
     );
     const inventoryStep = workflow.slice(inventoryIndex, publishIndex);
 
-    expect(inventoryStep).toContain('expected_asset_count=4');
+    expect(inventoryStep).toContain('expected_asset_count=5');
     expect(inventoryStep).toContain('*.tgz');
     expect(inventoryStep).toContain('*.whl');
-    expect(inventoryStep).toContain('inkspan.spdx.json');
+    expect(inventoryStep).toContain('editor-package.spdx.json');
+    expect(inventoryStep).toContain('office-package.spdx.json');
     expect(inventoryStep).toContain('SHA256SUMS');
     expect(inventoryStep).toContain('Unexpected local release artifact set');
     expect(inventoryStep).toContain("asset_name='.assets[].name'");

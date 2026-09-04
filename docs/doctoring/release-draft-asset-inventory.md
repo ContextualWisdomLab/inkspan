@@ -8,11 +8,11 @@
 
 Inkspan's release workflow intentionally supports retrying an unpublished GitHub Release draft. The upload command uses `--clobber`, which replaces same-name release assets. A prior failed attempt or operator action can nevertheless leave a differently named asset in the draft. Publishing that draft while immutable releases are enabled would freeze the extra asset into the official release identity.
 
-This is a provenance-completeness problem rather than a checksum-collision problem. The current protected release workflow produces four reviewed top-level assets: one npm tarball, one Inkspan Office wheel, `inkspan.spdx.json`, and `SHA256SUMS`. All four can be correctly generated while an unrelated fifth asset remains attached to the draft. Verifying only the expected local artifacts therefore does not prove that the complete release asset set is the reviewed set.
+This is a provenance-completeness problem rather than a checksum-collision problem. The current protected release workflow produces five reviewed top-level assets: one npm tarball, one Inkspan Office wheel, `editor-package.spdx.json`, `office-package.spdx.json`, and `SHA256SUMS`. All five can be correctly generated while an unrelated sixth asset remains attached to the draft. Verifying only the expected local artifacts therefore does not prove that the complete release asset set is the reviewed set.
 
-A second local-boundary failure mode exists before upload. Counting only top-level regular files does not prove that the transfer directory has exactly four entries: an unexpected directory, symlink, socket, or other non-regular top-level entry could coexist with the four expected files. The shell upload glob can expand such an entry even though a `find ... -type f` count ignores it. The local release boundary therefore has to bind both the complete top-level entry set and the regular-file subset before attestation or upload.
+A second local-boundary failure mode exists before upload. Counting only top-level regular files does not prove that the transfer directory has exactly five entries: an unexpected directory, symlink, socket, or other non-regular top-level entry could coexist with the five expected files. The shell upload glob can expand such an entry even though a `find ... -type f` count ignores it. The local release boundary therefore has to bind both the complete top-level entry set and the regular-file subset before attestation or upload.
 
-The original 2026-08-07 record described a three-file inventory because the release workflow at that stage did not yet publish the SPDX SBOM as a top-level release asset. Protected release source and executable contract tests now require `inkspan.spdx.json` as the fourth asset. This record supersedes that stale cardinality while retaining the original threat model and provenance rationale.
+The original 2026-08-07 record described a three-file inventory because the release workflow at that stage did not yet publish SPDX SBOMs as top-level release assets. The current contract publishes one SBOM per exact package, producing a five-file inventory. This record supersedes both stale cardinalities while retaining the original threat model and provenance rationale.
 
 ## Primary evidence
 
@@ -26,7 +26,7 @@ These properties make the pre-publication draft the last safe point at which Ink
 
 After the expected files cross the workflow-artifact privilege boundary and before attestation or upload, and again after upload before `gh release edit ... --draft=false`, the release workflow must:
 
-1. Require the local transfer directory to contain exactly four top-level entries and require all four to be regular files: one `*.tgz`, one `*.whl`, `inkspan.spdx.json`, and `SHA256SUMS`. Any extra directory, symlink, socket, device, regular file, or other top-level entry fails closed.
+1. Require the local transfer directory to contain exactly five top-level entries and require all five to be regular files: one `*.tgz`, one `*.whl`, `editor-package.spdx.json`, `office-package.spdx.json`, and `SHA256SUMS`. Any extra directory, symlink, socket, device, regular file, or other top-level entry fails closed.
 2. Paginate the authenticated GitHub **List releases** REST endpoint and select the exact release tag; require exactly one matching release object.
 3. Require the selected remote object to remain a draft.
 4. Compare the sorted local and remote asset-name sets for exact equality.
@@ -43,7 +43,7 @@ The workflow does not automatically delete an unexpected stale asset. Automatic 
 - A failed prior attempt leaves an obsolete wheel, tarball, SBOM, checksum file, or other differently named asset in the draft.
 - A same-name remote asset contains bytes different from the transferred local file.
 - An upload is incomplete or an asset does not report the `uploaded` state.
-- The local artifact directory unexpectedly contains multiple npm tarballs, multiple wheels, a missing or duplicate `inkspan.spdx.json`, missing checksums, another regular file, or any additional non-regular top-level entry.
+- The local artifact directory unexpectedly contains multiple npm tarballs, multiple wheels, a missing or duplicate package SBOM, missing checksums, another regular file, or any additional non-regular top-level entry.
 - A symlink or directory replaces one of the expected regular files.
 - The release stops being a draft before the inventory check.
 - The draft cannot be uniquely identified in the complete authenticated release listing.
@@ -65,11 +65,11 @@ This change is release-contract documentation and workflow assurance; it does no
 
 ## Verification
 
-`src/releaseDraftAssetInventory.test.ts` is the executable protected release authority for the inventory. It requires the exact-inventory check to occur after upload and before publication, requires `expected_asset_count=4`, requires one npm tarball, one Office wheel, `inkspan.spdx.json`, and `SHA256SUMS`, uses paginated draft-aware list evidence rather than a published-only by-tag route, and requires state and digest validation plus explicit fail-closed diagnostics. On Linux, which is the release-runner class, the same test extracts and executes the reviewed shell body with a local fake `gh api` response and the runner's real Bash, `jq`, `find`, `diff`, and `sha256sum`.
+`src/releaseDraftAssetInventory.test.ts` is the executable protected release authority for the inventory. It requires the exact-inventory check to occur after upload and before publication, requires `expected_asset_count=5`, requires one npm tarball, one Office wheel, both matching package SBOMs, and `SHA256SUMS`, uses paginated draft-aware list evidence rather than a published-only by-tag route, and requires state and digest validation plus explicit fail-closed diagnostics. On Linux, which is the release-runner class, the same test extracts and executes the reviewed shell body with a local fake `gh api` response and the runner's real Bash, `jq`, `find`, `diff`, and `sha256sum`.
 
-`src/releaseDraftAssetEntryType.test.ts` separately exercises the pre-attestation local entry-type boundary. Historical RED `0d905d9b244d36d55317de2237e3e3480c7ece5f` proved that a regular-file-only count could admit an unexpected top-level directory under the then-current inventory. The current contract generalizes that invariant to the exact four-file set: complete top-level cardinality and regular-file cardinality must both match before attestation or upload.
+`src/releaseDraftAssetEntryType.test.ts` separately exercises the pre-attestation local entry-type boundary. Historical RED `0d905d9b244d36d55317de2237e3e3480c7ece5f` proved that a regular-file-only count could admit an unexpected top-level directory under the then-current inventory. The current contract generalizes that invariant to the exact five-file set: complete top-level cardinality and regular-file cardinality must both match before attestation or upload.
 
-`src/releaseContractCanonicalConsistency.test.ts` rejects stale three-file wording across `docs/CONTRACTS.md`, `docs/TEST_STRATEGY.md`, `docs/OPERABILITY.md`, and this doctoring record while requiring all canonical documents to name the protected four-file SBOM-inclusive inventory. This prevents documentation from drifting behind executable release behavior again.
+`src/releaseContractCanonicalConsistency.test.ts` rejects stale three- and four-file wording across `docs/CONTRACTS.md`, `docs/TEST_STRATEGY.md`, `docs/OPERABILITY.md`, and this doctoring record while requiring all canonical documents to name the protected five-file package-specific SBOM inventory. This prevents documentation from drifting behind executable release behavior again.
 
 Exact-current-head CI, security, automated review, independent review, and branch protection remain authoritative. Predecessor-head, queued, cancelled, skipped, status-only, or synthetic-merge evidence is not completion evidence.
 

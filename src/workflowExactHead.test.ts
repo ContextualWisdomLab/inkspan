@@ -10,6 +10,9 @@ function repositoryFile(path: string): string {
 
 const workflow = repositoryFile('.github/workflows/ci.yml');
 const releaseWorkflow = repositoryFile('.github/workflows/release.yml');
+const diagnosticsWorkflow = repositoryFile(
+  '.github/workflows/writing-diagnostics-assurance-tdd.yml',
+);
 const editorActionsWorkflow = repositoryFile(
   '.github/workflows/writing-diagnostics-editor-actions-tdd.yml',
 );
@@ -19,12 +22,14 @@ const collaborationWorkflow = repositoryFile(
 
 const CHECKOUT_PIN =
   'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1';
+const SETUP_NODE_PIN =
+  'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0';
+const ACTIONS_CACHE_PIN =
+  'actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0';
 const PNPM_ACTION_SETUP_PIN =
   'pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10';
 const VULNERABLE_PNPM_ACTION_SETUP_PIN =
   'pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8';
-const SETUP_NODE_PIN =
-  'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0';
 const SETUP_PYTHON_PIN =
   'actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0';
 const EXPECTED_HEAD_REF =
@@ -137,6 +142,17 @@ describe('exact-head CI workflow contract', () => {
     );
   });
 
+  it('checks diagnostics assurance out at the immutable contributor head', () => {
+    const exactHeadRef =
+      'ref: ${{ github.event.pull_request.head.sha || github.sha }}';
+    const exactExpectedHead =
+      'INKSPAN_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}';
+
+    expect(diagnosticsWorkflow.split(exactHeadRef)).toHaveLength(3);
+    expect(diagnosticsWorkflow).not.toContain('ref: ${{ github.sha }}');
+    expect(diagnosticsWorkflow).toContain(exactExpectedHead);
+  });
+
   it('keeps the workflow read-only and hash-pins every third-party action', () => {
     expect(workflow).toContain('permissions:\n  contents: read');
     expect(workflow).not.toContain('contents: write');
@@ -170,11 +186,29 @@ describe('exact-head CI workflow contract', () => {
     );
   });
 
+  it('rejects the vulnerable pnpm action bootstrap in release jobs', () => {
+    expect(releaseWorkflow).not.toContain(VULNERABLE_PNPM_ACTION_SETUP_PIN);
+    expect(
+      releaseWorkflow.match(new RegExp(PNPM_ACTION_SETUP_PIN, 'g')),
+    ).toHaveLength(2);
+  });
+
+  it('caches exact Playwright revisions while retaining system dependency setup', () => {
+    expect(diagnosticsWorkflow).toContain(ACTIONS_CACHE_PIN);
+    expect(diagnosticsWorkflow).toContain(
+      'path: /tmp/inkspan-playwright-browsers',
+    );
+    expect(diagnosticsWorkflow).toContain(
+      `${'${{ runner.os }}'}-playwright-${'${{ runner.arch }}'}-${'${{ hashFiles(\'tests/browser/pnpm-lock.yaml\') }}'}`,
+    );
+    expect(diagnosticsWorkflow).toContain(
+      'playwright install --with-deps chromium firefox webkit',
+    );
+  });
+
   it('makes editor-action assurance fail closed on React act warnings', () => {
     expect(editorActionsWorkflow).toContain(PNPM_ACTION_SETUP_PIN);
-    expect(editorActionsWorkflow).not.toContain(
-      VULNERABLE_PNPM_ACTION_SETUP_PIN,
-    );
+    expect(editorActionsWorkflow).not.toContain(VULNERABLE_PNPM_ACTION_SETUP_PIN);
     expect(editorActionsWorkflow.match(/not wrapped in act/g)).toHaveLength(2);
     expect(
       editorActionsWorkflow.match(/test_status=\$\{PIPESTATUS\[0\]\}/g),
@@ -220,14 +254,5 @@ describe('exact-head CI workflow contract', () => {
     expect(doctoring).toContain('persist-credentials: false');
     expect(doctoring).toContain('not merge-result compatibility evidence');
     expect(changelog).toContain('exact-head read-only CI');
-  });
-});
-
-describe('release workflow pnpm bootstrap contract', () => {
-  it('uses the signed non-vulnerable pnpm action in every release JavaScript job', () => {
-    expect(
-      releaseWorkflow.match(new RegExp(PNPM_ACTION_SETUP_PIN, 'g')),
-    ).toHaveLength(2);
-    expect(releaseWorkflow).not.toContain(VULNERABLE_PNPM_ACTION_SETUP_PIN);
   });
 });
