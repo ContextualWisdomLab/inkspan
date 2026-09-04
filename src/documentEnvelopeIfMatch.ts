@@ -6,11 +6,9 @@ import {
   type DocumentEnvelopeLimits,
 } from './documentEnvelope.js';
 import {
-  createValidatedDocumentEnvelopeRevisionEvidence,
-} from './documentRevisionEvidence.js';
-import {
-  createValidatedDocumentEnvelopeRevision,
+  createValidatedDocumentEnvelopeRevisionWithResolvedProvider,
   DocumentEnvelopeRevisionError,
+  resolveDocumentEnvelopeDigestProvider,
   type CwlEditorDocumentRevision,
   type DocumentEnvelopeDigestProvider,
 } from './documentEnvelopeRevision.js';
@@ -112,11 +110,12 @@ export function restoreDocumentEnvelopeBytesIfMatch(
 /**
  * Execute one guarded restore using a caller-selected envelope preparation path.
  *
- * The function captures and hashes one current envelope, returns that same
- * frozen envelope beside every non-null current revision, reconstructs the
- * incoming source through the active schema, and hashes the exact normalized
- * document that will be applied. It does not inspect the incoming source when
- * the expected validator already conflicts.
+ * The function captures one digest capability before document serialization,
+ * hashes one current envelope with that capability, returns that same frozen
+ * envelope beside every non-null current revision, reconstructs the incoming
+ * source through the active schema, and reuses the captured capability for the
+ * exact normalized document that will be applied. It does not inspect the
+ * incoming source when the expected validator already conflicts.
  */
 async function restoreIfMatch(
   editor: Editor,
@@ -131,15 +130,17 @@ async function restoreIfMatch(
     return createMovedDocumentConflict();
   }
 
+  const resolvedProvider = resolveDocumentEnvelopeDigestProvider(digestProvider);
   const capturedDocument = editor.state.doc;
   const currentEnvelope = createDocumentEnvelope(
     capturedDocument.toJSON(),
     limits,
   );
-  const currentRevision = await createValidatedDocumentEnvelopeRevision(
-    currentEnvelope,
-    digestProvider,
-  );
+  const currentRevision =
+    await createValidatedDocumentEnvelopeRevisionWithResolvedProvider(
+      currentEnvelope,
+      resolvedProvider,
+    );
 
   if (hasEditorMoved(editor, capturedDocument)) {
     return createMovedDocumentConflict();
@@ -161,10 +162,10 @@ async function restoreIfMatch(
     prepared.documentNode.toJSON(),
     limits,
   );
-  const nextEvidence =
-    await createValidatedDocumentEnvelopeRevisionEvidence(
+  const nextRevision =
+    await createValidatedDocumentEnvelopeRevisionWithResolvedProvider(
       appliedEnvelope,
-      digestProvider,
+      resolvedProvider,
     );
   if (hasEditorMoved(editor, capturedDocument)) {
     return createMovedDocumentConflict();
@@ -175,8 +176,8 @@ async function restoreIfMatch(
     status: 'restored',
     previousRevision: currentRevision,
     previousEnvelope: currentEnvelope,
-    revision: nextEvidence.revision,
-    envelope: nextEvidence.envelope,
+    revision: nextRevision,
+    envelope: appliedEnvelope,
   });
 }
 
