@@ -1,4 +1,11 @@
 import '@testing-library/jest-dom/vitest';
+import { realpathSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+
+// macOS exposes its system temp directory through /var -> /private/var. Give
+// child-process path guards the canonical platform path so they can still
+// reject symlinks created inside the test boundary.
+process.env.TMPDIR = realpathSync(tmpdir());
 
 // jsdom does not implement canvas; the downscale path falls back gracefully,
 // but stubbing getContext keeps any accidental calls from throwing.
