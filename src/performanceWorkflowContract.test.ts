@@ -33,13 +33,7 @@ describe('performance evidence workflow contract', () => {
     expect(workflow).toContain('pnpm build');
     expect(workflow).toContain('pnpm pack --pack-destination');
     expect(workflow).toContain('node benchmarks/generate-corpus.mjs');
-    expect(workflow).toContain(
-      'html_input="${RUNNER_TEMP}/inkspan-html-input.html"',
-    );
-    expect(workflow).toContain(
-      "printf '%s\\n' '<h1>Inkspan deterministic performance smoke</h1>' > \"$html_input\"",
-    );
-    expect(workflow).toContain('--html-input "$html_input"');
+    expect(workflow).toContain('--html-input "$corpus_dir/small.html"');
     expect(workflow).toContain(
       '--revision-input "$corpus_dir/small.envelope.json"',
     );

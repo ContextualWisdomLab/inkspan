@@ -14,6 +14,8 @@
       "sections": 1,
       "bytes": 2152,
       "sha256": "420d18f2bb9e42d7e7e2cb5f74e67c90dfe15c3748b5d22875b4a6dc38ecbdea",
+      "htmlBytes": 2225,
+      "htmlSha256": "f06ba85c8fa00c819dcb992232fbad2205915a3066abc29e275c590f32fb5356",
       "envelopeBytes": 4236,
       "envelopeSha256": "7ee1425e1f57808a3a4d11987a0a6bc2aec97d311457f5456e82f1adbc48c810"
     },
@@ -21,6 +23,8 @@
       "sections": 8,
       "bytes": 15712,
       "sha256": "921092809cc19be790c7a29a5457a7113e75aa7c76642d4ec09784b6096e045c",
+      "htmlBytes": 15807,
+      "htmlSha256": "09dcb4384632d6b5525707d21c22788e838f7c68ae5e55e020ff0367e342bc5a",
       "envelopeBytes": 30018,
       "envelopeSha256": "47fa0cd11ffec5f9c5513a935180d1d7249157c46a0e115d1de938be86fa4459"
     },
@@ -28,6 +32,8 @@
       "sections": 32,
       "bytes": 62199,
       "sha256": "6ea32c0c8d2b58bf958dd28424a0b6139954fcefe8850943966be9e67a13b392",
+      "htmlBytes": 62365,
+      "htmlSha256": "3952dd5228a1e0f34bc294019e317c5ae38a26d4b4606cca8344e4dc36221102",
       "envelopeBytes": 118409,
       "envelopeSha256": "c93143659a352cffaa1ff817b0efa0ba4b63f8410bbb7d923799b827a36aa655"
     },
@@ -35,6 +41,8 @@
       "sections": 128,
       "bytes": 248152,
       "sha256": "5139848dc240863acb95ffdcf549fe7f151451a1002befc39c2d9c3395826928",
+      "htmlBytes": 248607,
+      "htmlSha256": "1d5d42bd92b7121a4ca59a542edf881d0edb438d7de68c09d3c075703bf3e4cb",
       "envelopeBytes": 471978,
       "envelopeSha256": "ebc47c89671e39af349a4cb65ba15ed3138a3eee187245e520abe80d877bcd6c"
     }

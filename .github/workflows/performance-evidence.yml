@@ -62,15 +62,11 @@ jobs:
         run: |
           set -euo pipefail
           corpus_dir="${RUNNER_TEMP}/inkspan-benchmark-corpus"
-          html_input="${RUNNER_TEMP}/inkspan-html-input.html"
           package_dir="${RUNNER_TEMP}/inkspan-package"
           evidence_dir="${RUNNER_TEMP}/inkspan-performance-evidence"
 
           rm -rf "$corpus_dir" "$package_dir" "$evidence_dir"
-          rm -f "$html_input"
-
           node benchmarks/generate-corpus.mjs --output "$corpus_dir"
-          printf '%s\n' '<h1>Inkspan deterministic performance smoke</h1>' > "$html_input"
 
           mkdir -p "$package_dir"
           pnpm pack --pack-destination "$package_dir"
@@ -83,7 +79,7 @@ jobs:
 
           node benchmarks/run-current-suite.mjs \
             --input "$corpus_dir/small.md" \
-            --html-input "$html_input" \
+            --html-input "$corpus_dir/small.html" \
             --revision-input "$corpus_dir/small.envelope.json" \
             --package-tarball "$package" \
             --package-sha256 "$package_sha256" \

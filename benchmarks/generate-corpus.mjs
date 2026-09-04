@@ -150,6 +150,14 @@ function buildEnvelope(body) {
   })}\n`;
 }
 
+function buildHtml(profile, body) {
+  const escapedBody = body
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+  return `<article data-inkspan-benchmark-profile="${profile}"><pre>${escapedBody}</pre></article>\n`;
+}
+
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }
@@ -170,8 +178,10 @@ const profileManifest = {};
 for (const [profile, sections] of Object.entries(PROFILE_SECTIONS)) {
   const body = buildProfile(profile, sections);
   const bytes = Buffer.from(body, 'utf8');
+  const htmlBytes = Buffer.from(buildHtml(profile, body), 'utf8');
   const envelopeBytes = Buffer.from(buildEnvelope(body), 'utf8');
   writeRegularOutput(resolve(outputDirectory, `${profile}.md`), bytes);
+  writeRegularOutput(resolve(outputDirectory, `${profile}.html`), htmlBytes);
   writeRegularOutput(
     resolve(outputDirectory, `${profile}.envelope.json`),
     envelopeBytes,
@@ -180,6 +190,8 @@ for (const [profile, sections] of Object.entries(PROFILE_SECTIONS)) {
     sections,
     bytes: bytes.byteLength,
     sha256: sha256(bytes),
+    htmlBytes: htmlBytes.byteLength,
+    htmlSha256: sha256(htmlBytes),
     envelopeBytes: envelopeBytes.byteLength,
     envelopeSha256: sha256(envelopeBytes),
   });

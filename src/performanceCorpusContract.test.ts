@@ -16,6 +16,8 @@ interface BenchmarkProfileLock {
   readonly sections: number;
   readonly bytes: number;
   readonly sha256: string;
+  readonly htmlBytes: number;
+  readonly htmlSha256: string;
   readonly envelopeBytes: number;
   readonly envelopeSha256: string;
 }
@@ -79,6 +81,13 @@ describe('deterministic synthetic performance corpus', () => {
         const secondBytes = readFileSync(join(second, `${profile}.md`));
         expect(firstBytes.equals(secondBytes)).toBe(true);
         expect(firstBytes.byteLength).toBe(expected.profiles[profile].bytes);
+        const firstHtml = readFileSync(join(first, `${profile}.html`));
+        const secondHtml = readFileSync(join(second, `${profile}.html`));
+        expect(firstHtml.equals(secondHtml)).toBe(true);
+        expect(firstHtml.byteLength).toBe(expected.profiles[profile].htmlBytes);
+        expect(firstHtml.toString('utf8')).toContain(
+          `data-inkspan-benchmark-profile="${profile}"`,
+        );
         const firstEnvelope = readFileSync(
           join(first, `${profile}.envelope.json`),
         );
