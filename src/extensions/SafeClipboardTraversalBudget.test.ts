@@ -23,7 +23,8 @@ describe('rich clipboard traversal budget', () => {
       ).toThrowError(
         expect.objectContaining({
           code: 'node_limit_exceeded',
-          message: 'Rich clipboard HTML exceeds the configured node limit.',
+          message:
+            'The pasted content is too complex to insert. Try pasting less content at once.',
         }),
       );
       expect(broadChildReads).toBe(0);

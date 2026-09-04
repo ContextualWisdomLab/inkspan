@@ -12,7 +12,8 @@ describe('rich clipboard size preflight', () => {
       ).toThrowError(
         expect.objectContaining({
           code: 'input_too_large',
-          message: 'Rich clipboard HTML exceeds the configured byte limit.',
+          message:
+            'The pasted content is too large to insert. Try pasting less content at once.',
         }),
       );
       expect(encodeSpy).not.toHaveBeenCalled();
