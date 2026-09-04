@@ -1,5 +1,44 @@
 import type { EditorTextDirection } from '../types.js';
 
+const ACCESSIBILITY_METADATA_MAX_CODE_UNITS = 65_536;
+const INVALID_ACCESSIBILITY_METADATA_MESSAGE =
+  'Accessibility metadata must be a string within the supported length.';
+const INVALID_LANGUAGE_TAG_MESSAGE =
+  'Accessibility language tag must be valid BCP 47 metadata.';
+
+const RFC_5646_GRANDFATHERED_TAGS = new Set([
+  'art-lojban',
+  'cel-gaulish',
+  'en-gb-oed',
+  'i-ami',
+  'i-bnn',
+  'i-default',
+  'i-enochian',
+  'i-hak',
+  'i-klingon',
+  'i-lux',
+  'i-mingo',
+  'i-navajo',
+  'i-pwn',
+  'i-tao',
+  'i-tay',
+  'i-tsu',
+  'no-bok',
+  'no-nyn',
+  'sgn-be-fr',
+  'sgn-be-nl',
+  'sgn-ch-de',
+  'zh-guoyu',
+  'zh-hakka',
+  'zh-min',
+  'zh-min-nan',
+  'zh-xiang',
+]);
+const RFC_5646_PRIVATE_USE_TAG = /^[xX](?:-[A-Za-z0-9]{1,8})+$/;
+const RFC_5646_LANGTAG = /^(?:[A-Za-z]{2,3}(?:-[A-Za-z]{3})?|[A-Za-z]{4}|[A-Za-z]{5,8})(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|[0-9]{3}))?(?:-(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*(?:-[0-9A-WY-Za-wy-z](?:-[A-Za-z0-9]{2,8})+)*(?:-[xX](?:-[A-Za-z0-9]{1,8})+)?$/;
+const RFC_5646_VARIANT = /^(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3})$/;
+const RFC_5646_EXTENSION_SINGLETON = /^[0-9A-WY-Za-wy-z]$/;
+
 /** Values accepted by the WAI-ARIA `aria-invalid` state on a textbox. */
 export type EditorAriaInvalid = boolean | 'grammar' | 'spelling';
 
@@ -29,12 +68,110 @@ export interface EditorAccessibilityOptions {
   editable: boolean;
 }
 
-/** Normalize an optional host-supplied accessibility string. */
+/** Enforce Inkspan's local type and resource boundary for accessibility text. */
+function validatedAccessibilityValue(value: string): string {
+  if (
+    typeof value !== 'string' ||
+    value.length > ACCESSIBILITY_METADATA_MAX_CODE_UNITS
+  ) {
+    throw new RangeError(INVALID_ACCESSIBILITY_METADATA_MESSAGE);
+  }
+  return value;
+}
+
+/** Normalize optional host metadata after enforcing Inkspan's local size boundary. */
 function normalizedAccessibilityValue(
   value: string | undefined,
 ): string | undefined {
-  const normalized = value?.trim();
+  if (value === undefined) return undefined;
+
+  const normalized = validatedAccessibilityValue(value).trim();
   return normalized ? normalized : undefined;
+}
+
+/** Enforce RFC 5646's locally decidable uniqueness rules beyond its ABNF shape. */
+function hasUniqueLanguageTagSubtags(value: string): boolean {
+  const variants = new Set<string>();
+  const extensionSingletons = new Set<string>();
+  let readingExtensions = false;
+
+  for (const subtag of value.split('-').slice(1)) {
+    const normalized = subtag.toLowerCase();
+    if (normalized === 'x') break;
+
+    if (RFC_5646_EXTENSION_SINGLETON.test(subtag)) {
+      if (extensionSingletons.has(normalized)) return false;
+      extensionSingletons.add(normalized);
+      readingExtensions = true;
+      continue;
+    }
+
+    if (!readingExtensions && RFC_5646_VARIANT.test(subtag)) {
+      if (variants.has(normalized)) return false;
+      variants.add(normalized);
+    }
+  }
+
+  return true;
+}
+
+/** Check locally decidable RFC 5646 validity without IANA registry lookup. */
+function isWellFormedLanguageTag(value: string): boolean {
+  return (
+    RFC_5646_GRANDFATHERED_TAGS.has(value.toLowerCase()) ||
+    RFC_5646_PRIVATE_USE_TAG.test(value) ||
+    (RFC_5646_LANGTAG.test(value) && hasUniqueLanguageTagSubtags(value))
+  );
+}
+
+/** Validate one non-blank editor language tag without changing caller spelling. */
+function normalizedEditorLanguageTag(
+  value: string | undefined,
+): string | undefined {
+  const normalized = normalizedAccessibilityValue(value);
+  if (normalized === undefined) return undefined;
+  if (!isWellFormedLanguageTag(normalized)) {
+    throw new RangeError(INVALID_LANGUAGE_TAG_MESSAGE);
+  }
+  return normalized;
+}
+
+/** Reject runtime direction values outside Inkspan's public finite contract. */
+function validateEditorTextDirection(
+  value: EditorTextDirection | undefined,
+): void {
+  if (
+    value !== undefined &&
+    value !== 'ltr' &&
+    value !== 'rtl' &&
+    value !== 'auto'
+  ) {
+    throw new RangeError('Editor text direction must be ltr, rtl, or auto.');
+  }
+}
+
+/** Reject runtime `aria-invalid` values outside Inkspan's finite contract. */
+function validateEditorAriaInvalid(
+  value: EditorAriaInvalid | undefined,
+): void {
+  if (
+    value !== undefined &&
+    value !== false &&
+    value !== true &&
+    value !== 'grammar' &&
+    value !== 'spelling'
+  ) {
+    throw new RangeError(
+      'Editor aria-invalid must be false, true, grammar, or spelling.',
+    );
+  }
+}
+
+/** Reject runtime `aria-required` values outside Inkspan's boolean contract. */
+function validateEditorAriaRequired(value: boolean | undefined): void {
+  if (value !== undefined && value !== false && value !== true) {
+    throw new RangeError('Editor aria-required must be false or true.');
+  }
 }
 
 /**
@@ -54,15 +191,31 @@ export function normalizeEditorPlaceholder(
  * collaborative editor surfaces.
  *
  * A non-blank `aria-labelledby` reference takes precedence over the fallback
- * string label. Optional placeholder, language, and ID-reference values are
- * omitted when blank. Placeholder guidance remains supplemental and never
- * replaces the accessible name.
+ * string label. Required and optional accessibility strings are bounded before
+ * attribute emission; optional placeholder, language, and ID-reference values
+ * are omitted when blank. Non-blank language metadata must satisfy RFC 5646 rules
+ * that Inkspan can decide locally, including private-use, grandfathered,
+ * extlang-position, variant-uniqueness, and extension-uniqueness constraints;
+ * IANA registry-content validity remains a host policy concern. Runtime direction
+ * and ARIA state values are each captured once and checked against Inkspan's finite
+ * public contracts before the same captured value is emitted. The trimmed caller
+ * spelling of accepted language tags is preserved. Placeholder guidance remains
+ * supplemental and never replaces the accessible name.
  */
 export function buildEditorAccessibilityAttributes(
   options: EditorAccessibilityOptions,
 ): Record<string, string> {
+  const textDirection = options.textDirection;
+  const ariaInvalid = options.ariaInvalid;
+  const ariaRequired = options.ariaRequired;
+
+  validateEditorTextDirection(textDirection);
+  validateEditorAriaInvalid(ariaInvalid);
+  validateEditorAriaRequired(ariaRequired);
+
+  const defaultLabel = validatedAccessibilityValue(options.defaultLabel);
   const placeholder = normalizeEditorPlaceholder(options.placeholder);
-  const languageTag = normalizedAccessibilityValue(options.languageTag);
+  const languageTag = normalizedEditorLanguageTag(options.languageTag);
   const labelledBy = normalizedAccessibilityValue(options.ariaLabelledBy);
   const describedBy = normalizedAccessibilityValue(options.ariaDescribedBy);
   const errorMessage = normalizedAccessibilityValue(options.ariaErrorMessage);
@@ -76,19 +229,19 @@ export function buildEditorAccessibilityAttributes(
 
   if (placeholder) attributes['aria-placeholder'] = placeholder;
   if (languageTag) attributes.lang = languageTag;
-  if (options.textDirection) attributes.dir = options.textDirection;
+  if (textDirection) attributes.dir = textDirection;
   if (labelledBy) {
     attributes['aria-labelledby'] = labelledBy;
   } else {
-    attributes['aria-label'] = explicitLabel ?? options.defaultLabel;
+    attributes['aria-label'] = explicitLabel ?? defaultLabel;
   }
   if (describedBy) attributes['aria-describedby'] = describedBy;
   if (errorMessage) attributes['aria-errormessage'] = errorMessage;
-  if (options.ariaInvalid !== undefined) {
-    attributes['aria-invalid'] = String(options.ariaInvalid);
+  if (ariaInvalid !== undefined) {
+    attributes['aria-invalid'] = String(ariaInvalid);
   }
-  if (options.ariaRequired !== undefined) {
-    attributes['aria-required'] = String(options.ariaRequired);
+  if (ariaRequired !== undefined) {
+    attributes['aria-required'] = String(ariaRequired);
   }
 
   return attributes;
