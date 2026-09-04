@@ -70,9 +70,11 @@ const officeJob = workflowJob(workflow, 'office');
 describe('exact-head CI workflow contract', () => {
   it('cancels only superseded runs for the same repository and PR while keeping full main compatibility coverage', () => {
     expect(workflow).toContain(
-      "group: ${{ github.workflow }}-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}",
+      "group: ${{ github.workflow }}-${{ github.repository }}-${{ github.event.pull_request.number || github.run_id }}",
     );
-    expect(workflow).toContain('cancel-in-progress: true');
+    expect(workflow).toContain(
+      "cancel-in-progress: ${{ github.event_name == 'pull_request' }}",
+    );
     expect(officeJob).toContain(
       'python-version: ["3.11", "3.12", "3.13", "3.14"]',
     );
@@ -80,6 +82,16 @@ describe('exact-head CI workflow contract', () => {
       'group: ${{ github.workflow }}-${{ github.repository }}-${{ github.ref_name }}',
     );
     expect(releaseWorkflow).toContain('cancel-in-progress: false');
+  });
+
+  it('cancels stale PR work and skips inactive pull requests', () => {
+    expect(workflow).toContain(
+      'types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, closed]',
+    );
+    for (const job of [buildJob, browserJob, officeJob]) {
+      expect(job).toContain('!github.event.pull_request.draft');
+      expect(job).toContain("github.event.action != 'closed'");
+    }
   });
 
   it('uses a fixed runner and checks out the immutable current PR head in every job', () => {
