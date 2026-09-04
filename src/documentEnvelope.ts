@@ -45,6 +45,7 @@ const TYPED_ARRAY_TAG_GETTER = Object.getOwnPropertyDescriptor(
 )!.get!;
 const REDACTED_INSPECTION_ERROR =
   'Document envelope could not be inspected safely';
+const DOCUMENT_ENVELOPE_ERROR_BRAND = new WeakSet<object>();
 
 /** Portable, versioned wrapper for lossless TipTap/ProseMirror JSON. */
 export interface CwlEditorDocumentEnvelope {
@@ -62,6 +63,7 @@ export class DocumentEnvelopeError extends TypeError {
   constructor(message: string) {
     super(message);
     this.name = 'DocumentEnvelopeError';
+    DOCUMENT_ENVELOPE_ERROR_BRAND.add(this);
   }
 }
 
@@ -180,6 +182,7 @@ function parseDocumentEnvelopeWithLimits(
         Number.MAX_SAFE_INTEGER,
         resolvedLimits.maxNestingDepth + 1,
       ),
+      maxStringCodeUnits: resolvedLimits.maxStringCodeUnits,
     });
     if (inspection === 'duplicate-object-name') {
       throw new DocumentEnvelopeError(
@@ -194,6 +197,11 @@ function parseDocumentEnvelopeWithLimits(
     if (inspection === 'nesting-depth-limit') {
       throw new DocumentEnvelopeError(
         'Document envelope exceeds the supported document nesting depth',
+      );
+    }
+    if (inspection === 'string-length-limit') {
+      throw new DocumentEnvelopeError(
+        'Document envelope strings exceed the supported length',
       );
     }
     try {
@@ -522,7 +530,7 @@ function withRedactedInspectionErrors<T>(operation: () => T): T {
   try {
     return operation();
   } catch (error) {
-    if (error instanceof DocumentEnvelopeError) {
+    if (DOCUMENT_ENVELOPE_ERROR_BRAND.has(error as object)) {
       throw error;
     }
     throw new DocumentEnvelopeError(REDACTED_INSPECTION_ERROR);
