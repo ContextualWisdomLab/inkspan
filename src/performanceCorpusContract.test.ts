@@ -90,9 +90,11 @@ describe('deterministic synthetic performance corpus', () => {
           expected.profiles[profile].envelopeBytes,
         );
         expect(
-          JSON.parse(firstEnvelope.toString('utf8')).documentJson.content[0]
-            .content[0].text,
-        ).toBe(firstBytes.toString('utf8'));
+          JSON.parse(firstEnvelope.toString('utf8')).documentJson.content.map(
+            (node: { content?: readonly [{ text: string }] }) =>
+              node.content?.[0].text ?? '',
+          ),
+        ).toEqual(firstBytes.toString('utf8').split('\n'));
       }
 
       const smallBody = readFileSync(join(first, 'small.md'), 'utf8');

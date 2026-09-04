@@ -135,12 +135,17 @@ function buildProfile(profile, sectionCount) {
 }
 
 function buildEnvelope(body) {
+  const content = body.split('\n').map((line) =>
+    line.length === 0
+      ? { type: 'paragraph' }
+      : { type: 'paragraph', content: [{ type: 'text', text: line }] },
+  );
   return `${JSON.stringify({
     schemaId: 'https://inkspan.io/schemas/document-envelope/v1',
     schemaVersion: 1,
     documentJson: {
       type: 'doc',
-      content: [{ type: 'paragraph', content: [{ type: 'text', text: body }] }],
+      content,
     },
   })}\n`;
 }
