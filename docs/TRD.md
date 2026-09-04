@@ -68,6 +68,8 @@ Inkspan may bind to host-supplied Yjs-compatible document/awareness surfaces. In
 
 Provider updates and awareness state are untrusted tenant data, not authorization evidence. Provider outage/degraded mode is resolved by host policy; Inkspan must not invent durable collaboration success.
 
+Inkspan validates the host awareness capability before use and contains host-thrown capability, collaborator-count, listener-registration, listener-removal, and teardown failures behind stable editor-owned outcomes. Cleanup still attempts every registered listener removal; these guards do not transfer provider lifecycle or transport authority to Inkspan.
+
 ## Deterministic conversion and Office renderer
 
 Deterministic conversion is an authority boundary separate from model-assisted authoring. Model output may become a proposed document change, but deterministic editor/conversion validation decides whether the resulting content is structurally acceptable.
