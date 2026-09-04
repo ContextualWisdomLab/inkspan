@@ -35,6 +35,10 @@ describe('TipTap SafeClipboard adapter doctoring', () => {
     expect(doctoring).toContain('packed strict-TypeScript consumer check');
     expect(workspace).toContain("'@tiptap/react@3.30.4':");
     expect(manifest.dependencies?.['@tiptap/y-tiptap']).toBe('3.0.9');
+    expect(manifest.dependencies?.['prosemirror-model']).toBe('^1.7.1');
+    expect(manifest.dependencies?.['prosemirror-state']).toBe('^1.2.3');
+    expect(manifest.dependencies?.['prosemirror-view']).toBe('^1.9.10');
+    expect(manifest.dependencies?.['y-protocols']).toBe('^1.0.1');
     expect(manifest.dependencies).not.toHaveProperty('y-prosemirror');
     expect(reactPatch).toContain('EditorStateSnapshot<Editor>');
     expect(doctoring).toContain('addProseMirrorPlugins');

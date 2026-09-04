@@ -137,8 +137,12 @@
     "@tiptap/starter-kit": "3.30.4",
     "@tiptap/y-tiptap": "3.0.9",
     "marked": "^15.0.6",
+    "prosemirror-model": "^1.7.1",
+    "prosemirror-state": "^1.2.3",
+    "prosemirror-view": "^1.9.10",
     "turndown": "^7.2.0",
     "turndown-plugin-gfm": "^1.0.2",
+    "y-protocols": "^1.0.1",
     "yjs": "^13.6.30"
   },
   "devDependencies": {
