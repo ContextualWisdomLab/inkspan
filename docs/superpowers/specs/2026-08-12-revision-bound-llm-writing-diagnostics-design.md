@@ -1,7 +1,7 @@
 # Revision-Bound Writing Diagnostics Design
 
-**Date:** 2026-08-12  
-**Status:** Proposed design; not shipped behavior  
+**Date:** 2026-08-12
+**Status:** Proposed design; not shipped behavior
 **Target:** Next Inkspan feature release after the current protected-main release train
 
 ## Objective
