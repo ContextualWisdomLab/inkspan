@@ -14,6 +14,7 @@ from zipfile import ZipFile, ZipInfo
 from openpyxl.utils import column_index_from_string
 
 from . import renderer as _renderer
+from .page_layout import apply_docx_page_layout, normalize_docx_page_layout
 
 OfficeDocumentError = _renderer.OfficeDocumentError
 RenderedOfficeDocument = _renderer.RenderedOfficeDocument
@@ -32,6 +33,7 @@ _EXCEL_MAX_SIGNIFICANT_DIGITS = 15
 _MAX_CONTAINER_DEPTH = 128
 _CANONICAL_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 _CANONICAL_CORE_TIMESTAMP = b"1980-01-01T00:00:00Z"
+_PAGE_LAYOUT_MISSING = object()
 
 
 def load_schema() -> dict[str, Any]:
@@ -43,13 +45,29 @@ def load_schema() -> dict[str, Any]:
 def render_office_document(payload: Mapping[str, Any]) -> RenderedOfficeDocument:
     """Validate safety invariants and return canonical deterministic OOXML."""
 
-    _validate_request(payload)
-    rendered = _renderer.render_office_document(payload)
+    render_payload: Mapping[str, Any] = payload
+    page_layout: Any = None
+    has_page_layout = False
+    if isinstance(payload, Mapping) and payload.get("format") == "docx":
+        page_layout_value = payload.get("page_layout", _PAGE_LAYOUT_MISSING)
+        if page_layout_value is not _PAGE_LAYOUT_MISSING:
+            page_layout = normalize_docx_page_layout(page_layout_value)
+            stripped_payload = {
+                key: payload[key] for key in payload if key != "page_layout"
+            }
+            render_payload = stripped_payload
+            has_page_layout = True
+
+    _validate_request(render_payload)
+    rendered = _renderer.render_office_document(render_payload)
+    data = rendered.data
+    if has_page_layout:
+        data = apply_docx_page_layout(data, page_layout)
     return RenderedOfficeDocument(
         rendered.format,
         rendered.extension,
         rendered.content_type,
-        _canonicalize_ooxml(rendered.data),
+        _canonicalize_ooxml(data),
     )
 
 
