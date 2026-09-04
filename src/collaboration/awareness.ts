@@ -215,6 +215,8 @@ export function collaborationConnectionLabel(
   status: CollaborationConnectionStatus | undefined,
 ): string {
   switch (status) {
+    case undefined:
+      return 'Collaboration ready';
     case 'connecting':
       return 'Connecting';
     case 'connected':
@@ -224,7 +226,9 @@ export function collaborationConnectionLabel(
     case 'offline':
       return 'Offline';
     default:
-      return 'Collaboration ready';
+      throw new RangeError(
+        'Collaboration connection status must be connecting, connected, disconnected, or offline.',
+      );
   }
 }
 
