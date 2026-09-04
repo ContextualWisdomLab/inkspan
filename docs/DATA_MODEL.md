@@ -86,6 +86,8 @@ These values may remain ephemeral or release-artifact metadata. Their presence i
 | `document_transition` | none required; host may store | change evidence | no | content-lineage evidence only |
 | `selection_evidence` | none required | review/selection capture | no | exact-revision ProseMirror coordinates only |
 | `text_position_selector_evidence` | none required; `implemented_on_protected_main` | interoperable review/annotation capture | no | exact-revision W3C text positions satisfying `0 <= start <= end <= projectedCodePointLength` under one versioned projection only |
+| `review_suggestion` | host if persisted; Active PR / Proposed | one insert/delete proposal | insert text only for insertion proposals | exact-revision untrusted proposal, not authorization or durable state |
+| `review_operation` | none required; host may persist its own decision | one accept/reject attempt | no | revision-only local result; acceptance is one undoable editor transaction and rejection is document-preserving |
 | `autosave_revision` | none required | queued local save evidence | envelope-bearing evidence may be retained boundedly by queue | local save ordering only |
 | `autosave_snapshot` | none required | lifecycle observation/coordination | no | local machine state only; validator fields remain confidential metadata |
 | `durable_validator` | host | durable version | no | host concurrency evidence, not authorization |

@@ -29,6 +29,16 @@ describe('print stylesheet contract', () => {
     );
   });
 
+  it('excludes review chrome by default and prints only opted-in review summaries', () => {
+    const printStyles = styles.slice(styles.indexOf('@media print'));
+    expect(printStyles).toMatch(
+      /\.cwl-review\[data-cwl-review-print='exclude'\][\s\S]*display:\s*none\s*!important\s*;/u,
+    );
+    expect(printStyles).toMatch(
+      /\.cwl-review\[data-cwl-review-print='include'\] \.cwl-review__action\s*\{[^}]*display:\s*none\s*!important\s*;/u,
+    );
+  });
+
   it('does not print placeholder UI and keeps document blocks page-safe', () => {
     const printIndex = styles.indexOf('@media print');
     expect(printIndex).toBeGreaterThan(-1);

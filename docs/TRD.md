@@ -54,6 +54,14 @@ Selection, transition, and W3C text-position evidence are implemented on protect
 
 The React-free text-position-selector package surface is also protected-main behavior. It reuses the deterministic projection helper without claiming editor state capture, annotation identity, authorization, durable persistence, or cross-revision re-anchoring. Hosts retain those authorities.
 
+## Review boundary (Active PR / Proposed)
+
+The proposed React-free review surface validates bounded thread presentations and insert/delete proposals against the versioned text-position projection and exact canonical document revision. It returns detached frozen metadata and revision-only operation evidence. A stale proposal may be classified only when the document stayed unchanged; an accepted operation that changed nothing, a rejected operation that changed content, or any stale operation paired with a mutation fails closed.
+
+The proposed React surface is controlled and intent-only. Native buttons, one roving thread-selection tab stop, Arrow Up/Down and Home/End focus movement, host-supplied localized labels, and semantic status/comment summaries provide the bounded interaction layer. Review presentation is excluded from print by default; explicit inclusion retains bounded labels and summaries while suppressing reply/resolve controls. The shared editor handle applies an authorized insert/delete acceptance as one undoable transaction only while the captured `EditorState` and exact canonical revision still match; rejection creates no transaction. Inkspan does not authorize the actor, persist or resolve a thread, send notifications, create durable audit, or re-anchor a target across revisions.
+
+Outside browser print, review metadata is excluded from non-print exports. Markdown, HTML, email, plain-text, and Office converters continue to serialize canonical document content only; `printMode` does not alter those inputs. A host may compose review records into a separately governed export, but Inkspan does not acquire its authorization, disclosure, provenance, retention, or artifact-publication authority.
+
 ## Autosave state machine and durable concurrency
 
 States are `idle`, `saving`, `blocked`, `closing`, and `closed`, with explicit blocked reasons. The local queue remains single-flight and retains bounded active/pending work and bounded flush waiters. Evidence supplied to a callback is immutable and validated before scheduling.
@@ -141,4 +149,4 @@ Queued, cancelled, skipped-required, absent, stale-head, predecessor-head, statu
 
 Protected `main` is the sole shipped implementation baseline. SafeClipboard, cross-engine browser assurance, the security disclosure lifecycle, autosave lifecycle observation, toolbar shortcut accessibility metadata, accessible editor placeholder semantics, SSR/native-form serialization, revision-scoped selection evidence, W3C text-position selector evidence, the React-free text-position-selector subpath, document-transition evidence, envelope identity routing, framework-neutral deterministic Markdown conversion, CSS paged-media print output, DOCX informative PNG figures, bounded rich-text runs, bounded paragraph alignment, bounded heading alignment, and the OIDC-backed unified stable registry release train are `implemented_on_protected_main`.
 
-The bounded DOCX rich-run external hyperlink contract in #137 is `implemented_on_active_pr` under Proposed ADR 0026. Open branches may extend the protected boundary, but no active-PR capability becomes shipped merely because its design, tests, or documentation are complete.
+The bounded DOCX rich-run external hyperlink contract in #137 is `implemented_on_active_pr` under Proposed ADR 0026. The provider-neutral review contract, exact-revision insert/delete transaction adapter, and controlled React review presentation surfaces are likewise `implemented_on_active_pr`; physical screen-reader acceptance, visual-regression acceptance, and durable host workflows remain unaccepted. Open branches may extend the protected boundary, but no active-PR capability becomes shipped merely because its design, tests, or documentation are complete.

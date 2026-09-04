@@ -133,6 +133,28 @@ sequenceDiagram
 
 Model output never bypasses deterministic validation, host authorization, user review, or durable save concurrency.
 
+## Review suggestion decision (Active PR / Proposed)
+
+```mermaid
+sequenceDiagram
+  participant Host
+  participant Handle as CwlEditorHandle
+  participant State as Captured EditorState
+  participant History as ProseMirror history
+  Host->>Handle: authorized suggestion + accept/reject
+  Handle->>State: validate proposal and canonical revision
+  alt live state changed or selector unsupported
+    Handle-->>Host: stale/invalid result; no mutation
+  else reject
+    Handle-->>Host: revision-only rejected result; no history entry
+  else accept
+    Handle->>History: dispatch one insert/delete transaction
+    Handle-->>Host: before/after revision transition
+  end
+```
+
+The host remains identity, authorization, persistence, durable exact-once decision, audit, and cross-revision re-anchoring authority. Local undo/redo reverses or reapplies the editor transaction only; it does not rewrite host review records.
+
 ## Import and export flow
 
 ```mermaid

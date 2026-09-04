@@ -70,6 +70,8 @@ runtime.
 | Envelope identity | `@contextualwisdomlab/cwl-editor/envelope-identity` | Framework-independent bounded schema identity for host-owned migration routing |
 | Revision evidence | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent canonical envelope, strong revision, and transition evidence |
 | Text-position selector | `@contextualwisdomlab/cwl-editor/text-position-selector` | React-free deterministic W3C `TextPositionSelector` projection core |
+| Review target core | `@contextualwisdomlab/cwl-editor/review` | `implemented_on_active_pr` — React-free deterministic exact-revision review targets; durable review records and policy remain host-owned |
+| Review React adapter | `@contextualwisdomlab/cwl-editor/review-react` | `implemented_on_active_pr` — controlled accessible thread and suggestion-decision presentation over the React-free review contract; hosts own actions, authorization, bodies, and persistence |
 | Autosave | `@contextualwisdomlab/cwl-editor/autosave` | Provider-neutral bounded single-flight persistence coordination |
 | Headless Markdown | `@contextualwisdomlab/cwl-editor/markdown` | React-free deterministic Markdown/HTML/email/plain-text conversion |
 | Styles | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
@@ -178,6 +180,12 @@ editorRef.current?.focus();
 
 `insertValue` is mode-aware, inserts at the current selection, and triggers the
 normal `onChange` path without wiping the document.
+
+The Active PR / Proposed review surface also exposes
+`applyReviewSuggestionDecision()`. After host authorization, `accept` applies
+one exact-revision insert/delete transaction that participates in editor
+undo/redo; `reject` preserves the document. A concurrent edit or repeated
+accept fails stale instead of re-anchoring the proposal.
 
 ### Atomic revision-envelope capture
 

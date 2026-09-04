@@ -50,6 +50,9 @@ describe('useEditorHandle', () => {
     ).resolves.toBeNull();
     await expect(handle.getSelectionRevisionEvidence()).resolves.toBeNull();
     await expect(handle.getTextPositionSelectorEvidence()).resolves.toBeNull();
+    await expect(
+      handle.applyReviewSuggestionDecision({}, 'accept'),
+    ).resolves.toBeNull();
     expect(handle.validateDocumentEnvelope({})).toBe(false);
     expect(handle.validateDocumentEnvelopeBytes(new Uint8Array())).toBe(false);
     expect(handle.restoreDocumentEnvelope({})).toBeNull();

@@ -262,6 +262,103 @@
   padding-top: calc(16px + 1.6em);
 }
 
+.cwl-review {
+  color: var(--cwl-fg, #1f2937);
+  font-family: var(--cwl-font, system-ui, sans-serif);
+}
+
+.cwl-review__threads {
+  width: min(100%, 22rem);
+  border-inline-start: 1px solid var(--cwl-border, #d1d5db);
+  padding-inline-start: 8px;
+}
+
+.cwl-review__suggestion {
+  display: flex;
+  align-items: center;
+  gap: var(--cwl-space-2);
+  min-inline-size: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.cwl-review__threads ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cwl-review__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--cwl-border, #d1d5db);
+}
+
+.cwl-review__thread,
+.cwl-review__action,
+.cwl-review__target {
+  min-height: 32px;
+  border: 1px solid var(--cwl-border, #d1d5db);
+  background: var(--cwl-surface, #ffffff);
+  color: inherit;
+  font: inherit;
+}
+
+.cwl-review__thread {
+  min-width: 0;
+  padding: 4px 8px;
+  overflow-wrap: anywhere;
+  text-align: start;
+}
+
+.cwl-review__thread[aria-pressed='true'] {
+  border-inline-start: 3px solid var(--cwl-accent, #0969da);
+  background: var(--cwl-accent-soft, #ddf4ff);
+}
+
+.cwl-review__action {
+  padding: 4px 8px;
+}
+
+.cwl-review__summary {
+  grid-column: 1 / -1;
+  color: var(--cwl-muted, #57606a);
+  font-size: 12px;
+}
+
+.cwl-review__thread:focus-visible,
+.cwl-review__action:focus-visible,
+.cwl-review__target:focus-visible {
+  outline: 2px solid var(--cwl-accent, #0969da);
+  outline-offset: 2px;
+}
+
+@media (max-width: 30rem) {
+  .cwl-review__item {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cwl-review__thread,
+  .cwl-review__summary {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (forced-colors: active) {
+  .cwl-review__thread[aria-pressed='true'] {
+    border-inline-start-color: Highlight;
+  }
+
+  .cwl-review__thread:focus-visible,
+  .cwl-review__action:focus-visible,
+  .cwl-review__target:focus-visible {
+    outline-color: CanvasText;
+  }
+}
+
 @media print {
   .cwl-editor {
     --cwl-fg: #000000;
@@ -282,8 +379,23 @@
   .cwl-toolbar,
   .cwl-collaboration-status,
   .collaboration-cursor__caret,
-  .collaboration-cursor__label {
+  .collaboration-cursor__label,
+  .cwl-review[data-cwl-review-print='exclude'] {
     display: none !important;
+  }
+
+  .cwl-review[data-cwl-review-print='include'] .cwl-review__action {
+    display: none !important;
+  }
+
+  .cwl-review[data-cwl-review-print='include'].cwl-review__target,
+  .cwl-review[data-cwl-review-print='include'] .cwl-review__thread {
+    appearance: none;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
   }
 
   .cwl-editor__surface {

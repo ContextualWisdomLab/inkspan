@@ -27,6 +27,10 @@ The print stylesheet:
 
 These are paged-media hints, not a promise that every browser/printer combination will produce byte-identical pagination. Browser engines and printer/PDF drivers remain separate rendering authorities.
 
+The Active PR / Proposed review surface defaults `printMode` to `exclude`, so target markers and thread panels do not enter print output accidentally. A host may choose `include` to print the validated thread labels plus status/comment summaries; reply and resolve controls remain hidden because they are interactive chrome. The option does not add comment bodies, actor identity, timestamps, authorization, durable audit, or a governed export receipt.
+
+`printMode` affects browser print presentation only. Review metadata is excluded from non-print exports: Markdown, HTML, email, plain-text, and Office conversion continues to receive canonical document content only. A host that needs review records in another artifact must create a separately governed export with its own authorization, disclosure, provenance, retention, accessibility, and publication policy.
+
 ## Accessibility and fidelity
 
 Printing must not depend on the visual color theme to distinguish authored links, and it must not leak collaborative presence or placeholder UI into the document. Author-provided semantic structure remains the source: headings remain headings, tables remain tables, links remain links, images retain their DOM alternative-text semantics, and code/preformatted text remains text rather than rasterized screen content.

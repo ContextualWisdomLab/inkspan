@@ -47,6 +47,16 @@ Local evidence records describe narrowly scoped facts such as revision identity,
 
 No single status collapses those authorities. Ordinary evidence must avoid embedding complete document bodies, selected quote text, credentials, tenant identifiers, prompts, model outputs, or private exception causes unless a separate authorized contract explicitly requires them.
 
+## Review contract (Active PR / Proposed)
+
+The proposed `./review` subpath accepts only versioned, bounded, provider-neutral review targets, thread presentation records, and insert/delete suggestions. Targets use `inkspan-prosemirror-text` projection offsets and one exact canonical document revision. The surface validates and detaches untrusted metadata, rejects stale direct reuse, and can classify host-supplied before/after envelopes as accepted, rejected, or stale without retaining proposal text or document bodies in the result.
+
+Classification is evidence, not authorization. After host authorization, `CwlEditorHandle.applyReviewSuggestionDecision()` may apply an insert/delete acceptance as one exact-revision editor transaction; rejection preserves the document and creates no history entry. The adapter captures one `EditorState`, verifies its canonical revision asynchronously, and refuses the operation if the live state changed before dispatch. Acceptance must produce a changed revision; rejection must preserve the revision; a stale target paired with any document change fails closed. The host owns reviewer/thread identity, permissions, transport, durable persistence, resolution, notifications, audit, retention, and cross-revision re-anchoring.
+
+The proposed `./review-react` subpath renders controlled native-button target markers, thread lists, and one-suggestion decision controls from the validated review contract. It exposes selection, reply, resolve, accept, and reject intents only. Host-controlled selection remains authoritative, unavailable actions remain disabled, keyboard focus traversal does not commit selection, and host callbacks cannot turn presentation state into authorization or durable success. Review presentation defaults to `printMode="exclude"`; explicit `include` prints bounded labels and status/comment summaries while suppressing interactive controls.
+
+The print option is not a general export switch. Review metadata is excluded from non-print exports, and deterministic Markdown, HTML, email, plain-text, and Office conversion serializes canonical document content only. A host that includes review records in another artifact owns that separately governed export and its authorization, disclosure, provenance, retention, accessibility, and publication policy.
+
 ## W3C text-position selector evidence contract
 
 Protected `main` exposes `getTextPositionSelectorEvidence()` through the root package as a revision-scoped annotation-interoperability primitive. It does **not** reinterpret `CwlEditorSelectionSnapshot` or ProseMirror structural positions as W3C positions. It derives a separate W3C `TextPositionSelector` from the same captured immutable editor state that is used for revision derivation.
@@ -149,6 +159,7 @@ Rollback must preserve readable canonical documents and must not require silentl
 | Markdown/HTML editing | deterministic editor state and supported import/export semantics | application workflow, document ownership, authorization |
 | document envelope/revision | schema validation, identity routing, canonical bytes, local equality evidence | migration orchestration, durable storage, signatures, tenant binding |
 | selection / W3C annotation evidence | exact-revision structural coordinates and versioned text-position projection | annotation identity/body, source IRI, authorization, persistence, audit, publication, re-anchoring |
+| review targets and suggestions (Active PR / Proposed) | bounded exact-revision metadata, accessible controlled presentation, revision-only operation classification | editor mutation, reviewer/thread identity, authorization, persistence, resolution, notifications, audit, re-anchoring |
 | autosave | local ordering/state, callback contract, validator validation | transport, durable CAS, retry/offline policy, persistence |
 | collaboration | provider-neutral editor/Yjs binding | provider lifecycle, rooms, identity, authorization, persistence, awareness privacy |
 | Office rendering | deterministic bounded JSON→artifact conversion | file destination policy, downstream distribution, tenant authorization |

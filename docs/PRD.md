@@ -31,6 +31,7 @@ The product promise is: **author, convert, collaborate, and prove document chang
 11. Produce reviewable package, security, compatibility, accessibility, SBOM/provenance, and release evidence tied to one exact protected source head.
 12. Give security researchers a discoverable private vulnerability-reporting and coordinated-disclosure path without promising unsupported SLAs, bounties, certification, or legal safe harbor.
 13. Identify a complete unsupported document-envelope generation safely enough for the host to select its own migration without accepting that generation as current Inkspan document semantics.
+14. Review a revision-scoped comment or insert/delete proposal through an accessible controlled surface without moving reviewer identity, authorization, durable thread state, or document mutation authority into Inkspan.
 
 ## Required outcomes
 
@@ -61,6 +62,7 @@ The product promise is: **author, convert, collaborate, and prove document chang
 - Autosave remains single-flight with bounded active/pending work and explicit conflict/failure recovery.
 - Durable saves use a host/server-selected strong validator; conflict or ambiguous failure never silently advances it.
 - Lifecycle observation emits only distinct externally visible document-free state transitions; construction and no-op operations do not manufacture notifications.
+- Proposed review targets and insert/delete suggestions bind to one exact document revision and the named text projection. Stale targets fail closed; accepting must change the revision, rejecting must preserve it, and neither result may claim authorization or durable review state.
 
 ### SSR and native forms
 
@@ -94,6 +96,7 @@ The product promise is: **author, convert, collaborate, and prove document chang
 - Toolbar shortcut metadata must reflect repository-level shipped behavior, including host/editor bindings such as link editing, rather than only extension-local defaults.
 - Application-visible saving/conflict/recovery messages must be derivable from programmatic state without Inkspan prescribing untranslated user-facing copy.
 - Export/print surfaces must not rely on color alone or inaccessible interaction-only state where the corresponding product surface exists.
+- By default, review metadata is excluded from non-print exports: deterministic Markdown, HTML, email, plain-text, and Office conversion receives canonical document content only. A host that needs comments or review status in an artifact must build a separately governed export with its own authorization, disclosure, retention, and accessibility policy.
 
 ### Security disclosure and vulnerability handling
 
@@ -148,3 +151,5 @@ Protected `main` is the sole implemented baseline. Open PRs may describe Propose
 SafeClipboard, real Chromium/Firefox/WebKit release assurance, lifecycle observation, the root security disclosure lifecycle, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, W3C text-position selector evidence, document-transition evidence, and envelope identity migration routing are implemented on protected `main`.
 
 A named editor-chrome theme-token catalog, DTCG 2025.10 interchange snapshot, and Storybook inventory for repeating toolbar/editor objects are Active PR / Proposed and are not shipped claims until protected integration. Hosts must check inventoried active-chrome contrast (`--cwl-accent` on `--cwl-accent-soft`) in addition to body text.
+
+The provider-neutral review contract and controlled accessible review-thread/target-marker surfaces are also Active PR / Proposed. They validate bounded host data, emit only detached intent snapshots, and apply an authorized insert/delete acceptance as one exact-revision undoable editor transaction while rejection preserves the document. They do not own reviewer identity, authorization, thread persistence, audit, notifications, or cross-revision re-anchoring.

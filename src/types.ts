@@ -1,6 +1,9 @@
 import type { JSONContent } from '@tiptap/core';
 import type { Editor } from '@tiptap/react';
 import type {
+  CwlReviewOperationResult,
+} from './review/index.js';
+import type {
   CwlEditorDocumentEnvelope,
   DocumentEnvelopeLimits,
 } from './documentEnvelope.js';
@@ -174,6 +177,18 @@ export interface CwlEditorHandle {
     limits?: DocumentEnvelopeLimits,
     digestProvider?: DocumentEnvelopeDigestProvider | null,
   ): Promise<CwlEditorSelectionRevisionEvidence | null>;
+  /**
+   * Accept or reject one exact-revision insert/delete suggestion.
+   *
+   * Acceptance dispatches one history-aware editor transaction. Rejection
+   * preserves the document. Returns `null` before editor creation.
+   */
+  applyReviewSuggestionDecision(
+    suggestion: unknown,
+    action: 'accept' | 'reject',
+    limits?: DocumentEnvelopeLimits,
+    digestProvider?: DocumentEnvelopeDigestProvider | null,
+  ): Promise<CwlReviewOperationResult | null>;
   /** Replace the whole document from a string in the active `mode`. */
   setValue(value: string): void;
   /**
