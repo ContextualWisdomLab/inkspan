@@ -5,11 +5,12 @@ import ts from 'typescript';
  *
  * Parsing the artifact instead of scanning raw text deliberately ignores comments,
  * string literals, and template text that merely mention `require()` or `import()`.
- * Actual static imports/re-exports, bare CommonJS `require()` calls, and dynamic
- * `import()` calls remain fail-closed findings. Literal module specifiers are
- * preserved in diagnostics so a verifier failure identifies the dependency edge
- * that escaped bundling; computed specifiers remain `undefined` and therefore do
- * not acquire an invented interpretation.
+ * Actual static imports/re-exports, statically recognizable CommonJS loader and
+ * resolver calls, Node built-in module loads, and dynamic `import()` calls remain
+ * fail-closed findings. Literal module specifiers are preserved in diagnostics so a
+ * verifier failure identifies the dependency edge that escaped bundling; computed
+ * specifiers remain `undefined` and therefore do not acquire an invented
+ * interpretation.
  *
  * @param {string} source JavaScript source emitted into the packed artifact.
  * @param {string} [filename='bundle.js'] Diagnostic filename for parse failures.
@@ -34,12 +35,494 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
   }
 
   const findings = [];
+  const consumedBoundCalls = new WeakSet();
 
   /** Return a literal module specifier without evaluating computed expressions. */
   function literalSpecifier(expression) {
     return expression && ts.isStringLiteralLike(expression)
       ? expression.text
       : undefined;
+  }
+
+  /** Remove syntax-only parentheses without evaluating the expression. */
+  function unwrapParentheses(expression) {
+    let current = expression;
+    while (ts.isParenthesizedExpression(current)) {
+      current = current.expression;
+    }
+    return current;
+  }
+
+  /** Return a statically written member name without evaluating property input. */
+  function staticMemberName(expression) {
+    if (ts.isPropertyAccessExpression(expression)) {
+      return expression.name.text;
+    }
+    if (
+      ts.isElementAccessExpression(expression) &&
+      expression.argumentExpression &&
+      ts.isStringLiteralLike(expression.argumentExpression)
+    ) {
+      return expression.argumentExpression.text;
+    }
+    return undefined;
+  }
+
+  /** Identify Node's ambient synchronous built-in module loader syntax. */
+  function isNodeBuiltinModuleExpression(expression) {
+    const current = unwrapParentheses(expression);
+    if (
+      ts.isBinaryExpression(current) &&
+      current.operatorToken.kind === ts.SyntaxKind.CommaToken
+    ) {
+      return isNodeBuiltinModuleExpression(current.right);
+    }
+    if (
+      (!ts.isPropertyAccessExpression(current) &&
+        !ts.isElementAccessExpression(current)) ||
+      staticMemberName(current) !== 'getBuiltinModule'
+    ) {
+      return false;
+    }
+
+    const receiver = unwrapParentheses(current.expression);
+    if (ts.isIdentifier(receiver) && receiver.text === 'process') {
+      return true;
+    }
+    if (
+      (ts.isPropertyAccessExpression(receiver) ||
+        ts.isElementAccessExpression(receiver)) &&
+      staticMemberName(receiver) === 'process'
+    ) {
+      const root = unwrapParentheses(receiver.expression);
+      return (
+        ts.isIdentifier(root) &&
+        (root.text === 'globalThis' || root.text === 'global')
+      );
+    }
+    return false;
+  }
+
+  /** Return the module argument for recognizable ambient built-in loading. */
+  function nodeBuiltinModuleInvocation(node) {
+    if (isNodeBuiltinModuleExpression(node.expression)) {
+      return { argument: node.arguments[0] };
+    }
+
+    const boundInvocation = commonJsBoundInvocation(
+      node,
+      isNodeBuiltinModuleExpression,
+    );
+    if (boundInvocation) {
+      return boundInvocation;
+    }
+
+    if (isReflectApplyExpression(node.expression)) {
+      const target = node.arguments[0];
+      if (target && isNodeBuiltinModuleExpression(target)) {
+        return { argument: commonJsApplyArgument(node, 2) };
+      }
+      if (target) {
+        const boundTarget = commonJsBoundExpression(
+          target,
+          isNodeBuiltinModuleExpression,
+        );
+        if (boundTarget) {
+          return {
+            argument: commonJsBoundArgument(
+              boundTarget,
+              commonJsApplyArgument(node, 2),
+            ),
+          };
+        }
+      }
+    }
+
+    const callee = unwrapParentheses(node.expression);
+    if (
+      ts.isPropertyAccessExpression(callee) ||
+      ts.isElementAccessExpression(callee)
+    ) {
+      const invocationMethod = staticMemberName(callee);
+      if (invocationMethod === 'call' || invocationMethod === 'apply') {
+        const fallbackArgument =
+          invocationMethod === 'call'
+            ? node.arguments[1]
+            : commonJsApplyArgument(node);
+        if (isNodeBuiltinModuleExpression(callee.expression)) {
+          return { argument: fallbackArgument };
+        }
+        const boundReceiver = commonJsBoundExpression(
+          callee.expression,
+          isNodeBuiltinModuleExpression,
+        );
+        if (boundReceiver) {
+          return {
+            argument: commonJsBoundArgument(
+              boundReceiver,
+              fallbackArgument,
+            ),
+          };
+        }
+      }
+    }
+    return null;
+  }
+
+  /** Identify direct CommonJS loader values without resolving aliases or scope. */
+  function isCommonJsLoaderExpression(expression) {
+    const current = unwrapParentheses(expression);
+    if (ts.isIdentifier(current)) {
+      return current.text === 'require';
+    }
+    if (
+      ts.isBinaryExpression(current) &&
+      current.operatorToken.kind === ts.SyntaxKind.CommaToken
+    ) {
+      return isCommonJsLoaderExpression(current.right);
+    }
+    if (
+      (ts.isPropertyAccessExpression(current) ||
+        ts.isElementAccessExpression(current)) &&
+      staticMemberName(current) === 'require'
+    ) {
+      const receiver = unwrapParentheses(current.expression);
+      if (ts.isIdentifier(receiver) && receiver.text === 'module') {
+        return true;
+      }
+      return (
+        (ts.isPropertyAccessExpression(receiver) ||
+          ts.isElementAccessExpression(receiver)) &&
+        staticMemberName(receiver) === 'main' &&
+        isCommonJsLoaderExpression(receiver.expression)
+      );
+    }
+    return false;
+  }
+
+  /** Identify statically recognizable CommonJS resolver values. */
+  function isCommonJsResolverExpression(expression) {
+    const current = unwrapParentheses(expression);
+    if (
+      ts.isBinaryExpression(current) &&
+      current.operatorToken.kind === ts.SyntaxKind.CommaToken
+    ) {
+      return isCommonJsResolverExpression(current.right);
+    }
+    return (
+      (ts.isPropertyAccessExpression(current) ||
+        ts.isElementAccessExpression(current)) &&
+      staticMemberName(current) === 'resolve' &&
+      isCommonJsLoaderExpression(current.expression)
+    );
+  }
+
+  /** Identify the built-in `Reflect.apply` without resolving aliases or receivers. */
+  function isReflectApplyExpression(expression) {
+    const current = unwrapParentheses(expression);
+    if (
+      !ts.isPropertyAccessExpression(current) &&
+      !ts.isElementAccessExpression(current)
+    ) {
+      return false;
+    }
+    const receiver = unwrapParentheses(current.expression);
+    return (
+      staticMemberName(current) === 'apply' &&
+      ts.isIdentifier(receiver) &&
+      receiver.text === 'Reflect'
+    );
+  }
+
+  /** Identify the built-in `Reflect.construct` without resolving aliases. */
+  function isReflectConstructExpression(expression) {
+    const current = unwrapParentheses(expression);
+    if (
+      !ts.isPropertyAccessExpression(current) &&
+      !ts.isElementAccessExpression(current)
+    ) {
+      return false;
+    }
+    const receiver = unwrapParentheses(current.expression);
+    return (
+      staticMemberName(current) === 'construct' &&
+      ts.isIdentifier(receiver) &&
+      receiver.text === 'Reflect'
+    );
+  }
+
+  /**
+   * Return the first statically written apply payload argument.
+   * Non-array, computed, missing, and spread argument lists still identify
+   * executable authority but deliberately yield an unknown module specifier.
+   */
+  function commonJsApplyArgument(node, argumentListIndex = 1) {
+    const argumentList = node.arguments[argumentListIndex];
+    if (!argumentList) {
+      return undefined;
+    }
+    const current = unwrapParentheses(argumentList);
+    if (!ts.isArrayLiteralExpression(current)) {
+      return undefined;
+    }
+    const first = current.elements[0];
+    return first && !ts.isSpreadElement(first) ? first : undefined;
+  }
+
+  /**
+   * Recognize a statically written `.bind` expression whose receiver is already
+   * known module authority. The bound receiver and arguments are never evaluated.
+   */
+  function commonJsBoundExpression(expression, authorityPredicate) {
+    const bindCall = unwrapParentheses(expression);
+    if (!ts.isCallExpression(bindCall)) {
+      return null;
+    }
+    const bindCallee = unwrapParentheses(bindCall.expression);
+    if (
+      (!ts.isPropertyAccessExpression(bindCallee) &&
+        !ts.isElementAccessExpression(bindCallee)) ||
+      staticMemberName(bindCallee) !== 'bind' ||
+      !authorityPredicate(bindCallee.expression)
+    ) {
+      return null;
+    }
+    return {
+      bindCall,
+      hasArgument: bindCall.arguments.length > 1,
+      argument: bindCall.arguments[1],
+    };
+  }
+
+  /** Preserve an explicitly bound package argument even when it is computed. */
+  function commonJsBoundArgument(boundExpression, fallbackArgument) {
+    consumedBoundCalls.add(boundExpression.bindCall);
+    return boundExpression.hasArgument
+      ? boundExpression.argument
+      : fallbackArgument;
+  }
+
+  /**
+   * Recognize an immediately invoked statically written `.bind` call whose
+   * receiver is already known module authority. A package argument bound after
+   * `thisArg` takes precedence over the first invocation argument.
+   */
+  function commonJsBoundInvocation(node, authorityPredicate) {
+    const boundExpression = commonJsBoundExpression(
+      node.expression,
+      authorityPredicate,
+    );
+    return boundExpression
+      ? {
+          argument: commonJsBoundArgument(
+            boundExpression,
+            node.arguments[0],
+          ),
+        }
+      : null;
+  }
+
+  /**
+   * Recognize statically written constructor use of known CommonJS authority.
+   * The constructor target and package argument are inspected syntactically only;
+   * aliases, arbitrary receivers, and computed property names remain unresolved.
+   */
+  function commonJsConstructorInvocation(node, authorityPredicate) {
+    if (authorityPredicate(node.expression)) {
+      return { argument: node.arguments?.[0] };
+    }
+    const boundExpression = commonJsBoundExpression(
+      node.expression,
+      authorityPredicate,
+    );
+    return boundExpression
+      ? {
+          argument: commonJsBoundArgument(
+            boundExpression,
+            node.arguments?.[0],
+          ),
+        }
+      : null;
+  }
+
+  /**
+   * Recognize a `Reflect.construct` call whose constructor target is already
+   * known module authority. The argument-list array is inspected statically only.
+   */
+  function commonJsReflectConstructInvocation(node, authorityPredicate) {
+    if (!isReflectConstructExpression(node.expression)) {
+      return null;
+    }
+    const target = node.arguments[0];
+    if (target && authorityPredicate(target)) {
+      return { argument: commonJsApplyArgument(node, 1) };
+    }
+    if (!target) {
+      return null;
+    }
+    const boundTarget = commonJsBoundExpression(target, authorityPredicate);
+    return boundTarget
+      ? {
+          argument: commonJsBoundArgument(
+            boundTarget,
+            commonJsApplyArgument(node, 1),
+          ),
+        }
+      : null;
+  }
+
+  /**
+   * Return the package argument for one recognizable CommonJS resolver call.
+   * Arbitrary object methods named `resolve` remain outside this authority model.
+   */
+  function commonJsResolverInvocation(node) {
+    if (isCommonJsResolverExpression(node.expression)) {
+      return { argument: node.arguments[0] };
+    }
+
+    const boundInvocation = commonJsBoundInvocation(
+      node,
+      isCommonJsResolverExpression,
+    );
+    if (boundInvocation) {
+      return boundInvocation;
+    }
+
+    const reflectConstructInvocation = commonJsReflectConstructInvocation(
+      node,
+      isCommonJsResolverExpression,
+    );
+    if (reflectConstructInvocation) {
+      return reflectConstructInvocation;
+    }
+
+    if (isReflectApplyExpression(node.expression)) {
+      const target = node.arguments[0];
+      if (target && isCommonJsResolverExpression(target)) {
+        return { argument: commonJsApplyArgument(node, 2) };
+      }
+      if (target) {
+        const boundTarget = commonJsBoundExpression(
+          target,
+          isCommonJsResolverExpression,
+        );
+        if (boundTarget) {
+          return {
+            argument: commonJsBoundArgument(
+              boundTarget,
+              commonJsApplyArgument(node, 2),
+            ),
+          };
+        }
+      }
+    }
+
+    const callee = unwrapParentheses(node.expression);
+    if (
+      ts.isPropertyAccessExpression(callee) ||
+      ts.isElementAccessExpression(callee)
+    ) {
+      const invocationMethod = staticMemberName(callee);
+      if (invocationMethod === 'call' || invocationMethod === 'apply') {
+        const fallbackArgument =
+          invocationMethod === 'call'
+            ? node.arguments[1]
+            : commonJsApplyArgument(node);
+        if (isCommonJsResolverExpression(callee.expression)) {
+          return { argument: fallbackArgument };
+        }
+        const boundReceiver = commonJsBoundExpression(
+          callee.expression,
+          isCommonJsResolverExpression,
+        );
+        if (boundReceiver) {
+          return {
+            argument: commonJsBoundArgument(
+              boundReceiver,
+              fallbackArgument,
+            ),
+          };
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Return the package argument for one recognizable CommonJS loader call.
+   * A wrapper object distinguishes a computed or missing argument from no match.
+   */
+  function commonJsInvocation(node) {
+    if (isCommonJsLoaderExpression(node.expression)) {
+      return { argument: node.arguments[0] };
+    }
+
+    const boundInvocation = commonJsBoundInvocation(
+      node,
+      isCommonJsLoaderExpression,
+    );
+    if (boundInvocation) {
+      return boundInvocation;
+    }
+
+    const reflectConstructInvocation = commonJsReflectConstructInvocation(
+      node,
+      isCommonJsLoaderExpression,
+    );
+    if (reflectConstructInvocation) {
+      return reflectConstructInvocation;
+    }
+
+    if (isReflectApplyExpression(node.expression)) {
+      const target = node.arguments[0];
+      if (target && isCommonJsLoaderExpression(target)) {
+        return { argument: commonJsApplyArgument(node, 2) };
+      }
+      if (target) {
+        const boundTarget = commonJsBoundExpression(
+          target,
+          isCommonJsLoaderExpression,
+        );
+        if (boundTarget) {
+          return {
+            argument: commonJsBoundArgument(
+              boundTarget,
+              commonJsApplyArgument(node, 2),
+            ),
+          };
+        }
+      }
+    }
+
+    const callee = unwrapParentheses(node.expression);
+    if (
+      ts.isPropertyAccessExpression(callee) ||
+      ts.isElementAccessExpression(callee)
+    ) {
+      const invocationMethod = staticMemberName(callee);
+      if (invocationMethod === 'call' || invocationMethod === 'apply') {
+        const fallbackArgument =
+          invocationMethod === 'call'
+            ? node.arguments[1]
+            : commonJsApplyArgument(node);
+        if (isCommonJsLoaderExpression(callee.expression)) {
+          return { argument: fallbackArgument };
+        }
+        const boundReceiver = commonJsBoundExpression(
+          callee.expression,
+          isCommonJsLoaderExpression,
+        );
+        if (boundReceiver) {
+          return {
+            argument: commonJsBoundArgument(
+              boundReceiver,
+              fallbackArgument,
+            ),
+          };
+        }
+      }
+    }
+    return null;
   }
 
   /** @param {import('typescript').Node} node Parsed JavaScript node. */
@@ -56,6 +539,30 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
         offset: node.getStart(sourceFile),
         specifier: literalSpecifier(node.moduleSpecifier),
       });
+    } else if (ts.isNewExpression(node)) {
+      const resolverInvocation = commonJsConstructorInvocation(
+        node,
+        isCommonJsResolverExpression,
+      );
+      if (resolverInvocation) {
+        findings.push({
+          kind: 'commonjs-resolve',
+          offset: node.getStart(sourceFile),
+          specifier: literalSpecifier(resolverInvocation.argument),
+        });
+      } else {
+        const invocation = commonJsConstructorInvocation(
+          node,
+          isCommonJsLoaderExpression,
+        );
+        if (invocation) {
+          findings.push({
+            kind: 'commonjs-require',
+            offset: node.getStart(sourceFile),
+            specifier: literalSpecifier(invocation.argument),
+          });
+        }
+      }
     } else if (ts.isCallExpression(node)) {
       if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
         findings.push({
@@ -63,15 +570,81 @@ export function findRuntimeModuleAuthority(source, filename = 'bundle.js') {
           offset: node.getStart(sourceFile),
           specifier: literalSpecifier(node.arguments[0]),
         });
-      } else if (
-        ts.isIdentifier(node.expression) &&
-        node.expression.text === 'require'
-      ) {
-        findings.push({
-          kind: 'commonjs-require',
-          offset: node.getStart(sourceFile),
-          specifier: literalSpecifier(node.arguments[0]),
-        });
+      } else {
+        const nodeBuiltinInvocation = nodeBuiltinModuleInvocation(node);
+        if (nodeBuiltinInvocation) {
+          findings.push({
+            kind: 'node-builtin-module',
+            offset: node.getStart(sourceFile),
+            specifier: literalSpecifier(nodeBuiltinInvocation.argument),
+          });
+        } else {
+          const resolverInvocation = commonJsResolverInvocation(node);
+          if (resolverInvocation) {
+            findings.push({
+              kind: 'commonjs-resolve',
+              offset: node.getStart(sourceFile),
+              specifier: literalSpecifier(resolverInvocation.argument),
+            });
+          } else {
+            const invocation = commonJsInvocation(node);
+            if (invocation) {
+              findings.push({
+                kind: 'commonjs-require',
+                offset: node.getStart(sourceFile),
+                specifier: literalSpecifier(invocation.argument),
+              });
+            } else if (!consumedBoundCalls.has(node)) {
+              const boundNodeBuiltin = commonJsBoundExpression(
+                node,
+                isNodeBuiltinModuleExpression,
+              );
+              if (boundNodeBuiltin) {
+                findings.push({
+                  kind: 'node-builtin-module',
+                  offset: node.getStart(sourceFile),
+                  specifier: literalSpecifier(
+                    boundNodeBuiltin.hasArgument
+                      ? boundNodeBuiltin.argument
+                      : undefined,
+                  ),
+                });
+              } else {
+                const boundResolver = commonJsBoundExpression(
+                  node,
+                  isCommonJsResolverExpression,
+                );
+                if (boundResolver) {
+                  findings.push({
+                    kind: 'commonjs-resolve',
+                    offset: node.getStart(sourceFile),
+                    specifier: literalSpecifier(
+                      boundResolver.hasArgument
+                        ? boundResolver.argument
+                        : undefined,
+                    ),
+                  });
+                } else {
+                  const boundLoader = commonJsBoundExpression(
+                    node,
+                    isCommonJsLoaderExpression,
+                  );
+                  if (boundLoader) {
+                    findings.push({
+                      kind: 'commonjs-require',
+                      offset: node.getStart(sourceFile),
+                      specifier: literalSpecifier(
+                        boundLoader.hasArgument
+                          ? boundLoader.argument
+                          : undefined,
+                      ),
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
 
