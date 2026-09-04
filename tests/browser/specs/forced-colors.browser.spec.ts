@@ -54,7 +54,14 @@ test.beforeEach(async ({ page }) => {
   expect(rejectedExternalRequests).toEqual([]);
 });
 
-test('preserves state and structural cues in forced colors', async ({ page }) => {
+test('preserves state and structural cues in forced colors', async ({
+  browserName,
+  page,
+}) => {
+  const tabKey =
+    browserName === 'webkit' && process.platform === 'darwin'
+      ? 'Alt+Tab'
+      : 'Tab';
   await page.emulateMedia({ forcedColors: 'active' });
   expect(
     await page.evaluate(() => matchMedia('(forced-colors: active)').matches),
@@ -65,7 +72,7 @@ test('preserves state and structural cues in forced colors', async ({ page }) =>
   });
   const plainButton = page.getByRole('button', { name: 'Plain' });
   await focusStart.focus();
-  await page.keyboard.press('Tab');
+  await page.keyboard.press(tabKey);
   await expect(plainButton).toBeFocused();
 
   const evidence = await page.evaluate(() => {
@@ -143,11 +150,11 @@ test('preserves state and structural cues in forced colors', async ({ page }) =>
   });
 
   const activeButton = page.getByRole('button', { name: 'Active' });
-  await page.keyboard.press('Tab');
+  await page.keyboard.press(tabKey);
   await expect(activeButton).toBeFocused();
 
   const editable = page.locator('.cwl-editor__content');
-  await page.keyboard.press('Tab');
+  await page.keyboard.press(tabKey);
   await expect(editable).toBeFocused();
   const editableFocusEvidence = await editable.evaluate((element) => {
     const style = getComputedStyle(element);
