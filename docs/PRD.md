@@ -31,6 +31,7 @@ The product promise is: **author, convert, collaborate, and prove document chang
 11. Produce reviewable package, security, compatibility, accessibility, SBOM/provenance, and release evidence tied to one exact protected source head.
 12. Give security researchers a discoverable private vulnerability-reporting and coordinated-disclosure path without promising unsupported SLAs, bounties, certification, or legal safe harbor.
 13. Identify a complete unsupported document-envelope generation safely enough for the host to select its own migration without accepting that generation as current Inkspan document semantics.
+14. Review a revision-scoped comment or insert/delete proposal through an accessible controlled surface without moving reviewer identity, authorization, durable thread state, or document mutation authority into Inkspan.
 
 ## Required outcomes
 
@@ -61,6 +62,7 @@ The product promise is: **author, convert, collaborate, and prove document chang
 - Autosave remains single-flight with bounded active/pending work and explicit conflict/failure recovery.
 - Durable saves use a host/server-selected strong validator; conflict or ambiguous failure never silently advances it.
 - Lifecycle observation emits only distinct externally visible document-free state transitions; construction and no-op operations do not manufacture notifications.
+- Proposed review targets and insert/delete suggestions bind to one exact document revision and the named text projection. Stale targets fail closed; accepting must change the revision, rejecting must preserve it, and neither result may claim authorization or durable review state.
 
 ### SSR and native forms
 
@@ -148,3 +150,5 @@ Protected `main` is the sole implemented baseline. Open PRs may describe Propose
 SafeClipboard, real Chromium/Firefox/WebKit release assurance, lifecycle observation, the root security disclosure lifecycle, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, W3C text-position selector evidence, document-transition evidence, and envelope identity migration routing are implemented on protected `main`.
 
 A named editor-chrome theme-token catalog, DTCG 2025.10 interchange snapshot, and Storybook inventory for repeating toolbar/editor objects are Active PR / Proposed and are not shipped claims until protected integration. Hosts must check inventoried active-chrome contrast (`--cwl-accent` on `--cwl-accent-soft`) in addition to body text.
+
+The provider-neutral review contract and controlled accessible review-thread/target-marker surfaces are also Active PR / Proposed. They validate bounded host data, emit only detached intent snapshots, and classify exact-revision accept/reject outcomes; they do not apply editor transactions or own reviewer identity, authorization, thread persistence, audit, notifications, or cross-revision re-anchoring.
