@@ -1,6 +1,6 @@
 # Headless deterministic Markdown package
 
-Status: Implemented on active PR
+Status: Implemented on protected main
 
 ## Purpose
 
@@ -9,14 +9,14 @@ email-HTML, and plain-text conversion. The root package also evaluates the
 interactive React/TipTap editor graph, which is unnecessary for server, worker,
 CLI, and other headless consumers that only need deterministic conversion.
 
-The active package line therefore exposes the same conversion behavior through
+The protected package surface therefore exposes the same conversion behavior through
 `@contextualwisdomlab/cwl-editor/markdown` while keeping the interactive editor,
 collaboration provider, persistence, transport, credentials, and model authority
 outside the subpath.
 
 ## Decision boundary
 
-The new subpath does not implement a second serializer. Existing conversion
+The subpath does not implement a second serializer. Existing conversion
 functions remain the single behavioral authority. Safe hyperlink and inline
 raster source checks are extracted into framework-neutral policy modules and are
 shared by both the serializer and the TipTap extensions. This prevents a
@@ -104,8 +104,8 @@ Permanent tests and packed-artifact checks cover:
 - absence of forbidden runtime authority; and
 - repository-wide exact 100% owned production coverage.
 
-The package line remains `implemented_on_active_pr` until the unchanged exact
-head passes all applicable CI/security/review gates and reaches protected main.
+The package line is `implemented_on_protected_main`; protected main and its
+packed-artifact verification are the authority for this shipped package surface.
 
 ## Rollback
 
