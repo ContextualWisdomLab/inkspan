@@ -146,3 +146,5 @@ Shareable acquisition evidence excludes production tenant content and credential
 Protected `main` is the sole implemented baseline. Open PRs may describe Proposed or Active work but are not shipped contracts until protected integration. Canonical documentation must state when a requirement is target architecture rather than current implementation.
 
 SafeClipboard, real Chromium/Firefox/WebKit release assurance, lifecycle observation, the root security disclosure lifecycle, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, W3C text-position selector evidence, document-transition evidence, and envelope identity migration routing are implemented on protected `main`.
+
+A named editor-chrome theme-token catalog, DTCG 2025.10 interchange snapshot, and Storybook inventory for repeating toolbar/editor objects are Active PR / Proposed and are not shipped claims until protected integration. Hosts must check inventoried active-chrome contrast (`--cwl-accent` on `--cwl-accent-soft`) in addition to body text.
