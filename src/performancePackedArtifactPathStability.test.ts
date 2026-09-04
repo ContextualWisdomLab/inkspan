@@ -171,15 +171,19 @@ describe('packed artifact benchmark path stability', () => {
       original.tarballPath,
       adversarial.tarballPath,
     );
-    const markdownInputPath = join(directory, 'input.md');
-    const revisionInputPath = join(directory, 'document-envelope.json');
-    const outputDirectory = join(directory, 'evidence');
-    writeFileSync(markdownInputPath, '# Stable packed artifact\n', 'utf8');
-    writeFileSync(
-      revisionInputPath,
-      '{"schemaId":"https://inkspan.io/schemas/document-envelope/v1","schemaVersion":1,"documentJson":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Stable packed artifact"}]}]}}\n',
-      'utf8',
+    const corpusDirectory = join(directory, 'corpus');
+    execFileSync(
+      process.execPath,
+      [
+        resolve(repositoryRoot, 'benchmarks/generate-corpus.mjs'),
+        '--output',
+        corpusDirectory,
+      ],
+      { cwd: repositoryRoot, stdio: ['ignore', 'pipe', 'pipe'] },
     );
+    const markdownInputPath = join(corpusDirectory, 'small.md');
+    const revisionInputPath = join(corpusDirectory, 'small.envelope.json');
+    const outputDirectory = join(directory, 'evidence');
 
     const result = spawnSync(
       process.execPath,
