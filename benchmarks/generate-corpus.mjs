@@ -134,6 +134,17 @@ function buildProfile(profile, sectionCount) {
   ].join('\n');
 }
 
+function buildEnvelope(body) {
+  return `${JSON.stringify({
+    schemaId: 'https://inkspan.io/schemas/document-envelope/v1',
+    schemaVersion: 1,
+    documentJson: {
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: body }] }],
+    },
+  })}\n`;
+}
+
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }
@@ -154,11 +165,18 @@ const profileManifest = {};
 for (const [profile, sections] of Object.entries(PROFILE_SECTIONS)) {
   const body = buildProfile(profile, sections);
   const bytes = Buffer.from(body, 'utf8');
+  const envelopeBytes = Buffer.from(buildEnvelope(body), 'utf8');
   writeRegularOutput(resolve(outputDirectory, `${profile}.md`), bytes);
+  writeRegularOutput(
+    resolve(outputDirectory, `${profile}.envelope.json`),
+    envelopeBytes,
+  );
   profileManifest[profile] = Object.freeze({
     sections,
     bytes: bytes.byteLength,
     sha256: sha256(bytes),
+    envelopeBytes: envelopeBytes.byteLength,
+    envelopeSha256: sha256(envelopeBytes),
   });
 }
 

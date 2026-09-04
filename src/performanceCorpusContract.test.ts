@@ -16,6 +16,8 @@ interface BenchmarkProfileLock {
   readonly sections: number;
   readonly bytes: number;
   readonly sha256: string;
+  readonly envelopeBytes: number;
+  readonly envelopeSha256: string;
 }
 
 interface BenchmarkCorpusLock {
@@ -77,6 +79,20 @@ describe('deterministic synthetic performance corpus', () => {
         const secondBytes = readFileSync(join(second, `${profile}.md`));
         expect(firstBytes.equals(secondBytes)).toBe(true);
         expect(firstBytes.byteLength).toBe(expected.profiles[profile].bytes);
+        const firstEnvelope = readFileSync(
+          join(first, `${profile}.envelope.json`),
+        );
+        const secondEnvelope = readFileSync(
+          join(second, `${profile}.envelope.json`),
+        );
+        expect(firstEnvelope.equals(secondEnvelope)).toBe(true);
+        expect(firstEnvelope.byteLength).toBe(
+          expected.profiles[profile].envelopeBytes,
+        );
+        expect(
+          JSON.parse(firstEnvelope.toString('utf8')).documentJson.content[0]
+            .content[0].text,
+        ).toBe(firstBytes.toString('utf8'));
       }
 
       const smallBody = readFileSync(join(first, 'small.md'), 'utf8');

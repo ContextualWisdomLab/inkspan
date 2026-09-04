@@ -41,10 +41,8 @@ describe('performance evidence workflow contract', () => {
     );
     expect(workflow).toContain('--html-input "$html_input"');
     expect(workflow).toContain(
-      '"schemaId":"https://inkspan.io/schemas/document-envelope/v1"',
+      '--revision-input "$corpus_dir/small.envelope.json"',
     );
-    expect(workflow).toContain('"schemaVersion":1');
-    expect(workflow).toContain('"documentJson":{"type":"doc"');
     expect(workflow).toContain('node benchmarks/run-current-suite.mjs');
     expect(workflow).toContain('--profile small');
     expect(workflow).toContain('--samples 3');
