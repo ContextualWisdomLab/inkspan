@@ -273,6 +273,12 @@
   padding-inline-start: 8px;
 }
 
+.cwl-review__suggestion {
+  display: flex;
+  align-items: center;
+  gap: var(--cwl-space-2);
+}
+
 .cwl-review__threads ul {
   margin: 0;
   padding: 0;

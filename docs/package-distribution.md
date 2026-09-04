@@ -68,7 +68,7 @@ embedded in the npm tarball.
 - The review-react subpath is an optional controlled React presentation adapter.
   It validates every host-supplied presentation through the React-free review
   contract before rendering, receives visible and accessible copy from the host,
-  and emits selection, reply, and resolve intent callbacks only. Presentation
+  and emits selection, reply, resolve, accept, and reject intent callbacks only. Presentation
   capability flags never grant authority on their own; missing host callbacks
   keep actions disabled. It owns no comment body, actor lookup, authorization,
   persistence, notification, or transport.

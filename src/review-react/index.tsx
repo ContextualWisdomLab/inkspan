@@ -1,7 +1,9 @@
 import { useId, useRef, useState } from 'react';
 import {
+  createReviewSuggestion,
   createReviewThreadPresentation,
   CwlReviewPresentationError,
+  type CwlReviewSuggestion,
   type CwlReviewThreadPresentation,
 } from '../review/index.js';
 
@@ -59,6 +61,24 @@ export interface CwlReviewTargetMarkerProps {
   readonly printMode?: CwlReviewPrintMode;
   /** Selection intent; the host remains editor-selection authority. */
   readonly onSelectThread: (thread: CwlReviewThreadPresentation) => void;
+}
+
+/** Controlled accessible accept/reject intents for one validated suggestion. */
+export interface CwlReviewSuggestionDecisionProps {
+  /** Untrusted insert/delete suggestion validated before rendering. */
+  readonly suggestion: unknown;
+  /** Visible and accessible host-owned summary of the suggestion. */
+  readonly label: string;
+  /** Visible host-owned label for accepting the suggestion. */
+  readonly acceptLabel: string;
+  /** Visible host-owned label for rejecting the suggestion. */
+  readonly rejectLabel: string;
+  /** Defaults to `exclude` so interactive decisions never print accidentally. */
+  readonly printMode?: CwlReviewPrintMode;
+  /** Optional accept intent; absence keeps the action disabled. */
+  readonly onAccept?: (suggestion: CwlReviewSuggestion) => void;
+  /** Optional reject intent; absence keeps the action disabled. */
+  readonly onReject?: (suggestion: CwlReviewSuggestion) => void;
 }
 
 const REVIEW_LABEL_KEYS = ['region', 'thread', 'reply', 'resolve'] as const;
@@ -328,15 +348,74 @@ function resolveReviewThreadKey(
   return initialReviewThreadKey(presentations);
 }
 
-function invokeReviewIntent(
-  callback: ReviewIntentCallback,
-  presentation: CwlReviewThreadPresentation,
+function invokeReviewIntent<Value>(
+  callback: (value: Value) => unknown,
+  value: Value,
 ): void {
   try {
-    void Promise.resolve(callback(presentation)).catch(() => undefined);
+    void Promise.resolve(callback(value)).catch(() => undefined);
   } catch {
     rejectReviewPresentation();
   }
+}
+
+/** Render host-controlled decision intents for one bounded insert/delete suggestion. */
+export function CwlReviewSuggestionDecision({
+  suggestion,
+  label,
+  acceptLabel,
+  rejectLabel,
+  printMode,
+  onAccept,
+  onReject,
+}: CwlReviewSuggestionDecisionProps) {
+  const validatedSuggestion = createReviewSuggestion(suggestion);
+  const validatedLabel = requireVisibleLabel(label);
+  const validatedAcceptLabel = requireVisibleLabel(acceptLabel);
+  const validatedRejectLabel = requireVisibleLabel(rejectLabel);
+  const validatedPrintMode = validateReviewPrintMode(printMode);
+  if (onAccept !== undefined && typeof onAccept !== 'function') {
+    rejectReviewPresentation();
+  }
+  if (onReject !== undefined && typeof onReject !== 'function') {
+    rejectReviewPresentation();
+  }
+
+  return (
+    <section
+      className="cwl-review cwl-review__suggestion"
+      aria-label={validatedLabel}
+      data-cwl-review-print={validatedPrintMode}
+    >
+      <span className="cwl-review__summary">{validatedLabel}</span>
+      <button
+        className="cwl-review__action"
+        type="button"
+        aria-label={`${validatedAcceptLabel} — ${validatedLabel}`}
+        disabled={onAccept === undefined}
+        onClick={
+          onAccept === undefined
+            ? undefined
+            : () => invokeReviewIntent(onAccept, validatedSuggestion)
+        }
+      >
+        {validatedAcceptLabel}
+      </button>
+      <button
+        className="cwl-review__action"
+        type="button"
+        aria-label={`${validatedRejectLabel} — ${validatedLabel}`}
+        disabled={onReject === undefined}
+        onClick={
+          onReject === undefined
+            ? undefined
+            : () => invokeReviewIntent(onReject, validatedSuggestion)
+        }
+      >
+        {validatedRejectLabel}
+      </button>
+    </section>
+  );
 }
 
 /**

@@ -149,7 +149,7 @@ function verifyRuntimeConsumers() {
     `import assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { CwlReviewThreadList } from '${packageJson.name}/review-react';
+import { CwlReviewSuggestionDecision, CwlReviewThreadList } from '${packageJson.name}/review-react';
 const html = renderToStaticMarkup(React.createElement(CwlReviewThreadList, {
   presentations: [${fixture}],
   labels: ${labelsSource},
@@ -160,6 +160,15 @@ assert.match(html, /aria-pressed="true"/u);
 assert.match(html, /data-cwl-review-print="exclude"/u);
 assert.match(html, />Reply</u);
 assert.match(html, new RegExp('<button[^>]*disabled=""[^>]*>Reply</button>', 'u'));
+const suggestionHtml = renderToStaticMarkup(React.createElement(CwlReviewSuggestionDecision, {
+  suggestion: { contractVersion: 1, kind: 'delete', target: ${fixture}.target },
+  label: 'Delete suggested wording',
+  acceptLabel: 'Accept',
+  rejectLabel: 'Reject',
+  onAccept() {},
+}));
+assert.match(suggestionHtml, /aria-label="Accept — Delete suggested wording"/u);
+assert.match(suggestionHtml, /data-cwl-review-print="exclude"/u);
 `,
     'utf8',
   );
@@ -169,7 +178,7 @@ assert.match(html, new RegExp('<button[^>]*disabled=""[^>]*>Reply</button>', 'u'
     `const assert = require('node:assert/strict');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
-const { CwlReviewThreadList } = require('${packageJson.name}/review-react');
+const { CwlReviewSuggestionDecision, CwlReviewThreadList } = require('${packageJson.name}/review-react');
 const html = renderToStaticMarkup(React.createElement(CwlReviewThreadList, {
   presentations: [${JSON.stringify(presentationFixture('b'))}],
   labels: ${labelsSource},
@@ -181,6 +190,7 @@ assert.match(html, /aria-pressed="true"/u);
 assert.match(html, /data-cwl-review-print="include"/u);
 assert.match(html, />Resolve</u);
 assert.match(html, new RegExp('<button[^>]*disabled=""[^>]*>Resolve</button>', 'u'));
+assert.equal(typeof CwlReviewSuggestionDecision, 'function');
 `,
     'utf8',
   );
@@ -195,7 +205,9 @@ function verifyDeclarationConsumer() {
     sourcePath,
     `import {
   CwlReviewThreadList,
+  CwlReviewSuggestionDecision,
   type CwlReviewPrintMode,
+  type CwlReviewSuggestionDecisionProps,
   type CwlReviewThreadListLabels,
   type CwlReviewThreadListProps,
 } from '${packageJson.name}/review-react';
@@ -215,7 +227,14 @@ const props: CwlReviewThreadListProps = {
   },
 };
 const component: typeof CwlReviewThreadList = CwlReviewThreadList;
-void [props, component, printMode];
+const suggestionProps: CwlReviewSuggestionDecisionProps = {
+  suggestion: {},
+  label: 'Suggestion',
+  acceptLabel: 'Accept',
+  rejectLabel: 'Reject',
+};
+const suggestionComponent: typeof CwlReviewSuggestionDecision = CwlReviewSuggestionDecision;
+void [props, component, suggestionProps, suggestionComponent, printMode];
 `,
     'utf8',
   );

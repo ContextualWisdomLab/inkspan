@@ -8,7 +8,10 @@ import {
   type ClipboardConfig,
   type ClipboardSanitizationErrorCode,
 } from 'inkspan-browser-under-test';
-import { CwlReviewThreadList } from 'inkspan-review-react-under-test';
+import {
+  CwlReviewSuggestionDecision,
+  CwlReviewThreadList,
+} from 'inkspan-review-react-under-test';
 
 interface BrowserClipboardProbeRequest {
   readonly sourceHtml: string;
@@ -27,7 +30,7 @@ interface BrowserHostileDocumentProbeResult {
 }
 
 interface BrowserReviewIntent {
-  readonly action: 'select' | 'reply' | 'resolve';
+  readonly action: 'select' | 'reply' | 'resolve' | 'accept' | 'reject';
   readonly threadKey: string;
 }
 
@@ -40,6 +43,7 @@ declare global {
       sourceHtml: string,
     ): BrowserHostileDocumentProbeResult;
     mountInkspanReviewProbe(printMode?: 'exclude' | 'include'): void;
+    mountInkspanSuggestionProbe(): void;
     readInkspanReviewIntents(): readonly BrowserReviewIntent[];
   }
 }
@@ -104,6 +108,31 @@ window.mountInkspanReviewProbe = (printMode = 'exclude'): void => {
         reviewIntents.push({ action: 'reply', threadKey: thread.threadKey }),
       onResolveThread: (thread) =>
         reviewIntents.push({ action: 'resolve', threadKey: thread.threadKey }),
+    }),
+  );
+};
+
+window.mountInkspanSuggestionProbe = (): void => {
+  const container = document.querySelector<HTMLElement>('#harness');
+  if (!container) throw new Error('Review harness container is missing.');
+  reviewIntents.length = 0;
+  reviewRoot?.unmount();
+  reviewRoot = createRoot(container);
+  reviewRoot.render(
+    createElement(CwlReviewSuggestionDecision, {
+      suggestion: {
+        contractVersion: 1,
+        kind: 'delete',
+        target: reviewPresentation('suggestion', false, 'unresolved', false, false)
+          .target,
+      },
+      label: 'Delete suggested wording',
+      acceptLabel: 'Accept',
+      rejectLabel: 'Reject',
+      onAccept: () =>
+        reviewIntents.push({ action: 'accept', threadKey: 'suggestion' }),
+      onReject: () =>
+        reviewIntents.push({ action: 'reject', threadKey: 'suggestion' }),
     }),
   );
 };

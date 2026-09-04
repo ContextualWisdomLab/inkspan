@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 
 import {
+  CwlReviewSuggestionDecision,
   CwlReviewThreadList,
   type CwlReviewThreadListLabels,
 } from '../src/review-react/index.js';
@@ -119,4 +120,22 @@ export const PrintIncluded: Story = {
     presentations: [presentation('A-104', 'unresolved', true)],
     printMode: 'include',
   },
+};
+
+export const SuggestionDecision: StoryObj<typeof CwlReviewSuggestionDecision> = {
+  render: () => (
+    <CwlReviewSuggestionDecision
+      suggestion={{
+        contractVersion: 1,
+        kind: 'insert',
+        target,
+        text: 'Suggested wording',
+      }}
+      label="Insert suggested wording"
+      acceptLabel="Accept"
+      rejectLabel="Reject"
+      onAccept={noOp}
+      onReject={noOp}
+    />
+  ),
 };

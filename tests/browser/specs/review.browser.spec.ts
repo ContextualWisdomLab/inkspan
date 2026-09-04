@@ -105,3 +105,24 @@ test('preserves selected and keyboard focus cues in forced colors', async ({
   await expect(selected).toHaveCSS('outline-style', 'solid');
   await expect(selected).toHaveCSS('outline-width', '2px');
 });
+
+test('exposes keyboard-operable suggestion decision intents', async ({ page }) => {
+  await page.evaluate(() => window.mountInkspanSuggestionProbe());
+  const region = page.getByRole('region', { name: 'Delete suggested wording' });
+  const accept = region.getByRole('button', {
+    name: 'Accept — Delete suggested wording',
+  });
+  const reject = region.getByRole('button', {
+    name: 'Reject — Delete suggested wording',
+  });
+
+  await accept.focus();
+  await expect(accept).toBeFocused();
+  await page.keyboard.press('Enter');
+  await reject.focus();
+  await page.keyboard.press('Space');
+  expect(await page.evaluate(() => window.readInkspanReviewIntents())).toEqual([
+    { action: 'accept', threadKey: 'suggestion' },
+    { action: 'reject', threadKey: 'suggestion' },
+  ]);
+});
