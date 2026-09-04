@@ -2,12 +2,15 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = resolve(
@@ -20,7 +23,13 @@ const packageJson = JSON.parse(
 );
 const packageName = packageJson.name;
 const verificationDirectory = mkdtempSync(
-  join(repositoryRoot, '.package-verification-'),
+  join(tmpdir(), 'inkspan-package-verification-'),
+);
+const consumerDirectory = join(verificationDirectory, 'consumer');
+const packedPackageDirectory = join(
+  consumerDirectory,
+  'node_modules',
+  ...packageName.split('/'),
 );
 
 /** Execute a command from the repository root with inherited diagnostics. */
@@ -128,14 +137,14 @@ function verifyPackedFiles(filePaths) {
 
 /** Write and execute an ESM or CommonJS package-consumer smoke test. */
 function runConsumerSmokeTest(fileName, source) {
-  const smokeTestPath = join(verificationDirectory, fileName);
+  const smokeTestPath = join(consumerDirectory, fileName);
   writeFileSync(smokeTestPath, source, 'utf8');
-  run(process.execPath, [smokeTestPath]);
+  run(process.execPath, [smokeTestPath], { cwd: consumerDirectory });
 }
 
 /** Compile a strict TypeScript consumer against the packed public declarations. */
 function verifyConsumerTypes() {
-  const consumerTypePath = join(verificationDirectory, 'consumer-types.ts');
+  const consumerTypePath = join(consumerDirectory, 'consumer-types.ts');
   writeFileSync(
     consumerTypePath,
     `import {
@@ -309,26 +318,106 @@ void [
 }
 
 try {
+  symlinkSync(
+    join(repositoryRoot, 'node_modules'),
+    join(verificationDirectory, 'node_modules'),
+    'dir',
+  );
+
   const packOutput = run('npm', [
     'pack',
-    '--dry-run',
     '--json',
     '--ignore-scripts',
+    '--pack-destination',
+    verificationDirectory,
   ]);
-  const packResult = JSON.parse(packOutput)[0];
+  const packResults = JSON.parse(packOutput);
+  assert.equal(packResults.length, 1, 'npm pack must produce exactly one package');
+  const [packResult] = packResults;
   assert.equal(packResult.name, packageName);
   assert.equal(packResult.version, packageJson.version);
+  assert.equal(
+    packResult.filename,
+    basename(packResult.filename),
+    'npm pack filename must not contain path components',
+  );
+  const packageArchivePath = join(verificationDirectory, packResult.filename);
+  assert.ok(existsSync(packageArchivePath), 'npm pack archive was not created');
   const packedFiles = new Set(packResult.files.map(({ path }) => path));
   verifyPackedFiles(packedFiles);
+
+  mkdirSync(packedPackageDirectory, { recursive: true });
+  run('tar', [
+    '-xzf',
+    packageArchivePath,
+    '--strip-components=1',
+    '-C',
+    packedPackageDirectory,
+  ]);
+  const extractedPackageJson = JSON.parse(
+    readFileSync(join(packedPackageDirectory, 'package.json'), 'utf8'),
+  );
+  assert.equal(extractedPackageJson.name, packageName);
+  assert.equal(extractedPackageJson.version, packageJson.version);
+
+  writeFileSync(
+    join(consumerDirectory, 'package.json'),
+    `${JSON.stringify(
+      {
+        name: 'inkspan-package-verification-consumer',
+        private: true,
+        type: 'module',
+      },
+      null,
+      2,
+    )}\n`,
+    'utf8',
+  );
 
   runConsumerSmokeTest(
     'consumer-esm.mjs',
     `import assert from 'node:assert/strict';
-import * as editor from '${packageName}';
-import * as autosave from '${packageName}/autosave';
-import * as collaboration from '${packageName}/collaboration';
-import * as converter from '${packageName}/converter';
+import { realpathSync } from 'node:fs';
+import { isAbsolute, join, relative, sep } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
+const packedPackageRoot = realpathSync(
+  join(process.cwd(), 'node_modules', ...'${packageName}'.split('/')),
+);
+function assertResolvedInsidePackedPackage(resolved, message) {
+  const resolvedPath = realpathSync(fileURLToPath(resolved));
+  const relativePath = relative(packedPackageRoot, resolvedPath);
+  assert.ok(
+    relativePath !== '' &&
+      relativePath !== '..' &&
+      !relativePath.startsWith('..' + sep) &&
+      !isAbsolute(relativePath),
+    message,
+  );
+  return resolvedPath;
+}
+const rootEntrypoint = assertResolvedInsidePackedPackage(
+  import.meta.resolve('${packageName}'),
+  'ESM root package must resolve from isolated consumer node_modules',
+);
+const autosaveEntrypoint = assertResolvedInsidePackedPackage(
+  import.meta.resolve('${packageName}/autosave'),
+  'ESM autosave package must resolve from isolated consumer node_modules',
+);
+const collaborationEntrypoint = assertResolvedInsidePackedPackage(
+  import.meta.resolve('${packageName}/collaboration'),
+  'ESM collaboration package must resolve from isolated consumer node_modules',
+);
+const converterEntrypoint = assertResolvedInsidePackedPackage(
+  import.meta.resolve('${packageName}/converter'),
+  'ESM converter package must resolve from isolated consumer node_modules',
+);
+const editor = await import(pathToFileURL(rootEntrypoint).href);
+const autosave = await import(pathToFileURL(autosaveEntrypoint).href);
+const collaboration = await import(
+  pathToFileURL(collaborationEntrypoint).href
+);
+const converter = await import(pathToFileURL(converterEntrypoint).href);
 assert.equal(typeof editor.markdownToHtml, 'function');
 assert.equal(editor.validateSafeLinkHref('/documents/current'), '/documents/current');
 assert.equal(typeof editor.restoreDocumentEnvelopeIfMatch, 'function');
@@ -343,6 +432,10 @@ assert.equal(typeof converter.bytesToDataUri, 'function');
 for (const subpath of ['styles.css', 'fonts.css', 'fonts-latin.css']) {
   const resolved = import.meta.resolve('${packageName}/' + subpath);
   assert.ok(resolved.startsWith('file:'));
+  assertResolvedInsidePackedPackage(
+    resolved,
+    'ESM subpath must resolve from isolated consumer node_modules',
+  );
 }
 `,
   );
@@ -350,11 +443,44 @@ for (const subpath of ['styles.css', 'fonts.css', 'fonts-latin.css']) {
   runConsumerSmokeTest(
     'consumer-commonjs.cjs',
     `const assert = require('node:assert/strict');
-const editor = require('${packageName}');
-const autosave = require('${packageName}/autosave');
-const collaboration = require('${packageName}/collaboration');
-const converter = require('${packageName}/converter');
+const { realpathSync } = require('node:fs');
+const { isAbsolute, join, relative, sep } = require('node:path');
 
+const packedPackageRoot = realpathSync(
+  join(process.cwd(), 'node_modules', ...'${packageName}'.split('/')),
+);
+function assertResolvedInsidePackedPackage(resolved, message) {
+  const resolvedPath = realpathSync(resolved);
+  const relativePath = relative(packedPackageRoot, resolvedPath);
+  assert.ok(
+    relativePath !== '' &&
+      relativePath !== '..' &&
+      !relativePath.startsWith('..' + sep) &&
+      !isAbsolute(relativePath),
+    message,
+  );
+  return resolvedPath;
+}
+const rootEntrypoint = assertResolvedInsidePackedPackage(
+  require.resolve('${packageName}'),
+  'CommonJS root package must resolve from isolated consumer node_modules',
+);
+const autosaveEntrypoint = assertResolvedInsidePackedPackage(
+  require.resolve('${packageName}/autosave'),
+  'CommonJS autosave package must resolve from isolated consumer node_modules',
+);
+const collaborationEntrypoint = assertResolvedInsidePackedPackage(
+  require.resolve('${packageName}/collaboration'),
+  'CommonJS collaboration package must resolve from isolated consumer node_modules',
+);
+const converterEntrypoint = assertResolvedInsidePackedPackage(
+  require.resolve('${packageName}/converter'),
+  'CommonJS converter package must resolve from isolated consumer node_modules',
+);
+const editor = require(rootEntrypoint);
+const autosave = require(autosaveEntrypoint);
+const collaboration = require(collaborationEntrypoint);
+const converter = require(converterEntrypoint);
 assert.equal(typeof editor.markdownToHtml, 'function');
 assert.equal(editor.validateSafeLinkHref('/documents/current'), '/documents/current');
 assert.equal(typeof editor.restoreDocumentEnvelopeIfMatch, 'function');
@@ -368,22 +494,18 @@ assert.ok(collaboration.CollaborativeCwlEditor);
 assert.equal(typeof converter.bytesToDataUri, 'function');
 for (const subpath of ['styles.css', 'fonts.css', 'fonts-latin.css']) {
   const resolved = require.resolve('${packageName}/' + subpath);
-  assert.ok(resolved.length > 0);
+  assertResolvedInsidePackedPackage(
+    resolved,
+    'CommonJS subpath must resolve from isolated consumer node_modules',
+  );
 }
 `,
   );
 
   verifyConsumerTypes();
 
-  for (const subpath of ['styles.css', 'fonts.css', 'fonts-latin.css']) {
-    const resolvedPath = fileURLToPath(
-      import.meta.resolve(`${packageName}/${subpath}`),
-    );
-    assert.ok(existsSync(resolvedPath), `Export does not exist: ${subpath}`);
-  }
-
   console.log(
-    `Verified ${packageName}@${packageJson.version}: npm contents, ESM, CommonJS, SSR-safe imports, subpath exports, and TypeScript declarations.`,
+    `Verified ${packageName}@${packageJson.version}: exact npm tarball contents, isolated ESM, CommonJS, SSR-safe imports, subpath exports, and TypeScript declarations.`,
   );
 } finally {
   rmSync(verificationDirectory, { recursive: true, force: true });
