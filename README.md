@@ -67,6 +67,7 @@ runtime.
 | React editor | `@contextualwisdomlab/cwl-editor` | Markdown/HTML WYSIWYG component and serializers |
 | Collaboration | `@contextualwisdomlab/cwl-editor/collaboration` | Provider-neutral Yjs collaborative editing |
 | Converter | `@contextualwisdomlab/cwl-editor/converter` | Framework-independent base64/data-URI utilities |
+| Hangul documents | `@contextualwisdomlab/cwl-editor/hangul` | Framework-independent HWP/HWPX import/export bridge with a host-injected engine |
 | Envelope identity | `@contextualwisdomlab/cwl-editor/envelope-identity` | Framework-independent bounded schema identity for host-owned migration routing |
 | Revision evidence | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent canonical envelope, strong revision, and transition evidence |
 | Text-position selector | `@contextualwisdomlab/cwl-editor/text-position-selector` | React-free deterministic W3C `TextPositionSelector` projection core |

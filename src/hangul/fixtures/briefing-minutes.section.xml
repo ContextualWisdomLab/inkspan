@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<hs:sec xmlns:hs="http://www.hancom.co.kr/hwpml/2011/section" xmlns:hp="http://www.hancom.co.kr/hwpml/2011/paragraph">
+  <hp:p paraPrIDRef="heading-1">
+    <hp:run>
+      <hp:t>Briefing Minutes</hp:t>
+    </hp:run>
+  </hp:p>
+  <hp:p>
+    <hp:run>
+      <hp:t>Attendees reviewed the quarterly status report.</hp:t>
+    </hp:run>
+  </hp:p>
+  <hp:tbl>
+    <hp:tr>
+      <hp:tc header="1">
+        <hp:subList>
+          <hp:p>
+            <hp:run>
+              <hp:t>Topic Name</hp:t>
+            </hp:run>
+          </hp:p>
+        </hp:subList>
+      </hp:tc>
+      <hp:tc header="1">
+        <hp:subList>
+          <hp:p>
+            <hp:run>
+              <hp:t>Owner Team</hp:t>
+            </hp:run>
+          </hp:p>
+        </hp:subList>
+      </hp:tc>
+    </hp:tr>
+    <hp:tr>
+      <hp:tc>
+        <hp:subList>
+          <hp:p>
+            <hp:run>
+              <hp:t>Budget Review</hp:t>
+            </hp:run>
+          </hp:p>
+        </hp:subList>
+      </hp:tc>
+      <hp:tc>
+        <hp:subList>
+          <hp:p>
+            <hp:run>
+              <hp:t>Finance Team</hp:t>
+            </hp:run>
+          </hp:p>
+        </hp:subList>
+      </hp:tc>
+    </hp:tr>
+  </hp:tbl>
+</hs:sec>
