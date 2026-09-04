@@ -1,6 +1,6 @@
 # Deterministic email HTML output
 
-Status: Implemented on active PR
+Status: Implemented on protected main
 
 Inkspan's `markdownToEmailHtml()` is a deterministic Markdown-to-HTML bridge for email compose/send integrations. It is not a MIME builder, transport client, mailbox API, authentication surface, or persistence service. Hosts such as naruon own transport, recipients, authorization, tenant isolation, delivery policy, durable audit, retention, and downstream mail-client policy.
 
