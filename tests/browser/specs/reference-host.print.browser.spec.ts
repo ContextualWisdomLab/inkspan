@@ -96,8 +96,7 @@ test('restores the packed native-form draft without creating a host submission',
   await expect(editor).toBeVisible();
   await expect(field).toHaveValue('# Draft');
 
-  await editor.click();
-  await page.keyboard.press('Control+A');
+  await editor.selectText();
   await page.keyboard.type('Buyer changed draft');
   await expect(field).not.toHaveValue('# Draft');
 

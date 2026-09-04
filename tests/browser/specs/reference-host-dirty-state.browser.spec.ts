@@ -49,8 +49,7 @@ test('invalidates a completed save claim after the buyer edits the packed editor
   await page.getByRole('button', { name: 'Save document' }).click();
   await expect(page.getByText('Saved', { exact: true })).toBeVisible();
 
-  await editor.click();
-  await page.keyboard.press('Control+A');
+  await editor.selectText();
   await page.keyboard.type('Edited after save');
 
   await expect(field).not.toHaveValue('# Draft');
@@ -71,15 +70,13 @@ test('does not claim a newer document is saved when the submitted version settle
   const saveButton = page.getByRole('button', { name: 'Save document' });
   await expect(editor).toBeVisible();
 
-  await editor.click();
-  await page.keyboard.press('Control+A');
+  await editor.selectText();
   await page.keyboard.type('Submitted version');
   await saveButton.click();
   await expect(page.getByText('Saving…', { exact: true })).toBeVisible();
   await expect(saveButton).toBeDisabled();
 
-  await editor.click();
-  await page.keyboard.press('Control+A');
+  await editor.selectText();
   await page.keyboard.type('Newer unsaved version');
   await page.evaluate(() => window.referenceHostResolveSubmission?.());
 
@@ -106,8 +103,7 @@ test('blocks a same-turn native reset after durable submission admission before 
   );
   await expect(editor).toBeVisible();
 
-  await editor.click();
-  await page.keyboard.press('Control+A');
+  await editor.selectText();
   await page.keyboard.type('Durable gate payload');
   await expect(field).toHaveValue('Durable gate payload');
 
