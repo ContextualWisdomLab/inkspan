@@ -96,6 +96,7 @@ The product promise is: **author, convert, collaborate, and prove document chang
 - Toolbar shortcut metadata must reflect repository-level shipped behavior, including host/editor bindings such as link editing, rather than only extension-local defaults.
 - Application-visible saving/conflict/recovery messages must be derivable from programmatic state without Inkspan prescribing untranslated user-facing copy.
 - Export/print surfaces must not rely on color alone or inaccessible interaction-only state where the corresponding product surface exists.
+- By default, review metadata is excluded from non-print exports: deterministic Markdown, HTML, email, plain-text, and Office conversion receives canonical document content only. A host that needs comments or review status in an artifact must build a separately governed export with its own authorization, disclosure, retention, and accessibility policy.
 
 ### Security disclosure and vulnerability handling
 

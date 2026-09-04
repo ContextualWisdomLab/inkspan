@@ -55,6 +55,8 @@ Classification is evidence, not mutation authority. The host applies any authori
 
 The proposed `./review-react` subpath renders controlled native-button target markers and thread lists from the validated presentation contract. It exposes selection, reply, and resolve intents only. Host-controlled selection remains authoritative, unavailable actions remain disabled, keyboard focus traversal does not commit selection, and host callbacks cannot turn presentation state into authorization or durable success. Review presentation defaults to `printMode="exclude"`; explicit `include` prints bounded labels and status/comment summaries while suppressing reply/resolve controls.
 
+The print option is not a general export switch. Review metadata is excluded from non-print exports, and deterministic Markdown, HTML, email, plain-text, and Office conversion serializes canonical document content only. A host that includes review records in another artifact owns that separately governed export and its authorization, disclosure, provenance, retention, accessibility, and publication policy.
+
 ## W3C text-position selector evidence contract
 
 Protected `main` exposes `getTextPositionSelectorEvidence()` through the root package as a revision-scoped annotation-interoperability primitive. It does **not** reinterpret `CwlEditorSelectionSnapshot` or ProseMirror structural positions as W3C positions. It derives a separate W3C `TextPositionSelector` from the same captured immutable editor state that is used for revision derivation.

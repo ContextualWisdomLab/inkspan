@@ -60,6 +60,8 @@ The proposed React-free review surface validates bounded thread presentations an
 
 The proposed React surface is controlled and intent-only. Native buttons, one roving thread-selection tab stop, Arrow Up/Down and Home/End focus movement, host-supplied localized labels, and semantic status/comment summaries provide the bounded interaction layer. Review presentation is excluded from print by default; explicit inclusion retains bounded labels and summaries while suppressing reply/resolve controls. Inkspan does not apply the editor transaction, authorize the actor, persist or resolve a thread, send notifications, create durable audit, or re-anchor a target across revisions.
 
+Outside browser print, review metadata is excluded from non-print exports. Markdown, HTML, email, plain-text, and Office converters continue to serialize canonical document content only; `printMode` does not alter those inputs. A host may compose review records into a separately governed export, but Inkspan does not acquire its authorization, disclosure, provenance, retention, or artifact-publication authority.
+
 ## Autosave state machine and durable concurrency
 
 States are `idle`, `saving`, `blocked`, `closing`, and `closed`, with explicit blocked reasons. The local queue remains single-flight and retains bounded active/pending work and bounded flush waiters. Evidence supplied to a callback is immutable and validated before scheduling.
