@@ -108,27 +108,6 @@
   cursor: not-allowed;
 }
 
-@media (forced-colors: active) {
-  .cwl-tb-btn:focus-visible,
-  .cwl-writing-diagnostics:focus-visible,
-  .cwl-writing-diagnostics__item:focus-visible,
-  .cwl-writing-diagnostics__actions button:focus-visible,
-  .cwl-writing-diagnostics__navigation-button:focus-visible {
-    outline-color: CanvasText;
-  }
-
-  .cwl-writing-diagnostic {
-    text-decoration-color: CanvasText;
-  }
-
-  .cwl-writing-diagnostics,
-  .cwl-writing-diagnostics__item,
-  .cwl-writing-diagnostics__actions button,
-  .cwl-writing-diagnostics__navigation-button {
-    border-color: CanvasText;
-  }
-}
-
 .cwl-editor__surface {
   overflow-y: auto;
   max-height: 70vh;
@@ -149,8 +128,26 @@
 
 @media (forced-colors: active) {
   .cwl-tb-btn:focus-visible,
+  .cwl-writing-diagnostics:focus-visible,
+  .cwl-writing-diagnostics__item:focus-visible,
+  .cwl-writing-diagnostics__actions button:focus-visible,
+  .cwl-writing-diagnostics__navigation-button:focus-visible {
+    outline-color: CanvasText;
+  }
+
   .cwl-editor__content:focus-visible {
     outline-color: CanvasText;
+  }
+
+  .cwl-writing-diagnostic {
+    text-decoration-color: CanvasText;
+  }
+
+  .cwl-writing-diagnostics,
+  .cwl-writing-diagnostics__item,
+  .cwl-writing-diagnostics__actions button,
+  .cwl-writing-diagnostics__navigation-button {
+    border-color: CanvasText;
   }
 }
 
