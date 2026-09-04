@@ -25,6 +25,7 @@ test.beforeEach(async ({ page }) => {
   await page.addStyleTag({ url: STYLES_URL });
   await page.locator('#harness').evaluate((element) => {
     element.innerHTML = `
+      <button data-focus-start>Start keyboard journey</button>
       <section class="cwl-editor">
         <nav class="cwl-toolbar">
           <span class="cwl-tb-group">
@@ -59,8 +60,12 @@ test('preserves state and structural cues in forced colors', async ({ page }) =>
     await page.evaluate(() => matchMedia('(forced-colors: active)').matches),
   ).toBe(true);
 
+  const focusStart = page.getByRole('button', {
+    name: 'Start keyboard journey',
+  });
   const plainButton = page.getByRole('button', { name: 'Plain' });
-  await plainButton.focus();
+  await focusStart.focus();
+  await page.keyboard.press('Tab');
   await expect(plainButton).toBeFocused();
 
   const evidence = await page.evaluate(() => {
@@ -138,11 +143,11 @@ test('preserves state and structural cues in forced colors', async ({ page }) =>
   });
 
   const activeButton = page.getByRole('button', { name: 'Active' });
-  await activeButton.focus();
+  await page.keyboard.press('Tab');
   await expect(activeButton).toBeFocused();
 
   const editable = page.locator('.cwl-editor__content');
-  await editable.focus();
+  await page.keyboard.press('Tab');
   await expect(editable).toBeFocused();
   const editableFocusEvidence = await editable.evaluate((element) => {
     const style = getComputedStyle(element);
