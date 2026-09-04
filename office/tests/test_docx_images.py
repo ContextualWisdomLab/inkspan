@@ -97,7 +97,7 @@ def test_docx_contract_accepts_one_strict_inline_png_figure() -> None:
 def test_docx_image_rejects_unknown_and_decorative_fields() -> None:
     """P0 must reject undeclared or fake decorative-image semantics."""
 
-    with pytest.raises(OfficeDocumentError, match="unexpected field: decorative"):
+    with pytest.raises(OfficeDocumentError, match="blocks\\[0\\] has unexpected field"):
         render_office_document(_request(decorative=True))
 
 

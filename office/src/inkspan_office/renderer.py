@@ -87,7 +87,7 @@ def render_office_document(payload: Mapping[str, Any]) -> RenderedOfficeDocument
     request = _mapping(payload, "payload")
     format_name = _string(_require(request, "format", "payload"), "format")
     if format_name not in _FORMATS:
-        raise OfficeDocumentError(f"unsupported format: {format_name!r}")
+        raise OfficeDocumentError("unsupported format")
 
     if format_name == "docx":
         data = _render_docx(request)
@@ -170,7 +170,7 @@ def _render_docx(request: Mapping[str, Any]) -> bytes:
             _reject_unknown(block, {"type"}, path)
             document.add_page_break()
         else:
-            raise OfficeDocumentError(f"{path}.type is unsupported: {block_type!r}")
+            raise OfficeDocumentError(f"{path}.type is unsupported")
 
     output = BytesIO()
     document.save(output)
@@ -379,7 +379,7 @@ def _validate_sheet_name(name: str, path: str, seen_names: set[str]) -> None:
     """Reject worksheet names that Excel cannot address unambiguously."""
 
     if len(name) > 31 or _INVALID_SHEET_NAME.search(name):
-        raise OfficeDocumentError(f"{path}.name is invalid for Excel: {name!r}")
+        raise OfficeDocumentError(f"{path}.name is invalid for Excel")
     if name.casefold() in seen_names:
         raise OfficeDocumentError("worksheet names must be unique (case-insensitive)")
 
@@ -475,14 +475,12 @@ def _require(mapping: Mapping[str, Any], key: str, path: str) -> Any:
 def _reject_unknown(
     mapping: Mapping[str, Any], allowed: set[str], path: str
 ) -> None:
-    """Reject undeclared fields so generated requests cannot be ambiguous."""
+    """Reject undeclared fields without reflecting caller-controlled names."""
 
-    unexpected = sorted(set(mapping) - allowed)
+    unexpected = set(mapping) - allowed
     if unexpected:
         label = "field" if len(unexpected) == 1 else "fields"
-        raise OfficeDocumentError(
-            f"{path} has unexpected {label}: {', '.join(unexpected)}"
-        )
+        raise OfficeDocumentError(f"{path} has unexpected {label}")
 
 
 def _mapping(value: Any, path: str) -> Mapping[str, Any]:
