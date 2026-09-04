@@ -189,6 +189,9 @@ const REQUIRED_ENGINES: readonly CrossEngineClipboardEngine[] = Object.freeze([
   'firefox',
   'webkit',
 ]);
+const MAX_DOCUMENT_EVIDENCE_NESTING_DEPTH = 128;
+const DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR =
+  'Cross-engine clipboard document evidence exceeds the supported structure boundary.';
 
 /**
  * Require exact rich-clipboard parity across one observation from every engine.
@@ -203,9 +206,14 @@ const REQUIRED_ENGINES: readonly CrossEngineClipboardEngine[] = Object.freeze([
 export function assertCrossEngineClipboardConsensus(
   observations: readonly CrossEngineClipboardObservation[],
 ): void {
+  if (observations.length !== REQUIRED_ENGINES.length) {
+    throw new Error(
+      'Cross-engine clipboard evidence requires exactly one observation from chromium, firefox, and webkit.',
+    );
+  }
+
   const engines = observations.map((item) => item.engine);
   if (
-    observations.length !== REQUIRED_ENGINES.length ||
     REQUIRED_ENGINES.some(
       (engine) => engines.filter((candidate) => candidate === engine).length !== 1,
     )
@@ -246,18 +254,96 @@ export function assertCrossEngineClipboardConsensus(
 
 /** Serialize JSON values with recursively sorted object member names. */
 function canonicalJson(value: unknown): string {
-  return JSON.stringify(canonicalizeJson(value));
+  return JSON.stringify(canonicalizeJson(value, 0, new WeakSet<object>()));
+}
+
+/** Read one ordinary enumerable JSON data property without invoking its value. */
+function readEnumerableJsonDataProperty(
+  container: object,
+  key: string,
+): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(container, key)!;
+  if (!descriptor.enumerable || !('value' in descriptor)) {
+    throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
+  }
+  return descriptor.value;
 }
 
 /** Preserve array order and values while normalizing unordered JSON object members. */
-function canonicalizeJson(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonicalizeJson);
-  if (value === null || typeof value !== 'object') return value;
+function canonicalizeJson(
+  value: unknown,
+  depth: number,
+  active: WeakSet<object>,
+): unknown {
+  if (depth > MAX_DOCUMENT_EVIDENCE_NESTING_DEPTH) {
+    throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
+  }
+  if (
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'boolean'
+  ) {
+    return value;
+  }
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
+    }
+    return value;
+  }
+  if (typeof value !== 'object') {
+    throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
+  }
+  if (active.has(value)) {
+    throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
+  }
 
-  const record = value as Record<string, unknown>;
-  return Object.fromEntries(
-    Object.keys(record)
-      .sort()
-      .map((key) => [key, canonicalizeJson(record[key])]),
-  );
+  active.add(value);
+  try {
+    if (Array.isArray(value)) {
+      const ownKeys = Reflect.ownKeys(value);
+      if (
+        ownKeys.length !== value.length + 1 ||
+        ownKeys.some((key, index) =>
+          index < value.length ? key !== String(index) : key !== 'length',
+        )
+      ) {
+        throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
+      }
+      const keys = ownKeys.slice(0, -1) as string[];
+      return keys.map((key) =>
+        canonicalizeJson(
+          readEnumerableJsonDataProperty(value, key),
+          depth + 1,
+          active,
+        ),
+      );
+    }
+
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
+    }
+
+    const record = value as Record<string, unknown>;
+    const ownKeys = Reflect.ownKeys(record);
+    if (ownKeys.some((key) => typeof key !== 'string')) {
+      throw new Error(DOCUMENT_EVIDENCE_STRUCTURE_BOUNDARY_ERROR);
+    }
+    const keys = ownKeys as string[];
+    return Object.fromEntries(
+      keys
+        .sort()
+        .map((key) => [
+          key,
+          canonicalizeJson(
+            readEnumerableJsonDataProperty(record, key),
+            depth + 1,
+            active,
+          ),
+        ]),
+    );
+  } finally {
+    active.delete(value);
+  }
 }
