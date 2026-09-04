@@ -53,7 +53,7 @@ describe('WritingDiagnostics transaction metadata boundary', () => {
     const plugin = createWritingDiagnosticsPlugin();
     const state = EditorState.create({ schema });
 
-    expect(plugin.props.decorations?.(state)).toBeNull();
+    expect(plugin.props.decorations?.call(plugin, state)).toBeNull();
   });
 
   it('ignores null, primitive, unknown, and revoked metadata without throwing', () => {
