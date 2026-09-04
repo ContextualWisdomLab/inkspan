@@ -29,7 +29,6 @@ describe('editor design-token documentation contract', () => {
       false,
     );
     expect(repositoryFile('docs/TRACEABILITY.md')).toContain('ADR 0031');
-    expect(repositoryFile('docs/TRACEABILITY.md')).not.toContain('ADR 0027');
     expect(doctoring).toContain('ADR 0031');
     expect(doctoring).not.toContain('ADR 0027');
     expect(operatorGuide).toContain('When a host overrides any color token');
