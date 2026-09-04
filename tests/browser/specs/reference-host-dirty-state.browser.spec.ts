@@ -84,7 +84,7 @@ test('does not claim a newer document is saved when the submitted version settle
   await expect(page.getByText('Saved', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Not saved yet', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => window.referenceHostSubmissions)).toEqual([
-    'Submitted version',
+    '# Submitted version',
   ]);
   expect(rejectedRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
@@ -105,7 +105,7 @@ test('blocks a same-turn native reset after durable submission admission before 
 
   await editor.selectText();
   await page.keyboard.type('Durable gate payload');
-  await expect(field).toHaveValue('Durable gate payload');
+  await expect(field).toHaveValue('# Durable gate payload');
 
   await page.evaluate(() => {
     const form = document.querySelector('form');
@@ -116,9 +116,9 @@ test('blocks a same-turn native reset after durable submission admission before 
     form.reset();
   });
 
-  await expect(field).toHaveValue('Durable gate payload');
+  await expect(field).toHaveValue('# Durable gate payload');
   expect(await page.evaluate(() => window.referenceHostSubmissions)).toEqual([
-    'Durable gate payload',
+    '# Durable gate payload',
   ]);
 
   await page.evaluate(() => window.referenceHostResolveSubmission?.());
