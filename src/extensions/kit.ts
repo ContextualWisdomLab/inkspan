@@ -5,7 +5,7 @@
 import StarterKit from '@tiptap/starter-kit';
 import { Placeholder } from '@tiptap/extensions';
 import { Table, TableRow, TableHeader, TableCell } from '@tiptap/extension-table';
-import type { Extensions } from '@tiptap/react';
+import type { Extensions } from '@tiptap/core';
 import { Base64Image } from './Base64Image.js';
 import type {
   ClipboardConfig,

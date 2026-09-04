@@ -124,6 +124,19 @@ function verifyPackedFiles(filePaths) {
     [],
     `npm package contains development-only files: ${forbiddenPaths.join(', ')}`,
   );
+
+  const reactDeclarationImports = [...filePaths]
+    .filter((filePath) => filePath.endsWith('.d.ts'))
+    .filter((filePath) =>
+      readFileSync(join(repositoryRoot, filePath), 'utf8').includes(
+        "from '@tiptap/react'",
+      ),
+    );
+  assert.deepEqual(
+    reactDeclarationImports,
+    [],
+    `npm declarations depend on TipTap React internals: ${reactDeclarationImports.join(', ')}`,
+  );
 }
 
 /** Write and execute an ESM or CommonJS package-consumer smoke test. */

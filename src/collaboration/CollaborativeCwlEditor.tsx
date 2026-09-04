@@ -1,6 +1,7 @@
 import Collaboration from '@tiptap/extension-collaboration';
 import CollaborationCaret from '@tiptap/extension-collaboration-caret';
-import { type Editor, useEditor } from '@tiptap/react';
+import type { Editor } from '@tiptap/core';
+import { useEditor } from '@tiptap/react';
 import {
   forwardRef,
   useCallback,
