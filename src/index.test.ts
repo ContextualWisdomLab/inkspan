@@ -55,6 +55,18 @@ describe('package entry point', () => {
     expect(typeof api.MarkdownToHtmlResourceError).toBe('function');
   });
 
+  it('re-exports the editor theme token catalog', () => {
+    expect(typeof api.listEditorThemeTokens).toBe('function');
+    expect(typeof api.getEditorThemeToken).toBe('function');
+    expect(typeof api.getEditorThemeTokenContrast).toBe('function');
+    expect(typeof api.contrastRatioFromHex).toBe('function');
+    expect(api.WCAG_TEXT_CONTRAST_RATIO).toBe(4.5);
+    expect(api.WCAG_NON_TEXT_CONTRAST_RATIO).toBe(3);
+    expect(typeof api.toDesignTokenFormatGroup).toBe('function');
+    expect(typeof api.EditorThemeTokenError).toBe('function');
+    expect(typeof api.EditorThemeTokenContrastError).toBe('function');
+  });
+
   it('re-exports the standalone base64 converter', () => {
     expect(typeof api.bytesToBase64).toBe('function');
     expect(typeof api.base64ToBytes).toBe('function');
