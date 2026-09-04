@@ -78,8 +78,12 @@ export async function createDocumentEnvelopeTransitionEvidenceBytes() { return {
     join(distDirectory, 'cwl-autosave.js'),
     [
       'export function createDocumentAutosaveQueue({ save }) {',
+      '  let active;',
       '  return {',
-      '    async enqueue(evidence) { return await save(evidence); },',
+      '    enqueue(evidence) {',
+      "      active ??= Promise.resolve(save(evidence)).then(() => ({ status: 'saved' }));",
+      '      return active;',
+      '    },',
       '    async close() {},',
       '  };',
       '}',
@@ -193,6 +197,11 @@ describe('packed artifact benchmark suite contract', () => {
       autosaveSamples: 'autosave/samples.json',
       autosaveSummaryJson: 'autosave/summary/summary.json',
       autosaveSummaryText: 'autosave/summary/summary.txt',
+      autosaveCoalescingSamples: 'autosave-coalescing/samples.json',
+      autosaveCoalescingSummaryJson:
+        'autosave-coalescing/summary/summary.json',
+      autosaveCoalescingSummaryText:
+        'autosave-coalescing/summary/summary.txt',
       htmlSerializationSamples: 'html-serialization/samples.json',
       htmlSerializationSummaryJson:
         'html-serialization/summary/summary.json',
@@ -209,6 +218,15 @@ describe('packed artifact benchmark suite contract', () => {
     ) as { benchmarkId?: unknown; samples?: unknown[] };
     expect(autosaveSamples.benchmarkId).toBe('autosave-enqueue-small');
     expect(autosaveSamples.samples).toHaveLength(2);
+
+    const coalescingSamples = JSON.parse(
+      readFileSync(
+        join(directory, 'evidence', 'autosave-coalescing', 'samples.json'),
+        'utf8',
+      ),
+    ) as { benchmarkId?: unknown; samples?: unknown[] };
+    expect(coalescingSamples.benchmarkId).toBe('autosave-coalescing-small');
+    expect(coalescingSamples.samples).toHaveLength(2);
 
     const htmlSamples = JSON.parse(
       readFileSync(

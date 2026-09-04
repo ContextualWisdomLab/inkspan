@@ -164,4 +164,49 @@ describe('autosave enqueue performance measurement', () => {
       rmSync(directory, { recursive: true, force: true });
     }
   }, 20_000);
+
+  it('measures active-revision coalescing without starting a second save', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inkspan-autosave-coalescing-'));
+    const modulePath = join(directory, 'autosave.mjs');
+    const outputPath = join(directory, 'samples.json');
+    const moduleSource = `export function createDocumentAutosaveQueue(options) {
+  let active;
+  return {
+    enqueue(evidence) {
+      if (active) return active;
+      active = Promise.resolve(options.save(evidence)).then(() => ({ status: 'saved' }));
+      return active;
+    },
+    async close() {},
+  };
+}\n`;
+    try {
+      writeFileSync(modulePath, moduleSource, 'utf8');
+      const args = [
+        measurementScript,
+        '--module', modulePath,
+        '--profile', 'small',
+        '--samples', '2',
+        '--source-commit-sha', sourceCommitSha,
+        '--artifact-sha256', sha256(moduleSource),
+        '--runtime-id', runtimeId,
+        '--reference-hardware-id', referenceHardwareId,
+        '--operation', 'coalescing',
+        '--output', outputPath,
+      ];
+
+      const result = spawnSync(process.execPath, args, {
+        cwd: repositoryRoot,
+        encoding: 'utf8',
+      });
+
+      expect(result.status).toBe(0);
+      expect(JSON.parse(readFileSync(outputPath, 'utf8'))).toMatchObject({
+        benchmarkId: 'autosave-coalescing-small',
+        samples: [expect.any(Number), expect.any(Number)],
+      });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
 });

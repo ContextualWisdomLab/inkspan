@@ -52,8 +52,20 @@ function resolveArguments(argv) {
     '--revision-artifact-sha256',
     ...legacyFlags,
   ];
+  const operationFlags = [...legacyFlags.slice(0, -1), '--operation', '--output'];
+  const inputOperationFlags = [
+    ...inputFlags.slice(0, -1),
+    '--operation',
+    '--output',
+  ];
   const expectedFlags =
-    argv.length === inputFlags.length * 2 ? inputFlags : legacyFlags;
+    argv.length === inputOperationFlags.length * 2
+      ? inputOperationFlags
+      : argv.length === inputFlags.length * 2
+        ? inputFlags
+        : argv.length === operationFlags.length * 2
+          ? operationFlags
+          : legacyFlags;
   if (
     argv.length !== expectedFlags.length * 2 ||
     expectedFlags.some((flag, index) => argv[index * 2] !== flag) ||
@@ -110,6 +122,10 @@ function resolveArguments(argv) {
   if (!REFERENCE_HARDWARE_ID_PATTERN.test(referenceHardwareId)) {
     throw new Error('Autosave benchmark reference hardware ID is invalid.');
   }
+  const operation = values['--operation'] ?? 'enqueue';
+  if (operation !== 'enqueue' && operation !== 'coalescing') {
+    throw new Error('Autosave benchmark operation is invalid.');
+  }
 
   return Object.freeze({
     inputPath:
@@ -123,6 +139,7 @@ function resolveArguments(argv) {
     artifactSha256,
     runtimeId,
     referenceHardwareId,
+    operation,
     outputPath: resolve(values['--output']),
   });
 }
@@ -407,6 +424,45 @@ async function measureOneEnqueue(createDocumentAutosaveQueue, evidence) {
   return elapsed;
 }
 
+async function measureOneCoalescing(createDocumentAutosaveQueue, evidence) {
+  let saveCalls = 0;
+  let releaseSave;
+  const queue = createDocumentAutosaveQueue({
+    save: () => {
+      saveCalls += 1;
+      return new Promise((resolve) => {
+        releaseSave = () => resolve(Object.freeze({ status: 'saved' }));
+      });
+    },
+  });
+  if (
+    typeof queue !== 'object' ||
+    queue === null ||
+    typeof queue.enqueue !== 'function'
+  ) {
+    throw new Error('Measured autosave module returned an invalid queue.');
+  }
+  const active = queue.enqueue(evidence);
+  await Promise.resolve();
+  if (typeof releaseSave !== 'function') {
+    throw new Error('Measured autosave coalescing setup is invalid.');
+  }
+
+  const start = performance.now();
+  const coalesced = queue.enqueue(evidence);
+  const elapsed = performance.now() - start;
+  if (coalesced !== active || saveCalls !== 1) {
+    throw new Error('Measured autosave coalescing result is invalid.');
+  }
+  releaseSave();
+  const outcome = await active;
+  if (outcome?.status !== 'saved') {
+    throw new Error('Measured autosave coalescing result is invalid.');
+  }
+  if (typeof queue.close === 'function') await queue.close();
+  return elapsed;
+}
+
 function writeMeasurementOutput(path, content) {
   assertNoSymlinkOutputAncestors(path);
   try {
@@ -445,11 +501,13 @@ async function main() {
   }
   const evidence = await createSyntheticRevisionEvidence(args);
 
-  await measureOneEnqueue(measuredModule.createDocumentAutosaveQueue, evidence);
+  const measure =
+    args.operation === 'enqueue' ? measureOneEnqueue : measureOneCoalescing;
+  await measure(measuredModule.createDocumentAutosaveQueue, evidence);
   const samples = [];
   for (let index = 0; index < args.sampleCount; index += 1) {
     samples.push(
-      await measureOneEnqueue(measuredModule.createDocumentAutosaveQueue, evidence),
+      await measure(measuredModule.createDocumentAutosaveQueue, evidence),
     );
   }
 
@@ -470,7 +528,7 @@ async function main() {
     `${JSON.stringify(
       {
         contractVersion: 1,
-        benchmarkId: `autosave-enqueue-${args.profile}`,
+        benchmarkId: `autosave-${args.operation}-${args.profile}`,
         unit: 'ms',
         sourceCommitSha: args.sourceCommitSha,
         artifactSha256: args.artifactSha256,

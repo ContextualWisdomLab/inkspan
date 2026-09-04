@@ -82,8 +82,12 @@ export async function createDocumentEnvelopeTransitionEvidenceBytes() { return {
     join(distDirectory, 'cwl-autosave.js'),
     [
       'export function createDocumentAutosaveQueue({ save }) {',
+      '  let active;',
       '  return {',
-      '    async enqueue(evidence) { return await save(evidence); },',
+      '    enqueue(evidence) {',
+      "      active ??= Promise.resolve(save(evidence)).then(() => ({ status: 'saved' }));",
+      '      return active;',
+      '    },',
       '    async close() {},',
       '  };',
       '}',
