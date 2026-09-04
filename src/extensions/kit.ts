@@ -16,6 +16,7 @@ import type {
 } from './SafeClipboard.js';
 import { SafeClipboard } from './SafeClipboardExtension.js';
 import { SafeLink, isSafeLinkHref } from './SafeLink.js';
+import { WritingDiagnostics } from './WritingDiagnostics.js';
 import type { ImageConfig } from '../types.js';
 
 /** Options for constructing the shared Inkspan extension collection. */
@@ -65,6 +66,7 @@ export function buildExtensions(
       config: options.clipboard,
       onError: options.onClipboardError,
     }),
+    WritingDiagnostics,
     Placeholder.configure({
       placeholder: options.placeholder ?? 'Start writing…',
     }),
