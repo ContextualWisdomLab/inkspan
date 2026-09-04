@@ -87,7 +87,10 @@ function writeBenchmarkInputs(directory: string): {
     "export function markdownToHtml(source) { return `<p>${source}</p>`; }\n";
   const revisionInputPath = join(directory, 'document-envelope.json');
   const revisionModulePath = join(directory, 'revision-measured.mjs');
-  const revisionModuleSource = `export async function createDocumentEnvelopeRevisionEvidenceBytes() { return { revision: { digestHex: '${'c'.repeat(64)}' } }; }\n`;
+  const revisionModuleSource = `const revision = { digestHex: '${'c'.repeat(64)}' };
+export async function createDocumentEnvelopeRevisionEvidenceBytes() { return { revision }; }
+export async function createDocumentEnvelopeTransitionEvidenceBytes() { return { previousRevision: revision, resultingRevision: revision, changed: false }; }
+`;
 
   writeFileSync(markdownInputPath, '# Buyer benchmark\n', 'utf8');
   writeFileSync(markdownModulePath, markdownModuleSource, 'utf8');
@@ -151,6 +154,9 @@ describe('single-command benchmark suite contract', () => {
       revisionSamples: 'revision/samples.json',
       revisionSummaryJson: 'revision/summary/summary.json',
       revisionSummaryText: 'revision/summary/summary.txt',
+      transitionSamples: 'transition/samples.json',
+      transitionSummaryJson: 'transition/summary/summary.json',
+      transitionSummaryText: 'transition/summary/summary.txt',
       status: 'completed',
     });
 
@@ -197,6 +203,12 @@ describe('single-command benchmark suite contract', () => {
         'utf8',
       ),
     ).toContain('revision-evidence-small');
+
+    const transitionSamples = JSON.parse(
+      readFileSync(join(outputDirectory, 'transition', 'samples.json'), 'utf8'),
+    ) as { benchmarkId?: unknown; samples?: unknown };
+    expect(transitionSamples.benchmarkId).toBe('transition-evidence-small');
+    expect(transitionSamples.samples).toHaveLength(2);
   }, 20_000);
 
   it('rejects a claimed source commit that is not the checked-out HEAD', () => {

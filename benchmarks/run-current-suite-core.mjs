@@ -558,6 +558,16 @@ function runSuite(args, markdownArguments, revisionArguments, autosaveArguments)
     'revision',
     'summary',
   );
+  const transitionSamplesPath = resolve(
+    args.outputDirectory,
+    'transition',
+    'samples.json',
+  );
+  const transitionSummaryDirectory = resolve(
+    args.outputDirectory,
+    'transition',
+    'summary',
+  );
 
   runMeasurementAndSummary({
     measurementScript: 'measure-markdown.mjs',
@@ -574,6 +584,14 @@ function runSuite(args, markdownArguments, revisionArguments, autosaveArguments)
     summaryDirectory: revisionSummaryDirectory,
     measurementFailure: 'Benchmark suite revision measurement failed.',
     summaryFailure: 'Benchmark suite revision summary failed.',
+  });
+  runMeasurementAndSummary({
+    measurementScript: 'measure-revision-evidence.mjs',
+    measurementArguments: [...revisionArguments, '--operation', 'transition'],
+    samplesPath: transitionSamplesPath,
+    summaryDirectory: transitionSummaryDirectory,
+    measurementFailure: 'Benchmark suite transition measurement failed.',
+    summaryFailure: 'Benchmark suite transition summary failed.',
   });
 
   if (autosaveArguments !== null) {
@@ -613,6 +631,9 @@ function suiteManifest(args, packageEvidence, includeAutosave) {
     revisionSamples: 'revision/samples.json',
     revisionSummaryJson: 'revision/summary/summary.json',
     revisionSummaryText: 'revision/summary/summary.txt',
+    transitionSamples: 'transition/samples.json',
+    transitionSummaryJson: 'transition/summary/summary.json',
+    transitionSummaryText: 'transition/summary/summary.txt',
     ...(includeAutosave
       ? {
           autosaveSamples: 'autosave/samples.json',

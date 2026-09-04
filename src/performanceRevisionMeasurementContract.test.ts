@@ -49,6 +49,7 @@ function argumentsFor(
   input: string,
   modulePath: string,
   output: string,
+  operation?: 'transition',
 ): string[] {
   return [
     measurementScript,
@@ -68,6 +69,7 @@ function argumentsFor(
     RUNTIME_ID,
     '--reference-hardware-id',
     HARDWARE_ID,
+    ...(operation === undefined ? [] : ['--operation', operation]),
     '--output',
     output,
   ];
@@ -147,6 +149,36 @@ describe('revision-evidence runtime measurement contract', () => {
         sampleCount: 3,
         benchmarkId: 'revision-evidence-large',
         unit: 'ms',
+      });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('measures transition evidence through the same packed module boundary', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-transition-measurement-'));
+    const input = join(root, 'large.json');
+    const modulePath = join(root, 'packed-revision-evidence.mjs');
+    const samplesPath = join(root, 'samples.json');
+    try {
+      writeSyntheticEnvelope(input);
+      writeFileSync(
+        modulePath,
+        `const revision = { digestHex: '${'d'.repeat(64)}' };
+export async function createDocumentEnvelopeTransitionEvidenceBytes() { return { previousRevision: revision, resultingRevision: revision, changed: false }; }\n`,
+        'utf8',
+      );
+
+      execFileSync(
+        process.execPath,
+        argumentsFor(input, modulePath, samplesPath, 'transition'),
+        { cwd: repositoryRoot, stdio: ['ignore', 'pipe', 'pipe'] },
+      );
+
+      expect(JSON.parse(readFileSync(samplesPath, 'utf8'))).toMatchObject({
+        benchmarkId: 'transition-evidence-large',
+        artifactSha256: fileSha256(modulePath),
+        samples: expect.any(Array),
       });
     } finally {
       rmSync(root, { recursive: true, force: true });

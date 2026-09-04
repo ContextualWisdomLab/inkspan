@@ -41,7 +41,10 @@ describe('single-command HTML serialization benchmark contract', () => {
       "export function htmlToMarkdown(source) { return source.replace(/<[^>]+>/gu, '').trim(); }",
       '',
     ].join('\n');
-    const revisionModuleSource = `export async function createDocumentEnvelopeRevisionEvidenceBytes() { return { revision: { digestHex: '${'c'.repeat(64)}' } }; }\n`;
+    const revisionModuleSource = `const revision = { digestHex: '${'c'.repeat(64)}' };
+export async function createDocumentEnvelopeRevisionEvidenceBytes() { return { revision }; }
+export async function createDocumentEnvelopeTransitionEvidenceBytes() { return { previousRevision: revision, resultingRevision: revision, changed: false }; }
+`;
 
     try {
       writeFileSync(markdownInput, '# Buyer benchmark\n', 'utf8');

@@ -36,7 +36,7 @@ const OUTPUT_EXISTS_ERROR =
   'Revision benchmark output must not already exist.';
 
 function resolveArguments(argv) {
-  const expectedFlags = [
+  const baseFlags = [
     '--input',
     '--module',
     '--profile',
@@ -47,6 +47,9 @@ function resolveArguments(argv) {
     '--reference-hardware-id',
     '--output',
   ];
+  const operationFlags = [...baseFlags.slice(0, -1), '--operation', '--output'];
+  const expectedFlags =
+    argv.length === operationFlags.length * 2 ? operationFlags : baseFlags;
   if (
     argv.length !== expectedFlags.length * 2 ||
     expectedFlags.some((flag, index) => argv[index * 2] !== flag) ||
@@ -92,6 +95,10 @@ function resolveArguments(argv) {
   if (!REFERENCE_HARDWARE_ID_PATTERN.test(referenceHardwareId)) {
     throw new Error('Revision benchmark reference hardware ID is invalid.');
   }
+  const operation = values['--operation'] ?? 'revision';
+  if (operation !== 'revision' && operation !== 'transition') {
+    throw new Error('Revision benchmark operation is invalid.');
+  }
 
   return Object.freeze({
     inputPath: resolve(values['--input']),
@@ -102,6 +109,7 @@ function resolveArguments(argv) {
     artifactSha256,
     runtimeId,
     referenceHardwareId,
+    operation,
     outputPath: resolve(values['--output']),
   });
 }
@@ -327,29 +335,45 @@ function writeMeasurementOutput(path, content) {
   }
 }
 
-async function runMeasuredRevision(createRevisionEvidence, source) {
+async function runMeasuredEvidence(createEvidence, source, operation) {
   let evidence;
   try {
-    evidence = await createRevisionEvidence(source);
+    evidence =
+      operation === 'revision'
+        ? await createEvidence(source)
+        : await createEvidence(source, source);
   } catch {
     throw new Error('Measured revision-evidence execution failed.');
   }
 
-  let digestHex;
+  let revisions;
   try {
     if (typeof evidence !== 'object' || evidence === null) {
       throw new Error('invalid revision evidence');
     }
-    const revision = evidence.revision;
-    if (typeof revision !== 'object' || revision === null) {
+    revisions =
+      operation === 'revision'
+        ? [evidence.revision]
+        : [evidence.previousRevision, evidence.resultingRevision];
+    if (
+      (operation === 'transition' && typeof evidence.changed !== 'boolean') ||
+      revisions.some(
+        (revision) => typeof revision !== 'object' || revision === null,
+      )
+    ) {
       throw new Error('invalid revision evidence');
     }
-    digestHex = revision.digestHex;
   } catch {
     throw new Error('Measured revision-evidence result is invalid.');
   }
 
-  if (typeof digestHex !== 'string' || !SHA256_PATTERN.test(digestHex)) {
+  if (
+    revisions.some(
+      (revision) =>
+        typeof revision.digestHex !== 'string' ||
+        !SHA256_PATTERN.test(revision.digestHex),
+    )
+  ) {
     throw new Error('Measured revision-evidence result is invalid.');
   }
 }
@@ -377,27 +401,26 @@ async function main() {
   assertMeasurementProvenance(args.sourceCommitSha, args.runtimeId);
 
   const measuredModule = await loadMeasuredModule(modulePath);
-  if (
-    typeof measuredModule.createDocumentEnvelopeRevisionEvidenceBytes !==
-    'function'
-  ) {
+  const createEvidence =
+    args.operation === 'revision'
+      ? measuredModule.createDocumentEnvelopeRevisionEvidenceBytes
+      : measuredModule.createDocumentEnvelopeTransitionEvidenceBytes;
+  if (typeof createEvidence !== 'function') {
     throw new Error(
-      'Measured revision module must export createDocumentEnvelopeRevisionEvidenceBytes().',
+      `Measured revision module must export ${
+        args.operation === 'revision'
+          ? 'createDocumentEnvelopeRevisionEvidenceBytes'
+          : 'createDocumentEnvelopeTransitionEvidenceBytes'
+      }().`,
     );
   }
 
-  await runMeasuredRevision(
-    measuredModule.createDocumentEnvelopeRevisionEvidenceBytes,
-    source,
-  );
+  await runMeasuredEvidence(createEvidence, source, args.operation);
 
   const samples = [];
   for (let index = 0; index < args.sampleCount; index += 1) {
     const start = performance.now();
-    await runMeasuredRevision(
-      measuredModule.createDocumentEnvelopeRevisionEvidenceBytes,
-      source,
-    );
+    await runMeasuredEvidence(createEvidence, source, args.operation);
     const elapsed = performance.now() - start;
     if (!Number.isFinite(elapsed) || elapsed < 0) {
       throw new Error('Revision measurement produced invalid runtime evidence.');
@@ -423,7 +446,7 @@ async function main() {
     `${JSON.stringify(
       {
         contractVersion: 1,
-        benchmarkId: `revision-evidence-${args.profile}`,
+        benchmarkId: `${args.operation}-evidence-${args.profile}`,
         unit: 'ms',
         sourceCommitSha: args.sourceCommitSha,
         artifactSha256: args.artifactSha256,
