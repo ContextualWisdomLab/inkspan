@@ -30,6 +30,7 @@ const FALLBACK_CURSOR_COLOR = '#475569';
 const MAX_CURSOR_LABEL_LENGTH = 80;
 const MAX_PUBLIC_IDENTIFIER_LENGTH = 80;
 const MAX_LOCAL_FIELD_SOURCE_LENGTH = 1_024;
+const MAX_REMOTE_FIELD_SOURCE_LENGTH = 1_024;
 type CollaborationUserField = 'userId' | 'displayName' | 'cursorColor';
 
 /** Reject malformed or oversized local identity fields before normalization. */
@@ -83,6 +84,23 @@ function exceedsPublicIdentifierLength(value: string): boolean {
     if (count > MAX_PUBLIC_IDENTIFIER_LENGTH) return true;
   }
   return false;
+}
+
+/** Read one own enumerable data field without invoking caller-defined accessors. */
+function ownEnumerableDataValue(
+  value: unknown,
+  property: string,
+): unknown {
+  if (typeof value !== 'object' || value === null) return undefined;
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(value, property);
+    if (!descriptor) return undefined;
+    if (!descriptor.enumerable) return undefined;
+    if (!('value' in descriptor)) return undefined;
+    return descriptor.value;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Read and validate the host-owned awareness capability without leaking failures. */
@@ -248,7 +266,7 @@ export function createScopedCollaborationProvider(
   };
 }
 
-/** Count remote awareness clients without leaking host awareness failures. */
+/** Count valid remote collaborators without leaking host awareness failures. */
 export function countRemoteCollaborators(
   awareness: CollaborationAwareness | undefined,
 ): number {
@@ -258,15 +276,20 @@ export function countRemoteCollaborators(
     let count = 0;
     for (const [clientId, state] of awareness.getStates()) {
       if (clientId === localClientId) continue;
-      const user = state.user;
+      const user = ownEnumerableDataValue(state, 'user');
+      if (typeof user !== 'object' || user === null) continue;
+      const id = ownEnumerableDataValue(user, 'id');
+      if (typeof id !== 'string') continue;
+      if (id.length > MAX_REMOTE_FIELD_SOURCE_LENGTH) continue;
+      const normalizedId = id.trim();
       if (
-        typeof user === 'object' &&
-        user !== null &&
-        typeof (user as Record<string, unknown>).id === 'string' &&
-        (user as Record<string, unknown>).id !== ''
+        normalizedId === '' ||
+        NUMERIC_IDENTIFIER_PATTERN.test(normalizedId) ||
+        exceedsPublicIdentifierLength(normalizedId)
       ) {
-        count += 1;
+        continue;
       }
+      count += 1;
     }
     return count;
   } catch {
