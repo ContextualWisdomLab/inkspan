@@ -76,7 +76,7 @@ pnpm exec vite --config tests/browser/vite.config.ts --host 127.0.0.1 --port 417
 ```
 
 Open `http://127.0.0.1:4173/examples/reference-host/browser-host.html?journey=recovery`.
-The default URL still opens the native-form journey; add `&readOnly=1` to the recovery URL for its read-only state. This development preview resolves public package exports from the local build. The verifier below binds the editor, autosave subpath, CSS, and fonts to an extracted exact tarball; development-preview success alone is not packed-artifact evidence.
+The default URL still opens the native-form journey; add `&readOnly=1` to the recovery URL for its read-only state. Add `&savedDraft=1` to open a previously saved rich-text fixture, or `&savedDraft=invalid` to exercise an unreadable stored draft. The editor restores the saved document before enabling editing or autosave; an unreadable document remains untouched with editing disabled. This development preview resolves public package exports from the local build. The verifier below binds the editor, autosave subpath, CSS, and fonts to an extracted exact tarball; development-preview success alone is not packed-artifact evidence.
 
 The screen keeps the existing editor and bundled Noto Sans presentation, uses native controls, announces save outcomes, and separates demo failure controls from recovery actions. No new UI framework, service, or dependency is introduced. Copy and retry admission is synchronous, independent of the next React render. Demo controls are absent in print; the draft remains readable at 320px and with forced colors.
 

@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 const recoveryUrl = '/examples/reference-host/browser-host.html?journey=recovery';
 
-async function openRecovery(page: Page, suffix = '') {
+async function openRecovery(page: Page, suffix = '', initialText = 'Draft') {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
@@ -18,7 +18,7 @@ async function openRecovery(page: Page, suffix = '') {
   });
   await page.goto(`${recoveryUrl}${suffix}`);
   await expect(page.getByRole('heading', { name: 'Save and recover a draft' })).toBeVisible();
-  await expect(page.getByRole('textbox')).toHaveText('Draft');
+  await expect(page.getByRole('textbox')).toHaveText(initialText);
   expect((await savedDocuments(page)).originalValidator).toBe('"v1"');
   return errors;
 }
@@ -65,11 +65,14 @@ test('keeps both drafts on conflict and continues autosaving only the separate c
   const original = (await savedDocuments(page)).original;
   expect(original).toContain('Draft saved elsewhere.');
   await page.getByRole('textbox').fill('My newest conflicting draft');
-  await page.getByRole('button', { name: 'Save my draft as a separate copy' }).click();
+  const copyButton = page.getByRole('button', { name: 'Save my draft as a separate copy' });
+  await expect(copyButton).toBeEnabled();
+  await copyButton.evaluate((button: HTMLButtonElement) => { button.click(); button.click(); });
   await expect(page.getByRole('status')).toHaveText('Separate copy saved. The original was not changed.');
   await expect(page.getByRole('textbox')).toHaveText('My newest conflicting draft');
   expect((await savedDocuments(page)).original).toBe(original);
   expect((await savedDocuments(page)).copies[0]).toContain('My newest conflicting draft');
+  expect((await savedDocuments(page)).copies).toHaveLength(1);
   await page.getByRole('textbox').fill('Continue in my copy');
   await expect(page.getByRole('status')).toHaveText('All changes saved in this demo.');
   expect((await savedDocuments(page)).original).toBe(original);
@@ -81,6 +84,7 @@ test('keeps recovery usable at 320px with keyboard and forced colors; read-only 
   await page.setViewportSize({ width: 320, height: 780 });
   await page.emulateMedia({ forcedColors: 'active' });
   const errors = await openRecovery(page);
+  expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(true);
   await page.getByLabel('Next save in this demo').selectOption('failure');
   await page.getByRole('textbox').fill('Keyboard recovery');
   const retryButton = page.getByRole('button', { name: 'Check saved copy and retry' });
@@ -173,5 +177,24 @@ test('does not report an oversized unsaved draft as saved when an older request 
   await page.getByRole('textbox').fill('Shortened recoverable draft');
   await expect(page.getByRole('status')).toHaveText('All changes saved in this demo.');
   expect((await savedDocuments(page)).original).toContain('Shortened recoverable draft');
+  expect(errors).toEqual([]);
+});
+
+test('opens the stored rich document before enabling edits without rewriting it', async ({ page }) => {
+  const errors = await openRecovery(page, '&savedDraft=1', 'Saved headingPreviously saved draft');
+  await expect(page.getByRole('textbox').getByRole('heading', { name: 'Saved heading', level: 2 })).toBeVisible();
+  await expect(page.getByRole('textbox').locator('strong')).toHaveText('Previously saved draft');
+  await expect(page.getByRole('status')).toHaveText('All changes saved in this demo.');
+  expect((await savedDocuments(page)).originalValidator).toBe('"v1"');
+  expect(errors).toEqual([]);
+});
+
+test('keeps an unreadable stored draft untouched and does not enable replacement editing', async ({ page }) => {
+  const errors = await openRecovery(page, '&savedDraft=invalid', '');
+  await expect(page.getByRole('status')).toHaveText('The saved draft could not be opened. Nothing was changed.');
+  await expect(page.getByRole('textbox')).toHaveAttribute('contenteditable', 'false');
+  await expect(page.getByLabel('Next save in this demo')).toBeDisabled();
+  expect((await savedDocuments(page)).original).toBe('Invalid stored draft');
+  expect((await savedDocuments(page)).originalValidator).toBe('"v1"');
   expect(errors).toEqual([]);
 });

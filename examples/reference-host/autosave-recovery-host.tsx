@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   CwlEditor,
   createDocumentEnvelope,
+  restoreDocumentEnvelope,
   serializeDocumentEnvelope,
   type CwlEditorHandle,
 } from '@contextualwisdomlab/cwl-editor';
@@ -24,6 +25,8 @@ export interface AutosaveRecoveryHostProps extends ReferenceDocument {
 }
 
 const messages: Record<string, string> = {
+  loading: 'Opening the saved draft…',
+  loadFailed: 'The saved draft could not be opened. Nothing was changed.',
   clean: 'All changes saved in this demo.',
   preparing: 'Preparing changes…',
   saving: 'Saving changes…',
@@ -40,8 +43,12 @@ const messages: Record<string, string> = {
 /** Reference-only, in-memory save recovery; no authentication or durable storage. */
 export function AutosaveRecoveryHost({ documentId, repository, readOnly = false, onCopySaved }: AutosaveRecoveryHostProps) {
   const editorRef = useRef<CwlEditorHandle>(null);
-  const [initialRead] = useState(() => repository.read(documentId));
-  const confirmedDocumentRef = useRef(initialRead.document);
+  const [initialRead] = useState(() => {
+    try { return repository.read(documentId); }
+    catch { return null; }
+  });
+  const confirmedDocumentRef = useRef(initialRead?.document ?? '');
+  const editorReadyRef = useRef(false);
   const sessionRef = useRef<DocumentAutosaveSession | null>(null);
   const activeDocumentRef = useRef<ReferenceDocument>({ documentId, repository });
   const viewModelRef = useRef(createAutosaveViewModel());
@@ -53,7 +60,8 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
   const finishSaveRef = useRef<(() => void) | null>(null);
   const attemptedDocumentRef = useRef<string | null>(null);
   const copyCountRef = useRef(0);
-  const [viewState, setViewState] = useState('clean');
+  const [viewState, setViewState] = useState('loading');
+  const [editorReady, setEditorReady] = useState(false);
   const [capturePending, setCapturePending] = useState(false);
   const [captureFailed, setCaptureFailed] = useState(false);
   const [recoveryInFlight, setRecoveryInFlight] = useState(false);
@@ -116,7 +124,7 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
 
   useEffect(() => {
     mountedRef.current = true;
-    beginSession(initialRead.validator);
+    if (initialRead) beginSession(initialRead.validator);
     return () => {
       mountedRef.current = false;
       generationRef.current += 1;
@@ -128,11 +136,12 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
 
   async function queueCurrentDraft() {
     const session = sessionRef.current;
-    if (readOnly || !session || !editorRef.current) return false;
+    if (readOnly || !editorReadyRef.current || !session || !editorRef.current) return false;
     const generation = ++generationRef.current;
     capturePendingRef.current = true;
     setCapturePending(true);
     setCaptureFailed(false);
+    let submitted = false;
     try {
       const evidence = await editorRef.current.getDocumentEnvelopeRevisionEvidence({ maxUtf8Bytes: MAX_DOCUMENT_CODE_UNITS, maxStringCodeUnits: MAX_DOCUMENT_CODE_UNITS });
       if (!evidence) throw new Error('Editor is not ready.');
@@ -142,11 +151,13 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
       capturePendingRef.current = false;
       setCapturePending(false);
       if (session.getSnapshot().state === 'idle' && document === confirmedDocumentRef.current) return false;
-      const result = await session.enqueue(evidence);
+      const pendingSave = session.enqueue(evidence);
+      submitted = true;
+      const result = await pendingSave;
       return mountedRef.current && generation === generationRef.current && result.status === 'saved';
     } catch {
       if (mountedRef.current && generation === generationRef.current && session === sessionRef.current) {
-        if (session.getSnapshot().state === 'blocked') setViewState('failed');
+        if (submitted) setViewState('failed');
         else setCaptureFailed(true);
       }
       return false;
@@ -214,8 +225,22 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
     <section className="reference-recovery" aria-labelledby="recovery-heading">
       <h2 id="recovery-heading">Save and recover a draft</h2>
       <p>Practice saving in this tab. This demo uses memory only; closing or reloading it removes every draft and copy.</p>
-      <CwlEditor ref={editorRef} mode="markdown" defaultValue="Draft" editable={!readOnly}
-        ariaLabel="Draft" onChange={() => { void queueCurrentDraft(); }} />
+      <CwlEditor ref={editorRef} mode="markdown" editable={!readOnly && editorReady}
+        ariaLabel="Draft" onChange={() => { void queueCurrentDraft(); }}
+        onReady={(editor) => {
+          if (!mountedRef.current) return;
+          try {
+            if (!initialRead) throw new Error('Saved draft is unavailable.');
+            restoreDocumentEnvelope(editor, initialRead.document, {
+              maxUtf8Bytes: MAX_DOCUMENT_CODE_UNITS,
+              maxJsonTextCodeUnits: MAX_DOCUMENT_CODE_UNITS,
+              maxStringCodeUnits: MAX_DOCUMENT_CODE_UNITS,
+            });
+            editorReadyRef.current = true;
+            setEditorReady(true);
+            setViewState('clean');
+          } catch { setViewState('loadFailed'); }
+        }} />
       <output role="status" aria-live="polite" aria-atomic="true">{messages[displayedState] ?? messages.closed}</output>
       {blocked && !readOnly && (
         <div className="reference-recovery-actions">
@@ -225,7 +250,7 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
             onClick={() => { void recoverDraft(true); }}>Save my draft as a separate copy</button>
         </div>
       )}
-      <fieldset className="reference-recovery-controls" disabled={readOnly || recoveryInFlight}>
+      <fieldset className="reference-recovery-controls" disabled={readOnly || !editorReady || recoveryInFlight}>
         <legend>Demo controls</legend>
         <label>Next save in this demo
           <select value={nextOutcome} onChange={(event) => {
