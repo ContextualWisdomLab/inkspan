@@ -5,6 +5,8 @@ import { CwlEditor, createDocumentEnvelope, serializeDocumentEnvelope, type CwlE
 import { createDelayedProposal, applyDelayedProposal } from './delayed-proposal.mjs';
 import { MAX_DOCUMENT_CODE_UNITS } from './synthetic-document-repository.mjs';
 
+// ponytail: fixed local fixture; a model-backed host must preview its actual
+// validated candidate before requesting approval, never this example text.
 const suggestionText = 'An example suggestion for this draft.';
 const limits = { maxUtf8Bytes: MAX_DOCUMENT_CODE_UNITS, maxJsonTextCodeUnits: MAX_DOCUMENT_CODE_UNITS, maxStringCodeUnits: MAX_DOCUMENT_CODE_UNITS };
 const messages: Record<string, string> = {

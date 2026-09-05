@@ -53,6 +53,35 @@ test('rejects a suggestion prepared before newer local edits', async ({ page }) 
   expect(errors).toEqual([]);
 });
 
+test('captures the original draft before delayed preparation and admits only one preparation', async ({ page }) => {
+  await page.addInitScript(() => {
+    const digest = crypto.subtle.digest.bind(crypto.subtle);
+    const observed = window as typeof window & { releasePreparation?: () => void; preparationCaptures: number };
+    observed.preparationCaptures = 0;
+    crypto.subtle.digest = async (algorithm, data) => {
+      const result = await digest(algorithm, data);
+      observed.preparationCaptures += 1;
+      if (observed.preparationCaptures === 1) {
+        await new Promise<void>((resolve) => { observed.releasePreparation = resolve; });
+      }
+      return result;
+    };
+  });
+  const errors = await openProposal(page);
+  await page.getByRole('button', { name: 'Prepare example suggestion' }).evaluate((button: HTMLButtonElement) => { button.click(); button.click(); });
+  await expect.poll(() => page.evaluate(() => typeof (window as typeof window & { releasePreparation?: () => void }).releasePreparation)).toBe('function');
+  await expect(page.getByRole('status')).toHaveText('Preparing a local suggestion…');
+  expect(await page.evaluate(() => (window as typeof window & { preparationCaptures: number }).preparationCaptures)).toBe(1);
+  await replaceDraft(page, 'New text during suggestion preparation');
+  await page.evaluate(() => (window as typeof window & { releasePreparation?: () => void }).releasePreparation?.());
+  await expect(page.getByRole('status')).toHaveText('Suggestion ready. Review it before applying.');
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Apply suggestion', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText('Your draft changed. Prepare a new suggestion.');
+  await expect(page.getByRole('textbox', { name: 'Draft' })).toHaveText('New text during suggestion preparation');
+  expect(errors).toEqual([]);
+});
+
 test('preserves edits during asynchronous application and admits only one apply', async ({ page }) => {
   await page.addInitScript(() => {
     const digest = crypto.subtle.digest.bind(crypto.subtle);
