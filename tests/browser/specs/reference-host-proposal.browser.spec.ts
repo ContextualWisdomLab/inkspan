@@ -52,3 +52,79 @@ test('rejects a suggestion prepared before newer local edits', async ({ page }) 
   await expect(page.getByRole('textbox', { name: 'Draft' })).toHaveText('My newer draft must stay');
   expect(errors).toEqual([]);
 });
+
+test('preserves edits during asynchronous application and admits only one apply', async ({ page }) => {
+  await page.addInitScript(() => {
+    const digest = crypto.subtle.digest.bind(crypto.subtle);
+    const observed = window as typeof window & { releaseSuggestionDigest?: () => void; proposalConfirmations: number };
+    observed.proposalConfirmations = 0;
+    let delayed = false;
+    crypto.subtle.digest = async (algorithm, data) => {
+      const result = await digest(algorithm, data);
+      if (!delayed && new TextDecoder().decode(data).includes('An example suggestion for this draft.')) {
+        delayed = true;
+        await new Promise<void>((resolve) => { observed.releaseSuggestionDigest = resolve; });
+      }
+      return result;
+    };
+    window.confirm = () => { observed.proposalConfirmations += 1; return true; };
+  });
+  const errors = await openProposal(page);
+  await page.getByRole('button', { name: 'Prepare example suggestion' }).click();
+  await expect(page.getByRole('status')).toHaveText('Suggestion ready. Review it before applying.');
+  await page.getByRole('button', { name: 'Apply suggestion', exact: true }).evaluate((button: HTMLButtonElement) => {
+    button.click();
+    button.click();
+    Array.from(document.querySelectorAll('button')).find((candidate) => candidate.textContent === 'Discard suggestion')?.click();
+  });
+  await expect.poll(() => page.evaluate(() => typeof (window as typeof window & { releaseSuggestionDigest?: () => void }).releaseSuggestionDigest)).toBe('function');
+  expect(await page.evaluate(() => (window as typeof window & { proposalConfirmations: number }).proposalConfirmations)).toBe(1);
+  await expect(page.getByRole('button', { name: 'Discard suggestion' })).toBeDisabled();
+  await replaceDraft(page, 'New text while the suggestion is being checked');
+  await page.evaluate(() => (window as typeof window & { releaseSuggestionDigest?: () => void }).releaseSuggestionDigest?.());
+  await expect(page.getByRole('status')).toHaveText('Your draft changed. Prepare a new suggestion.');
+  await expect(page.getByRole('textbox', { name: 'Draft' })).toHaveText('New text while the suggestion is being checked');
+  await page.getByRole('button', { name: 'Prepare example suggestion' }).click();
+  await expect(page.getByRole('status')).toHaveText('Suggestion ready. Review it before applying.');
+  await page.getByRole('button', { name: 'Apply suggestion', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText('Suggestion applied. Nothing has been saved.');
+  await expect(page.getByRole('textbox', { name: 'Draft' })).toHaveText(suggestionText);
+  expect(errors).toEqual([]);
+});
+
+test('supports keyboard discard and narrow forced-color review while read-only prevents preparation', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 780 });
+  await page.emulateMedia({ forcedColors: 'active' });
+  const errors = await openProposal(page);
+  await page.getByRole('button', { name: 'Prepare example suggestion' }).click();
+  await expect(page.getByRole('status')).toHaveText('Suggestion ready. Review it before applying.');
+  await page.getByRole('button', { name: 'Discard suggestion' }).focus();
+  expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath('proposal-review-320.png'), fullPage: true });
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status')).toHaveText('Edit your draft or prepare an example suggestion.');
+  await expect(page.getByRole('textbox', { name: 'Draft' })).toHaveText('Draft');
+  await expect(page.getByRole('textbox', { name: 'Draft' })).toBeFocused();
+  await page.emulateMedia({ media: 'print' });
+  await expect(page.getByRole('button', { name: 'Prepare example suggestion' })).not.toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Draft' })).toBeVisible();
+  await page.emulateMedia({ media: 'screen' });
+  await page.goto(`${proposalUrl}&readOnly=1`);
+  await expect(page.getByRole('textbox', { name: 'Draft' })).toHaveAttribute('contenteditable', 'false');
+  await expect(page.getByRole('button', { name: 'Prepare example suggestion' })).toBeDisabled();
+  expect(errors).toEqual([]);
+});
+
+test('contains a failed revision capture without exposing its private cause or changing the draft', async ({ page }) => {
+  await page.addInitScript(() => {
+    crypto.subtle.digest = async () => { throw new Error('Private digest failure detail'); };
+  });
+  const errors = await openProposal(page);
+  await page.getByRole('button', { name: 'Prepare example suggestion' }).click();
+  await expect(page.getByRole('status')).toHaveText('The suggestion could not be used. Your draft is still here.');
+  await expect(page.getByRole('textbox', { name: 'Draft' })).toHaveText('Draft');
+  await expect(page.getByText('Private digest failure detail')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Prepare example suggestion' })).toBeEnabled();
+  expect(errors).toEqual([]);
+});

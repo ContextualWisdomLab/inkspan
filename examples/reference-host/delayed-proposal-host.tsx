@@ -103,7 +103,10 @@ export function DelayedProposalHost({ readOnly = false }: { readOnly?: boolean }
       <button type="button" onClick={() => { void prepareSuggestion(); }}>Prepare example suggestion</button>
       {proposal && <>
         <button type="button" onClick={() => { void applySuggestion(); }}>Apply suggestion</button>
-        <button type="button" onClick={() => { setProposal(null); setStatus('idle'); editorRef.current?.focus(); }}>Discard suggestion</button>
+        <button type="button" onClick={() => {
+          if (busyRef.current || readOnly) return;
+          setProposal(null); setStatus('idle'); editorRef.current?.focus();
+        }}>Discard suggestion</button>
       </>}
     </fieldset>
   </section>;
