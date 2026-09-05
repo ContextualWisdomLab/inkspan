@@ -126,6 +126,7 @@ describe('reference-host one-command journey contract', () => {
       packageAuthority: 'exact-packed-tarball',
       projects: ['chromium', 'firefox', 'webkit'],
       specs: [
+        'reference-host-recovery.browser.spec.ts',
         'reference-host-dirty-state.browser.spec.ts',
         'reference-host-forced-colors.print.browser.spec.ts',
         'reference-host-hydration.browser.spec.ts',

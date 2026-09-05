@@ -15,6 +15,10 @@ const alias = [
   ...(packedPackageRoot
     ? [
         {
+          find: '@contextualwisdomlab/cwl-editor/autosave',
+          replacement: resolve(packedPackageRoot, 'dist/cwl-autosave.js'),
+        },
+        {
           find: '@contextualwisdomlab/cwl-editor/styles.css',
           replacement: resolve(packedPackageRoot, 'dist/cwl-editor.css'),
         },

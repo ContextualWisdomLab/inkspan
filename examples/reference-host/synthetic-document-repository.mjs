@@ -548,12 +548,13 @@ function runUnknownFieldSelfTest() {
   );
 }
 
-if (process.argv.includes('--empty-document-self-test')) {
+const commandArguments = typeof process === 'undefined' ? [] : process.argv;
+if (commandArguments.includes('--empty-document-self-test')) {
   runEmptyDocumentSelfTest();
-} else if (process.argv.includes('--hostile-accessor-self-test')) {
+} else if (commandArguments.includes('--hostile-accessor-self-test')) {
   runHostileAccessorSelfTest();
-} else if (process.argv.includes('--unknown-field-self-test')) {
+} else if (commandArguments.includes('--unknown-field-self-test')) {
   runUnknownFieldSelfTest();
-} else if (process.argv.includes('--self-test')) {
+} else if (commandArguments.includes('--self-test')) {
   runSelfTest();
 }
