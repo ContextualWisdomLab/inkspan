@@ -13,6 +13,7 @@ declare global {
     referenceHostSubmissions: string[];
     referenceHostResolveSubmission?: () => void;
     referenceHostSavedDocuments: () => { original: string; originalValidator: string; copies: string[] };
+    referenceHostSaveElsewhere: (document: string) => void;
   }
 }
 
@@ -46,6 +47,10 @@ window.referenceHostSavedDocuments = () => {
   const original = repository.read(documentId);
   return { original: original.document, originalValidator: original.validator,
     copies: savedCopies.map((copy) => copy.repository.read(copy.documentId).document) };
+};
+// Local test-host fault injection; no transport or production storage authority.
+window.referenceHostSaveElsewhere = (document) => {
+  repository.save({ documentId, document, ifMatch: repository.read(documentId).validator });
 };
 const deferSubmission = searchParams.get('deferSubmission') === '1';
 const controlMode =

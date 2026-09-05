@@ -234,7 +234,7 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
       const saved = activeDocument.repository.read(activeDocument.documentId);
       const draft = editor.getDocumentEnvelopeJson(limits);
       const generation = generationRef.current;
-      if (!window.confirm('Use the saved version? This will replace your unsaved changes. Cancel to keep editing or save your draft as a separate copy first.')) return;
+      if (!window.confirm('Use the saved version? This will replace your unsaved changes. Cancel to keep editing or save your draft as a separate copy instead.')) return;
       // ponytail: confirmation and this store are synchronous. An asynchronous
       // host needs local If-Match restore plus its own durable-state revalidation.
       if (!mountedRef.current || sessionRef.current !== session || generationRef.current !== generation ||

@@ -111,6 +111,7 @@ test('keeps recovery usable at 320px with keyboard and forced colors; read-only 
   await page.goto(`${recoveryUrl}&readOnly=1`);
   await expect(page.getByRole('textbox')).toHaveAttribute('contenteditable', 'false');
   await expect(page.getByLabel('Next save in this demo')).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Use saved version', exact: true })).toHaveCount(0);
   expect((await savedDocuments(page)).originalValidator).toBe('"v1"');
   expect(errors).toEqual([]);
 });
@@ -236,5 +237,129 @@ test('uses the saved version only after confirmation and resumes saving against 
   await expect(page.getByRole('status')).toHaveText('All changes saved in this demo.');
   expect((await savedDocuments(page)).original).toContain('Edit after restoring saved version');
   expect((await savedDocuments(page)).originalValidator).toBe('"v3"');
+  expect(errors).toEqual([]);
+});
+
+test('restores rich saved content without rewriting storage and remains usable at 320px with forced colors', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 780 });
+  await page.emulateMedia({ forcedColors: 'active' });
+  const errors = await openRecovery(page, '&savedDraft=1', 'Saved headingPreviously saved draft');
+  const savedBefore = await savedDocuments(page);
+  await page.getByLabel('Next save in this demo').selectOption('failure');
+  await replaceDraft(page, 'Unsaved replacement');
+  const restoreButton = page.getByRole('button', { name: 'Use saved version', exact: true });
+  await expect(restoreButton).toBeEnabled();
+  await restoreButton.focus();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath('restore-320-forced-colors.png'), fullPage: true });
+  // A reentrant click must not open a second confirmation before React renders.
+  await page.evaluate(() => {
+    const originalConfirm = window.confirm;
+    window.confirm = () => {
+      window.confirm = () => { throw new Error('Duplicate restore confirmation'); };
+      Array.from(document.querySelectorAll('button')).find((button) => button.textContent === 'Use saved version')?.click();
+      window.confirm = originalConfirm;
+      return true;
+    };
+  });
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status')).toHaveText('Saved version opened. You can continue editing.');
+  await expect(page.getByRole('textbox').getByRole('heading', { name: 'Saved heading', level: 2 })).toBeVisible();
+  await expect(page.getByRole('textbox').locator('strong')).toHaveText('Previously saved draft');
+  expect(await savedDocuments(page)).toEqual(savedBefore);
+  expect(errors).toEqual([]);
+});
+
+test('refuses a saved version that changes during confirmation and rereads on the next attempt', async ({ page }) => {
+  const errors = await openRecovery(page);
+  await page.getByLabel('Next save in this demo').selectOption('failure');
+  await replaceDraft(page, 'Keep this local draft');
+  const restoreButton = page.getByRole('button', { name: 'Use saved version', exact: true });
+  await expect(restoreButton).toBeEnabled();
+  await page.evaluate(() => {
+    const originalConfirm = window.confirm;
+    window.confirm = () => {
+      window.confirm = originalConfirm;
+      window.referenceHostSaveElsewhere(window.referenceHostSavedDocuments().original.replace('Draft', 'New saved content'));
+      return true;
+    };
+  });
+  await restoreButton.click();
+  await expect(page.getByRole('status')).toHaveText('The draft or saved version changed. Nothing was replaced; try again.');
+  await expect(page.getByRole('textbox')).toHaveText('Keep this local draft');
+  const savedAfter = await savedDocuments(page);
+  expect(savedAfter.original).toContain('New saved content');
+  page.once('dialog', (dialog) => dialog.accept());
+  await restoreButton.click();
+  await expect(page.getByRole('textbox')).toHaveText('New saved content');
+  expect(await savedDocuments(page)).toEqual(savedAfter);
+  expect(errors).toEqual([]);
+});
+
+test('preserves a local edit made during confirmation', async ({ page }) => {
+  const errors = await openRecovery(page);
+  await page.getByLabel('Next save in this demo').selectOption('failure');
+  await replaceDraft(page, 'Keep this local draft');
+  const restoreButton = page.getByRole('button', { name: 'Use saved version', exact: true });
+  await expect(restoreButton).toBeEnabled();
+  const savedBefore = await savedDocuments(page);
+  await page.evaluate(() => {
+    const originalConfirm = window.confirm;
+    window.confirm = () => {
+      window.confirm = originalConfirm;
+      document.querySelector<HTMLElement>('[role="textbox"]')?.focus();
+      document.execCommand('selectAll');
+      document.execCommand('insertText', false, 'New local edit during confirmation');
+      return true;
+    };
+  });
+  await restoreButton.click();
+  await expect(page.getByRole('status')).toHaveText('The draft or saved version changed. Nothing was replaced; try again.');
+  await expect(page.getByRole('textbox')).toHaveText('New local edit during confirmation');
+  expect(await savedDocuments(page)).toEqual(savedBefore);
+  expect(errors).toEqual([]);
+});
+
+for (const invalidSaved of ['Invalid saved content', JSON.stringify({ schemaId: 'https://contextualwisdomlab.github.io/inkspan/document-envelope', schemaVersion: 1, documentJson: { type: 'unknown-node' } })]) {
+  test(`preserves the draft when the saved version is rejected: ${invalidSaved.startsWith('{') ? 'schema' : 'json'}`, async ({ page }) => {
+    const errors = await openRecovery(page);
+    await page.getByLabel('Next save in this demo').selectOption('failure');
+    await replaceDraft(page, 'Keep my recoverable draft');
+    const restoreButton = page.getByRole('button', { name: 'Use saved version', exact: true });
+    await expect(restoreButton).toBeEnabled();
+    const originalSaved = (await savedDocuments(page)).original;
+    await page.evaluate((value) => window.referenceHostSaveElsewhere(value), invalidSaved);
+    page.once('dialog', (dialog) => dialog.accept());
+    await restoreButton.click();
+    await expect(page.getByRole('status')).toHaveText('The saved version could not be opened. Your draft is still here.');
+    await expect(page.getByRole('textbox')).toHaveText('Keep my recoverable draft');
+    expect((await savedDocuments(page)).original).toBe(invalidSaved);
+    await page.evaluate((value) => window.referenceHostSaveElsewhere(value), originalSaved);
+    page.once('dialog', (dialog) => dialog.accept());
+    await restoreButton.click();
+    await expect(page.getByRole('textbox')).toHaveText('Draft');
+    expect((await savedDocuments(page)).originalValidator).toBe('"v3"');
+    expect(errors).toEqual([]);
+  });
+}
+
+test('restores the active separate copy without reading or overwriting the original', async ({ page }) => {
+  const errors = await openRecovery(page);
+  await page.getByLabel('Next save in this demo').selectOption('conflict');
+  await replaceDraft(page, 'Saved in my copy');
+  await page.getByRole('button', { name: 'Save my draft as a separate copy' }).click();
+  await expect(page.getByRole('status')).toContainText('Separate copy saved');
+  const savedBefore = await savedDocuments(page);
+  await page.getByLabel('Next save in this demo').selectOption('failure');
+  await replaceDraft(page, 'Unsaved edit to my copy');
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Use saved version', exact: true }).click();
+  await expect(page.getByRole('textbox')).toHaveText('Saved in my copy');
+  expect(await savedDocuments(page)).toEqual(savedBefore);
+  await replaceDraft(page, 'Continue editing my restored copy');
+  await expect(page.getByRole('status')).toHaveText('All changes saved in this demo.');
+  expect((await savedDocuments(page)).copies).toHaveLength(1);
+  expect((await savedDocuments(page)).copies[0]).toContain('Continue editing my restored copy');
+  expect((await savedDocuments(page)).original).toBe(savedBefore.original);
   expect(errors).toEqual([]);
 });
