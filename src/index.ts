@@ -1,7 +1,7 @@
 /**
  * @contextualwisdomlab/cwl-editor
  *
- * Commercial-grade Markdown + HTML WYSIWYG editor built on TipTap v2
+ * Commercial-grade Markdown + HTML WYSIWYG editor built on TipTap v3
  * (ProseMirror, MIT), with inline base64 images and a standalone base64
  * converter.
  *
