@@ -49,6 +49,12 @@ const alias = [
 ];
 
 export default defineConfig({
+  server: {
+    fs: {
+      strict: true,
+      allow: [repositoryRoot, ...(packedPackageRoot ? [packedPackageRoot] : [])],
+    },
+  },
   optimizeDeps: {
     entries: [
       'tests/browser/harness.html',

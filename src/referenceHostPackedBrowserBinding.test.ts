@@ -76,5 +76,7 @@ describe('reference-host packed browser binding', () => {
     expect(verifier).toContain('installedDependencyClosure: true');
     expect(viteConfig).toContain("['react', 'react-dom']");
     expect(viteConfig).toContain('packageRequire.resolve(`${peerName}/package.json`)');
+    expect(viteConfig).toContain('strict: true');
+    expect(viteConfig).toContain('allow: [repositoryRoot, ...(packedPackageRoot ? [packedPackageRoot] : [])]');
   });
 });

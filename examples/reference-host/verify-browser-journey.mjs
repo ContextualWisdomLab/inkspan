@@ -59,7 +59,7 @@ function run(commandName, args, options = {}) {
     result.signal !== null ||
     result.status !== 0
   ) {
-    throw new Error('Reference-host browser journey verification failed.');
+    throw new Error(`Reference-host browser journey failed at ${commandName} ${args[0]} (exit ${result.status}, signal ${result.signal}, launch ${result.error?.code ?? 'ok'}).`);
   }
 
   return result.stdout;
