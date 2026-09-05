@@ -1,4 +1,8 @@
 import { Marked } from 'marked';
+import {
+  assertMarkdownToHtmlInputSize,
+  resolveMarkdownToHtmlMaxBytes,
+} from './markdownToHtmlResourcePolicy.js';
 import { htmlToMarkdown } from './serializer.js';
 
 const plainTextMarked = new Marked({
@@ -16,6 +20,13 @@ const BLOCK_TOKEN_TYPES = new Set([
   'space',
   'table',
 ]);
+
+const PLAIN_TEXT_OPTION_KEYS = new Set([
+  'includeImageAlt',
+  'maxMarkdownBytes',
+  'maxHtmlBytes',
+]);
+const INVALID_PLAIN_TEXT_OPTIONS_MESSAGE = 'plain-text options are invalid.';
 
 interface PlainTextToken {
   type: string;
@@ -60,6 +71,12 @@ interface PlainTextSegment {
   value: string;
 }
 
+interface ResolvedPlainTextOptions {
+  includeImageAlt: boolean;
+  maxMarkdownBytes: number | undefined;
+  maxHtmlBytes: number | undefined;
+}
+
 /** Options for Markdown/HTML plain-text projection. */
 export interface PlainTextOptions {
   /**
@@ -67,6 +84,67 @@ export interface PlainTextOptions {
    * Decorative images with an empty alternative remain silent.
    */
   includeImageAlt?: boolean;
+  /**
+   * Maximum UTF-8 Markdown bytes accepted before plain-text lexing.
+   * Defaults to 16 MiB; values above the 64 MiB hard maximum are rejected.
+   */
+  maxMarkdownBytes?: number;
+  /**
+   * Maximum UTF-8 HTML bytes accepted before HTML normalization by
+   * `htmlToPlainText`. Defaults to 16 MiB; values above the 64 MiB hard
+   * maximum are rejected.
+   */
+  maxHtmlBytes?: number;
+}
+
+/**
+ * Read the public option bag without executing caller accessors or silently
+ * accepting misspelled/unknown keys. Resource-limit values are copied without
+ * reinterpretation so their existing policy modules retain error authority.
+ */
+function resolvePlainTextOptions(options: unknown): ResolvedPlainTextOptions {
+  let values: Record<string, unknown>;
+  try {
+    if (
+      typeof options !== 'object' ||
+      options === null ||
+      Array.isArray(options)
+    ) {
+      throw new TypeError('invalid options container');
+    }
+
+    const prototype = Object.getPrototypeOf(options);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new TypeError('invalid options prototype');
+    }
+
+    values = Object.create(null) as Record<string, unknown>;
+    for (const key of Reflect.ownKeys(options)) {
+      if (typeof key !== 'string' || !PLAIN_TEXT_OPTION_KEYS.has(key)) {
+        throw new TypeError('unknown option');
+      }
+      const descriptor = Object.getOwnPropertyDescriptor(options, key);
+      if (!descriptor?.enumerable || !('value' in descriptor)) {
+        throw new TypeError('invalid option property');
+      }
+      values[key] = descriptor.value;
+    }
+
+    if (
+      values.includeImageAlt !== undefined &&
+      typeof values.includeImageAlt !== 'boolean'
+    ) {
+      throw new TypeError('invalid image alternative policy');
+    }
+  } catch {
+    throw new RangeError(INVALID_PLAIN_TEXT_OPTIONS_MESSAGE);
+  }
+
+  return {
+    includeImageAlt: values.includeImageAlt !== false,
+    maxMarkdownBytes: values.maxMarkdownBytes as number | undefined,
+    maxHtmlBytes: values.maxHtmlBytes as number | undefined,
+  };
 }
 
 /**
@@ -76,15 +154,21 @@ export interface PlainTextOptions {
  * The projection keeps authored reading order, paragraph boundaries, explicit
  * line breaks, code text, list structure, table cells, link labels, and image
  * alternative text. Raw HTML blocks and link-definition records are omitted
- * instead of interpreted.
+ * instead of interpreted. The Markdown byte ceiling is enforced before Marked
+ * materializes lexer tokens.
  */
 export function markdownToPlainText(
   markdown: string,
   options: PlainTextOptions = {},
 ): string {
+  const resolvedOptions = resolvePlainTextOptions(options);
+  const maxMarkdownBytes = resolveMarkdownToHtmlMaxBytes(
+    resolvedOptions.maxMarkdownBytes,
+  );
+  assertMarkdownToHtmlInputSize(markdown, maxMarkdownBytes);
   const tokens = plainTextMarked.lexer(markdown) as unknown as PlainTextToken[];
   const state: PlainTextRenderState = {
-    includeImageAlt: options.includeImageAlt !== false,
+    includeImageAlt: resolvedOptions.includeImageAlt,
     listDepth: 0,
   };
   return normalizePlainText(renderTokenSequence(tokens, state));
@@ -95,16 +179,23 @@ export function markdownToPlainText(
  * HTML-to-Markdown normalization boundary.
  *
  * Element names, attributes, hyperlink destinations, and image sources are not
- * emitted. Image alternative text is included unless explicitly disabled.
+ * emitted. Image alternative text is included unless explicitly disabled. The
+ * HTML ceiling applies before normalization and the Markdown ceiling applies
+ * to the normalized Markdown before plain-text lexing.
  */
 export function htmlToPlainText(
   html: string,
   options: PlainTextOptions = {},
 ): string {
-  return markdownToPlainText(
-    htmlToMarkdown(html, { includeImageAlt: options.includeImageAlt }),
-    options,
-  );
+  const resolvedOptions = resolvePlainTextOptions(options);
+  const markdown = htmlToMarkdown(html, {
+    includeImageAlt: resolvedOptions.includeImageAlt,
+    maxHtmlBytes: resolvedOptions.maxHtmlBytes,
+  });
+  return markdownToPlainText(markdown, {
+    includeImageAlt: resolvedOptions.includeImageAlt,
+    maxMarkdownBytes: resolvedOptions.maxMarkdownBytes,
+  });
 }
 
 /** Render an ordered token sequence while preserving block boundaries. */
