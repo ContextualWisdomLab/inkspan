@@ -30,6 +30,8 @@ describe('reference-host Office execution acceptance', () => {
     expect(verifier).toContain('createReferenceDocxRequest');
     expect(verifier).not.toContain('createDocxHandoff');
     expect(verifier).toContain("'-m', 'inkspan_office.cli'");
+    expect(verifier).toContain("'office/.venv'");
+    expect(verifier).not.toContain("|| 'python'");
     expect(verifier).toContain('document.core_properties.title');
     expect(verifier).toContain('Buyer-ready body.');
     expect(verifier).toContain('mkdtemp');
