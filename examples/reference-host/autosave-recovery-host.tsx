@@ -236,6 +236,7 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
               maxJsonTextCodeUnits: MAX_DOCUMENT_CODE_UNITS,
               maxStringCodeUnits: MAX_DOCUMENT_CODE_UNITS,
             });
+            confirmedDocumentRef.current = serializeDocumentEnvelope(createDocumentEnvelope(editor.getJSON()));
             editorReadyRef.current = true;
             setEditorReady(true);
             setViewState('clean');

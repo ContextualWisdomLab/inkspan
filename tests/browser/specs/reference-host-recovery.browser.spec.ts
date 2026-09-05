@@ -153,6 +153,7 @@ test('ignores an older digest that settles after a newer draft has saved', async
   await page.getByRole('textbox').fill('Older slow draft');
   await expect.poll(() => page.evaluate(() => typeof (window as Window & { releaseOldDigest?: () => void }).releaseOldDigest)).toBe('function');
   await page.getByRole('textbox').fill('Newer fast draft');
+  await expect(page.getByRole('textbox')).toHaveText('Newer fast draft');
   await expect(page.getByRole('status')).toHaveText('All changes saved in this demo.');
   await page.evaluate(() => (window as Window & { releaseOldDigest?: () => void }).releaseOldDigest?.());
   await expect.poll(() => page.evaluate(() => (window as Window & { oldDigestFinished?: boolean }).oldDigestFinished)).toBe(true);
@@ -186,6 +187,7 @@ test('opens the stored rich document before enabling edits without rewriting it'
   await expect(page.getByRole('textbox').locator('strong')).toHaveText('Previously saved draft');
   await expect(page.getByRole('status')).toHaveText('All changes saved in this demo.');
   expect((await savedDocuments(page)).originalValidator).toBe('"v1"');
+  expect((await savedDocuments(page)).original).toContain('\n');
   expect(errors).toEqual([]);
 });
 

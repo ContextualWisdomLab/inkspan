@@ -29,14 +29,17 @@ const readOnly = searchParams.get('readOnly') === '1';
 const recoveryJourney = searchParams.get('journey') === 'recovery';
 const documentId = 'reference-draft';
 const savedDraft = searchParams.get('savedDraft');
-const repository = createSyntheticDocumentRepository({
-  documentId,
-  initialDocument: savedDraft === 'invalid' ? 'Invalid stored draft' : serializeDocumentEnvelope(createDocumentEnvelope({
+const initialEnvelope = createDocumentEnvelope({
     type: 'doc', content: savedDraft === '1' ? [
       { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Saved heading' }] },
       { type: 'paragraph', content: [{ type: 'text', text: 'Previously saved draft', marks: [{ type: 'bold' }] }] },
     ] : [{ type: 'paragraph', content: [{ type: 'text', text: 'Draft' }] }],
-  })),
+});
+const repository = createSyntheticDocumentRepository({
+  documentId,
+  initialDocument: savedDraft === 'invalid' ? 'Invalid stored draft'
+    : savedDraft === '1' ? JSON.stringify(initialEnvelope, null, 2)
+      : serializeDocumentEnvelope(initialEnvelope),
 });
 const savedCopies: Array<{ documentId: string; repository: typeof repository }> = [];
 window.referenceHostSavedDocuments = () => {
