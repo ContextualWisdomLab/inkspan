@@ -1,15 +1,18 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
   existsSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmSync,
+  writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const referenceHostDirectory = dirname(fileURLToPath(import.meta.url));
@@ -86,19 +89,26 @@ function verifyBrowserJourney() {
     );
     assert.equal(tarballs.length, 1, 'Expected exactly one packed Inkspan tarball.');
 
-    const extractedDirectory = join(temporaryRoot, 'package');
-    mkdirSync(extractedDirectory, { recursive: true });
-    run(
-      'tar',
-      [
-        '-xzf',
-        join(packDirectory, tarballs[0]),
-        '--strip-components=1',
-        '-C',
-        extractedDirectory,
-      ],
-      { timeout: 60_000 },
-    );
+    const tarballPath = join(packDirectory, tarballs[0]);
+    const packageSha256 = createHash('sha256').update(readFileSync(tarballPath)).digest('hex');
+    const consumerDirectory = join(temporaryRoot, 'consumer');
+    mkdirSync(consumerDirectory);
+    // Match the existing isolated SSR consumer: install the packed artifact and
+    // its declared dependency closure, never resolve dependencies from source.
+    writeFileSync(join(consumerDirectory, 'package.json'), JSON.stringify({
+      name: 'inkspan-reference-browser-consumer',
+      private: true,
+      type: 'module',
+      packageManager: packageMetadata.packageManager,
+      dependencies: {
+        [packageMetadata.name]: `file:${tarballPath}`,
+        react: packageMetadata.devDependencies.react,
+        'react-dom': packageMetadata.devDependencies['react-dom'],
+      },
+    }));
+    run('pnpm', ['install', '--prefer-offline', '--ignore-scripts', '--no-frozen-lockfile'], { cwd: consumerDirectory });
+    const extractedDirectory = realpathSync(join(consumerDirectory, 'node_modules', ...packageMetadata.name.split('/')));
+    assert.ok(extractedDirectory.startsWith(`${realpathSync(consumerDirectory)}${sep}`), 'Installed package escaped the isolated consumer.');
 
     const extractedMetadata = JSON.parse(
       readFileSync(join(extractedDirectory, 'package.json'), 'utf8'),
@@ -143,6 +153,8 @@ function verifyBrowserJourney() {
     writeJson({
       contractVersion: 1,
       packageAuthority: 'exact-packed-tarball',
+      packageSha256,
+      installedDependencyClosure: true,
       projects: projects.length,
       specs: specs.length,
       status: 'completed',

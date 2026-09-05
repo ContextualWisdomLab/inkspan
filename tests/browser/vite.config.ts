@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { createRequire } from 'node:module';
 import { defineConfig } from 'vite';
 
 const browserDirectory = dirname(fileURLToPath(import.meta.url));
@@ -11,7 +12,12 @@ const packageEntry = configuredPackageEntry
 const packedPackageRoot = configuredPackageEntry
   ? resolve(dirname(packageEntry), '..')
   : null;
+const packageRequire = createRequire(packageEntry);
 const alias = [
+  ...(packedPackageRoot ? ['react', 'react-dom'].map((peerName) => ({
+    find: peerName,
+    replacement: dirname(packageRequire.resolve(`${peerName}/package.json`)),
+  })) : []),
   ...(packedPackageRoot
     ? [
         {

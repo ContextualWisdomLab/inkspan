@@ -67,4 +67,14 @@ describe('reference-host packed browser binding', () => {
       "'examples/reference-host/browser-host.html'",
     );
   });
+
+  it('installs packed runtime dependencies and shares one consumer-owned React instance with the host', () => {
+    const verifier = repositoryFile('examples/reference-host/verify-browser-journey.mjs');
+    const viteConfig = repositoryFile('tests/browser/vite.config.ts');
+    expect(verifier).toContain("['install', '--prefer-offline', '--ignore-scripts', '--no-frozen-lockfile']");
+    expect(verifier).toContain('file:${tarballPath}');
+    expect(verifier).toContain('installedDependencyClosure: true');
+    expect(viteConfig).toContain("['react', 'react-dom']");
+    expect(viteConfig).toContain('packageRequire.resolve(`${peerName}/package.json`)');
+  });
 });
