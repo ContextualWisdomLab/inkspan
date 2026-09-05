@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import {
   existsSync,
   mkdirSync,
@@ -11,6 +11,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { promisify } from 'node:util';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -30,23 +31,23 @@ const packageDirectory = join(
   ...packageMetadata.name.split('/'),
 );
 
-function run(command: string, argumentsList: string[], cwd = repositoryRoot) {
-  return execFileSync(command, argumentsList, {
+async function run(command: string, argumentsList: string[], cwd = repositoryRoot) {
+  const { stdout } = await promisify(execFile)(command, argumentsList, {
     cwd,
     encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
     timeout: 180_000,
   });
+  return stdout;
 }
 
 beforeAll(
-  () => {
-    run('pnpm', ['build']);
+  async () => {
+    await run('pnpm', ['build']);
     mkdirSync(extractionDirectory, { recursive: true });
     mkdirSync(dirname(packageDirectory), { recursive: true });
 
     const packResult = JSON.parse(
-      run('npm', [
+      await run('npm', [
         'pack',
         '--json',
         '--ignore-scripts',
@@ -61,7 +62,7 @@ beforeAll(
 
     const tarballPath = join(temporaryRoot, packResult[0]!.filename);
     expect(existsSync(tarballPath)).toBe(true);
-    run('tar', ['-xzf', tarballPath, '-C', extractionDirectory]);
+    await run('tar', ['-xzf', tarballPath, '-C', extractionDirectory]);
     renameSync(join(extractionDirectory, 'package'), packageDirectory);
     writeFileSync(
       join(consumerDirectory, 'package.json'),
@@ -86,7 +87,7 @@ describe('reference-host framework-free packed package boundary', () => {
     ).toEqual(['cwl-editor']);
   });
 
-  it('executes the packed autosave, converter, and Markdown ESM subpaths without React, TipTap, Yjs, browser, network, credential, or model dependencies', () => {
+  it('executes the packed autosave, converter, and Markdown ESM subpaths without React, TipTap, Yjs, browser, network, credential, or model dependencies', async () => {
     const consumerPath = join(consumerDirectory, 'consumer.mjs');
     writeFileSync(
       consumerPath,
@@ -124,10 +125,10 @@ for (const specifier of ['autosave', 'converter', 'markdown']) {
       'utf8',
     );
 
-    expect(() => run(process.execPath, [consumerPath], consumerDirectory)).not.toThrow();
+    await expect(run(process.execPath, [consumerPath], consumerDirectory)).resolves.toBe('');
   });
 
-  it('executes the same packed CommonJS subpaths without installing framework dependencies', () => {
+  it('executes the same packed CommonJS subpaths without installing framework dependencies', async () => {
     const consumerPath = join(consumerDirectory, 'consumer.cjs');
     writeFileSync(
       consumerPath,
@@ -162,6 +163,6 @@ for (const specifier of ['autosave', 'converter', 'markdown']) {
       'utf8',
     );
 
-    expect(() => run(process.execPath, [consumerPath], consumerDirectory)).not.toThrow();
+    await expect(run(process.execPath, [consumerPath], consumerDirectory)).resolves.toBe('');
   });
 });

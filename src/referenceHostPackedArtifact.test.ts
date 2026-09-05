@@ -1,6 +1,7 @@
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { promisify } from 'node:util';
 
 import { describe, expect, it } from 'vitest';
 
@@ -16,11 +17,10 @@ const packageMetadata = JSON.parse(
 describe('reference-host packed artifact acceptance', () => {
   it(
     'builds, packs, installs, and SSR-imports the exact tarball in an isolated consumer',
-    () => {
-      const output = execFileSync(process.execPath, [verifierPath], {
+    async () => {
+      const { stdout: output } = await promisify(execFile)(process.execPath, [verifierPath], {
         cwd: repositoryRoot,
         encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'pipe'],
         timeout: 180_000,
       });
 
