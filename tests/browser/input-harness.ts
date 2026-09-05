@@ -3,10 +3,11 @@ import { createElement, createRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   createDocumentEnvelope,
-  createDocumentEnvelopeRevision,
+  createDocumentEnvelopeRevisionEvidence,
   CwlEditor,
   type CwlEditorHandle,
 } from 'inkspan-browser-under-test';
+import { createDocumentAutosaveQueue } from 'inkspan-autosave-under-test';
 import '../../src/styles.css';
 
 declare global {
@@ -15,6 +16,7 @@ declare global {
       getHtml: () => string;
       getDocumentChanges: () => string[];
       getDocumentChangeRevisionTags: () => Promise<string[]>;
+      getAutosaveRevisionTags: () => Promise<string[]>;
       getRevisionTag: () => Promise<string>;
       getText: () => string;
       isComposing: () => boolean;
@@ -42,6 +44,15 @@ let editable = true;
 let controlledHtml = '';
 const documentChanges: string[] = [];
 const documentChangeRevisionTags: Promise<string>[] = [];
+const autosaveRevisionTags: string[] = [];
+const autosaveQueue = searchParams.get('autosave') === '1'
+  ? createDocumentAutosaveQueue({
+      save: (evidence) => {
+        autosaveRevisionTags.push(evidence.revision.strongEntityTag);
+        return { status: 'saved' };
+      },
+    })
+  : null;
 const editorHandle = createRef<CwlEditorHandle>();
 let root = createRoot(element);
 
@@ -62,9 +73,12 @@ const renderEditor = () => {
       onDocumentChange: ({ snapshot }) => {
         documentChanges.push(snapshot.value);
         documentChangeRevisionTags.push(
-          createDocumentEnvelopeRevision(
+          createDocumentEnvelopeRevisionEvidence(
             createDocumentEnvelope(snapshot.documentJson),
-          ).then((revision) => revision.strongEntityTag),
+          ).then(async (evidence) => {
+            await autosaveQueue?.enqueue(evidence);
+            return evidence.revision.strongEntityTag;
+          }),
         );
       },
       onReady: (instance: Editor) => {
@@ -88,6 +102,11 @@ window.inkspanInputHarness = Object.freeze({
   getDocumentChanges: () => [...documentChanges],
   getDocumentChangeRevisionTags: () =>
     Promise.all(documentChangeRevisionTags),
+  getAutosaveRevisionTags: async () => {
+    await Promise.all(documentChangeRevisionTags);
+    await autosaveQueue?.flush();
+    return [...autosaveRevisionTags];
+  },
   getRevisionTag: async () =>
     (await editorHandle.current?.getDocumentEnvelopeRevision())
       ?.strongEntityTag ?? '',

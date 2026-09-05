@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 type InputHarness = {
   getDocumentChanges: () => string[];
   getDocumentChangeRevisionTags: () => Promise<string[]>;
+  getAutosaveRevisionTags: () => Promise<string[]>;
   getHtml: () => string;
   getRevisionTag: () => Promise<string>;
   getText: () => string;
@@ -225,7 +226,7 @@ test('tracks a synthetic composition lifecycle without inventing OS IME evidence
 test('publishes the composed revision before applying a newer controlled value', async ({
   page,
 }) => {
-  await page.goto('/tests/browser/input-harness.html?controlled=1');
+  await page.goto('/tests/browser/input-harness.html?controlled=1&autosave=1');
 
   const editable = page.locator('.ProseMirror');
   await editable.click();
@@ -247,6 +248,11 @@ test('publishes the composed revision before applying a newer controlled value',
     ),
   ).toBe(true);
 
+  const expectedComposedTag = await page.evaluate(() =>
+    (window.inkspanInputHarness as InputHarness).getRevisionTag(),
+  );
+  expect(expectedComposedTag).toMatch(/^"sha256-[0-9a-f]{64}"$/u);
+
   expect(
     await page.evaluate(() =>
       (window.inkspanInputHarness as InputHarness).setControlledHtml(
@@ -265,6 +271,11 @@ test('publishes the composed revision before applying a newer controlled value',
       (window.inkspanInputHarness as InputHarness).getDocumentChangeRevisionTags(),
     ),
   ).toEqual([]);
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).getAutosaveRevisionTags(),
+    ),
+  ).toEqual([]);
 
   await editable.evaluate((element) => {
     element.dispatchEvent(
@@ -279,16 +290,22 @@ test('publishes the composed revision before applying a newer controlled value',
       ),
     )
     .toEqual(['<p>작성 중</p>']);
-  const [composedRevisionTag] = await page.evaluate(() =>
-    (window.inkspanInputHarness as InputHarness).getDocumentChangeRevisionTags(),
-  );
-  expect(composedRevisionTag).toMatch(/^"sha256-[0-9a-f]{64}"$/u);
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).getDocumentChangeRevisionTags(),
+    ),
+  ).toEqual([expectedComposedTag]);
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).getAutosaveRevisionTags(),
+    ),
+  ).toEqual([expectedComposedTag]);
   await expect(editable).toHaveText('저장된 개정');
   expect(
     await page.evaluate(() =>
       (window.inkspanInputHarness as InputHarness).getRevisionTag(),
     ),
-  ).not.toBe(composedRevisionTag);
+  ).not.toBe(expectedComposedTag);
   await expect(
     page.locator('[data-inkspan-form-field][name="message_body"]'),
   ).toHaveValue('<p>저장된 개정</p>');
