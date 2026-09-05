@@ -1,5 +1,5 @@
 import { DOMParser as ProseMirrorDOMParser } from '@tiptap/pm/model';
-import type { Editor } from '@tiptap/react';
+import type { Editor } from '@tiptap/core';
 import type { EditorMode } from '../types.js';
 import { editorValueToHtml } from './editorSerialization.js';
 
