@@ -118,6 +118,7 @@ export function LocalCollaborationHost({ readOnly = false, onEvent }: {
     }
   }
 
+  const connectionStatus = status === 'connected' ? 'connected' : status === 'denied' ? 'disconnected' : undefined;
   return <section className="reference-recovery" aria-labelledby="collaboration-heading">
     <h2 id="collaboration-heading">Try a local collaboration session</h2>
     <p>Both views run in this tab. Nothing is sent to another person or saved; closing the session or reloading removes the drafts.</p>
@@ -133,10 +134,10 @@ export function LocalCollaborationHost({ readOnly = false, onEvent }: {
     {session && <>
       <h3>Your draft</h3>
       <CollaborativeCwlEditor document={session.lifecycle.document} ariaLabel="Your draft" editable={!readOnly}
-        connectionStatus={status === 'connected' ? 'connected' : 'disconnected'} />
+        connectionStatus={connectionStatus} />
       <h3>Other local view</h3>
       <CollaborativeCwlEditor document={session.peer} ariaLabel="Other local view" editable={false} hideToolbar
-        connectionStatus={status === 'connected' ? 'connected' : 'disconnected'} />
+        connectionStatus={connectionStatus} />
     </>}
   </section>;
 }

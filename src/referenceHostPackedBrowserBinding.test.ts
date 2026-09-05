@@ -68,7 +68,7 @@ describe('reference-host packed browser binding', () => {
     );
   });
 
-  it('installs packed runtime dependencies and shares one consumer-owned React instance with the host', () => {
+  it('installs packed runtime dependencies and shares consumer-owned React and Yjs instances with the host', () => {
     const verifier = repositoryFile('examples/reference-host/verify-browser-journey.mjs');
     const viteConfig = repositoryFile('tests/browser/vite.config.ts');
     expect(verifier).toContain("['install', '--prefer-offline', '--ignore-scripts', '--no-frozen-lockfile']");
@@ -77,7 +77,9 @@ describe('reference-host packed browser binding', () => {
     expect(verifier).toContain("'--reporter=json'");
     expect(verifier).toContain("['unexpected', 'skipped', 'flaky']");
     expect(verifier).toContain('tests: browserReport.stats');
-    expect(viteConfig).toContain("['react', 'react-dom']");
+    expect(viteConfig).toContain("['react', 'react-dom', 'yjs']");
+    expect(viteConfig).toContain("find: '@contextualwisdomlab/cwl-editor/collaboration'");
+    expect(viteConfig).toContain("resolve(packedPackageRoot, 'dist/cwl-collaboration.js')");
     expect(viteConfig).toContain('packageRequire.resolve(`${peerName}/package.json`)');
     expect(viteConfig).toContain('strict: true');
     expect(viteConfig).toContain('allow: [repositoryRoot, ...(packedPackageRoot ? [packedPackageRoot] : [])]');
