@@ -139,16 +139,25 @@ function verifyBrowserJourney() {
       'test',
       '--config',
       'playwright.config.ts',
+      '--reporter=json',
       ...specs,
       ...projects.flatMap((project) => ['--project', project]),
     ];
+    const browserReportPath = join(temporaryRoot, 'browser-report.json');
     run('pnpm', playwrightArgs, {
       env: {
         ...process.env,
         INKSPAN_BROWSER_PACKAGE_ENTRY: packageEntry,
+        PLAYWRIGHT_JSON_OUTPUT_FILE: browserReportPath,
       },
       timeout: 300_000,
     });
+    const browserReport = JSON.parse(readFileSync(browserReportPath, 'utf8'));
+    assert.deepEqual(browserReport.errors, []);
+    assert.ok(browserReport.stats.expected > 0, 'No browser journeys passed.');
+    for (const outcome of ['unexpected', 'skipped', 'flaky']) {
+      assert.equal(browserReport.stats[outcome], 0, `Browser journeys included ${outcome} tests.`);
+    }
 
     writeJson({
       contractVersion: 1,
@@ -157,6 +166,7 @@ function verifyBrowserJourney() {
       installedDependencyClosure: true,
       projects: projects.length,
       specs: specs.length,
+      tests: browserReport.stats,
       status: 'completed',
     });
   } finally {

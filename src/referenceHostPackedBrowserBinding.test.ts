@@ -74,6 +74,9 @@ describe('reference-host packed browser binding', () => {
     expect(verifier).toContain("['install', '--prefer-offline', '--ignore-scripts', '--no-frozen-lockfile']");
     expect(verifier).toContain('file:${tarballPath}');
     expect(verifier).toContain('installedDependencyClosure: true');
+    expect(verifier).toContain("'--reporter=json'");
+    expect(verifier).toContain("['unexpected', 'skipped', 'flaky']");
+    expect(verifier).toContain('tests: browserReport.stats');
     expect(viteConfig).toContain("['react', 'react-dom']");
     expect(viteConfig).toContain('packageRequire.resolve(`${peerName}/package.json`)');
     expect(viteConfig).toContain('strict: true');
