@@ -57,6 +57,7 @@ test('replaces an indeterminate connection without duplicate admission or stale 
   await page.getByLabel('Fail the next connection').check();
   await page.getByRole('button', { name: 'Start local session', exact: true }).evaluate((button: HTMLButtonElement) => { button.click(); button.click(); });
   await expect(page.locator('output')).toHaveText('The connection could not be confirmed. Reconnect to try again; your local draft is still here.');
+  await expect(page.locator('body')).not.toContainText('Disconnected');
   await expect(page.locator('body')).not.toContainText('private local connection fixture cause');
   expect((await events(page)).filter((event) => event.startsWith('provider:create:'))).toEqual(['provider:create:1']);
   await replaceDraft(page, 'Draft after uncertain connection');
