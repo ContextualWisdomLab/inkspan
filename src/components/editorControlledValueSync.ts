@@ -1,5 +1,5 @@
 import { DOMParser as ProseMirrorDOMParser } from '@tiptap/pm/model';
-import type { Editor } from '@tiptap/react';
+import type { Editor } from '@tiptap/core';
 import type { EditorMode } from '../types.js';
 import { editorValueToHtml } from './editorSerialization.js';
 
@@ -36,7 +36,7 @@ export function synchronizeControlledEditorValue(
   if (!previewState.doc.eq(requestedDocument)) return false;
 
   try {
-    editor.commands.setContent(requestedDocument, false);
+    editor.commands.setContent(requestedDocument, { emitUpdate: false });
   } catch {
     restoreLocalEditorState(editor, originalState);
     return false;

@@ -59,7 +59,9 @@ describe('revision-guarded restore reentrancy', () => {
       getPrototypeOf(target) {
         if (!changed) {
           changed = true;
-          editor.commands.setContent('<p>Reentrant newer document</p>', false);
+          editor.commands.setContent('<p>Reentrant newer document</p>', {
+            emitUpdate: false,
+          });
         }
         return Reflect.getPrototypeOf(target);
       },

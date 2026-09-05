@@ -46,8 +46,10 @@ describe('autonomous maintenance and acquisition documentation', () => {
 
   it('keeps release source readiness separate from registry operational acceptance', () => {
     const assessment = repositoryFile(assessmentPath);
+    const fitness = repositoryFile('docs/DOCUMENTATION_FITNESS.md');
 
     expect(assessment).toContain('protected manifests agree at `0.6.0`');
+    expect(fitness).toContain('release candidate manifests agree at `0.7.0`');
     expect(assessment).toContain(
       'Release-note reconciliation is protected through PR #138',
     );

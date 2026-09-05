@@ -102,6 +102,11 @@ for (const inputCase of structuredCommittedInputCases) {
     await page.evaluate((sourceHtml) => {
       (window.inkspanInputHarness as InputHarness).setHtml(sourceHtml);
     }, inputCase.sourceHtml);
+    expect(
+      await page.evaluate(() =>
+        (window.inkspanInputHarness as InputHarness).getDocumentChanges(),
+      ),
+    ).toEqual([]);
 
     const editable = page.locator('.ProseMirror');
     const target = page.locator(`.ProseMirror ${inputCase.selector}`).first();

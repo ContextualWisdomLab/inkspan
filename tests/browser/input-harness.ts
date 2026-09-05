@@ -132,6 +132,7 @@ window.inkspanInputHarness = Object.freeze({
     renderEditor();
     return true;
   },
-  setHtml: (html: string) => getEditor().commands.setContent(html, false),
+  setHtml: (html: string) =>
+    getEditor().commands.setContent(html, { emitUpdate: false }),
   undo: () => getEditor().commands.undo(),
 });

@@ -18,9 +18,15 @@ import {
 } from '../policy/safeLinkPolicy.js';
 
 export {
+  DEFAULT_SAFE_LINK_MAX_HREF_BYTES,
+  MAXIMUM_SAFE_LINK_MAX_HREF_BYTES,
   SafeLinkHrefError,
   isSafeLinkHref,
   validateSafeLinkHref,
+} from '../policy/safeLinkPolicy.js';
+export type {
+  SafeLinkHrefErrorCode,
+  SafeLinkValidationOptions,
 } from '../policy/safeLinkPolicy.js';
 
 /** ProseMirror plugin key for the direct-transaction safety boundary. */
