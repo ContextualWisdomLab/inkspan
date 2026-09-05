@@ -90,7 +90,10 @@ async function main() {
     }
     await writeFile(requestPath, `${JSON.stringify(request)}\n`, 'utf8');
 
-    const python = process.env.INKSPAN_OFFICE_PYTHON?.trim() || 'python';
+    const python = process.env.INKSPAN_OFFICE_PYTHON?.trim() || resolve(
+      repositoryRoot, 'office/.venv',
+      process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python',
+    );
     const pythonPath = [
       resolve(repositoryRoot, 'office/src'),
       process.env.PYTHONPATH,

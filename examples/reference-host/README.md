@@ -88,6 +88,8 @@ The browser verifier reports the exact tarball SHA-256 and the observed passing,
 
 From a repository checkout with the supported Node runtime, root and isolated browser-test dependencies, pinned Playwright browser revisions, and the dependencies required by the exact packed-artifact and local Office verification already installed, the currently implemented partial reference journey can be exercised with one command:
 
+Prepare Office with `uv sync --project office --extra test`. The handoff uses that project's `.venv` by default, not an unrelated Python environment on the shell path. A controlled CI host may explicitly select its prepared interpreter with `INKSPAN_OFFICE_PYTHON`.
+
 ```sh
 node examples/reference-host/verify-current-reference-journey.mjs
 ```
