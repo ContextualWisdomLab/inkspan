@@ -67,6 +67,7 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
   const [editorReady, setEditorReady] = useState(false);
   const [capturePending, setCapturePending] = useState(false);
   const [captureFailed, setCaptureFailed] = useState(false);
+  const [restoreNotice, setRestoreNotice] = useState<string | null>(null);
   const [recoveryInFlight, setRecoveryInFlight] = useState(false);
   const [nextOutcome, setNextOutcome] = useState('saved');
   const [saveWaiting, setSaveWaiting] = useState(false);
@@ -144,6 +145,7 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
     capturePendingRef.current = true;
     setCapturePending(true);
     setCaptureFailed(false);
+    setRestoreNotice(null);
     let submitted = false;
     try {
       const evidence = await editorRef.current.getDocumentEnvelopeRevisionEvidence({ maxUtf8Bytes: MAX_DOCUMENT_CODE_UNITS, maxStringCodeUnits: MAX_DOCUMENT_CODE_UNITS });
@@ -177,6 +179,7 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
     if (readOnly || !session || recoveryInFlightRef.current || capturePendingRef.current || session.getSnapshot().state !== 'blocked') return;
     recoveryInFlightRef.current = true;
     setRecoveryInFlight(true);
+    setRestoreNotice(null);
     try {
       const document = editorRef.current?.getDocumentEnvelopeJson({ maxUtf8Bytes: MAX_DOCUMENT_CODE_UNITS, maxStringCodeUnits: MAX_DOCUMENT_CODE_UNITS });
       if (!document || document.length > MAX_DOCUMENT_CODE_UNITS) throw new Error('Draft is not ready to save.');
@@ -243,7 +246,7 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
       if (generationRef.current !== generation ||
         editor.getDocumentEnvelopeJson(limits) !== draft ||
         activeDocument.repository.read(activeDocument.documentId).validator !== saved.validator) {
-        setViewState('restoreChanged');
+        setRestoreNotice('restoreChanged');
         return;
       }
       if (!editor.restoreDocumentEnvelope(saved.document, limits)) throw new Error('Editor is not ready.');
@@ -252,18 +255,19 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
       void session.close();
       confirmedDocumentRef.current = editor.getDocumentEnvelopeJson(limits);
       beginSession(saved.validator);
+      setRestoreNotice(null);
       setViewState('restored');
       editor.focus();
     } catch {
-      if (mountedRef.current) setViewState('restoreFailed');
+      if (mountedRef.current) setRestoreNotice('restoreFailed');
     } finally {
       recoveryInFlightRef.current = false;
       if (mountedRef.current) setRecoveryInFlight(false);
     }
   }
 
-  const blocked = !captureFailed && ['conflict', 'failed', 'restoreChanged', 'restoreFailed'].includes(viewState);
-  const displayedState = captureFailed ? 'captureFailed' : capturePending && !blocked ? 'preparing' : viewState;
+  const blocked = !captureFailed && (viewState === 'conflict' || viewState === 'failed');
+  const displayedState = captureFailed ? 'captureFailed' : restoreNotice ?? (capturePending && !blocked ? 'preparing' : viewState);
   return (
     <section className="reference-recovery" aria-labelledby="recovery-heading">
       <h2 id="recovery-heading">Save and recover a draft</h2>

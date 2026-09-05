@@ -78,7 +78,26 @@ pnpm exec vite --config tests/browser/vite.config.ts --host 127.0.0.1 --port 417
 Open `http://127.0.0.1:4173/examples/reference-host/browser-host.html?journey=recovery`.
 The default URL still opens the native-form journey; add `&readOnly=1` to the recovery URL for its read-only state. Add `&savedDraft=1` to open a previously saved rich-text fixture, or `&savedDraft=invalid` to exercise an unreadable stored draft. The editor restores the saved document before enabling editing or autosave; an unreadable document remains untouched with editing disabled. This development preview resolves public package exports from the local build. The verifier below installs the exact tarball and its declared dependency closure; development-preview success alone is not packed-artifact evidence.
 
-The screen keeps the existing editor and bundled Noto Sans presentation, uses native controls, announces save outcomes, and separates demo failure controls from recovery actions. No new UI framework, service, or dependency is introduced. Copy and retry admission is synchronous, independent of the next React render. Demo controls are absent in print; the draft remains readable at 320px and with forced colors.
+The screen keeps the existing editor and bundled Noto Sans presentation, uses native controls, announces save outcomes, and separates demo failure controls from recovery actions. No new UI framework, service, or dependency is introduced. Copy, retry, and restore admission is synchronous, independent of the next React render. Demo controls are absent in print; the draft remains readable at 320px and with forced colors.
+
+After a save failure or conflict, **Use saved version** opens a native confirmation. Cancel keeps the local draft. Confirm replaces unsaved content with the currently saved version only if neither version changed during confirmation; focus then returns to the editor. Loading the saved version does not rewrite storage or advance its version. Subsequent edits save against the freshly read version. In a separate copy, this action restores that copy's saved content, not the original document. It is not a historical-version browser or a durable rollback operation.
+
+### Saved-version recovery design contract
+
+| Field | Decision |
+| --- | --- |
+| Screen job | Resume editing a saved version after a failed or conflicting save. |
+| Primary user and action | Author explicitly chooses whether to replace unsaved changes. |
+| Content hierarchy | Keep the draft visible, announce the problem, then offer retry, separate copy, or saved version. |
+| Navigation and controls | Existing recovery row; one native button and browser confirmation; no modal framework or new page. |
+| Visual language | Existing Noto Sans, Canvas/CanvasText colors, wrapping controls, visible focus, and 44px minimum control height. |
+| Required states | Save pending and read-only exclude restore; cancel preserves the draft; changed or rejected content stays recoverable; success focuses the editor. |
+| Responsive behavior | The existing row wraps at 320px, respects forced colors, and is hidden in print. |
+| Evidence used | Existing editor/recovery screens and cross-engine tests. The public [UIZZE catalogue](https://uizze.com/) did not yield inspectable matching screens on 2026-09-05; no external visual-reference match is claimed. |
+| Forbidden defaults | New cards, gradients, custom dialog infrastructure, silent discard, or production-storage claims. |
+| Acceptance criteria | Cancel, confirmation, native keyboard operation, reentrant clicks, changed local/saved content, malformed/schema-rejected saves, rich content, copy isolation, and unchanged storage on restore. |
+
+The host lets pending browser input reach the editor after confirmation, then rechecks the local draft and saved version before the synchronous replacement. A rejected restore notice remains visible even if an already-started capture later updates the blocked save state. Invalid JSON or unsupported document content does not replace the local draft. The example's store and final replacement are synchronous; a host with asynchronous storage must preserve local revision preconditions and independently revalidate its durable state. The browser entry's saved-state fault injection remains local test-host evidence, not a production write endpoint. These choices preserve the PRD/TRD/CONTRACTS host-ownership boundary and do not add a public Inkspan runtime contract.
 
 This is an English-language, single-document, synthetic example, not a localized production application or a latency benchmark. The existing repository limits each stored document to 65,536 code units. Recovery copy creation and registration are synchronous here; an asynchronous production host must preserve the copy and draft until authorized durable saving and registration are confirmed. All contents disappear on reload or tab close, as the screen states. Hosts must supply their own localization, authorization, transport, persistence, retention, and audit policy.
 
@@ -120,6 +139,6 @@ The one-command helper above consolidates only the currently implemented referen
 
 ## Deliberate omissions in this partial slice
 
-Still required before #377 can close: a complete reference-host application must connect and verify the remaining collaboration lifecycle and stale-proposal paths, exercise explicit restore alongside the existing fork recovery and bounded Office handoff, and pass the full clean-checkout journey against the protected artifact selected by #118. Next.js, production credentials, a live collaboration service, and a durable database are not requirements of #377; the issue explicitly permits replaceable synthetic adapters. Those production responsibilities remain with the embedding host.
+Still required before #377 can close: a complete reference-host application must connect and verify the remaining collaboration lifecycle and stale-proposal paths, integrate the saved-version restore, fork recovery, and bounded Office handoff into final acceptance, and pass the full clean-checkout journey against the protected artifact selected by #118. Next.js, production credentials, a live collaboration service, and a durable database are not requirements of #377; the issue explicitly permits replaceable synthetic adapters. Those production responsibilities remain with the embedding host.
 
 Do not use the synthetic repository, synthetic identifiers, deterministic proposal fixture, presentation projection, deterministic collaboration provider, host-authorization adapter, hydration gate, native-form example callback, or Office request helper as a production persistence, authentication, authorization, collaboration, model, deployment, export-authorization, storage, or distribution implementation.
