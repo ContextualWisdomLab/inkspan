@@ -13,6 +13,9 @@ export default defineConfig({
   resolve: {
     alias: {
       'inkspan-browser-under-test': packageEntry,
+      'inkspan-autosave-under-test': configuredPackageEntry
+        ? resolve(dirname(packageEntry), 'cwl-autosave.js')
+        : resolve(repositoryRoot, 'src/autosave/package.ts'),
     },
   },
 });

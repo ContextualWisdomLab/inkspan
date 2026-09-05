@@ -1,11 +1,17 @@
 import { expect, test, type Page } from '@playwright/test';
 
 type InputHarness = {
+  getDocumentChanges: () => string[];
+  getDocumentChangeRevisionTags: () => Promise<string[]>;
+  getAutosaveRevisionTags: () => Promise<string[]>;
   getHtml: () => string;
+  getRevisionTag: () => Promise<string>;
   getText: () => string;
   isComposing: () => boolean;
+  insertText: (text: string) => boolean;
   redo: () => boolean;
   setEditable: (editable: boolean) => boolean;
+  setControlledHtml: (html: string) => boolean;
   setHtml: (html: string) => boolean;
   undo: () => boolean;
 };
@@ -215,6 +221,94 @@ test('tracks a synthetic composition lifecycle without inventing OS IME evidence
   await expect(
     page.locator('[data-inkspan-form-field][name="message_body"]'),
   ).toHaveValue(committedHtml);
+});
+
+test('publishes the composed revision before applying a newer controlled value', async ({
+  page,
+}) => {
+  await page.goto('/tests/browser/input-harness.html?controlled=1&autosave=1');
+
+  const editable = page.locator('.ProseMirror');
+  await editable.click();
+  await editable.evaluate((element) => {
+    element.dispatchEvent(
+      new CompositionEvent('compositionstart', { bubbles: true, data: '' }),
+    );
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.inkspanInputHarness as InputHarness).isComposing(),
+      ),
+    )
+    .toBe(true);
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).insertText('작성 중'),
+    ),
+  ).toBe(true);
+
+  const expectedComposedTag = await page.evaluate(() =>
+    (window.inkspanInputHarness as InputHarness).getRevisionTag(),
+  );
+  expect(expectedComposedTag).toMatch(/^"sha256-[0-9a-f]{64}"$/u);
+
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).setControlledHtml(
+        '<p>저장된 개정</p>',
+      ),
+    ),
+  ).toBe(true);
+  await expect(editable).toHaveText('작성 중');
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).getDocumentChanges(),
+    ),
+  ).toEqual([]);
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).getDocumentChangeRevisionTags(),
+    ),
+  ).toEqual([]);
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).getAutosaveRevisionTags(),
+    ),
+  ).toEqual([]);
+
+  await editable.evaluate((element) => {
+    element.dispatchEvent(
+      new CompositionEvent('compositionend', { bubbles: true, data: '' }),
+    );
+  });
+
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.inkspanInputHarness as InputHarness).getDocumentChanges(),
+      ),
+    )
+    .toEqual(['<p>작성 중</p>']);
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).getDocumentChangeRevisionTags(),
+    ),
+  ).toEqual([expectedComposedTag]);
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).getAutosaveRevisionTags(),
+    ),
+  ).toEqual([expectedComposedTag]);
+  await expect(editable).toHaveText('저장된 개정');
+  expect(
+    await page.evaluate(() =>
+      (window.inkspanInputHarness as InputHarness).getRevisionTag(),
+    ),
+  ).not.toBe(expectedComposedTag);
+  await expect(
+    page.locator('[data-inkspan-form-field][name="message_body"]'),
+  ).toHaveValue('<p>저장된 개정</p>');
 });
 
 test('keeps committed text and editor focus when the toolbar is used during composition', async ({
