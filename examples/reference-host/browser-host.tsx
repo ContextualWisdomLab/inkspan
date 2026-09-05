@@ -6,6 +6,7 @@ import { createDocumentEnvelope, serializeDocumentEnvelope } from '@contextualwi
 import { ReferenceHostApp } from './reference-host-app.js';
 import { ReferenceHostHydrationGate } from './hydration-gate.js';
 import { AutosaveRecoveryHost } from './autosave-recovery-host.js';
+import { DelayedProposalHost } from './delayed-proposal-host.js';
 import { createSyntheticDocumentRepository } from './synthetic-document-repository.mjs';
 
 declare global {
@@ -28,6 +29,7 @@ if (!root) {
 const searchParams = new URLSearchParams(window.location.search);
 const readOnly = searchParams.get('readOnly') === '1';
 const recoveryJourney = searchParams.get('journey') === 'recovery';
+const proposalJourney = searchParams.get('journey') === 'proposal';
 const documentId = 'reference-draft';
 const savedDraft = searchParams.get('savedDraft');
 const initialEnvelope = createDocumentEnvelope({
@@ -65,11 +67,11 @@ window.referenceHostResolveSubmission = () => {
 
 hydrateRoot(
   root,
-  recoveryJourney ? (
+  recoveryJourney || proposalJourney ? (
     <main aria-labelledby="reference-host-heading">
       <h1 id="reference-host-heading">Inkspan reference host</h1>
       <ReferenceHostHydrationGate loadingLabel="Loading buyer editor" renderEditor={() => (
-        <AutosaveRecoveryHost documentId={documentId} repository={repository} readOnly={readOnly}
+        proposalJourney ? <DelayedProposalHost readOnly={readOnly} /> : <AutosaveRecoveryHost documentId={documentId} repository={repository} readOnly={readOnly}
           onCopySaved={(copy) => { savedCopies.push(copy); }} />
       )} />
     </main>

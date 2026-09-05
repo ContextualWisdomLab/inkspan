@@ -382,12 +382,13 @@ async function runUnknownFieldSelfTest() {
   );
 }
 
-if (process.argv.includes('--empty-proposal-self-test')) {
+const commandArguments = typeof process === 'undefined' ? [] : process.argv;
+if (commandArguments.includes('--empty-proposal-self-test')) {
   await runEmptyProposalSelfTest();
-} else if (process.argv.includes('--hostile-accessor-self-test')) {
+} else if (commandArguments.includes('--hostile-accessor-self-test')) {
   await runHostileAccessorSelfTest();
-} else if (process.argv.includes('--unknown-field-self-test')) {
+} else if (commandArguments.includes('--unknown-field-self-test')) {
   await runUnknownFieldSelfTest();
-} else if (process.argv.includes('--self-test')) {
+} else if (commandArguments.includes('--self-test')) {
   await runSelfTest();
 }

@@ -21,6 +21,7 @@ const browserDirectory = resolve(repositoryRoot, 'tests/browser');
 const command = 'node examples/reference-host/verify-browser-journey.mjs';
 const projects = Object.freeze(['chromium', 'firefox', 'webkit']);
 const specs = Object.freeze([
+  'reference-host-proposal.browser.spec.ts',
   'reference-host-recovery.browser.spec.ts',
   'reference-host-dirty-state.browser.spec.ts',
   'reference-host-forced-colors.print.browser.spec.ts',
