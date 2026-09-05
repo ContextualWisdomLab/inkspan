@@ -17,6 +17,7 @@ declare global {
     referenceHostSavedDocuments: () => { original: string; originalValidator: string; copies: string[] };
     referenceHostSaveElsewhere: (document: string) => void;
     referenceHostCollaborationEvents: string[];
+    referenceHostUnmount: () => void;
   }
 }
 
@@ -70,7 +71,7 @@ window.referenceHostResolveSubmission = () => {
   resolveDeferredSubmission?.();
 };
 
-hydrateRoot(
+const hostRoot = hydrateRoot(
   root,
   recoveryJourney || proposalJourney || collaborationJourney ? (
     <main aria-labelledby="reference-host-heading">
@@ -95,3 +96,5 @@ hydrateRoot(
     readOnly={readOnly}
   />,
 );
+// Local test-host lifecycle control; does not enter the published package.
+window.referenceHostUnmount = () => hostRoot.unmount();

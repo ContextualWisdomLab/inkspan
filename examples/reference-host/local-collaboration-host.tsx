@@ -41,6 +41,9 @@ export function LocalCollaborationHost({ readOnly = false, onEvent }: {
   }
 
   useEffect(() => () => { disposeSession(); }, []);
+  useEffect(() => {
+    if (!busy && status === 'closed') startRef.current?.focus();
+  }, [busy, status]);
 
   function createSession(): LocalSession {
     const peer = new Doc();
@@ -99,7 +102,6 @@ export function LocalCollaborationHost({ readOnly = false, onEvent }: {
         // Detach both editor bindings before destroying their host-owned docs.
         flushSync(() => setSession(null));
         disposeSession(); setStatus('closed');
-        startRef.current?.focus();
       } else if (action === 'start') {
         if (sessionRef.current) return;
         const current = createSession();
