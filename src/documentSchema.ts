@@ -1,6 +1,6 @@
 import type { JSONContent } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
-import type { Editor } from '@tiptap/react';
+import type { Editor } from '@tiptap/core';
 import { createDocumentEnvelope } from './documentEnvelope.js';
 
 const INCOMPATIBLE_DOCUMENT_MESSAGE =

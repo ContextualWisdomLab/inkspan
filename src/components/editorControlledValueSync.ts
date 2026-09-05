@@ -36,7 +36,7 @@ export function synchronizeControlledEditorValue(
   if (!previewState.doc.eq(requestedDocument)) return false;
 
   try {
-    editor.commands.setContent(requestedDocument, false);
+    editor.commands.setContent(requestedDocument, { emitUpdate: false });
   } catch {
     restoreLocalEditorState(editor, originalState);
     return false;
