@@ -35,6 +35,34 @@ async function replaceDraft(page: Page, text: string) {
   await expect(textbox).toHaveText(text);
 }
 
+for (const forcedColors of ['none', 'active'] as const) {
+  test(`keeps host control styles outside the editor toolbar with forced colors ${forcedColors}`, async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await page.emulateMedia({ forcedColors });
+    const errors = await openRecovery(page);
+    const styles = await page.getByRole('button', { name: 'Delete row', exact: true }).evaluate((button) => {
+      const properties = ['fontSize', 'fontWeight', 'lineHeight', 'paddingTop', 'paddingBottom', 'height', 'minBlockSize'] as const;
+      const readStyles = () => {
+        const computed = getComputedStyle(button);
+        return Object.fromEntries(properties.map((property) => [property, computed[property]]));
+      };
+      const host = button.closest('.reference-recovery')!;
+      const insideHost = readStyles();
+      host.classList.remove('reference-recovery');
+      try {
+        return { insideHost, withoutHost: readStyles() };
+      } finally {
+        host.classList.add('reference-recovery');
+      }
+    });
+    await page.screenshot({ path: test.info().outputPath('toolbar-style-boundary-320.png'), fullPage: true });
+    expect(styles.insideHost).toEqual(styles.withoutHost);
+    const selectBounds = await page.getByLabel('Next save in this demo').boundingBox();
+    expect(selectBounds!.height).toBeGreaterThanOrEqual(44);
+    expect(errors).toEqual([]);
+  });
+}
+
 test('saves the newest queued edit and never calls an older submitted draft current', async ({ page }) => {
   const errors = await openRecovery(page);
   await page.getByLabel('Next save in this demo').selectOption('deferred');

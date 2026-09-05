@@ -23,16 +23,18 @@
 }
 
 .reference-recovery-controls { min-inline-size: 0; }
-.reference-recovery label { min-inline-size: 0; }
-.reference-recovery select { display: block; }
-.reference-recovery button,
-.reference-recovery select {
+.reference-recovery-controls label { min-inline-size: 0; }
+.reference-recovery-controls select { display: block; }
+.reference-recovery-actions > button,
+.reference-recovery-controls button,
+.reference-recovery-controls select {
   max-inline-size: 100%;
   min-block-size: 2.75rem;
   padding: 0.5rem;
   font: inherit;
 }
-.reference-recovery :focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+.reference-recovery-actions :focus-visible,
+.reference-recovery-controls :focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
 
 @media print {
   .reference-recovery-actions,
