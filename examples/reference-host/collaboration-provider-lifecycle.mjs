@@ -559,12 +559,13 @@ function runCleanupFailureSelfTest() {
   );
 }
 
-if (process.argv.includes('--cleanup-failure-self-test')) {
+const commandArguments = typeof process === 'undefined' ? [] : process.argv;
+if (commandArguments.includes('--cleanup-failure-self-test')) {
   runCleanupFailureSelfTest();
-} else if (process.argv.includes('--initialization-failure-self-test')) {
+} else if (commandArguments.includes('--initialization-failure-self-test')) {
   runInitializationFailureSelfTest();
-} else if (process.argv.includes('--hostile-accessor-self-test')) {
+} else if (commandArguments.includes('--hostile-accessor-self-test')) {
   runHostileAccessorSelfTest();
-} else if (process.argv.includes('--self-test')) {
+} else if (commandArguments.includes('--self-test')) {
   runSelfTest();
 }

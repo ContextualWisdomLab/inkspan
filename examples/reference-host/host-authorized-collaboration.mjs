@@ -200,6 +200,6 @@ function runSelfTest() {
   );
 }
 
-if (process.argv.includes('--self-test')) {
+if (typeof process !== 'undefined' && process.argv.includes('--self-test')) {
   runSelfTest();
 }

@@ -7,6 +7,7 @@ import { ReferenceHostApp } from './reference-host-app.js';
 import { ReferenceHostHydrationGate } from './hydration-gate.js';
 import { AutosaveRecoveryHost } from './autosave-recovery-host.js';
 import { DelayedProposalHost } from './delayed-proposal-host.js';
+import { LocalCollaborationHost } from './local-collaboration-host.js';
 import { createSyntheticDocumentRepository } from './synthetic-document-repository.mjs';
 
 declare global {
@@ -15,11 +16,14 @@ declare global {
     referenceHostResolveSubmission?: () => void;
     referenceHostSavedDocuments: () => { original: string; originalValidator: string; copies: string[] };
     referenceHostSaveElsewhere: (document: string) => void;
+    referenceHostCollaborationEvents: string[];
   }
 }
 
 const submissions: string[] = [];
 window.referenceHostSubmissions = submissions;
+window.referenceHostCollaborationEvents = [];
+const reportCollaborationEvent = (event: string) => { window.referenceHostCollaborationEvents.push(event); };
 
 const root = document.getElementById('reference-host-root');
 if (!root) {
@@ -30,6 +34,7 @@ const searchParams = new URLSearchParams(window.location.search);
 const readOnly = searchParams.get('readOnly') === '1';
 const recoveryJourney = searchParams.get('journey') === 'recovery';
 const proposalJourney = searchParams.get('journey') === 'proposal';
+const collaborationJourney = searchParams.get('journey') === 'collaboration';
 const documentId = 'reference-draft';
 const savedDraft = searchParams.get('savedDraft');
 const initialEnvelope = createDocumentEnvelope({
@@ -67,11 +72,11 @@ window.referenceHostResolveSubmission = () => {
 
 hydrateRoot(
   root,
-  recoveryJourney || proposalJourney ? (
+  recoveryJourney || proposalJourney || collaborationJourney ? (
     <main aria-labelledby="reference-host-heading">
       <h1 id="reference-host-heading">Inkspan reference host</h1>
       <ReferenceHostHydrationGate loadingLabel="Loading buyer editor" renderEditor={() => (
-        proposalJourney ? <DelayedProposalHost readOnly={readOnly} /> : <AutosaveRecoveryHost documentId={documentId} repository={repository} readOnly={readOnly}
+        collaborationJourney ? <LocalCollaborationHost readOnly={readOnly} onEvent={reportCollaborationEvent} /> : proposalJourney ? <DelayedProposalHost readOnly={readOnly} /> : <AutosaveRecoveryHost documentId={documentId} repository={repository} readOnly={readOnly}
           onCopySaved={(copy) => { savedCopies.push(copy); }} />
       )} />
     </main>

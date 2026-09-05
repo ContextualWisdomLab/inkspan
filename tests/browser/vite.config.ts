@@ -14,12 +14,16 @@ const packedPackageRoot = configuredPackageEntry
   : null;
 const packageRequire = createRequire(packageEntry);
 const alias = [
-  ...(packedPackageRoot ? ['react', 'react-dom'].map((peerName) => ({
+  ...(packedPackageRoot ? ['react', 'react-dom', 'yjs'].map((peerName) => ({
     find: peerName,
     replacement: dirname(packageRequire.resolve(`${peerName}/package.json`)),
   })) : []),
   ...(packedPackageRoot
     ? [
+        {
+          find: '@contextualwisdomlab/cwl-editor/collaboration',
+          replacement: resolve(packedPackageRoot, 'dist/cwl-collaboration.js'),
+        },
         {
           find: '@contextualwisdomlab/cwl-editor/autosave',
           replacement: resolve(packedPackageRoot, 'dist/cwl-autosave.js'),
