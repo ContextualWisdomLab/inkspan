@@ -52,6 +52,9 @@ describe('performance evidence workflow contract', () => {
       '--revision-input "$corpus_dir/${{ matrix.profile }}.envelope.json"',
     );
     expect(workflow).toContain('node benchmarks/run-current-suite.mjs');
+    expect(workflow).toContain(
+      '--resulting-input "$corpus_dir/${{ matrix.profile }}.changed.envelope.json"',
+    );
     expect(workflow).toContain('--profile "${{ matrix.profile }}"');
     expect(workflow).toContain('--samples "${{ matrix.samples }}"');
     expect(workflow).toContain(

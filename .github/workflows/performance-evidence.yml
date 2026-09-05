@@ -94,6 +94,7 @@ jobs:
             --source-commit-sha "$source_sha" \
             --runtime-id "$runtime_id" \
             --reference-hardware-id github-actions-ubuntu-24.04-x64 \
+            --resulting-input "$corpus_dir/${{ matrix.profile }}.changed.envelope.json" \
             --output "$evidence_dir"
 
       - name: Upload bounded performance evidence

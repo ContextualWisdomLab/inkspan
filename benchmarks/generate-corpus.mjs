@@ -180,11 +180,18 @@ for (const [profile, sections] of Object.entries(PROFILE_SECTIONS)) {
   const bytes = Buffer.from(body, 'utf8');
   const htmlBytes = Buffer.from(buildHtml(profile, body), 'utf8');
   const envelopeBytes = Buffer.from(buildEnvelope(body), 'utf8');
+  const changedEnvelopeBytes = Buffer.from(
+    buildEnvelope(`${body}\nSynthetic appended edit.`), 'utf8',
+  );
   writeRegularOutput(resolve(outputDirectory, `${profile}.md`), bytes);
   writeRegularOutput(resolve(outputDirectory, `${profile}.html`), htmlBytes);
   writeRegularOutput(
     resolve(outputDirectory, `${profile}.envelope.json`),
     envelopeBytes,
+  );
+  writeRegularOutput(
+    resolve(outputDirectory, `${profile}.changed.envelope.json`),
+    changedEnvelopeBytes,
   );
   profileManifest[profile] = Object.freeze({
     sections,
@@ -194,6 +201,8 @@ for (const [profile, sections] of Object.entries(PROFILE_SECTIONS)) {
     htmlSha256: sha256(htmlBytes),
     envelopeBytes: envelopeBytes.byteLength,
     envelopeSha256: sha256(envelopeBytes),
+    changedEnvelopeBytes: changedEnvelopeBytes.byteLength,
+    changedEnvelopeSha256: sha256(changedEnvelopeBytes),
   });
 }
 

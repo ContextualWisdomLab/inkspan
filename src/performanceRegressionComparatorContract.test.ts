@@ -75,13 +75,14 @@ function runComparison(
 }
 
 describe('benchmark regression comparator contract', () => {
-  it('passes only when a current exact-context metric stays within an explicit tolerance', () => {
+  it.each(['editor-input-large', 'transition-changed-evidence-large'])(
+    'compares only exact-context %s evidence with an explicit tolerance', (benchmarkId) => {
     const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-compare-pass-'));
     try {
       const result = runComparison(
         root,
-        summary(),
-        summary({ artifactSha256: CURRENT_ARTIFACT_SHA256, p95: 104 }),
+        summary({ benchmarkId }),
+        summary({ benchmarkId, artifactSha256: CURRENT_ARTIFACT_SHA256, p95: 104 }),
         '5',
       );
 
@@ -89,7 +90,7 @@ describe('benchmark regression comparator contract', () => {
       expect(result.stderr).toBe('');
       expect(JSON.parse(result.stdout)).toEqual({
         contractVersion: 1,
-        benchmarkId: 'editor-input-large',
+        benchmarkId,
         unit: 'ms',
         documentProfile: 'large',
         runtimeId: 'chromium-1.62.0',
@@ -107,6 +108,20 @@ describe('benchmark regression comparator contract', () => {
         regressionPercent: 4,
         passed: true,
       });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects comparisons between changed and unchanged transition scenarios', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-transition-compare-'));
+    try {
+      const result = runComparison(root,
+        summary({ benchmarkId: 'transition-evidence-large' }),
+        summary({ benchmarkId: 'transition-changed-evidence-large', artifactSha256: CURRENT_ARTIFACT_SHA256 }), '5');
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe('Benchmark summaries are not comparable: benchmarkId differs.');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

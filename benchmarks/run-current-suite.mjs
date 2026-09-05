@@ -90,6 +90,12 @@ const packedHtmlFlags = Object.freeze([
   '--reference-hardware-id',
   '--output',
 ]);
+const packedChangedFlags = Object.freeze([
+  ...packedFlags.slice(0, -1), '--resulting-input', '--output',
+]);
+const packedHtmlChangedFlags = Object.freeze([
+  ...packedHtmlFlags.slice(0, -1), '--resulting-input', '--output',
+]);
 
 function matchesArguments(argv, expectedFlags) {
   return (
@@ -110,6 +116,8 @@ function argumentsForFlags(values, flags) {
 }
 
 function matchingFlags(argv) {
+  if (matchesArguments(argv, packedChangedFlags)) return packedChangedFlags;
+  if (matchesArguments(argv, packedHtmlChangedFlags)) return packedHtmlChangedFlags;
   if (matchesArguments(argv, htmlLegacyFlags)) return htmlLegacyFlags;
   if (matchesArguments(argv, packedHtmlFlags)) return packedHtmlFlags;
   if (matchesArguments(argv, packedFlags)) return packedFlags;
@@ -230,12 +238,8 @@ function readPackedTarballSnapshot(path) {
 }
 
 function assertPackedCorpusInputs(argv) {
-  const flags = matchesArguments(argv, packedHtmlFlags)
-    ? packedHtmlFlags
-    : matchesArguments(argv, packedFlags)
-      ? packedFlags
-      : null;
-  if (flags === null) return;
+  const flags = matchingFlags(argv);
+  if (!flags?.includes('--package-tarball')) return;
 
   const values = valuesForArguments(argv, flags);
   let lock;
@@ -255,8 +259,11 @@ function assertPackedCorpusInputs(argv) {
   const inputs = [
     ['--input', 'bytes', 'sha256'],
     ['--revision-input', 'envelopeBytes', 'envelopeSha256'],
-    ...(flags === packedHtmlFlags
+    ...(flags.includes('--html-input')
       ? [['--html-input', 'htmlBytes', 'htmlSha256']]
+      : []),
+    ...(flags.includes('--resulting-input')
+      ? [['--resulting-input', 'changedEnvelopeBytes', 'changedEnvelopeSha256']]
       : []),
   ];
   try {
@@ -280,12 +287,8 @@ function assertPackedCorpusInputs(argv) {
 }
 
 function snapshotPackedArguments(argv) {
-  const flags = matchesArguments(argv, packedHtmlFlags)
-    ? packedHtmlFlags
-    : matchesArguments(argv, packedFlags)
-      ? packedFlags
-      : null;
-  if (flags === null) {
+  const flags = matchingFlags(argv);
+  if (!flags?.includes('--package-tarball')) {
     return Object.freeze({ argv, temporaryDirectory: null });
   }
 
@@ -486,9 +489,11 @@ function runHtmlSerializationSuite(argv) {
 }
 
 function runPackedHtmlSerializationSuite(argv) {
-  const values = valuesForArguments(argv, packedHtmlFlags);
+  const flags = matchingFlags(argv);
+  const values = valuesForArguments(argv, flags);
   const outputDirectory = resolve(repositoryRoot, values['--output']);
-  const coreArguments = argumentsForFlags(values, packedFlags);
+  const coreFlags = flags.includes('--resulting-input') ? packedChangedFlags : packedFlags;
+  const coreArguments = argumentsForFlags(values, coreFlags);
   const snapshotted = snapshotPackedArguments(coreArguments);
   let coreCompleted = false;
 
@@ -496,7 +501,7 @@ function runPackedHtmlSerializationSuite(argv) {
     const coreStdout = runCoreNodePreservingError(snapshotted.argv);
     coreCompleted = true;
     const manifest = parseCoreManifest(coreStdout);
-    const snapshotValues = valuesForArguments(snapshotted.argv, packedFlags);
+    const snapshotValues = valuesForArguments(snapshotted.argv, coreFlags);
     const snapshotTarballPath = snapshotValues['--package-tarball'];
     const markdownModuleBytes = readPackedMarkdownModule(snapshotTarballPath);
     const markdownModulePath = join(
@@ -611,7 +616,7 @@ function main(argv) {
     runHtmlSerializationSuite(argv);
     return;
   }
-  if (matchesArguments(argv, packedHtmlFlags)) {
+  if (matchesArguments(argv, packedHtmlFlags) || matchesArguments(argv, packedHtmlChangedFlags)) {
     runPackedHtmlSerializationSuite(argv);
     return;
   }

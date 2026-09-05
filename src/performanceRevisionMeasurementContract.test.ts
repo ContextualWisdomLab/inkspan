@@ -2,9 +2,11 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   existsSync,
+  linkSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -49,7 +51,8 @@ function argumentsFor(
   input: string,
   modulePath: string,
   output: string,
-  operation?: 'transition' | 'canonicalization',
+  operation?: 'transition' | 'transition-changed' | 'canonicalization',
+  resultingInput?: string,
 ): string[] {
   return [
     measurementScript,
@@ -70,6 +73,7 @@ function argumentsFor(
     '--reference-hardware-id',
     HARDWARE_ID,
     ...(operation === undefined ? [] : ['--operation', operation]),
+    ...(resultingInput === undefined ? [] : ['--resulting-input', resultingInput]),
     '--output',
     output,
   ];
@@ -184,6 +188,122 @@ export async function createDocumentEnvelopeTransitionEvidenceBytes() { return {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it.each([
+    { operation: 'transition-changed', changed: true, equalDigests: false, valid: true },
+    { operation: 'transition-changed', changed: false, equalDigests: true, valid: false },
+    { operation: 'transition-changed', changed: true, equalDigests: true, valid: false },
+    { operation: 'transition-changed', changed: false, equalDigests: false, valid: false },
+    { operation: 'transition', changed: true, equalDigests: false, valid: false },
+    { operation: 'transition', changed: false, equalDigests: false, valid: false },
+  ] as const)('checks the $operation scenario oracle ($changed, $equalDigests)', ({
+    operation, changed, equalDigests, valid,
+  }) => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-changed-transition-'));
+    const input = join(root, 'previous.json');
+    const resultingInput = join(root, 'resulting.json');
+    const modulePath = join(root, 'revision.mjs');
+    const samplesPath = join(root, 'samples.json');
+    try {
+      writeSyntheticEnvelope(input);
+      writeFileSync(resultingInput, readFileSync(input, 'utf8').replace(
+        'Synthetic benchmark content', 'Synthetic benchmark content with an edit',
+      ));
+      writeFileSync(modulePath, `
+export async function createDocumentEnvelopeTransitionEvidenceBytes(previous, resulting) {
+  if (previous.toString() !== ${JSON.stringify(readFileSync(input, 'utf8'))}) throw new Error('wrong previous source');
+  if (resulting.toString() !== ${JSON.stringify(readFileSync(operation === 'transition' ? input : resultingInput, 'utf8'))}) throw new Error('wrong resulting source');
+  return { previousRevision: { digestHex: '${'a'.repeat(64)}' }, resultingRevision: { digestHex: '${(equalDigests ? 'a' : 'b').repeat(64)}' }, changed: ${changed} };
+}
+`);
+      const result = spawnSync(process.execPath, argumentsFor(
+        input, modulePath, samplesPath, operation,
+        operation === 'transition-changed' ? resultingInput : undefined,
+      ), { cwd: repositoryRoot, encoding: 'utf8' });
+      expect(result.status).toBe(valid ? 0 : 1);
+      expect(result.stdout).toBe('');
+      expect(existsSync(samplesPath)).toBe(valid);
+      if (valid) {
+        const output = readFileSync(samplesPath, 'utf8');
+        expect(JSON.parse(output)).toMatchObject({
+          benchmarkId: 'transition-changed-evidence-large',
+          samples: expect.any(Array),
+        });
+        expect(JSON.parse(output).samples).toHaveLength(3);
+        expect(output).not.toContain('Synthetic benchmark content');
+        expect(output).not.toContain(root);
+        execFileSync(process.execPath, [summaryScript, '--input', samplesPath,
+          '--output', join(root, 'summary')], { stdio: 'pipe' });
+      } else {
+        expect(result.stderr.trim()).toBe('Measured revision-evidence result is invalid.');
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it.each(['missing', 'symlink', 'identical', 'overwrite', 'hardlink'] as const)(
+    'rejects a %s resulting input without publishing samples or changing input',
+    (scenario) => {
+      const root = mkdtempSync(join(tmpdir(), 'inkspan-resulting-input-'));
+      const input = join(root, 'previous.json');
+      const resultingInput = join(root, 'private-resulting.json');
+      const modulePath = join(root, 'revision.mjs');
+      let samplesPath = join(root, 'samples.json');
+      try {
+        writeSyntheticEnvelope(input);
+        writeFileSync(modulePath, 'throw new Error("module must not execute");');
+        if (scenario === 'symlink') symlinkSync(input, resultingInput);
+        else if (scenario !== 'missing') {
+          writeFileSync(resultingInput, scenario === 'identical'
+            ? readFileSync(input) : 'private resulting source');
+        }
+        if (scenario === 'overwrite') samplesPath = resultingInput;
+        if (scenario === 'hardlink') linkSync(resultingInput, samplesPath);
+        const result = spawnSync(process.execPath, argumentsFor(
+          input, modulePath, samplesPath, 'transition-changed', resultingInput,
+        ), { cwd: repositoryRoot, encoding: 'utf8' });
+        expect(result.status).toBe(1);
+        expect(result.stdout).toBe('');
+        expect(result.stderr.trim()).toBe(
+          scenario === 'identical'
+            ? 'Changed-transition benchmark inputs must differ.'
+            : scenario === 'overwrite' || scenario === 'hardlink'
+              ? 'Revision benchmark output must not overwrite its input.'
+              : 'Revision benchmark input must be a regular non-symlink file.',
+        );
+        expect(result.stderr).not.toContain(root);
+        if (scenario === 'overwrite' || scenario === 'hardlink') {
+          expect(readFileSync(resultingInput, 'utf8')).toBe('private resulting source');
+        } else expect(existsSync(samplesPath)).toBe(false);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it.each(['transition-changed', 'transition', 'canonicalization', undefined] as const)(
+    'requires a resulting input only for changed transitions (%s)', (operation) => {
+      const root = mkdtempSync(join(tmpdir(), 'inkspan-transition-arguments-'));
+      const input = join(root, 'input.json');
+      const modulePath = join(root, 'revision.mjs');
+      const output = join(root, 'samples.json');
+      try {
+        writeFileSync(modulePath, 'throw new Error("must not execute");');
+        const result = spawnSync(process.execPath, argumentsFor(
+          input, modulePath, output, operation,
+          operation === 'transition-changed' ? undefined : input,
+        ), { encoding: 'utf8' });
+        expect(result.status).toBe(1);
+        expect(result.stderr.trim()).toBe(operation === undefined
+          ? 'Usage: node benchmarks/measure-revision-evidence.mjs --input <document-envelope.json> --module <packed-revision-evidence-module> --profile <small|medium|large|stress> --samples <count> --source-commit-sha <sha> --artifact-sha256 <sha256> --runtime-id <runtime> --reference-hardware-id <hardware> --output <samples.json>'
+          : 'Only changed-transition measurement requires a resulting input.');
+        expect(existsSync(output)).toBe(false);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  );
 
   it('isolates strict envelope canonicalization from digest-provider cost', () => {
     const root = mkdtempSync(join(tmpdir(), 'inkspan-canonicalization-measurement-'));

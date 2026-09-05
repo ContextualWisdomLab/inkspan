@@ -69,13 +69,18 @@ function createPackedBenchmarkFixture(directory: string): {
   );
   writeFileSync(
     join(distDirectory, 'cwl-revision-evidence.js'),
-    `const revision = { digestHex: '${'c'.repeat(64)}' };
+    `import { createHash } from 'node:crypto';
+const revision = { digestHex: '${'c'.repeat(64)}' };
 export async function createDocumentEnvelopeRevisionEvidenceBytes(source, limits, provider) {
   if (!provider) return { revision };
   const digestHex = Buffer.from(await provider.digest('SHA-256', source)).toString('hex');
   return { revision: { digestHex } };
 }
-export async function createDocumentEnvelopeTransitionEvidenceBytes() { return { previousRevision: revision, resultingRevision: revision, changed: false }; }
+export async function createDocumentEnvelopeTransitionEvidenceBytes(previous, resulting) {
+  const previousRevision = { digestHex: createHash('sha256').update(previous).digest('hex') };
+  const resultingRevision = { digestHex: createHash('sha256').update(resulting).digest('hex') };
+  return { previousRevision, resultingRevision, changed: previousRevision.digestHex !== resultingRevision.digestHex };
+}
 `,
     'utf8',
   );
@@ -127,6 +132,8 @@ function packedSuiteArguments(options: {
   runtimeId: string;
   sourceCommitSha?: string;
   tarballPath: string;
+  includeChangedTransition?: boolean;
+  includeHtml?: boolean;
 }): string[] {
   const corpusDirectory = join(options.directory, 'corpus');
   execFileSync(
@@ -145,8 +152,7 @@ function packedSuiteArguments(options: {
     suitePath,
     '--input',
     markdownInputPath,
-    '--html-input',
-    htmlInputPath,
+    ...(options.includeHtml === false ? [] : ['--html-input', htmlInputPath]),
     '--revision-input',
     revisionInputPath,
     '--package-tarball',
@@ -163,13 +169,22 @@ function packedSuiteArguments(options: {
     options.runtimeId,
     '--reference-hardware-id',
     referenceHardwareId,
+    ...(options.includeChangedTransition ? [
+      '--resulting-input', join(corpusDirectory, 'small.changed.envelope.json'),
+    ] : []),
     '--output',
     join(options.directory, 'evidence'),
   ];
 }
 
 describe('packed artifact benchmark suite contract', () => {
-  it('binds one-command benchmark evidence to packed artifact and run provenance', () => {
+  it.each([
+    { includeChangedTransition: false, includeHtml: true },
+    { includeChangedTransition: true, includeHtml: true },
+    { includeChangedTransition: true, includeHtml: false },
+  ])('binds packed evidence to run provenance ($includeChangedTransition, $includeHtml)', ({
+    includeChangedTransition, includeHtml,
+  }) => {
     const directory = mkdtempSync(join(tmpdir(), 'inkspan-packed-benchmark-'));
     temporaryDirectories.push(directory);
     const packed = createPackedBenchmarkFixture(directory);
@@ -178,6 +193,8 @@ describe('packed artifact benchmark suite contract', () => {
       process.execPath,
       packedSuiteArguments({
         directory,
+        includeChangedTransition,
+        includeHtml,
         packageSha256: packed.packageSha256,
         runtimeId: activeRuntimeId,
         tarballPath: packed.tarballPath,
@@ -218,11 +235,11 @@ describe('packed artifact benchmark suite contract', () => {
         'envelope-canonicalization/summary/summary.json',
       canonicalizationSummaryText:
         'envelope-canonicalization/summary/summary.txt',
-      htmlSerializationSamples: 'html-serialization/samples.json',
+      ...(includeHtml ? { htmlSerializationSamples: 'html-serialization/samples.json',
       htmlSerializationSummaryJson:
         'html-serialization/summary/summary.json',
       htmlSerializationSummaryText:
-        'html-serialization/summary/summary.txt',
+          'html-serialization/summary/summary.txt' } : {}),
       status: 'completed',
     });
 
@@ -264,7 +281,22 @@ describe('packed artifact benchmark suite contract', () => {
     );
     expect(canonicalizationSamples.samples).toHaveLength(2);
 
-    const htmlSamples = JSON.parse(
+    if (includeChangedTransition) {
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        changedTransitionSamples: 'transition-changed/samples.json',
+        changedTransitionSummaryJson: 'transition-changed/summary/summary.json',
+        changedTransitionSummaryText: 'transition-changed/summary/summary.txt',
+      });
+      const changedSamples = JSON.parse(readFileSync(
+        join(directory, 'evidence', 'transition-changed', 'samples.json'), 'utf8',
+      ));
+      expect(changedSamples.benchmarkId).toBe('transition-changed-evidence-small');
+      expect(changedSamples.samples).toHaveLength(2);
+    } else {
+      expect(JSON.parse(result.stdout)).not.toHaveProperty('changedTransitionSamples');
+    }
+    if (includeHtml) {
+      const htmlSamples = JSON.parse(
       readFileSync(
         join(directory, 'evidence', 'html-serialization', 'samples.json'),
         'utf8',
@@ -272,6 +304,7 @@ describe('packed artifact benchmark suite contract', () => {
     ) as { benchmarkId?: unknown; samples?: unknown[] };
     expect(htmlSamples.benchmarkId).toBe('html-serialization-small');
     expect(htmlSamples.samples).toHaveLength(2);
+    }
   }, 20_000);
 
   it('rejects a runtime identifier that does not match the active Node process', () => {
@@ -302,17 +335,19 @@ describe('packed artifact benchmark suite contract', () => {
     );
   });
 
-  it('rejects a profile label whose packed-suite inputs do not match the committed corpus', () => {
+  it.each(['small.html', 'small.changed.envelope.json'])(
+    'rejects %s when it does not match the committed corpus', (fileName) => {
     const directory = mkdtempSync(join(tmpdir(), 'inkspan-packed-corpus-'));
     temporaryDirectories.push(directory);
     const packed = createPackedBenchmarkFixture(directory);
     const args = packedSuiteArguments({
       directory,
+      includeChangedTransition: true,
       packageSha256: packed.packageSha256,
       runtimeId: activeRuntimeId,
       tarballPath: packed.tarballPath,
     });
-    writeFileSync(join(directory, 'corpus', 'small.html'), '<p>tiny</p>\n');
+    writeFileSync(join(directory, 'corpus', fileName), '<p>tiny</p>\n');
 
     const result = spawnSync(process.execPath, args, {
       cwd: repositoryRoot,

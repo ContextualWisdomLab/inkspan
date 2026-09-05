@@ -48,8 +48,13 @@ function resolveArguments(argv) {
     '--output',
   ];
   const operationFlags = [...baseFlags.slice(0, -1), '--operation', '--output'];
+  const changedTransitionFlags = [
+    ...operationFlags.slice(0, -1), '--resulting-input', '--output',
+  ];
   const expectedFlags =
-    argv.length === operationFlags.length * 2 ? operationFlags : baseFlags;
+    [baseFlags, operationFlags, changedTransitionFlags].find(
+      (flags) => argv.length === flags.length * 2,
+    ) ?? baseFlags;
   if (
     argv.length !== expectedFlags.length * 2 ||
     expectedFlags.some((flag, index) => argv[index * 2] !== flag) ||
@@ -99,13 +104,19 @@ function resolveArguments(argv) {
   if (
     operation !== 'revision' &&
     operation !== 'transition' &&
+    operation !== 'transition-changed' &&
     operation !== 'canonicalization'
   ) {
     throw new Error('Revision benchmark operation is invalid.');
   }
+  if ((operation === 'transition-changed') !== (values['--resulting-input'] !== undefined)) {
+    throw new Error('Only changed-transition measurement requires a resulting input.');
+  }
 
   return Object.freeze({
     inputPath: resolve(values['--input']),
+    resultingInputPath: values['--resulting-input'] === undefined
+      ? undefined : resolve(values['--resulting-input']),
     modulePath: values['--module'],
     profile,
     sampleCount,
@@ -339,7 +350,8 @@ function writeMeasurementOutput(path, content) {
   }
 }
 
-async function runMeasuredEvidence(createEvidence, source, operation) {
+async function runMeasuredEvidence(createEvidence, source, resultingSource, operation) {
+  const isTransition = operation === 'transition' || operation === 'transition-changed';
   let digestCalls = 0;
   const canonicalizationDigestProvider = {
     digest(algorithm, canonicalSource) {
@@ -357,8 +369,8 @@ async function runMeasuredEvidence(createEvidence, source, operation) {
   let evidence;
   try {
     evidence =
-      operation === 'transition'
-        ? await createEvidence(source, source)
+      isTransition
+        ? await createEvidence(source, resultingSource)
         : await createEvidence(
             source,
             undefined,
@@ -376,11 +388,11 @@ async function runMeasuredEvidence(createEvidence, source, operation) {
       throw new Error('invalid revision evidence');
     }
     revisions =
-      operation === 'transition'
+      isTransition
         ? [evidence.previousRevision, evidence.resultingRevision]
         : [evidence.revision];
     if (
-      (operation === 'transition' && typeof evidence.changed !== 'boolean') ||
+      (isTransition && evidence.changed !== (operation === 'transition-changed')) ||
       (operation === 'canonicalization' && digestCalls !== 1) ||
       revisions.some(
         (revision) => typeof revision !== 'object' || revision === null,
@@ -393,6 +405,9 @@ async function runMeasuredEvidence(createEvidence, source, operation) {
     ) {
       throw new Error('invalid revision evidence');
     }
+    if (isTransition && (revisions[0].digestHex !== revisions[1].digestHex) !== evidence.changed) {
+      throw new Error('invalid transition revision pair');
+    }
   } catch {
     throw new Error('Measured revision-evidence result is invalid.');
   }
@@ -403,11 +418,20 @@ async function main() {
   const args = resolveArguments(process.argv.slice(2));
   assertNoSymlinkOutputAncestors(args.outputPath);
   const source = readBoundedEnvelopeBytes(args.inputPath);
+  const resultingSource = args.resultingInputPath === undefined
+    ? source : readBoundedEnvelopeBytes(args.resultingInputPath);
   if (
     args.inputPath === args.outputPath ||
-    refersToSameFile(args.inputPath, args.outputPath)
+    refersToSameFile(args.inputPath, args.outputPath) ||
+    (args.resultingInputPath !== undefined && (
+      args.resultingInputPath === args.outputPath ||
+      refersToSameFile(args.resultingInputPath, args.outputPath)
+    ))
   ) {
     throw new Error('Revision benchmark output must not overwrite its input.');
+  }
+  if (args.operation === 'transition-changed' && source.equals(resultingSource)) {
+    throw new Error('Changed-transition benchmark inputs must differ.');
   }
   const modulePath = resolveLocalModule(args.modulePath);
   if (
@@ -422,26 +446,27 @@ async function main() {
   assertMeasurementProvenance(args.sourceCommitSha, args.runtimeId);
 
   const measuredModule = await loadMeasuredModule(modulePath);
+  const isTransition = args.operation === 'transition' || args.operation === 'transition-changed';
   const createEvidence =
-    args.operation === 'transition'
+    isTransition
       ? measuredModule.createDocumentEnvelopeTransitionEvidenceBytes
       : measuredModule.createDocumentEnvelopeRevisionEvidenceBytes;
   if (typeof createEvidence !== 'function') {
     throw new Error(
       `Measured revision module must export ${
-        args.operation === 'transition'
+        isTransition
           ? 'createDocumentEnvelopeTransitionEvidenceBytes'
           : 'createDocumentEnvelopeRevisionEvidenceBytes'
       }().`,
     );
   }
 
-  await runMeasuredEvidence(createEvidence, source, args.operation);
+  await runMeasuredEvidence(createEvidence, source, resultingSource, args.operation);
 
   const samples = [];
   for (let index = 0; index < args.sampleCount; index += 1) {
     const start = performance.now();
-    await runMeasuredEvidence(createEvidence, source, args.operation);
+    await runMeasuredEvidence(createEvidence, source, resultingSource, args.operation);
     const elapsed = performance.now() - start;
     if (!Number.isFinite(elapsed) || elapsed < 0) {
       throw new Error('Revision measurement produced invalid runtime evidence.');

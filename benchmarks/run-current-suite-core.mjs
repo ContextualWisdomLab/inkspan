@@ -44,6 +44,9 @@ const packedFlags = Object.freeze([
   '--reference-hardware-id',
   '--output',
 ]);
+const packedChangedFlags = Object.freeze([
+  ...packedFlags.slice(0, -1), '--resulting-input', '--output',
+]);
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const COMMIT_SHA_PATTERN = /^[0-9a-f]{40}$/u;
 const MAX_PACKAGE_BYTES = 64 * 1024 * 1024;
@@ -85,6 +88,7 @@ function sharedArguments(values) {
     referenceHardwareId: values['--reference-hardware-id'],
     markdownInputPath: values['--input'],
     revisionInputPath: values['--revision-input'],
+    resultingInputPath: values['--resulting-input'],
     outputDirectory: resolve(values['--output']),
   });
 }
@@ -169,8 +173,11 @@ function currentCheckoutSha() {
 }
 
 function resolveArguments(argv) {
-  if (matchesArguments(argv, packedFlags)) {
-    const values = valuesForArguments(argv, packedFlags);
+  const matchedPackedFlags = [packedFlags, packedChangedFlags].find(
+    (flags) => matchesArguments(argv, flags),
+  );
+  if (matchedPackedFlags !== undefined) {
+    const values = valuesForArguments(argv, matchedPackedFlags);
     const packageSha256 = values['--package-sha256'];
     if (!SHA256_PATTERN.test(packageSha256)) {
       throw new Error(
@@ -604,6 +611,19 @@ function runSuite(args, markdownArguments, revisionArguments, autosaveArguments)
     summaryFailure: 'Benchmark suite transition summary failed.',
   });
   if (autosaveArguments !== null) {
+    if (args.resultingInputPath !== undefined) {
+      runMeasurementAndSummary({
+        measurementScript: 'measure-revision-evidence.mjs',
+        measurementArguments: [
+          ...revisionArguments, '--operation', 'transition-changed',
+          '--resulting-input', args.resultingInputPath,
+        ],
+        samplesPath: resolve(args.outputDirectory, 'transition-changed', 'samples.json'),
+        summaryDirectory: resolve(args.outputDirectory, 'transition-changed', 'summary'),
+        measurementFailure: 'Benchmark suite changed-transition measurement failed.',
+        summaryFailure: 'Benchmark suite changed-transition summary failed.',
+      });
+    }
     runMeasurementAndSummary({
       measurementScript: 'measure-revision-evidence.mjs',
       measurementArguments: [
@@ -691,6 +711,11 @@ function suiteManifest(args, packageEvidence, includeAutosave) {
     transitionSamples: 'transition/samples.json',
     transitionSummaryJson: 'transition/summary/summary.json',
     transitionSummaryText: 'transition/summary/summary.txt',
+    ...(args.resultingInputPath === undefined ? {} : {
+      changedTransitionSamples: 'transition-changed/samples.json',
+      changedTransitionSummaryJson: 'transition-changed/summary/summary.json',
+      changedTransitionSummaryText: 'transition-changed/summary/summary.txt',
+    }),
     ...(includeAutosave
       ? {
           canonicalizationSamples: 'envelope-canonicalization/samples.json',

@@ -20,6 +20,8 @@ interface BenchmarkProfileLock {
   readonly htmlSha256: string;
   readonly envelopeBytes: number;
   readonly envelopeSha256: string;
+  readonly changedEnvelopeBytes: number;
+  readonly changedEnvelopeSha256: string;
 }
 
 interface BenchmarkCorpusLock {
@@ -98,6 +100,15 @@ describe('deterministic synthetic performance corpus', () => {
         expect(firstEnvelope.byteLength).toBe(
           expected.profiles[profile].envelopeBytes,
         );
+        const changedEnvelope = readFileSync(join(first, `${profile}.changed.envelope.json`));
+        expect(changedEnvelope.equals(readFileSync(join(second, `${profile}.changed.envelope.json`)))).toBe(true);
+        expect(changedEnvelope.byteLength).toBe(expected.profiles[profile].changedEnvelopeBytes);
+        expect(expected.profiles[profile].changedEnvelopeSha256).not.toBe(expected.profiles[profile].envelopeSha256);
+        const edited = JSON.parse(changedEnvelope.toString('utf8'));
+        expect(edited.documentJson.content.pop()).toEqual({
+          type: 'paragraph', content: [{ type: 'text', text: 'Synthetic appended edit.' }],
+        });
+        expect(edited).toEqual(JSON.parse(firstEnvelope.toString('utf8')));
         expect(
           JSON.parse(firstEnvelope.toString('utf8')).documentJson.content.map(
             (node: { content?: readonly [{ text: string }] }) =>

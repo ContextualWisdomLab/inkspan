@@ -20,7 +20,7 @@ const READ_ONLY_NONBLOCKING_NOFOLLOW =
   (constants.O_NONBLOCK ?? 0) |
   (constants.O_NOFOLLOW ?? 0);
 const BENCHMARK_ID_PATTERN =
-  /^(?:ssr-shell-render|client-hydration|editor-mount|first-editable-paint|editor-input|keyboard-input|ime-composition|toolbar-action|undo-redo|table-edit|paste|image-insertion|markdown-serialization|html-serialization|envelope-parse|envelope-canonicalization|revision-evidence|transition-evidence|autosave-enqueue|autosave-coalescing|autosave-commit|yjs-update|print-media|office-parse|office-render|office-publication)-(?:small|medium|large|stress)$/u;
+  /^(?:ssr-shell-render|client-hydration|editor-mount|first-editable-paint|editor-input|keyboard-input|ime-composition|toolbar-action|undo-redo|table-edit|paste|image-insertion|markdown-serialization|html-serialization|envelope-parse|envelope-canonicalization|revision-evidence|transition-evidence|transition-changed-evidence|autosave-enqueue|autosave-coalescing|autosave-commit|yjs-update|print-media|office-parse|office-render|office-publication)-(?:small|medium|large|stress)$/u;
 const UNITS = new Set(['ms', 'bytes']);
 const SHA1_PATTERN = /^[0-9a-f]{40}$/u;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;

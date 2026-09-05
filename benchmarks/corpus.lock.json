@@ -17,7 +17,9 @@
       "htmlBytes": 2225,
       "htmlSha256": "f06ba85c8fa00c819dcb992232fbad2205915a3066abc29e275c590f32fb5356",
       "envelopeBytes": 4236,
-      "envelopeSha256": "7ee1425e1f57808a3a4d11987a0a6bc2aec97d311457f5456e82f1adbc48c810"
+      "envelopeSha256": "7ee1425e1f57808a3a4d11987a0a6bc2aec97d311457f5456e82f1adbc48c810",
+      "changedEnvelopeBytes": 4319,
+      "changedEnvelopeSha256": "aafa73ad4ed397de59a55fd21cd8c021dfee9eb2a828e732dc693d040c13ba64"
     },
     "medium": {
       "sections": 8,
@@ -26,7 +28,9 @@
       "htmlBytes": 15807,
       "htmlSha256": "09dcb4384632d6b5525707d21c22788e838f7c68ae5e55e020ff0367e342bc5a",
       "envelopeBytes": 30018,
-      "envelopeSha256": "47fa0cd11ffec5f9c5513a935180d1d7249157c46a0e115d1de938be86fa4459"
+      "envelopeSha256": "47fa0cd11ffec5f9c5513a935180d1d7249157c46a0e115d1de938be86fa4459",
+      "changedEnvelopeBytes": 30101,
+      "changedEnvelopeSha256": "68cc2e64e3129cfdd49b9fd16f2bea134f6f7275a8e671873f5913d4adde12ab"
     },
     "large": {
       "sections": 32,
@@ -35,7 +39,9 @@
       "htmlBytes": 62365,
       "htmlSha256": "3952dd5228a1e0f34bc294019e317c5ae38a26d4b4606cca8344e4dc36221102",
       "envelopeBytes": 118409,
-      "envelopeSha256": "c93143659a352cffaa1ff817b0efa0ba4b63f8410bbb7d923799b827a36aa655"
+      "envelopeSha256": "c93143659a352cffaa1ff817b0efa0ba4b63f8410bbb7d923799b827a36aa655",
+      "changedEnvelopeBytes": 118492,
+      "changedEnvelopeSha256": "d95afab352b1813395f7e95bd8c2c8c983583ca1577e1ae56fee60e961516bbf"
     },
     "stress": {
       "sections": 128,
@@ -44,7 +50,9 @@
       "htmlBytes": 248607,
       "htmlSha256": "1d5d42bd92b7121a4ca59a542edf881d0edb438d7de68c09d3c075703bf3e4cb",
       "envelopeBytes": 471978,
-      "envelopeSha256": "ebc47c89671e39af349a4cb65ba15ed3138a3eee187245e520abe80d877bcd6c"
+      "envelopeSha256": "ebc47c89671e39af349a4cb65ba15ed3138a3eee187245e520abe80d877bcd6c",
+      "changedEnvelopeBytes": 472061,
+      "changedEnvelopeSha256": "4a160cde5bf9c7ac9aa8aeeae0bce13d10632bd055944dc7c61a70403c55746a"
     }
   }
 }
