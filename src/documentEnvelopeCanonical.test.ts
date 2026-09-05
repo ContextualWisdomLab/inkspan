@@ -16,6 +16,18 @@ afterEach(() => {
 });
 
 describe('canonical document envelope serialization', () => {
+  it('preserves empty containers and lexically orders numeric-looking names', () => {
+    const envelope = createDocumentEnvelope({
+      type: 'doc',
+      attrs: { '2': [], '10': {}, mixed: [null, false, true, 0, '', '한 😀'] },
+      content: [],
+    });
+
+    expect(serializeDocumentEnvelope(envelope)).toBe(
+      `{"documentJson":{"attrs":{"10":{},"2":[],"mixed":[null,false,true,0,"","한 😀"]},"content":[],"type":"doc"},"schemaId":"${DOCUMENT_ENVELOPE_SCHEMA_ID}","schemaVersion":${DOCUMENT_ENVELOPE_SCHEMA_VERSION}}`,
+    );
+  });
+
   it('sorts object properties recursively while preserving array order', () => {
     const envelope = createDocumentEnvelope({
       type: 'doc',
