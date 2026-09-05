@@ -208,3 +208,33 @@ test('keeps an unreadable stored draft untouched and does not enable replacement
   expect((await savedDocuments(page)).originalValidator).toBe('"v1"');
   expect(errors).toEqual([]);
 });
+
+test('uses the saved version only after confirmation and resumes saving against its current version', async ({ page }) => {
+  const errors = await openRecovery(page);
+  await page.getByLabel('Next save in this demo').selectOption('conflict');
+  await replaceDraft(page, 'My unsaved draft');
+  await expect(page.getByRole('status')).toContainText('Another version was saved');
+  const savedBefore = await savedDocuments(page);
+  const restoreButton = page.getByRole('button', { name: 'Use saved version', exact: true });
+  await expect(restoreButton).toBeEnabled();
+  page.once('dialog', async (dialog) => {
+    expect(dialog.type()).toBe('confirm');
+    expect(dialog.message()).toContain('replace your unsaved changes');
+    await dialog.dismiss();
+  });
+  await restoreButton.click();
+  await expect(page.getByRole('textbox')).toHaveText('My unsaved draft');
+  expect(await savedDocuments(page)).toEqual(savedBefore);
+  page.once('dialog', (dialog) => dialog.accept());
+  await restoreButton.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status')).toHaveText('Saved version opened. You can continue editing.');
+  await expect(page.getByRole('textbox')).toHaveText('Draft saved elsewhere.');
+  await expect(page.getByRole('textbox')).toBeFocused();
+  expect(await savedDocuments(page)).toEqual(savedBefore);
+  await replaceDraft(page, 'Edit after restoring saved version');
+  await expect(page.getByRole('status')).toHaveText('All changes saved in this demo.');
+  expect((await savedDocuments(page)).original).toContain('Edit after restoring saved version');
+  expect((await savedDocuments(page)).originalValidator).toBe('"v3"');
+  expect(errors).toEqual([]);
+});
