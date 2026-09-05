@@ -19,6 +19,7 @@ async function openRecovery(page: Page, suffix = '') {
   await page.goto(`${recoveryUrl}${suffix}`);
   await expect(page.getByRole('heading', { name: 'Save and recover a draft' })).toBeVisible();
   await expect(page.getByRole('textbox')).toHaveText('Draft');
+  expect((await savedDocuments(page)).originalValidator).toBe('"v1"');
   return errors;
 }
 
@@ -60,6 +61,7 @@ test('keeps both drafts on conflict and continues autosaving only the separate c
   await page.getByLabel('Next save in this demo').selectOption('conflict');
   await page.getByRole('textbox').fill('My conflicting draft');
   await expect(page.getByRole('status')).toHaveText('Another version was saved. Your draft is still here.');
+  await page.screenshot({ path: test.info().outputPath('recovery-conflict-desktop.png'), fullPage: true });
   const original = (await savedDocuments(page)).original;
   expect(original).toContain('Draft saved elsewhere.');
   await page.getByRole('textbox').fill('My newest conflicting draft');
@@ -84,6 +86,7 @@ test('keeps recovery usable at 320px with keyboard and forced colors; read-only 
   const retryButton = page.getByRole('button', { name: 'Check saved copy and retry' });
   await expect(retryButton).toBeEnabled();
   await retryButton.focus();
+  await page.screenshot({ path: test.info().outputPath('recovery-retry-320-forced-colors.png'), fullPage: true });
   await page.keyboard.press('Enter');
   await expect(page.getByRole('status')).toHaveText('Draft recovered and saved in this demo.');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -91,10 +94,66 @@ test('keeps recovery usable at 320px with keyboard and forced colors; read-only 
   await page.emulateMedia({ media: 'print', forcedColors: 'none' });
   await expect(page.getByRole('textbox')).toHaveText('Keyboard recovery');
   await expect(page.getByLabel('Next save in this demo')).not.toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('recovery-print.png'), fullPage: true });
   await page.emulateMedia({ media: 'screen' });
   await page.goto(`${recoveryUrl}&readOnly=1`);
   await expect(page.getByRole('textbox')).toHaveAttribute('contenteditable', 'false');
   await expect(page.getByLabel('Next save in this demo')).toBeDisabled();
   expect((await savedDocuments(page)).originalValidator).toBe('"v1"');
+  expect(errors).toEqual([]);
+});
+
+test('recovers newer local edits after a lost confirmation and admits a same-turn retry only once', async ({ page }) => {
+  const errors = await openRecovery(page);
+  await page.getByLabel('Next save in this demo').selectOption('ambiguous_commit_failure');
+  await page.getByRole('textbox').fill('Committed without confirmation');
+  await expect(page.getByRole('status')).toContainText('Save not confirmed');
+  await page.getByRole('textbox').fill('Newer local edit');
+  const retryButton = page.getByRole('button', { name: 'Check saved copy and retry' });
+  await expect(retryButton).toBeEnabled();
+  await retryButton.evaluate((button: HTMLButtonElement) => { button.click(); button.click(); });
+  await expect(page.getByRole('status')).toHaveText('Draft recovered and saved in this demo.');
+  expect((await savedDocuments(page)).original).toContain('Newer local edit');
+  expect((await savedDocuments(page)).originalValidator).toBe('"v3"');
+  expect(errors).toEqual([]);
+});
+
+test('does not overwrite a competing save that arrives after the recovery reread', async ({ page }) => {
+  const errors = await openRecovery(page);
+  await page.getByLabel('Next save in this demo').selectOption('failure');
+  await page.getByRole('textbox').fill('Keep my version');
+  await expect(page.getByRole('status')).toContainText('Save not confirmed');
+  await page.getByLabel('Next save in this demo').selectOption('conflict');
+  await page.getByRole('button', { name: 'Check saved copy and retry' }).click();
+  await expect(page.getByRole('status')).toHaveText('Another version was saved. Your draft is still here.');
+  await expect(page.getByRole('textbox')).toHaveText('Keep my version');
+  expect((await savedDocuments(page)).original).toContain('Draft saved elsewhere.');
+  expect((await savedDocuments(page)).originalValidator).toBe('"v2"');
+  expect(errors).toEqual([]);
+});
+
+test('ignores an older digest that settles after a newer draft has saved', async ({ page }) => {
+  await page.addInitScript(() => {
+    const digest = crypto.subtle.digest.bind(crypto.subtle);
+    const pending = window as typeof window & { releaseOldDigest?: () => void; oldDigestFinished?: boolean };
+    crypto.subtle.digest = async (algorithm, data) => {
+      const result = await digest(algorithm, data);
+      if (new TextDecoder().decode(data).includes('Older slow draft')) {
+        await new Promise<void>((resolve) => { pending.releaseOldDigest = resolve; });
+        pending.oldDigestFinished = true;
+      }
+      return result;
+    };
+  });
+  const errors = await openRecovery(page);
+  await page.getByRole('textbox').fill('Older slow draft');
+  await expect.poll(() => page.evaluate(() => typeof (window as Window & { releaseOldDigest?: () => void }).releaseOldDigest)).toBe('function');
+  await page.getByRole('textbox').fill('Newer fast draft');
+  await expect(page.getByRole('status')).toHaveText('All changes saved in this demo.');
+  await page.evaluate(() => (window as Window & { releaseOldDigest?: () => void }).releaseOldDigest?.());
+  await expect.poll(() => page.evaluate(() => (window as Window & { oldDigestFinished?: boolean }).oldDigestFinished)).toBe(true);
+  expect((await savedDocuments(page)).original).toContain('Newer fast draft');
+  expect((await savedDocuments(page)).originalValidator).toBe('"v2"');
+  await expect(page.getByRole('textbox')).toHaveText('Newer fast draft');
   expect(errors).toEqual([]);
 });
