@@ -12,7 +12,7 @@ import {
   type DocumentAutosaveSession,
 } from '@contextualwisdomlab/cwl-editor/autosave';
 import { createAutosaveViewModel } from './autosave-view-model.mjs';
-import { createSyntheticDocumentRepository } from './synthetic-document-repository.mjs';
+import { createSyntheticDocumentRepository, MAX_DOCUMENT_CODE_UNITS } from './synthetic-document-repository.mjs';
 
 type ReferenceRepository = ReturnType<typeof createSyntheticDocumentRepository>;
 type ReferenceDocument = { documentId: string; repository: ReferenceRepository };
@@ -55,6 +55,7 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
   const copyCountRef = useRef(0);
   const [viewState, setViewState] = useState('clean');
   const [capturePending, setCapturePending] = useState(false);
+  const [captureFailed, setCaptureFailed] = useState(false);
   const [recoveryInFlight, setRecoveryInFlight] = useState(false);
   const [nextOutcome, setNextOutcome] = useState('saved');
   const [saveWaiting, setSaveWaiting] = useState(false);
@@ -131,18 +132,22 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
     const generation = ++generationRef.current;
     capturePendingRef.current = true;
     setCapturePending(true);
+    setCaptureFailed(false);
     try {
-      const evidence = await editorRef.current.getDocumentEnvelopeRevisionEvidence({ maxUtf8Bytes: 65_536, maxStringCodeUnits: 65_536 });
+      const evidence = await editorRef.current.getDocumentEnvelopeRevisionEvidence({ maxUtf8Bytes: MAX_DOCUMENT_CODE_UNITS, maxStringCodeUnits: MAX_DOCUMENT_CODE_UNITS });
       if (!evidence) throw new Error('Editor is not ready.');
       if (!mountedRef.current || generation !== generationRef.current || session !== sessionRef.current) return false;
+      const document = serializeDocumentEnvelope(evidence.envelope);
+      if (document.length > MAX_DOCUMENT_CODE_UNITS) throw new Error('Draft exceeds reference storage capacity.');
       capturePendingRef.current = false;
       setCapturePending(false);
-      if (session.getSnapshot().state === 'idle' && serializeDocumentEnvelope(evidence.envelope) === confirmedDocumentRef.current) return false;
+      if (session.getSnapshot().state === 'idle' && document === confirmedDocumentRef.current) return false;
       const result = await session.enqueue(evidence);
       return mountedRef.current && generation === generationRef.current && result.status === 'saved';
     } catch {
       if (mountedRef.current && generation === generationRef.current && session === sessionRef.current) {
-        setViewState(session.getSnapshot().state === 'blocked' ? 'failed' : 'captureFailed');
+        if (session.getSnapshot().state === 'blocked') setViewState('failed');
+        else setCaptureFailed(true);
       }
       return false;
     } finally {
@@ -159,8 +164,8 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
     recoveryInFlightRef.current = true;
     setRecoveryInFlight(true);
     try {
-      const document = editorRef.current?.getDocumentEnvelopeJson({ maxUtf8Bytes: 65_536, maxStringCodeUnits: 65_536 });
-      if (!document) throw new Error('Editor is not ready.');
+      const document = editorRef.current?.getDocumentEnvelopeJson({ maxUtf8Bytes: MAX_DOCUMENT_CODE_UNITS, maxStringCodeUnits: MAX_DOCUMENT_CODE_UNITS });
+      if (!document || document.length > MAX_DOCUMENT_CODE_UNITS) throw new Error('Draft is not ready to save.');
       let activeDocument = activeDocumentRef.current;
       let current = activeDocument.repository.read(activeDocument.documentId);
       if (asCopy) {
@@ -203,8 +208,8 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
     }
   }
 
-  const blocked = viewState === 'conflict' || viewState === 'failed';
-  const displayedState = capturePending && !blocked ? 'preparing' : viewState;
+  const blocked = !captureFailed && (viewState === 'conflict' || viewState === 'failed');
+  const displayedState = captureFailed ? 'captureFailed' : capturePending && !blocked ? 'preparing' : viewState;
   return (
     <section className="reference-recovery" aria-labelledby="recovery-heading">
       <h2 id="recovery-heading">Save and recover a draft</h2>

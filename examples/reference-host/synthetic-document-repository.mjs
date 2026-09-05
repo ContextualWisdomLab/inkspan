@@ -1,5 +1,5 @@
 const MAX_DOCUMENT_ID_CODE_UNITS = 256;
-const MAX_DOCUMENT_CODE_UNITS = 65_536;
+export const MAX_DOCUMENT_CODE_UNITS = 65_536;
 
 /** Marker used by repository contracts to prevent this fixture being mistaken for a production adapter. */
 export const REFERENCE_ONLY = true;

@@ -157,3 +157,21 @@ test('ignores an older digest that settles after a newer draft has saved', async
   await expect(page.getByRole('textbox')).toHaveText('Newer fast draft');
   expect(errors).toEqual([]);
 });
+
+test('does not report an oversized unsaved draft as saved when an older request finishes', async ({ page }) => {
+  const errors = await openRecovery(page);
+  await page.getByLabel('Next save in this demo').selectOption('deferred');
+  await page.getByRole('textbox').fill('Earlier accepted draft');
+  await expect(page.getByRole('status')).toHaveText('Saving changes…');
+  await page.getByRole('textbox').fill('x'.repeat(65_537));
+  const failedPreparation = 'Changes could not be prepared. Your draft is still here; shorten it and try again.';
+  await expect(page.getByRole('status')).toHaveText(failedPreparation);
+  await page.getByRole('button', { name: 'Finish pending save' }).click();
+  await expect.poll(async () => (await savedDocuments(page)).original).toContain('Earlier accepted draft');
+  await expect(page.getByRole('status')).toHaveText(failedPreparation);
+  await expect(page.getByRole('textbox')).toHaveText('x'.repeat(65_537));
+  await page.getByRole('textbox').fill('Shortened recoverable draft');
+  await expect(page.getByRole('status')).toHaveText('All changes saved in this demo.');
+  expect((await savedDocuments(page)).original).toContain('Shortened recoverable draft');
+  expect(errors).toEqual([]);
+});
