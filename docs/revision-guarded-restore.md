@@ -155,7 +155,7 @@ normalized envelope. This second asynchronous boundary is required to return a
 trustworthy resulting strong validator without a later host race. After the
 digest resolves, Inkspan checks editor lifecycle and active document identity
 again. Only then does it apply the already prepared node with one
-`setContent(documentNode, false)` replacement without another asynchronous
+`setContent(documentNode, { emitUpdate: false })` replacement without another asynchronous
 boundary or attacker-controlled property access.
 
 TipTap commands can report command execution before ProseMirror transaction

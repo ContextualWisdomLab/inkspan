@@ -1,12 +1,12 @@
 # ADR 0031: Editor chrome design tokens and Storybook inventory
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
-Inkspan ships repeating toolbar buttons, groups, and editor chrome styled through `--cwl-*` custom properties. Hosts already re-theme by overriding those properties, but the names, light/dark/print values, and buyer next action live only inside protected `src/styles.css`. There is no protected-main typed catalog, Design Tokens Format Module interchange snapshot, or Storybook inventory of the repeating objects; those capabilities are proposed on this active PR.
+Inkspan ships repeating toolbar buttons, groups, and editor chrome styled through `--cwl-*` custom properties. Hosts can re-theme them through the protected typed catalog, Design Tokens Format Module interchange snapshot, and Storybook inventory while `src/styles.css` remains runtime presentation authority.
 
-Inventorying the actual active-toolbar foreground/background pair also exposed a product-owned accessibility defect: protected main's dark `--cwl-accent: #4493f8` on `--cwl-accent-soft: #163356` produces about 4.13:1 for 13px active-button text, below the WCAG 2.2 4.5:1 normal-text threshold. Treating that shipped-default failure as a host override responsibility would contradict Inkspan's ownership of its default presentation.
+Inventorying the actual active-toolbar foreground/background pair exposed and repaired a product-owned accessibility defect: the former dark `--cwl-accent: #4493f8` on `--cwl-accent-soft: #163356` produced about 4.13:1 for 13px active-button text, below the WCAG 2.2 4.5:1 normal-text threshold. Protected `main` now uses `#58a6ff`, producing about 5.06:1.
 
 ## Alternatives considered
 
@@ -18,7 +18,7 @@ Inventorying the actual active-toolbar foreground/background pair also exposed a
 
 ## Decision
 
-If integrated, Inkspan will publish a host-facing theme-token catalog for nine inventoried chrome tokens, a Design Tokens Format Module 2025.10 interchange snapshot, and a Storybook inventory of repeating toolbar/editor objects. Inkspan's inventoried normal-text pairs will be required to meet the WCAG 2.2 4.5:1 threshold in the resulting protected light/dark/print defaults; the active-PR candidate therefore uses `#58a6ff` on `#163356` for dark active-toolbar text, about 5.06:1. `getEditorThemeTokenContrast()` evaluates only the catalog values for a named scheme. Hosts overriding `--cwl-*` on `.cwl-editor` must pass their actual resolved foreground/background hex values to `contrastRatioFromHex()` and re-check their resulting body and active-toolbar pairs. Unknown token names fail closed. No Figma, network, persistence, credential, or model authority is added.
+Inkspan publishes a host-facing theme-token catalog for nine inventoried chrome tokens, a Design Tokens Format Module 2025.10 interchange snapshot, and a Storybook inventory of repeating toolbar/editor objects. Inkspan's inventoried normal-text pairs must meet the WCAG 2.2 4.5:1 threshold in protected light/dark/print defaults; the dark active-toolbar pair uses `#58a6ff` on `#163356`, about 5.06:1. `getEditorThemeTokenContrast()` evaluates only the catalog values for a named scheme. Hosts overriding `--cwl-*` on `.cwl-editor` must pass their actual resolved foreground/background hex values to `contrastRatioFromHex()` and re-check their resulting body and active-toolbar pairs. Unknown token names fail closed. No Figma, network, persistence, credential, or model authority is added.
 
 ## Consequences and ownership trade-offs
 
@@ -34,12 +34,12 @@ The proposed catalog contains only public presentation values. It does not carry
 
 ## Compatibility and migration
 
-The catalog is additive if integrated. Existing CSS overrides on `.cwl-editor` continue to work. The active-PR candidate changes the dark default accent from `#4493f8` to `#58a6ff`; hosts that already override `--cwl-accent` are unaffected by that candidate default-value change but remain responsible for validating their actual custom pair. A later CSS token addition or default-value change must update the catalog, directly affected documentation/tests, and this ADR together.
+The catalog is additive. Existing CSS overrides on `.cwl-editor` continue to work. Protected `main` changed the dark default accent from `#4493f8` to `#58a6ff`; hosts that already override `--cwl-accent` are unaffected but remain responsible for validating their actual custom pair. A later CSS token addition or default-value change must update the catalog, directly affected documentation/tests, and this ADR together.
 
 ## Verification and acceptance evidence
 
-Required evidence includes token-catalog tests against `src/styles.css`, deterministic contrast assertions for inventoried normal-text pairs, resolved-hex override guidance tests, documentation-contract tests, Storybook inventory stories for toolbar button states and token swatches, and exact-head CI/coverage/package/security gates on the unchanged head. The accessibility regression must fail against protected main's `#4493f8`/`#163356` dark active pair and pass against the active-PR `#58a6ff`/`#163356` pair. This ADR stays Proposed until protected integration.
+Acceptance evidence includes token-catalog tests against `src/styles.css`, deterministic contrast assertions for inventoried normal-text pairs, resolved-hex override guidance tests, documentation-contract tests, Storybook inventory stories for toolbar button states and token swatches, and exact-head CI/coverage/package/security gates. The accessibility regression failed against the former `#4493f8`/`#163356` dark active pair and passes against protected `main`'s `#58a6ff`/`#163356` pair.
 
 ## Rollback or supersession
 
-Before integration, rollback removes the catalog export, Storybook inventory/config, operator/doctoring records, and this ADR together. After integration, reverting only the compliant dark accent while retaining the active-text contrast requirement is not a valid partial rollback. Supersession requires a new ADR if CSS ceases to be runtime presentation authority or if a design-tool sync contract is accepted.
+Rollback removes the catalog export, Storybook inventory/config, operator/doctoring records, and this ADR together. Reverting only the compliant dark accent while retaining the active-text contrast requirement is not a valid partial rollback. Supersession requires a new ADR if CSS ceases to be runtime presentation authority or if a design-tool sync contract is accepted.
