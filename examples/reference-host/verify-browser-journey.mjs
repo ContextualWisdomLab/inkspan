@@ -70,6 +70,12 @@ function verifyBrowserJourney() {
 
   try {
     run('pnpm', ['build'], { timeout: 240_000 });
+    run('pnpm', [
+      'exec', 'tsc', '--noEmit', '--allowJs', '--checkJs', 'false',
+      '--strict', '--skipLibCheck', '--target', 'ES2022', '--module', 'ESNext',
+      '--moduleResolution', 'bundler', '--jsx', 'react-jsx', '--esModuleInterop',
+      'examples/reference-host/browser-host.tsx',
+    ]);
 
     const packDirectory = join(temporaryRoot, 'pack');
     mkdirSync(packDirectory, { recursive: true });
