@@ -222,7 +222,7 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
     }
   }
 
-  function restoreSavedDraft() {
+  async function restoreSavedDraft() {
     const session = sessionRef.current;
     const editor = editorRef.current;
     if (readOnly || !editorReadyRef.current || !editor || !session || recoveryInFlightRef.current || capturePendingRef.current || session.getSnapshot().state !== 'blocked') return;
@@ -235,9 +235,12 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
       const draft = editor.getDocumentEnvelopeJson(limits);
       const generation = generationRef.current;
       if (!window.confirm('Use the saved version? This will replace your unsaved changes. Cancel to keep editing or save your draft as a separate copy instead.')) return;
-      // ponytail: confirmation and this store are synchronous. An asynchronous
-      // host needs local If-Match restore plus its own durable-state revalidation.
-      if (!mountedRef.current || sessionRef.current !== session || generationRef.current !== generation ||
+      // Let pending browser input reach the editor before checking the draft.
+      await Promise.resolve();
+      if (!mountedRef.current || sessionRef.current !== session) return;
+      // ponytail: this store and replacement are synchronous. An asynchronous
+      // store needs local If-Match restore plus its own durable-state revalidation.
+      if (generationRef.current !== generation ||
         editor.getDocumentEnvelopeJson(limits) !== draft ||
         activeDocument.repository.read(activeDocument.documentId).validator !== saved.validator) {
         setViewState('restoreChanged');
@@ -290,7 +293,7 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
           <button type="button" disabled={capturePending || recoveryInFlight}
             onClick={() => { void recoverDraft(true); }}>Save my draft as a separate copy</button>
           <button type="button" disabled={capturePending || recoveryInFlight}
-            onClick={restoreSavedDraft}>Use saved version</button>
+            onClick={() => { void restoreSavedDraft(); }}>Use saved version</button>
         </div>
       )}
       <fieldset className="reference-recovery-controls" disabled={readOnly || !editorReady || recoveryInFlight}>
