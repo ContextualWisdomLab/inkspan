@@ -254,15 +254,18 @@ test('restores rich saved content without rewriting storage and remains usable a
   await page.screenshot({ path: test.info().outputPath('restore-320-forced-colors.png'), fullPage: true });
   // A reentrant click must not open a second confirmation before React renders.
   await page.evaluate(() => {
-    const originalConfirm = window.confirm;
+    const observed = window as typeof window & { restoreConfirmationCount: number };
+    observed.restoreConfirmationCount = 0;
     window.confirm = () => {
-      window.confirm = () => { throw new Error('Duplicate restore confirmation'); };
-      Array.from(document.querySelectorAll('button')).find((button) => button.textContent === 'Use saved version')?.click();
-      window.confirm = originalConfirm;
+      observed.restoreConfirmationCount += 1;
+      if (observed.restoreConfirmationCount === 1) {
+        Array.from(document.querySelectorAll('button')).find((button) => button.textContent === 'Use saved version')?.click();
+      }
       return true;
     };
   });
   await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => (window as typeof window & { restoreConfirmationCount: number }).restoreConfirmationCount)).toBe(1);
   await expect(page.getByRole('status')).toHaveText('Saved version opened. You can continue editing.');
   await expect(page.getByRole('textbox').getByRole('heading', { name: 'Saved heading', level: 2 })).toBeVisible();
   await expect(page.getByRole('textbox').locator('strong')).toHaveText('Previously saved draft');
@@ -307,8 +310,14 @@ test('preserves a local edit made during confirmation', async ({ page }) => {
     const originalConfirm = window.confirm;
     window.confirm = () => {
       window.confirm = originalConfirm;
-      document.querySelector<HTMLElement>('[role="textbox"]')?.focus();
-      document.execCommand('selectAll');
+      const textbox = document.querySelector<HTMLElement>('[contenteditable="true"]');
+      if (!textbox) throw new Error('Editable draft is unavailable');
+      textbox.focus();
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(textbox);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
       document.execCommand('insertText', false, 'New local edit during confirmation');
       return true;
     };
@@ -320,14 +329,17 @@ test('preserves a local edit made during confirmation', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-for (const invalidSaved of ['Invalid saved content', JSON.stringify({ schemaId: 'https://contextualwisdomlab.github.io/inkspan/document-envelope', schemaVersion: 1, documentJson: { type: 'unknown-node' } })]) {
-  test(`preserves the draft when the saved version is rejected: ${invalidSaved.startsWith('{') ? 'schema' : 'json'}`, async ({ page }) => {
+for (const invalidKind of ['json', 'schema']) {
+  test(`preserves the draft when the saved version is rejected: ${invalidKind}`, async ({ page }) => {
     const errors = await openRecovery(page);
     await page.getByLabel('Next save in this demo').selectOption('failure');
     await replaceDraft(page, 'Keep my recoverable draft');
     const restoreButton = page.getByRole('button', { name: 'Use saved version', exact: true });
     await expect(restoreButton).toBeEnabled();
     const originalSaved = (await savedDocuments(page)).original;
+    const invalidSaved = invalidKind === 'json' ? 'Invalid saved content' : JSON.stringify({
+      ...JSON.parse(originalSaved), documentJson: { type: 'doc', content: [{ type: 'unknown-node' }] },
+    });
     await page.evaluate((value) => window.referenceHostSaveElsewhere(value), invalidSaved);
     page.once('dialog', (dialog) => dialog.accept());
     await restoreButton.click();
