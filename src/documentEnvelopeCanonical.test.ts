@@ -142,6 +142,25 @@ describe('canonical document envelope serialization', () => {
     });
   });
 
+  it('reuses the native encoder without sharing output buffers', () => {
+    const envelope = createDocumentEnvelope({
+      type: 'doc',
+      attrs: { label: '문서 😀' },
+    });
+    const encode = vi.spyOn(TextEncoder.prototype, 'encode');
+    const firstBytes = encodeDocumentEnvelope(envelope);
+    const secondBytes = encodeDocumentEnvelope(envelope);
+
+    expect(encode).toHaveBeenCalledTimes(2);
+    expect(encode.mock.contexts[0]).toBe(encode.mock.contexts[1]);
+    expect(firstBytes).toEqual(secondBytes);
+    expect(firstBytes.buffer).not.toBe(secondBytes.buffer);
+    firstBytes.fill(0);
+    expect(new TextDecoder().decode(secondBytes)).toBe(
+      serializeDocumentEnvelope(envelope),
+    );
+  });
+
   it('exact-checks UTF-8 bytes when code-unit length alone fits', () => {
     const envelope = createDocumentEnvelope({
       type: 'doc',

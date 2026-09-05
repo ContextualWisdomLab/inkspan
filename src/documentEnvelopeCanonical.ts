@@ -27,6 +27,7 @@ const INVALID_UNICODE_MESSAGE =
   'Document envelope must contain valid Unicode scalar strings';
 const NEGATIVE_ZERO_MESSAGE =
   'Document envelope must not contain negative zero';
+const UTF8_ENCODER = new TextEncoder();
 const INVALID_ENCODING_OPTIONS_MESSAGE =
   'Canonical document envelope encoding options are invalid';
 const INVALID_OUTPUT_LIMIT_MESSAGE =
@@ -85,7 +86,7 @@ export function encodeValidatedDocumentEnvelope(
     throw new DocumentEnvelopeError(OUTPUT_LIMIT_EXCEEDED_MESSAGE);
   }
 
-  const encoded = new TextEncoder().encode(serialized);
+  const encoded = UTF8_ENCODER.encode(serialized);
   if (encoded.byteLength > maxUtf8Bytes) {
     throw new DocumentEnvelopeError(OUTPUT_LIMIT_EXCEEDED_MESSAGE);
   }
