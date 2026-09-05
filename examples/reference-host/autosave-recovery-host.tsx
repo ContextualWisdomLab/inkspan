@@ -36,6 +36,9 @@ const messages: Record<string, string> = {
   retrying: 'Checking and saving your draft…',
   recovered: 'Draft recovered and saved in this demo.',
   copied: 'Separate copy saved. The original was not changed.',
+  restored: 'Saved version opened. You can continue editing.',
+  restoreChanged: 'The draft or saved version changed. Nothing was replaced; try again.',
+  restoreFailed: 'The saved version could not be opened. Your draft is still here.',
   captureFailed: 'Changes could not be prepared. Your draft is still here; shorten it and try again.',
   closed: 'Saving is paused. Your draft is still here.',
 };
@@ -219,7 +222,44 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
     }
   }
 
-  const blocked = !captureFailed && (viewState === 'conflict' || viewState === 'failed');
+  function restoreSavedDraft() {
+    const session = sessionRef.current;
+    const editor = editorRef.current;
+    if (readOnly || !editorReadyRef.current || !editor || !session || recoveryInFlightRef.current || capturePendingRef.current || session.getSnapshot().state !== 'blocked') return;
+    recoveryInFlightRef.current = true;
+    setRecoveryInFlight(true);
+    const limits = { maxUtf8Bytes: MAX_DOCUMENT_CODE_UNITS, maxJsonTextCodeUnits: MAX_DOCUMENT_CODE_UNITS, maxStringCodeUnits: MAX_DOCUMENT_CODE_UNITS };
+    try {
+      const activeDocument = activeDocumentRef.current;
+      const saved = activeDocument.repository.read(activeDocument.documentId);
+      const draft = editor.getDocumentEnvelopeJson(limits);
+      const generation = generationRef.current;
+      if (!window.confirm('Use the saved version? This will replace your unsaved changes. Cancel to keep editing or save your draft as a separate copy first.')) return;
+      // ponytail: confirmation and this store are synchronous. An asynchronous
+      // host needs local If-Match restore plus its own durable-state revalidation.
+      if (!mountedRef.current || sessionRef.current !== session || generationRef.current !== generation ||
+        editor.getDocumentEnvelopeJson(limits) !== draft ||
+        activeDocument.repository.read(activeDocument.documentId).validator !== saved.validator) {
+        setViewState('restoreChanged');
+        return;
+      }
+      if (!editor.restoreDocumentEnvelope(saved.document, limits)) throw new Error('Editor is not ready.');
+      generationRef.current += 1;
+      sessionRef.current = null;
+      void session.close();
+      confirmedDocumentRef.current = editor.getDocumentEnvelopeJson(limits);
+      beginSession(saved.validator);
+      setViewState('restored');
+      editor.focus();
+    } catch {
+      if (mountedRef.current) setViewState('restoreFailed');
+    } finally {
+      recoveryInFlightRef.current = false;
+      if (mountedRef.current) setRecoveryInFlight(false);
+    }
+  }
+
+  const blocked = !captureFailed && ['conflict', 'failed', 'restoreChanged', 'restoreFailed'].includes(viewState);
   const displayedState = captureFailed ? 'captureFailed' : capturePending && !blocked ? 'preparing' : viewState;
   return (
     <section className="reference-recovery" aria-labelledby="recovery-heading">
@@ -249,6 +289,8 @@ export function AutosaveRecoveryHost({ documentId, repository, readOnly = false,
             onClick={() => { void recoverDraft(false); }}>Check saved copy and retry</button>}
           <button type="button" disabled={capturePending || recoveryInFlight}
             onClick={() => { void recoverDraft(true); }}>Save my draft as a separate copy</button>
+          <button type="button" disabled={capturePending || recoveryInFlight}
+            onClick={restoreSavedDraft}>Use saved version</button>
         </div>
       )}
       <fieldset className="reference-recovery-controls" disabled={readOnly || !editorReady || recoveryInFlight}>
