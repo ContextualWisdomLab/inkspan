@@ -1,4 +1,5 @@
-import { EditorContent, type Editor } from '@tiptap/react';
+import type { Editor } from '@tiptap/core';
+import { EditorContent } from '@tiptap/react';
 import { useCallback, type KeyboardEvent, type ReactNode } from 'react';
 import type { EditorMode, ImageConfig } from '../types.js';
 import { EditorFormField } from './EditorFormField.js';
