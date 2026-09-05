@@ -3,7 +3,7 @@ import { CwlEditor, type EditorMode } from '../src/index.js';
 
 const SAMPLE_MD = `# Inkspan
 
-A **commercial-grade** Markdown + HTML editor built on TipTap v2, with
+A **commercial-grade** Markdown + HTML editor built on TipTap v3, with
 bundled offline fonts for five scripts.
 
 ## Multilingual (bundled Noto Sans, no network)

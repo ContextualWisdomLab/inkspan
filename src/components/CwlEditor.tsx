@@ -1,4 +1,5 @@
-import { type Editor, useEditor } from '@tiptap/react';
+import type { Editor } from '@tiptap/core';
+import { useEditor } from '@tiptap/react';
 import {
   forwardRef,
   useCallback,
@@ -213,7 +214,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       if (current !== value) {
         /* v8 ignore next -- isControlled guarantees value is defined. */
         const next = editorValueToHtml(value ?? '', mode);
-        editor.commands.setContent(next, false);
+        editor.commands.setContent(next, { emitUpdate: false });
       }
     }, [editor, isControlled, value, mode]);
 
