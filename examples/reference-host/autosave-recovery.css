@@ -1,0 +1,43 @@
+.reference-recovery {
+  max-inline-size: 52rem;
+  margin-inline: auto;
+  padding: 1rem;
+  color: CanvasText;
+  background: Canvas;
+  font-family: 'Noto Sans', system-ui, sans-serif;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.reference-recovery output {
+  display: block;
+  margin-block: 1rem;
+}
+
+.reference-recovery-actions,
+.reference-recovery-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-block: 1rem;
+}
+
+.reference-recovery-controls { min-inline-size: 0; }
+.reference-recovery-controls label { min-inline-size: 0; }
+.reference-recovery-controls select { display: block; }
+.reference-recovery-actions > button,
+.reference-recovery-controls button,
+.reference-recovery-controls select {
+  max-inline-size: 100%;
+  min-block-size: 2.75rem;
+  padding: 0.5rem;
+  font: inherit;
+}
+.reference-recovery-actions :focus-visible,
+.reference-recovery-controls :focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+
+@media print {
+  .reference-recovery-actions,
+  .reference-recovery-controls { display: none; }
+  .reference-recovery { max-inline-size: none; padding: 0; }
+}

@@ -1,0 +1,146 @@
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+import { describe, expect, it } from 'vitest';
+
+const OFFICE_MARKDOWN_IMPORT =
+  "import { markdownToPlainText } from '@contextualwisdomlab/cwl-editor/markdown';";
+
+function fixtureModuleUrl(fixture: string): string {
+  const path = resolve(process.cwd(), fixture);
+  if (fixture !== 'examples/reference-host/office-handoff.mjs') {
+    return pathToFileURL(path).href;
+  }
+
+  const source = readFileSync(path, 'utf8');
+  const isolatedSource = source.replace(
+    OFFICE_MARKDOWN_IMPORT,
+    'const markdownToPlainText = (markdown) => markdown;',
+  );
+  if (isolatedSource === source) {
+    throw new Error('Office handoff public Markdown import contract changed.');
+  }
+  return `data:text/javascript;base64,${Buffer.from(isolatedSource, 'utf8').toString('base64')}`;
+}
+
+function observeHostileReflectionFailure(
+  fixture: string,
+  sourceTrap: string,
+  call: string,
+): string {
+  const fixtureUrl = fixtureModuleUrl(fixture);
+  const script = `
+    const module = await import(${JSON.stringify(fixtureUrl)});
+    const privateSentinel = 'private-reflection-sentinel';
+    const hostileError = new Proxy({}, {
+      getPrototypeOf() {
+        throw privateSentinel;
+      },
+    });
+    const hostileSource = new Proxy({}, ${sourceTrap});
+    let observed = 'no-error';
+    try {
+      ${call}
+    } catch (error) {
+      if (typeof error === 'object' && error !== null) {
+        const descriptor = Object.getOwnPropertyDescriptor(error, 'message');
+        observed = descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')
+          ? descriptor.value
+          : 'object-error';
+      } else {
+        observed = String(error);
+      }
+    }
+    process.stdout.write(JSON.stringify({ observed }));
+  `;
+  const output = execFileSync(
+    process.execPath,
+    ['--input-type=module', '--eval', script],
+    { encoding: 'utf8' },
+  );
+  return (JSON.parse(output) as { observed: string }).observed;
+}
+
+describe('reference-host hostile reflection containment', () => {
+  it('redacts hostile meta-object failures across every reference boundary', () => {
+    const prototypeTrap = `{
+      getPrototypeOf() {
+        throw hostileError;
+      },
+    }`;
+    const descriptorTrap = `{
+      getOwnPropertyDescriptor() {
+        throw hostileError;
+      },
+    }`;
+
+    expect(
+      observeHostileReflectionFailure(
+        'examples/reference-host/synthetic-document-repository.mjs',
+        prototypeTrap,
+        'module.createSyntheticDocumentRepository(hostileSource);',
+      ),
+    ).toBe('Reference persistence invalid_options.');
+    expect(
+      observeHostileReflectionFailure(
+        'examples/reference-host/delayed-proposal.mjs',
+        prototypeTrap,
+        'await module.createDelayedProposal(hostileSource);',
+      ),
+    ).toBe('proposal creation is invalid.');
+    expect(
+      observeHostileReflectionFailure(
+        'examples/reference-host/office-handoff.mjs',
+        `{
+          get(_target, property) {
+            if (property === 'title') throw privateSentinel;
+            return undefined;
+          },
+        }`,
+        'module.createReferenceDocxRequest(hostileSource);',
+      ),
+    ).toBe('Office handoff input is invalid.');
+    expect(
+      observeHostileReflectionFailure(
+        'examples/reference-host/autosave-view-model.mjs',
+        descriptorTrap,
+        'module.createAutosaveViewModel().observe(hostileSource);',
+      ),
+    ).toBe('autosave snapshot is invalid.');
+    expect(
+      observeHostileReflectionFailure(
+        'examples/reference-host/collaboration-provider-lifecycle.mjs',
+        descriptorTrap,
+        'module.createHostCollaborationLifecycle(hostileSource);',
+      ),
+    ).toBe('collaboration options are invalid.');
+    expect(
+      observeHostileReflectionFailure(
+        'examples/reference-host/collaboration-provider-lifecycle.mjs',
+        descriptorTrap,
+        `module.createHostCollaborationLifecycle({
+          documentFactory() { return hostileSource; },
+          providerFactory() {
+            return { connect() {}, disconnect() {}, destroy() {} };
+          },
+          roomId: 'reference-room',
+          actorId: 'reference-actor',
+        });`,
+      ),
+    ).toBe('documentFactory returned an invalid document.');
+    expect(
+      observeHostileReflectionFailure(
+        'examples/reference-host/collaboration-provider-lifecycle.mjs',
+        descriptorTrap,
+        `module.createHostCollaborationLifecycle({
+          documentFactory() { return { destroy() {} }; },
+          providerFactory() { throw hostileError; },
+          roomId: 'reference-room',
+          actorId: 'reference-actor',
+        });`,
+      ),
+    ).toBe('collaboration lifecycle initialization failed.');
+  });
+});

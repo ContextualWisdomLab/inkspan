@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { createRequire } from 'node:module';
 import { defineConfig } from 'vite';
 
 const browserDirectory = dirname(fileURLToPath(import.meta.url));
@@ -8,11 +9,63 @@ const configuredPackageEntry = process.env.INKSPAN_BROWSER_PACKAGE_ENTRY?.trim()
 const packageEntry = configuredPackageEntry
   ? resolve(configuredPackageEntry)
   : resolve(repositoryRoot, 'src/index.ts');
+const packedPackageRoot = configuredPackageEntry
+  ? resolve(dirname(packageEntry), '..')
+  : null;
+const packageRequire = createRequire(packageEntry);
+const alias = [
+  ...(packedPackageRoot ? ['react', 'react-dom', 'yjs'].map((peerName) => ({
+    find: peerName,
+    replacement: dirname(packageRequire.resolve(`${peerName}/package.json`)),
+  })) : []),
+  ...(packedPackageRoot
+    ? [
+        {
+          find: '@contextualwisdomlab/cwl-editor/collaboration',
+          replacement: resolve(packedPackageRoot, 'dist/cwl-collaboration.js'),
+        },
+        {
+          find: '@contextualwisdomlab/cwl-editor/autosave',
+          replacement: resolve(packedPackageRoot, 'dist/cwl-autosave.js'),
+        },
+        {
+          find: '@contextualwisdomlab/cwl-editor/styles.css',
+          replacement: resolve(packedPackageRoot, 'dist/cwl-editor.css'),
+        },
+        {
+          find: '@contextualwisdomlab/cwl-editor/fonts.css',
+          replacement: resolve(packedPackageRoot, 'src/fonts/fonts.css'),
+        },
+        {
+          find: '@contextualwisdomlab/cwl-editor/fonts-latin.css',
+          replacement: resolve(packedPackageRoot, 'src/fonts/fonts-latin.css'),
+        },
+        {
+          find: '@contextualwisdomlab/cwl-editor',
+          replacement: packageEntry,
+        },
+      ]
+    : []),
+  {
+    find: 'inkspan-browser-under-test',
+    replacement: packageEntry,
+  },
+];
 
 export default defineConfig({
-  resolve: {
-    alias: {
-      'inkspan-browser-under-test': packageEntry,
+  server: {
+    fs: {
+      strict: true,
+      allow: [repositoryRoot, ...(packedPackageRoot ? [packedPackageRoot] : [])],
     },
+  },
+  optimizeDeps: {
+    entries: [
+      'tests/browser/harness.html',
+      'examples/reference-host/browser-host.html',
+    ],
+  },
+  resolve: {
+    alias,
   },
 });
