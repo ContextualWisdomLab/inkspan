@@ -159,19 +159,27 @@ function serializeCanonicalValue(value: CanonicalJsonValue): string {
     return JSON.stringify(value) as string;
   }
   if (Array.isArray(value)) {
-    return `[${value.map(serializeCanonicalValue).join(',')}]`;
+    let serialized = '[';
+    let separator = '';
+    for (const item of value) {
+      serialized += separator + serializeCanonicalValue(item);
+      separator = ',';
+    }
+    return `${serialized}]`;
   }
 
   const objectValue = value as CanonicalJsonObject;
   const keys = Object.keys(objectValue).sort();
-  return `{${keys
-    .map((key) => {
-      assertUnicodeScalarString(key);
-      return `${JSON.stringify(key)}:${serializeCanonicalValue(
-        objectValue[key],
-      )}`;
-    })
-    .join(',')}}`;
+  let serialized = '{';
+  let separator = '';
+  for (const key of keys) {
+    assertUnicodeScalarString(key);
+    serialized += `${separator}${JSON.stringify(key)}:${serializeCanonicalValue(
+      objectValue[key],
+    )}`;
+    separator = ',';
+  }
+  return `${serialized}}`;
 }
 
 function assertUnicodeScalarString(value: string): void {
