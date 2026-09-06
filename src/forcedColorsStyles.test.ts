@@ -67,11 +67,27 @@ describe('forced-colors stylesheet contract', () => {
 
   it('keeps keyboard focus and active toolbar state visible without theme colors', () => {
     expect(forcedColorsStyles).toMatch(
+      /\.cwl-tb-btn\s*\{[^}]*transition:\s*none\s*;/u,
+    );
+    expect(forcedColorsStyles).toMatch(
       /\.cwl-tb-btn:focus-visible\s*\{[^}]*outline:\s*2px\s+solid\s+Highlight\s*;[^}]*outline-offset:\s*2px\s*;/u,
     );
     expect(forcedColorsStyles).toMatch(
       /\.cwl-tb-btn\.is-active\s*\{[^}]*background:\s*Highlight\s*;[^}]*border-color:\s*Highlight\s*;[^}]*color:\s*HighlightText\s*;/u,
     );
+  });
+
+  it.each([
+    '.cwl-tb-btn:hover:not(:disabled)',
+    '.cwl-tb-btn.is-active',
+    '.collaboration-cursor__label',
+  ])('preserves the system highlight pair on %s', (selector) => {
+    const blockStart = forcedColorsStyles.indexOf(`${selector} {`);
+    expect(blockStart).toBeGreaterThan(-1);
+    const block = forcedColorsStyles.slice(blockStart, findCssBlockEnd(forcedColorsStyles, blockStart));
+    expect(block).toMatch(/forced-color-adjust:\s*none\s*;/u);
+    expect(block).toMatch(/[;{]\s*background:\s*Highlight\s*;/u);
+    expect(block).toMatch(/[;{]\s*color:\s*HighlightText\s*;/u);
   });
 
   it('does not use opacity as the only disabled-state cue', () => {

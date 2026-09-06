@@ -130,6 +130,10 @@ test('preserves state and structural cues in forced colors', async ({
       labelVisible: labelStyle.display !== 'none' && labelStyle.visibility !== 'hidden',
       quoteColor: getComputedStyle(quote).color,
       canvasTextColor: editorStyle.color,
+      editorColorAdjustment: editorStyle.forcedColorAdjust,
+      activeColorAdjustment: activeStyle.forcedColorAdjust,
+      disabledColorAdjustment: disabledStyle.forcedColorAdjust,
+      labelColorAdjustment: labelStyle.forcedColorAdjust,
     };
   });
 
@@ -159,6 +163,10 @@ test('preserves state and structural cues in forced colors', async ({
     cellBorderWidth: '1px',
     caretBorderWidth: '2px',
     labelVisible: true,
+    editorColorAdjustment: 'auto',
+    activeColorAdjustment: 'none',
+    disabledColorAdjustment: 'auto',
+    labelColorAdjustment: 'none',
   });
 
   const activeButton = page.getByRole('button', { name: 'Active' });
@@ -259,5 +267,20 @@ for (const forcedColors of ['none', 'active'] as const) {
       body: JSON.stringify({ initialPaint, settledPaint: await bold.evaluate(readButtonPaint) }, null, 2),
       contentType: 'application/json',
     });
+    if (forcedColors === 'active') {
+      expect(initialPaint.transitionDuration).toBe('0s');
+      expect(initialPaint.forcedColorAdjust).toBe('none');
+      expect(initialPaint.color).not.toBe(initialPaint.background);
+      const italic = toolbar.getByRole('button', { name: 'Italic (Ctrl/Cmd+I)', exact: true });
+      await italic.hover();
+      const hoverPaint = await italic.evaluate(readButtonPaint);
+      await page.screenshot({
+        path: testInfo.outputPath('real-toolbar-320-forced-hover.png'),
+        fullPage: true,
+      });
+      expect(hoverPaint.transitionDuration).toBe('0s');
+      expect(hoverPaint.forcedColorAdjust).toBe('none');
+      expect(hoverPaint.color).not.toBe(hoverPaint.background);
+    }
   });
 }
