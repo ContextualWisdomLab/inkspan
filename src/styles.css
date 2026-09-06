@@ -282,6 +282,7 @@
     background: ButtonFace;
     color: ButtonText;
     border-color: ButtonText;
+    transition: none;
   }
 
   .cwl-tb-btn:hover:not(:disabled) {
