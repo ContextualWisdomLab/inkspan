@@ -131,7 +131,9 @@ After P0 blockers and independent non-conflicting lanes permit, prioritize:
 2. measured large-document latency/memory support envelopes with realistic
    fixtures and deterministic failure behavior; the active research harness's
    [first-invocation accounting, exact input identity and claim limits](../benchmarks/README.md)
-   do not close this buyer-workload gap;
+   do not close this buyer-workload gap. Reject inconsistent repeated conversion
+   results before publishing latency samples; consistency alone does not replace
+   workload-specific fidelity checks or realistic document evidence;
 3. CJK IME, touch, and mobile editing assurance with truthful real-device versus
    emulated support claims;
 4. an executable packed-package reference host proving SSR/hydration, native
