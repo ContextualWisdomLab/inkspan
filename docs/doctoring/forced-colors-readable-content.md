@@ -101,6 +101,13 @@ claim physical-device/OS coverage from emulation, or treat these narrow checks
 as whole-product WCAG certification. Final run outcomes belong in dated PR
 evidence. Failed/partial runs stay retained rather than being normalized away.
 
+The inspected WebKit build emulates the media query but does not expose the
+`forced-color-adjust` property. Record its live `CSS.supports` result and empty
+computed property rather than claiming support. All color, geometry, focus,
+interaction and screenshot checks still run in that engine; no test is skipped
+for this capability difference. Chromium and Firefox also report their actual
+capabilities rather than receiving browser-name-based exceptions.
+
 ## Standards basis
 
 World Wide Web Consortium. (2026). *CSS Color Module Level 4: CSS system colors*.

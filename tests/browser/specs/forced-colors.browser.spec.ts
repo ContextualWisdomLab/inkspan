@@ -134,10 +134,11 @@ test('preserves state and structural cues in forced colors', async ({
       labelVisible: labelStyle.display !== 'none' && labelStyle.visibility !== 'hidden',
       quoteColor: getComputedStyle(quote).color,
       canvasTextColor: editorStyle.color,
-      editorColorAdjustment: editorStyle.forcedColorAdjust,
-      activeColorAdjustment: activeStyle.forcedColorAdjust,
-      disabledColorAdjustment: disabledStyle.forcedColorAdjust,
-      labelColorAdjustment: labelStyle.forcedColorAdjust,
+      supportsColorAdjustment: CSS.supports('forced-color-adjust', 'none'),
+      editorColorAdjustment: editorStyle.getPropertyValue('forced-color-adjust'),
+      activeColorAdjustment: activeStyle.getPropertyValue('forced-color-adjust'),
+      disabledColorAdjustment: disabledStyle.getPropertyValue('forced-color-adjust'),
+      labelColorAdjustment: labelStyle.getPropertyValue('forced-color-adjust'),
       labelColor: labelStyle.color,
       labelBackground: labelStyle.backgroundColor,
       highlightText: activeStyle.color,
@@ -173,10 +174,10 @@ test('preserves state and structural cues in forced colors', async ({
     cellBorderWidth: '1px',
     caretBorderWidth: '2px',
     labelVisible: true,
-    editorColorAdjustment: 'auto',
-    activeColorAdjustment: 'none',
-    disabledColorAdjustment: 'auto',
-    labelColorAdjustment: 'none',
+    editorColorAdjustment: evidence.supportsColorAdjustment ? 'auto' : '',
+    activeColorAdjustment: evidence.supportsColorAdjustment ? 'none' : '',
+    disabledColorAdjustment: evidence.supportsColorAdjustment ? 'auto' : '',
+    labelColorAdjustment: evidence.supportsColorAdjustment ? 'none' : '',
   });
 
   const activeButton = page.getByRole('button', { name: 'Active' });
@@ -259,7 +260,8 @@ for (const forcedColors of ['none', 'active'] as const) {
         color: style.color,
         background: style.backgroundColor,
         transitionDuration: style.transitionDuration,
-        forcedColorAdjust: style.forcedColorAdjust,
+        supportsColorAdjustment: CSS.supports('forced-color-adjust', 'none'),
+        forcedColorAdjust: style.getPropertyValue('forced-color-adjust'),
       };
     };
     const bold = toolbar.getByRole('button', { name: 'Bold (Ctrl/Cmd+B)', exact: true });
@@ -279,7 +281,7 @@ for (const forcedColors of ['none', 'active'] as const) {
     });
     if (forcedColors === 'active') {
       expect(initialPaint.transitionDuration).toBe('0s');
-      expect(initialPaint.forcedColorAdjust).toBe('none');
+      expect(initialPaint.forcedColorAdjust).toBe(initialPaint.supportsColorAdjustment ? 'none' : '');
       expect(initialPaint.color).not.toBe(initialPaint.background);
       const italic = toolbar.getByRole('button', { name: 'Italic (Ctrl/Cmd+I)', exact: true });
       await italic.hover();
@@ -289,7 +291,7 @@ for (const forcedColors of ['none', 'active'] as const) {
         fullPage: true,
       });
       expect(hoverPaint.transitionDuration).toBe('0s');
-      expect(hoverPaint.forcedColorAdjust).toBe('none');
+      expect(hoverPaint.forcedColorAdjust).toBe(hoverPaint.supportsColorAdjustment ? 'none' : '');
       expect(hoverPaint.color).not.toBe(hoverPaint.background);
     }
   });
