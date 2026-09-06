@@ -1,7 +1,7 @@
 # Doctoring record: readable content in forced colors
 
-Date: 2026-09-06  
-Status: Active PR / Proposed  
+Date: 2026-09-06
+Status: Active PR / Proposed
 Owner: Inkspan presentation, existing PR #151
 
 ## Visual finding and causal check

@@ -227,7 +227,7 @@ for (const forcedColors of ['none', 'active'] as const) {
     await page.keyboard.press(
       browserName === 'webkit' && process.platform === 'darwin' ? 'Alt+Tab' : 'Tab',
     );
-    await expect(toolbar.getByRole('button', { name: 'Bold', exact: true })).toBeFocused();
+    await expect(toolbar.getByRole('button', { name: 'Bold (Ctrl/Cmd+B)', exact: true })).toBeFocused();
     await page.screenshot({
       path: testInfo.outputPath(`real-toolbar-320-${forcedColors}-focus.png`),
       fullPage: true,
