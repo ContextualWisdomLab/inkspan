@@ -28,9 +28,10 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('Base64Image accessible insertion defaults', () => {
-  it('adds explicit empty alt text to pasted images', async () => {
+describe('Base64Image explicit decorative insertion intent', () => {
+  it('adds explicit empty alt text to pasted images only after decorative intent', async () => {
     const editor = createEditor();
+    const prompt = vi.spyOn(window, 'prompt').mockReturnValue('');
     const plugin = base64ImagePluginKey.get(editor.state)!;
     const preventDefault = vi.fn();
     const handled = (
@@ -45,13 +46,15 @@ describe('Base64Image accessible insertion defaults', () => {
     expect(handled).toBe(true);
     expect(preventDefault).toHaveBeenCalledOnce();
     await waitFor(() => {
+      expect(prompt).toHaveBeenCalledOnce();
       expect(editor.getHTML()).toContain('data:image/png;base64');
       expect(editor.getHTML()).toContain('alt=""');
     });
   });
 
-  it('adds explicit empty alt text to dropped images', async () => {
+  it('adds explicit empty alt text to dropped images only after decorative intent', async () => {
     const editor = createEditor();
+    const prompt = vi.spyOn(window, 'prompt').mockReturnValue('');
     const plugin = base64ImagePluginKey.get(editor.state)!;
     vi.spyOn(editor.view, 'posAtCoords').mockReturnValue({ pos: 0, inside: -1 });
     const preventDefault = vi.fn();
@@ -67,6 +70,7 @@ describe('Base64Image accessible insertion defaults', () => {
     expect(handled).toBe(true);
     expect(preventDefault).toHaveBeenCalledOnce();
     await waitFor(() => {
+      expect(prompt).toHaveBeenCalledOnce();
       expect(editor.getHTML()).toContain('data:image/png;base64');
       expect(editor.getHTML()).toContain('alt=""');
     });

@@ -270,6 +270,7 @@ describe('Base64Image paste handler', () => {
   });
 
   it('embeds a pasted image file as inline base64', async () => {
+    vi.spyOn(window, 'prompt').mockReturnValue('');
     const editor = track(makeEditor());
     const items = [
       { kind: 'file', getAsFile: () => null },
@@ -293,6 +294,7 @@ describe('Base64Image drop handler', () => {
   });
 
   it('embeds a dropped image at the resolved drop coordinates', async () => {
+    vi.spyOn(window, 'prompt').mockReturnValue('');
     const editor = track(makeEditor());
     vi.spyOn(editor.view, 'posAtCoords').mockReturnValue({
       pos: 1,
@@ -314,6 +316,7 @@ describe('Base64Image drop handler', () => {
   });
 
   it('falls back to the current selection when coords resolve to nothing', async () => {
+    vi.spyOn(window, 'prompt').mockReturnValue('');
     const editor = track(makeEditor());
     vi.spyOn(editor.view, 'posAtCoords').mockReturnValue(null);
     expect(
