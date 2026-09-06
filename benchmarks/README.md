@@ -19,6 +19,16 @@ samples can be published. Module loading and input preparation remain outside
 the timer; autosave queue setup and coalescing-scenario preparation retain
 their existing timer boundaries. This is not process-startup latency.
 
+Markdown/HTML producers also require every measured output to equal the first
+measured output for the same captured input. Empty strings are valid reference
+outputs. A changed result rejects the entire acquisition without publishing
+samples or output content; there is no extra warmup call. Equality is checked
+after the timer and retains one output in memory. Start a fresh baseline after
+this validation change: process state can differ even though the operation's
+timer boundaries and sample schema remain unchanged. Equal outputs alone do
+not prove conversion fidelity; workload-specific correctness checks remain
+required, and a one-sample run cannot establish repeatability.
+
 Samples recorded before this change retain their original meaning. Start a
 new baseline for the new measurement method; a difference between those
 generations is not evidence of a product speedup. Keep each generation's raw

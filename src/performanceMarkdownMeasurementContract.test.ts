@@ -201,7 +201,7 @@ export function markdownToHtml(source) {
     ['markdown-to-html', 'markdownToHtml', 3],
     ['html-to-markdown', 'htmlToMarkdown', 2],
     ['html-to-markdown', 'htmlToMarkdown', 3],
-  ] as const)('rejects changing %s output on invocation %i', (operation, exportName, changedCall) => {
+  ] as const)('rejects changing %s output from %s on invocation %i', (operation, exportName, changedCall) => {
     const root = mkdtempSync(join(tmpdir(), 'inkspan-serialization-changing-result-'));
     const input = join(root, 'input.md');
     const modulePath = join(root, 'serializer.mjs');

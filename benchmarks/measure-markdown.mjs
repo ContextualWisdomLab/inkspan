@@ -429,6 +429,7 @@ async function main() {
   }
 
   const samples = [];
+  let firstOutput;
   for (let index = 0; index < args.sampleCount; index += 1) {
     const start = performance.now();
     const output = runMeasuredSerialization(
@@ -439,6 +440,10 @@ async function main() {
     const elapsed = performance.now() - start;
     if (typeof output !== 'string') {
       throw new Error(contract.returnFailure);
+    }
+    if (index === 0) firstOutput = output;
+    else if (output !== firstOutput) {
+      throw new Error('Measured serialization output changed for identical input.');
     }
     if (!Number.isFinite(elapsed) || elapsed < 0) {
       throw new Error('Markdown measurement produced invalid runtime evidence.');
