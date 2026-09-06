@@ -133,6 +133,17 @@ Release publication verifies one exact integrated protected source head, expecte
 
 Queued, cancelled, skipped-required, absent, stale-head, predecessor-head, status-only, author-only, or synthetic-merge evidence is not success. A commit status, automated model verdict, comment, formal review, merge authority, and external registry publication are distinct evidence classes.
 
+Active PR performance research records the first operation invocation without an unrecorded latency warmup, with timing boundaries and generation-comparison limits documented in [`benchmarks/README.md`](../benchmarks/README.md). This harness does not establish buyer-workload latency or a supported document-size guarantee; a measurement-method change starts a new baseline rather than proving a product speedup.
+
+The active Markdown/HTML research producer rejects an acquisition when repeated
+serialization of the same captured input returns different strings. Comparison
+occurs after timing and retains the first measured output; no output content is
+published in the failure. This consistency check cannot establish conversion
+fidelity or repeatability from one sample. It starts a fresh measurement baseline
+without changing the sample schema or published editor contract.
+
+The active research sample/summary contract marks input-bound first-invocation JavaScript latency evidence as version 3. It derives SHA-256 identities from the captured bounded input bytes before timing; changed transitions preserve ordered previous/resulting identities. The summarizer preserves those identities and the comparator rejects mismatched inputs even when profile labels match. Legacy versions 1 and 2 remain readable without backfilled identities; cross-version comparisons fail closed. Corpus and suite-inventory versions are independent; no editor API or supported-performance promise changes. See the research harness for the explicit synthetic autosave input representation and claim limits.
+
 ## Security, privacy, and operability dependencies
 
 `SECURITY.md`, `docs/THREAT_MODEL.md`, `docs/TEST_STRATEGY.md`, `docs/OPERABILITY.md`, `docs/TRACEABILITY.md`, and the detailed ADR corpus are part of this technical contract. Root `SECURITY.md` is `implemented_on_protected_main` and is the normative private vulnerability-reporting/coordinated-disclosure policy. ADR 0017 records the durable decision, ownership boundary, claim limits, and recovery/supersession semantics without duplicating the policy text.

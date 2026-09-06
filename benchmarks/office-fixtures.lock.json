@@ -1,0 +1,42 @@
+{
+  "contractVersion": 1,
+  "synthetic": true,
+  "formats": {
+    "docx": {
+      "small": {
+        "units": 2,
+        "bytes": 2972,
+        "sha256": "c356496b106f5348e98b00d3c1e18185165653a2c2bda083acd7456c96b2eab3"
+      },
+      "page120": {
+        "units": 120,
+        "bytes": 169737,
+        "sha256": "e5d90408c6061051ab1674d931b99d478fadb00a7ecbcb7025b4fa478cfbb507"
+      }
+    },
+    "xlsx": {
+      "small": {
+        "units": 4,
+        "bytes": 723,
+        "sha256": "a267a6208de0e24559c200d047404d14e2263581e0a3af845f355817536883bf"
+      },
+      "wide16384": {
+        "units": 16384,
+        "bytes": 327941,
+        "sha256": "0afdb216fda720cd506d7c24284c2740f326167d4859dc1a7b845c4a91b972ec"
+      }
+    },
+    "pptx": {
+      "small": {
+        "units": 2,
+        "bytes": 970,
+        "sha256": "6c1a8ae1d2307a278ac97903eb3160a6a0de57b695b2b8772844af2c8cfa2ce1"
+      },
+      "slide120": {
+        "units": 120,
+        "bytes": 50061,
+        "sha256": "f5994ff30752581fd3b3e5210ff59b281692ea268ce4f0b540e278d134dbd6ee"
+      }
+    }
+  }
+}
