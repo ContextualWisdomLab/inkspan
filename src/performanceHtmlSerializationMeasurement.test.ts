@@ -42,8 +42,9 @@ describe('HTML serialization performance measurement', () => {
       writeFileSync(
         modulePath,
         [
+          'let measuredCalls = 0;',
           "export function markdownToHtml() { throw new Error('wrong serialization direction'); }",
-          "export function htmlToMarkdown(source) { return source.replace(/<[^>]+>/gu, '').trim(); }",
+          "export function htmlToMarkdown(source) { if (++measuredCalls > 2) throw new Error('Unmeasured invocation'); return source.replace(/<[^>]+>/gu, '').trim(); }",
           '',
         ].join('\n'),
         'utf8',

@@ -90,7 +90,7 @@ describe('Markdown runtime measurement contract', () => {
       writeFileSync(input, '# Buyer benchmark fixture\n\nSynthetic content only.\n', 'utf8');
       writeFileSync(
         modulePath,
-        "export function markdownToHtml(source) { return `<p>${source.length}</p>`; }\n",
+        "let measuredCalls = 0;\nexport function markdownToHtml(source) { if (++measuredCalls > 3) throw new Error('Unmeasured invocation'); return `<p>${source.length}</p>`; }\n",
         'utf8',
       );
       const artifactSha256 = fileSha256(modulePath);

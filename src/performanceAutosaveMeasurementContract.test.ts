@@ -39,7 +39,9 @@ describe('autosave enqueue performance measurement', () => {
     const inputPath = join(directory, 'document-envelope.json');
     const outputPath = join(directory, 'samples.json');
     const moduleSource = [
+      'let queueCount = 0;',
       'export function createDocumentAutosaveQueue(options) {',
+      "  if (++queueCount > 2) throw new Error('Unmeasured invocation');",
       '  return Object.freeze({',
       '    async enqueue(evidence) {',
       "      if (evidence.envelope.documentJson.content[0].content[0].text !== 'profile-bound synthetic input') throw new Error('wrong profile input');",
@@ -169,7 +171,9 @@ describe('autosave enqueue performance measurement', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inkspan-autosave-coalescing-'));
     const modulePath = join(directory, 'autosave.mjs');
     const outputPath = join(directory, 'samples.json');
-    const moduleSource = `export function createDocumentAutosaveQueue(options) {
+    const moduleSource = `let queueCount = 0;
+export function createDocumentAutosaveQueue(options) {
+  if (++queueCount > 2) throw new Error('Unmeasured invocation');
   let active;
   return {
     enqueue(evidence) {
@@ -214,7 +218,9 @@ describe('autosave enqueue performance measurement', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inkspan-autosave-commit-'));
     const modulePath = join(directory, 'autosave.mjs');
     const outputPath = join(directory, 'samples.json');
-    const moduleSource = `export function createDocumentAutosaveQueue(options) {
+    const moduleSource = `let queueCount = 0;
+export function createDocumentAutosaveQueue(options) {
+  if (++queueCount > 2) throw new Error('Unmeasured invocation');
   return {
     enqueue(evidence) {
       return Promise.resolve(options.save(evidence)).then(() => ({ status: 'saved' }));

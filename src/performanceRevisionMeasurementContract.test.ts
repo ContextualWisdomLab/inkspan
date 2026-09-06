@@ -110,7 +110,7 @@ describe('revision-evidence runtime measurement contract', () => {
       writeSyntheticEnvelope(input);
       writeFileSync(
         modulePath,
-        'export async function createDocumentEnvelopeRevisionEvidenceBytes(source) { return { revision: { digestHex: String(source.byteLength).padStart(64, "0") } }; }\n',
+        'let measuredCalls = 0;\nexport async function createDocumentEnvelopeRevisionEvidenceBytes(source) { if (++measuredCalls > 3) throw new Error("Unmeasured invocation"); return { revision: { digestHex: String(source.byteLength).padStart(64, "0") } }; }\n',
         'utf8',
       );
 
@@ -168,8 +168,9 @@ describe('revision-evidence runtime measurement contract', () => {
       writeSyntheticEnvelope(input);
       writeFileSync(
         modulePath,
-        `const revision = { digestHex: '${'d'.repeat(64)}' };
-export async function createDocumentEnvelopeTransitionEvidenceBytes() { return { previousRevision: revision, resultingRevision: revision, changed: false }; }\n`,
+        `let measuredCalls = 0;
+const revision = { digestHex: '${'d'.repeat(64)}' };
+export async function createDocumentEnvelopeTransitionEvidenceBytes() { if (++measuredCalls > 3) throw new Error('Unmeasured invocation'); return { previousRevision: revision, resultingRevision: revision, changed: false }; }\n`,
         'utf8',
       );
 
@@ -210,7 +211,9 @@ export async function createDocumentEnvelopeTransitionEvidenceBytes() { return {
         'Synthetic benchmark content', 'Synthetic benchmark content with an edit',
       ));
       writeFileSync(modulePath, `
+let measuredCalls = 0;
 export async function createDocumentEnvelopeTransitionEvidenceBytes(previous, resulting) {
+  if (++measuredCalls > 3) throw new Error('Unmeasured invocation');
   if (previous.toString() !== ${JSON.stringify(readFileSync(input, 'utf8'))}) throw new Error('wrong previous source');
   if (resulting.toString() !== ${JSON.stringify(readFileSync(operation === 'transition' ? input : resultingInput, 'utf8'))}) throw new Error('wrong resulting source');
   return { previousRevision: { digestHex: '${'a'.repeat(64)}' }, resultingRevision: { digestHex: '${(equalDigests ? 'a' : 'b').repeat(64)}' }, changed: ${changed} };
@@ -314,7 +317,9 @@ export async function createDocumentEnvelopeTransitionEvidenceBytes(previous, re
       writeSyntheticEnvelope(input);
       writeFileSync(
         modulePath,
-        `export async function createDocumentEnvelopeRevisionEvidenceBytes(source, limits, provider) {
+        `let measuredCalls = 0;
+export async function createDocumentEnvelopeRevisionEvidenceBytes(source, limits, provider) {
+  if (++measuredCalls > 3) throw new Error('Unmeasured invocation');
   const digest = await provider.digest('SHA-256', source);
   return { revision: { digestHex: Buffer.from(digest).toString('hex') } };
 }\n`,
