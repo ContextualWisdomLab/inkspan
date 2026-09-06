@@ -94,4 +94,24 @@ describe('CwlEditor form accessibility metadata', () => {
 
     expect(prompt).not.toHaveBeenCalled();
   });
+
+  it.each([{ ctrlKey: true }, { metaKey: true }])('updates shortcut authority when editability changes: %j', async (modifier) => {
+    const prompt = vi.spyOn(window, 'prompt').mockReturnValue(null);
+    const { rerender } = render(<CwlEditor defaultValue="Retained decision" ariaLabel="Decision" />);
+    const editor = await screen.findByRole('textbox', { name: 'Decision' });
+    fireEvent.keyDown(editor, { key: 'k', ...modifier });
+    expect(prompt).toHaveBeenCalledTimes(1);
+
+    rerender(<CwlEditor defaultValue="Retained decision" ariaLabel="Decision" editable={false} />);
+    await waitFor(() => expect(editor).toHaveAttribute('aria-readonly', 'true'));
+    fireEvent.keyDown(editor, { key: 'k', ...modifier });
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(editor).toHaveTextContent('Retained decision');
+
+    rerender(<CwlEditor defaultValue="Retained decision" ariaLabel="Decision" editable />);
+    await waitFor(() => expect(editor).toHaveAttribute('aria-readonly', 'false'));
+    fireEvent.keyDown(editor, { key: 'k', ...modifier });
+    expect(prompt).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole('textbox', { name: 'Decision' })).toBe(editor);
+  });
 });
