@@ -110,6 +110,7 @@ describe('Markdown runtime measurement contract', () => {
         unit: 'ms',
         sourceCommitSha: SOURCE_COMMIT_SHA,
         artifactSha256,
+        inputSha256: fileSha256(input),
         documentProfile: 'large',
         runtimeId: RUNTIME_ID,
         referenceHardwareId: HARDWARE_ID,
@@ -136,6 +137,7 @@ describe('Markdown runtime measurement contract', () => {
         sampleCount: 3,
         benchmarkId: 'markdown-serialization-large',
         unit: 'ms',
+        inputSha256: fileSha256(input),
       });
     } finally {
       rmSync(root, { recursive: true, force: true });
