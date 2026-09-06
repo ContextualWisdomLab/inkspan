@@ -288,6 +288,7 @@
   .cwl-tb-btn:hover:not(:disabled) {
     background: Highlight;
     color: HighlightText;
+    forced-color-adjust: none;
   }
 
   .cwl-tb-btn:focus-visible {
@@ -299,6 +300,7 @@
     background: Highlight;
     border-color: Highlight;
     color: HighlightText;
+    forced-color-adjust: none;
   }
 
   .cwl-tb-btn:disabled {
@@ -341,6 +343,7 @@
   .collaboration-cursor__label {
     background: Highlight;
     color: HighlightText;
+    forced-color-adjust: none;
   }
 }
 

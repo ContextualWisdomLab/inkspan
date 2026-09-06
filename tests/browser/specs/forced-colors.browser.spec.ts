@@ -23,7 +23,7 @@ test.beforeEach(async ({ page }) => {
 
   await page.goto(HARNESS_URL);
   await page.addStyleTag({ url: STYLES_URL });
-  await page.locator('#harness').evaluate((element) => {
+  await page.locator('#harness').evaluate(async (element) => {
     element.innerHTML = `
       <button data-focus-start>Start keyboard journey</button>
       <section class="cwl-editor">
@@ -42,13 +42,14 @@ test.beforeEach(async ({ page }) => {
             <pre>pre</pre>
             <blockquote>quote</blockquote>
             <table><tbody><tr><th>Head</th><td>Cell</td></tr></tbody></table>
-            <span class="collaboration-cursor__caret">
-              <span class="collaboration-cursor__label">Remote</span>
-            </span>
+            <p data-remote-edit>Remote edit </p>
           </article>
         </div>
       </section>
     `;
+    element.querySelector('[data-remote-edit]')!.append(
+      await window.renderInkspanCursorProbe({ name: 'Remote', color: '#abcdef' }),
+    );
   });
   expect(rejectedExternalRequests).toEqual([]);
 });
@@ -61,6 +62,9 @@ test('preserves state and structural cues in forced colors', async ({
     browserName === 'webkit' && process.platform === 'darwin'
       ? 'Alt+Tab'
       : 'Tab';
+  const label = page.locator('.collaboration-cursor__label');
+  await expect(label).toHaveCSS('background-color', 'rgb(171, 205, 239)');
+  await expect(label).toHaveCSS('color', 'rgb(0, 0, 0)');
   await page.emulateMedia({ forcedColors: 'active' });
   expect(
     await page.evaluate(() => matchMedia('(forced-colors: active)').matches),
@@ -134,6 +138,10 @@ test('preserves state and structural cues in forced colors', async ({
       activeColorAdjustment: activeStyle.forcedColorAdjust,
       disabledColorAdjustment: disabledStyle.forcedColorAdjust,
       labelColorAdjustment: labelStyle.forcedColorAdjust,
+      labelColor: labelStyle.color,
+      labelBackground: labelStyle.backgroundColor,
+      highlightText: activeStyle.color,
+      highlightBackground: activeStyle.backgroundColor,
     };
   });
 
@@ -146,6 +154,8 @@ test('preserves state and structural cues in forced colors', async ({
     fullPage: true,
   });
   expect(evidence.quoteColor).toBe(evidence.canvasTextColor);
+  expect(evidence.labelColor).toBe(evidence.highlightText);
+  expect(evidence.labelBackground).toBe(evidence.highlightBackground);
 
   expect(evidence).toMatchObject({
     editorBorderStyle: 'solid',

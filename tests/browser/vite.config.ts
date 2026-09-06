@@ -16,6 +16,9 @@ export default defineConfig({
         ? resolve(dirname(packageEntry), 'cwl-editor.css')
         : resolve(repositoryRoot, 'dist/cwl-editor.css'),
       'inkspan-browser-under-test': packageEntry,
+      'inkspan-collaboration-under-test': configuredPackageEntry
+        ? resolve(dirname(packageEntry), 'cwl-collaboration.js')
+        : resolve(repositoryRoot, 'src/collaboration/index.ts'),
       'inkspan-autosave-under-test': configuredPackageEntry
         ? resolve(dirname(packageEntry), 'cwl-autosave.js')
         : resolve(repositoryRoot, 'src/autosave/package.ts'),

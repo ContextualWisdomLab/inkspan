@@ -25,6 +25,7 @@ interface BrowserHostileDocumentProbeResult {
 
 declare global {
   interface Window {
+    renderInkspanCursorProbe(user: Record<string, unknown>): Promise<HTMLElement>;
     runInkspanClipboardProbe(
       request: BrowserClipboardProbeRequest,
     ): BrowserClipboardProbeResult;
@@ -33,6 +34,11 @@ declare global {
     ): BrowserHostileDocumentProbeResult;
   }
 }
+
+window.renderInkspanCursorProbe = async (user) => {
+  const { renderCollaborationCursor } = await import('inkspan-collaboration-under-test');
+  return renderCollaborationCursor(user);
+};
 
 window.runInkspanClipboardProbe = (
   request: BrowserClipboardProbeRequest,
