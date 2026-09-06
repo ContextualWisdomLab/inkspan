@@ -222,6 +222,7 @@ describe('CwlEditor controlled value during composition', () => {
   it('drops a deferred controlled replacement when the editor is destroyed first', async () => {
     let editor: Editor | undefined;
     const onDocumentChange = vi.fn();
+    const onDestroy = vi.fn((instance: Editor) => instance.getText());
     const captureEditor = (instance: Editor) => {
       editor = instance;
     };
@@ -231,6 +232,7 @@ describe('CwlEditor controlled value during composition', () => {
         mode="markdown"
         value="Original"
         onDocumentChange={onDocumentChange}
+        onDestroy={onDestroy}
         onReady={captureEditor}
       />,
     );
@@ -250,6 +252,7 @@ describe('CwlEditor controlled value during composition', () => {
           mode="markdown"
           value="Host replacement"
           onDocumentChange={onDocumentChange}
+          onDestroy={onDestroy}
           onReady={captureEditor}
         />,
       );
@@ -268,7 +271,9 @@ describe('CwlEditor controlled value during composition', () => {
       await Promise.resolve();
       await Promise.resolve();
     });
+    await waitFor(() => expect(editor!.isDestroyed).toBe(true));
     expect(onDocumentChange).not.toHaveBeenCalled();
-    expect(editor!.getText()).toBe('Original composing');
+    expect(onDestroy).toHaveBeenCalledTimes(1);
+    expect(onDestroy).toHaveReturnedWith('Original composing');
   });
 });
