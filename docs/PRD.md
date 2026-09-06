@@ -92,6 +92,8 @@ The product promise is: **author, convert, collaborate, and prove document chang
 
 - Native controls, focus behavior, keyboard parity, truthful `aria-keyshortcuts` metadata, non-color status semantics, and host-facing lifecycle state support WCAG-oriented embedding.
 - Toolbar shortcut metadata must reflect repository-level shipped behavior, including host/editor bindings such as link editing, rather than only extension-local defaults.
+- Active PR / Proposed: at a 320 CSS-pixel viewport, every toolbar control must remain fully visible in normal and forced colors. A page without horizontal scrolling is insufficient evidence if controls are clipped inside the editor; see the [toolbar reflow record](doctoring/toolbar-reflow.md).
+- Active PR / Proposed: empty-editor guidance and quoted content use readable document text colors in forced-colors mode, while disabled controls retain a distinct inactive appearance. Selected and hovered controls must keep their labels readable immediately after interaction; see the [visual inspection record](doctoring/forced-colors-readable-content.md).
 - Application-visible saving/conflict/recovery messages must be derivable from programmatic state without Inkspan prescribing untranslated user-facing copy.
 - Export/print surfaces must not rely on color alone or inaccessible interaction-only state where the corresponding product surface exists.
 
@@ -147,4 +149,4 @@ Protected `main` is the sole implemented baseline. Open PRs may describe Propose
 
 SafeClipboard, real Chromium/Firefox/WebKit release assurance, lifecycle observation, the root security disclosure lifecycle, toolbar shortcut accessibility metadata, SSR/native-form serialization, revision-scoped selection evidence, W3C text-position selector evidence, document-transition evidence, and envelope identity migration routing are implemented on protected `main`.
 
-A named editor-chrome theme-token catalog, DTCG 2025.10 interchange snapshot, and Storybook inventory for repeating toolbar/editor objects are Active PR / Proposed and are not shipped claims until protected integration. Hosts must check inventoried active-chrome contrast (`--cwl-accent` on `--cwl-accent-soft`) in addition to body text.
+A named editor-chrome theme-token catalog, DTCG 2025.10 interchange snapshot, and Storybook inventory for repeating toolbar/editor objects are implemented on protected `main`. Hosts must check inventoried active-chrome contrast (`--cwl-accent` on `--cwl-accent-soft`) in addition to body text.

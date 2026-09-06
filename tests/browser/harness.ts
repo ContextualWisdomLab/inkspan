@@ -25,6 +25,7 @@ interface BrowserHostileDocumentProbeResult {
 
 declare global {
   interface Window {
+    renderInkspanCursorProbe(user: Record<string, unknown>): Promise<HTMLElement>;
     runInkspanClipboardProbe(
       request: BrowserClipboardProbeRequest,
     ): BrowserClipboardProbeResult;
@@ -33,6 +34,11 @@ declare global {
     ): BrowserHostileDocumentProbeResult;
   }
 }
+
+window.renderInkspanCursorProbe = async (user) => {
+  const { renderCollaborationCursor } = await import('inkspan-collaboration-under-test');
+  return renderCollaborationCursor(user);
+};
 
 window.runInkspanClipboardProbe = (
   request: BrowserClipboardProbeRequest,
@@ -59,7 +65,7 @@ window.runInkspanClipboardProbe = (
       return Object.freeze({ sanitizedHtml, documentJson: null, errorCode });
     }
 
-    editor.commands.setContent(sanitizedHtml, false);
+    editor.commands.setContent(sanitizedHtml, { emitUpdate: false });
     return Object.freeze({
       sanitizedHtml,
       documentJson: editor.getJSON(),

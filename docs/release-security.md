@@ -118,7 +118,7 @@ The isolated GitHub publication job requests a short-lived OpenID Connect identi
 Consumers should verify release-level and file-level provenance, the SBOM predicate, and checksums, using the actual version and filenames from the selected release:
 
 ```bash
-VERSION=0.6.0
+VERSION=0.7.0
 
 gh release verify "v${VERSION}" --repo ContextualWisdomLab/inkspan
 

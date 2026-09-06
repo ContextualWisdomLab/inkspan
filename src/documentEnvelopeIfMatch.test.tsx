@@ -218,7 +218,9 @@ describe('revision-guarded document-envelope restore', () => {
       deferred.provider,
     );
     await act(async () => {
-      editor.commands.setContent('<p>Newer local document</p>', false);
+      editor.commands.setContent('<p>Newer local document</p>', {
+        emitUpdate: false,
+      });
     });
     deferred.resolve();
 

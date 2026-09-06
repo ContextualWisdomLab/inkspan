@@ -54,6 +54,30 @@ default policy. Informative image alternatives remain in reading order, which
 allows indexing and AI workflows to retain author-supplied non-visual meaning
 without receiving image bytes.
 
+## Next-release parser resource bounds
+
+Status: `implemented_on_active_pr` in #174. Protected `main` does not yet expose
+these plain-text-specific options, so this section is not a shipped-release
+claim.
+
+The active contract accepts `maxMarkdownBytes` on `markdownToPlainText()` and
+checks the exact UTF-8 byte size before the Marked lexer materializes tokens.
+The inherited Markdown parser policy defaults to 16 MiB and rejects configured
+limits above the 64 MiB hard maximum. Invalid configuration and oversized input
+fail closed through the same stable, payload-redacted Markdown resource errors
+used by the shared Markdown package boundary.
+
+`htmlToPlainText()` additionally accepts `maxHtmlBytes`. That ceiling is checked
+before HTML normalization, and `maxMarkdownBytes` is checked again on the
+normalized Markdown before it enters the plain-text lexer. The two bounds are
+intentionally independent because HTML normalization can change representation
+size. Accepted-input reading-order, list/table/code, image-alt, link-label and
+raw-HTML omission semantics remain unchanged.
+
+These local parser bounds are defense in depth, not transport or persistence
+authority. Hosts still own request/ingress limits, authorization, tenancy,
+durable storage, retention and operational admission control.
+
 ## Runtime and interoperability boundary
 
 `markdownToPlainText` uses Marked's lexer and does not execute raw HTML, open a
