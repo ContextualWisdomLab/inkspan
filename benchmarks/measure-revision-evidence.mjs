@@ -489,7 +489,7 @@ async function main() {
     args.outputPath,
     `${JSON.stringify(
       {
-        contractVersion: 1,
+        contractVersion: 2,
         benchmarkId:
           args.operation === 'canonicalization'
             ? `envelope-canonicalization-${args.profile}`

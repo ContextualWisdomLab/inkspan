@@ -137,8 +137,8 @@ function validateInput(value) {
   if (Object.keys(value).some((key) => !BENCHMARK_INPUT_KEYS.has(key))) {
     throw new Error('Benchmark sample input contains unsupported fields.');
   }
-  if (value.contractVersion !== 1) {
-    throw new Error('Benchmark sample contractVersion must be 1.');
+  if (value.contractVersion !== 1 && value.contractVersion !== 2) {
+    throw new Error('Benchmark sample contractVersion must be 1 or 2.');
   }
   if (
     typeof value.benchmarkId !== 'string' ||
@@ -202,6 +202,7 @@ function validateInput(value) {
     throw new Error('Benchmark samples must be finite non-negative numbers.');
   }
   return Object.freeze({
+    contractVersion: value.contractVersion,
     benchmarkId: value.benchmarkId,
     unit: value.unit,
     sourceCommitSha: value.sourceCommitSha,
@@ -221,7 +222,7 @@ function nearestRank(sorted, percentile) {
 function summarize(input) {
   const sorted = [...input.samples].sort((left, right) => left - right);
   return Object.freeze({
-    contractVersion: 1,
+    contractVersion: input.contractVersion,
     benchmarkId: input.benchmarkId,
     unit: input.unit,
     sourceCommitSha: input.sourceCommitSha,
@@ -241,6 +242,7 @@ function summarize(input) {
 
 function formatSummary(summary) {
   return [
+    `contract_version=${summary.contractVersion}`,
     `benchmark=${summary.benchmarkId}`,
     `unit=${summary.unit}`,
     `source_commit_sha=${summary.sourceCommitSha}`,

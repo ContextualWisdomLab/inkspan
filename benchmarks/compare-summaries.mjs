@@ -44,6 +44,7 @@ const SUMMARY_KEYS = new Set([
   'maximum',
 ]);
 const COMPARABLE_FIELDS = [
+  'contractVersion',
   'benchmarkId',
   'unit',
   'documentProfile',
@@ -165,8 +166,8 @@ function validateSummary(value) {
   ) {
     throw new Error('Benchmark summary input has an unsupported shape.');
   }
-  if (value.contractVersion !== 1) {
-    throw new Error('Benchmark summary contractVersion must be 1.');
+  if (value.contractVersion !== 1 && value.contractVersion !== 2) {
+    throw new Error('Benchmark summary contractVersion must be 1 or 2.');
   }
   if (
     typeof value.benchmarkId !== 'string' ||
@@ -247,6 +248,7 @@ function validateSummary(value) {
   }
 
   return Object.freeze({
+    contractVersion: value.contractVersion,
     benchmarkId: value.benchmarkId,
     unit: value.unit,
     sourceCommitSha: value.sourceCommitSha,
@@ -301,7 +303,7 @@ function compare(baseline, current, metric, maxRegressionPercent) {
     );
   }
   return Object.freeze({
-    contractVersion: 1,
+    contractVersion: baseline.contractVersion,
     benchmarkId: baseline.benchmarkId,
     unit: baseline.unit,
     documentProfile: baseline.documentProfile,

@@ -571,7 +571,7 @@ async function main() {
     args.outputPath,
     `${JSON.stringify(
       {
-        contractVersion: 1,
+        contractVersion: 2,
         benchmarkId: `autosave-${args.operation}-${args.profile}`,
         unit: 'ms',
         sourceCommitSha: args.sourceCommitSha,

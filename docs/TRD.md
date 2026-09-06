@@ -135,6 +135,8 @@ Queued, cancelled, skipped-required, absent, stale-head, predecessor-head, statu
 
 Active PR performance research records the first operation invocation without an unrecorded latency warmup, with timing boundaries and generation-comparison limits documented in [`benchmarks/README.md`](../benchmarks/README.md). This harness does not establish buyer-workload latency or a supported document-size guarantee; a measurement-method change starts a new baseline rather than proving a product speedup.
 
+The active research sample/summary contract marks first-invocation JavaScript latency evidence as version 2. Legacy version 1 remains readable, but cross-version comparisons fail closed. Corpus and suite-inventory versions are independent; no editor API or supported-performance promise changes.
+
 ## Security, privacy, and operability dependencies
 
 `SECURITY.md`, `docs/THREAT_MODEL.md`, `docs/TEST_STRATEGY.md`, `docs/OPERABILITY.md`, `docs/TRACEABILITY.md`, and the detailed ADR corpus are part of this technical contract. Root `SECURITY.md` is `implemented_on_protected_main` and is the normative private vulnerability-reporting/coordinated-disclosure policy. ADR 0017 records the durable decision, ownership boundary, claim limits, and recovery/supersession semantics without duplicating the policy text.

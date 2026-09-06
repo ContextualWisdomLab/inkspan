@@ -460,7 +460,7 @@ async function main() {
     args.outputPath,
     `${JSON.stringify(
       {
-        contractVersion: 1,
+        contractVersion: 2,
         benchmarkId: `${contract.benchmarkPrefix}-${args.profile}`,
         unit: 'ms',
         sourceCommitSha: args.sourceCommitSha,

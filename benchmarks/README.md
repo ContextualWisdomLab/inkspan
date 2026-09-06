@@ -22,6 +22,17 @@ generations is not evidence of a product speedup. Keep each generation's raw
 samples and exact source revision. Office rendering and the separate memory
 settling analysis are unchanged.
 
+New JavaScript latency samples use `contractVersion: 2` to identify this
+first-invocation method. The summarizer preserves that version in JSON and
+prints `contract_version` in its text receipt. Version 1 inputs remain readable
+as legacy evidence, including Office output, but the comparator rejects a
+version 1 / version 2 pair before calculating any improvement or regression.
+Older version-1-only consumers reject new samples; update the evidence tools
+together. Do not relabel historical samples or assume their invocation
+accounting. The suite inventory and corpus locks retain their independent
+version 1 contracts; this version change does not alter their shapes or the
+published editor API.
+
 ## Transition scenarios
 
 | Operation | Inputs | Required result | Metric prefix |
