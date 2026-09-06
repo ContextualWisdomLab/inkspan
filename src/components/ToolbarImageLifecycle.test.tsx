@@ -65,15 +65,19 @@ describe('Toolbar asynchronous image-upload lifecycle boundary', () => {
       const prompt = vi.spyOn(window, 'prompt').mockImplementation(() => {
         if (nextState === 'destroyed') editor.destroy();
         else editor.setEditable(false);
+        chain.mockClear();
         return 'stale image';
       });
       render(<Toolbar editor={editor} image={{ maxDimension: 0 }} />);
+      const chain = vi.spyOn(editor, 'chain');
 
       fireEvent.change(fileInput(), { target: { files: [delayedPngFile()] } });
       await settleConversion();
 
       expect(prompt).toHaveBeenCalledOnce();
-      expect(editor.getHTML()).toBe(before);
+      expect(chain).not.toHaveBeenCalled();
+      if (nextState === 'destroyed') expect(editor.isDestroyed).toBe(true);
+      else expect(editor.getHTML()).toBe(before);
     },
   );
 
