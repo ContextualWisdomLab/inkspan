@@ -38,7 +38,6 @@ test.beforeEach(async ({ page }) => {
         <div class="cwl-collaboration-status">Connected</div>
         <div class="cwl-editor__surface">
           <article class="cwl-editor__content" contenteditable="true">
-            <p class="is-editor-empty" data-placeholder="Placeholder"></p>
             <p><a href="https://example.invalid/">Link</a> <code>code</code></p>
             <pre>pre</pre>
             <blockquote>quote</blockquote>
@@ -99,7 +98,6 @@ test('preserves state and structural cues in forced colors', async ({
     const caret = get<HTMLElement>('.collaboration-cursor__caret');
     const label = get<HTMLElement>('.collaboration-cursor__label');
     const quote = get<HTMLElement>('.cwl-editor__content blockquote');
-    const placeholder = get<HTMLElement>('.cwl-editor__content .is-editor-empty:first-child');
 
     const editorStyle = getComputedStyle(editor);
     const toolbarStyle = getComputedStyle(toolbar);
@@ -131,7 +129,6 @@ test('preserves state and structural cues in forced colors', async ({
       caretBorderWidth: caretStyle.borderLeftWidth,
       labelVisible: labelStyle.display !== 'none' && labelStyle.visibility !== 'hidden',
       quoteColor: getComputedStyle(quote).color,
-      placeholderColor: getComputedStyle(placeholder, '::before').color,
       canvasTextColor: editorStyle.color,
     };
   });
@@ -145,7 +142,6 @@ test('preserves state and structural cues in forced colors', async ({
     fullPage: true,
   });
   expect(evidence.quoteColor).toBe(evidence.canvasTextColor);
-  expect(evidence.placeholderColor).toBe(evidence.canvasTextColor);
 
   expect(evidence).toMatchObject({
     editorBorderStyle: 'solid',
@@ -222,6 +218,10 @@ for (const forcedColors of ['none', 'active'] as const) {
           element.querySelector('.is-editor-empty:first-child')!, '::before',
         ).color,
       }));
+      await testInfo.attach('actual-editor-placeholder-colors', {
+        body: JSON.stringify(colors, null, 2),
+        contentType: 'application/json',
+      });
       expect(colors.placeholder).toBe(colors.canvasText);
     }
     await page.keyboard.press(
@@ -230,6 +230,13 @@ for (const forcedColors of ['none', 'active'] as const) {
     await expect(toolbar.getByRole('button', { name: 'Bold (Ctrl/Cmd+B)', exact: true })).toBeFocused();
     await page.screenshot({
       path: testInfo.outputPath(`real-toolbar-320-${forcedColors}-focus.png`),
+      fullPage: true,
+    });
+    await page.keyboard.press('Enter');
+    await expect(toolbar.getByRole('button', { name: 'Bold (Ctrl/Cmd+B)', exact: true }))
+      .toHaveAttribute('aria-pressed', 'true');
+    await page.screenshot({
+      path: testInfo.outputPath(`real-toolbar-320-${forcedColors}-active-mark.png`),
       fullPage: true,
     });
   });
