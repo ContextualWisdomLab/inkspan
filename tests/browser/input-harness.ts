@@ -8,7 +8,7 @@ import {
   type CwlEditorHandle,
 } from 'inkspan-browser-under-test';
 import { createDocumentAutosaveQueue } from 'inkspan-autosave-under-test';
-import '../../src/styles.css';
+import '/dist/cwl-editor.css';
 
 declare global {
   interface Window {
