@@ -5,9 +5,10 @@ import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const packageEntry = process.env.INKSPAN_BROWSER_PACKAGE_ENTRY?.trim();
-const stylesheetPath = realpathSync(packageEntry
-  ? resolve(dirname(resolve(packageEntry)), 'cwl-editor.css')
-  : resolve(repositoryRoot, 'dist/cwl-editor.css')).split(sep).join('/');
+const stylesheetPath = resolve(
+  realpathSync(packageEntry ? dirname(resolve(packageEntry)) : repositoryRoot),
+  packageEntry ? 'cwl-editor.css' : 'dist/cwl-editor.css',
+).split(sep).join('/');
 
 test('loads the selected stylesheet in the actual input editor', async ({ page }) => {
   await page.goto('/tests/browser/input-harness.html?toolbar=1');

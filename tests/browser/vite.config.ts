@@ -12,6 +12,9 @@ const packageEntry = configuredPackageEntry
 export default defineConfig({
   resolve: {
     alias: {
+      '/dist/cwl-editor.css': configuredPackageEntry
+        ? resolve(dirname(packageEntry), 'cwl-editor.css')
+        : resolve(repositoryRoot, 'dist/cwl-editor.css'),
       'inkspan-browser-under-test': packageEntry,
       'inkspan-autosave-under-test': configuredPackageEntry
         ? resolve(dirname(packageEntry), 'cwl-autosave.js')
