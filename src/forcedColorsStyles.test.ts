@@ -80,6 +80,17 @@ describe('forced-colors stylesheet contract', () => {
     );
   });
 
+  it.each([
+    '.cwl-editor__content blockquote',
+    '.cwl-editor__content .is-editor-empty:first-child::before',
+  ])('uses readable system text for %s instead of disabled text', (selector) => {
+    const blockStart = forcedColorsStyles.indexOf(`${selector} {`);
+    expect(blockStart).toBeGreaterThan(-1);
+    const block = forcedColorsStyles.slice(blockStart, findCssBlockEnd(forcedColorsStyles, blockStart));
+    expect(block).toMatch(/color:\s*CanvasText\s*;/u);
+    expect(block).not.toContain('GrayText');
+  });
+
   it('preserves high-contrast chrome, document links, and collaboration cues', () => {
     expect(forcedColorsStyles).toMatch(
       /\.cwl-editor\s*\{[^}]*color:\s*CanvasText\s*;[^}]*background:\s*Canvas\s*;[^}]*border-color:\s*CanvasText\s*;/u,

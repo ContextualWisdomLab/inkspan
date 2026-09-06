@@ -98,6 +98,8 @@ test('preserves state and structural cues in forced colors', async ({
     const cell = get<HTMLTableCellElement>('.cwl-editor__content td');
     const caret = get<HTMLElement>('.collaboration-cursor__caret');
     const label = get<HTMLElement>('.collaboration-cursor__label');
+    const quote = get<HTMLElement>('.cwl-editor__content blockquote');
+    const placeholder = get<HTMLElement>('.cwl-editor__content .is-editor-empty:first-child');
 
     const editorStyle = getComputedStyle(editor);
     const toolbarStyle = getComputedStyle(toolbar);
@@ -128,8 +130,22 @@ test('preserves state and structural cues in forced colors', async ({
       cellBorderWidth: cellStyle.borderTopWidth,
       caretBorderWidth: caretStyle.borderLeftWidth,
       labelVisible: labelStyle.display !== 'none' && labelStyle.visibility !== 'hidden',
+      quoteColor: getComputedStyle(quote).color,
+      placeholderColor: getComputedStyle(placeholder, '::before').color,
+      canvasTextColor: editorStyle.color,
     };
   });
+
+  await testInfo.attach('forced-colors-content', {
+    body: JSON.stringify(evidence, null, 2),
+    contentType: 'application/json',
+  });
+  await page.screenshot({
+    path: testInfo.outputPath('forced-colors-content.png'),
+    fullPage: true,
+  });
+  expect(evidence.quoteColor).toBe(evidence.canvasTextColor);
+  expect(evidence.placeholderColor).toBe(evidence.canvasTextColor);
 
   expect(evidence).toMatchObject({
     editorBorderStyle: 'solid',
@@ -199,6 +215,15 @@ for (const forcedColors of ['none', 'active'] as const) {
       fullPage: true,
     });
     expect(clippedControls).toEqual([]);
+    if (forcedColors === 'active') {
+      const colors = await page.locator('.cwl-editor').evaluate((element) => ({
+        canvasText: getComputedStyle(element).color,
+        placeholder: getComputedStyle(
+          element.querySelector('.is-editor-empty:first-child')!, '::before',
+        ).color,
+      }));
+      expect(colors.placeholder).toBe(colors.canvasText);
+    }
     await page.keyboard.press(
       browserName === 'webkit' && process.platform === 'darwin' ? 'Alt+Tab' : 'Tab',
     );
