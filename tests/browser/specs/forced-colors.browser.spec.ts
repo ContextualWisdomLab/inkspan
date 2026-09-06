@@ -235,9 +235,29 @@ for (const forcedColors of ['none', 'active'] as const) {
     await page.keyboard.press('Enter');
     await expect(toolbar.getByRole('button', { name: 'Bold (Ctrl/Cmd+B)', exact: true }))
       .toHaveAttribute('aria-pressed', 'true');
+    const readButtonPaint = (element: Element) => {
+      const style = getComputedStyle(element);
+      return {
+        color: style.color,
+        background: style.backgroundColor,
+        transitionDuration: style.transitionDuration,
+        forcedColorAdjust: style.forcedColorAdjust,
+      };
+    };
+    const bold = toolbar.getByRole('button', { name: 'Bold (Ctrl/Cmd+B)', exact: true });
+    const initialPaint = await bold.evaluate(readButtonPaint);
     await page.screenshot({
       path: testInfo.outputPath(`real-toolbar-320-${forcedColors}-active-mark.png`),
       fullPage: true,
+    });
+    await page.screenshot({
+      path: testInfo.outputPath(`real-toolbar-320-${forcedColors}-settled-mark.png`),
+      animations: 'disabled',
+      fullPage: true,
+    });
+    await testInfo.attach('actual-active-button-paint', {
+      body: JSON.stringify({ initialPaint, settledPaint: await bold.evaluate(readButtonPaint) }, null, 2),
+      contentType: 'application/json',
     });
   });
 }
