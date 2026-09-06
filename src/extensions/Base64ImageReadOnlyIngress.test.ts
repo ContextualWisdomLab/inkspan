@@ -1,3 +1,4 @@
+import { waitFor } from '@testing-library/react';
 import { Editor } from '@tiptap/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -54,6 +55,32 @@ afterEach(() => {
 });
 
 describe('Base64Image read-only file ingress', () => {
+  it.each(['paste', 'drop'] as const)(
+    'does not insert after %s alternative-text prompting makes the editor read-only',
+    async (ingress) => {
+      const editor = makeReadOnlyEditor();
+      editor.setEditable(true);
+      const before = editor.getHTML();
+      const prompt = vi.spyOn(window, 'prompt').mockImplementation(() => {
+        editor.setEditable(false);
+        return 'Image description';
+      });
+      const event = {
+        clipboardData: { items: [{ kind: 'file', getAsFile: () => pngFile() }] },
+        dataTransfer: { files: [pngFile()] },
+        clientX: 1,
+        clientY: 1,
+        preventDefault: vi.fn(),
+      };
+      vi.spyOn(editor.view, 'posAtCoords').mockReturnValue({ pos: 1, inside: -1 });
+
+      expect((ingress === 'paste' ? paste : drop)(editor, event)).toBe(true);
+      await waitFor(() => expect(prompt).toHaveBeenCalledOnce());
+      expect(editor.isEditable).toBe(false);
+      expect(editor.getHTML()).toBe(before);
+    },
+  );
+
   it('does not claim or mutate pasted image input while the editor is read-only', async () => {
     const editor = makeReadOnlyEditor();
     const before = editor.getHTML();
