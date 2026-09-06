@@ -27,3 +27,14 @@ test('serves the selected stylesheet at the shared focus and print URL', async (
   expect(stylesheetResponse.ok()).toBe(true);
   expect((await stylesheetResponse.text()).trim()).toBe(readFileSync(stylesheetPath, 'utf8').trim());
 });
+
+test('renders the selected collaboration entry with its authored label colors', async ({ page }) => {
+  await page.goto('/tests/browser/harness.html');
+  await page.locator('#harness').evaluate(async (element) => {
+    element.append(await window.renderInkspanCursorProbe({ name: 'Remote', color: '#abcdef' }));
+  });
+  const label = page.locator('.collaboration-cursor__label');
+  await expect(label).toHaveText('Remote');
+  await expect(label).toHaveCSS('background-color', 'rgb(171, 205, 239)');
+  await expect(label).toHaveCSS('color', 'rgb(0, 0, 0)');
+});

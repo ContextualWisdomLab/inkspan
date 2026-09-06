@@ -22,6 +22,14 @@ callers without a server plugin, a new helper, copied CSS or per-spec routing.
 Changing only the input import would leave focus/print consumers uncorrected;
 checking archive metadata alone would not observe stylesheet selection.
 
+The downstream forced-colors inspection in #151 also needs the real collaboration
+renderer, whose inline colors are missing from hand-written cursor markup.
+This browser-harness owner provides a matching collaboration-entry alias and
+lazy probe, following the existing source/package selection. The shared test
+checks normal label colors; #151 owns the forced-palette and visual regression.
+Integrate these helpers into the child by a normal merge so its net delta does
+not become a competing browser-configuration writer.
+
 ## Runnable regression and limits
 
 After building, run from the repository root:
