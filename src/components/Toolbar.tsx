@@ -405,7 +405,7 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
         />
         <ToolbarButton
           title="Insert inline image"
-          label="🖼"
+          label="Image"
           onClick={() => fileInputRef.current?.click()}
         />
         <ToolbarButton
