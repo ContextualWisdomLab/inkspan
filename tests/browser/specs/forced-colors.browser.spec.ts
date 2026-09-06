@@ -168,3 +168,31 @@ test('preserves state and structural cues in forced colors', async ({
     outlineWidth: '2px',
   });
 });
+
+for (const forcedColors of ['none', 'active'] as const) {
+  test(`keeps every real toolbar control visible at 320px with forced colors ${forcedColors}`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 320, height: 900 });
+    await page.emulateMedia({ forcedColors });
+    await page.goto('/tests/browser/input-harness.html?toolbar=1');
+    await expect(page.locator('.ProseMirror')).toHaveAttribute('contenteditable', 'true');
+    const toolbar = page.getByRole('toolbar', { name: 'Formatting' });
+    await expect(toolbar.getByRole('button', { name: 'Insert inline (base64) image' })).toBeVisible();
+    const clippedControls = await toolbar.evaluate((element) => {
+      const toolbarBounds = element.getBoundingClientRect();
+      return Array.from(element.querySelectorAll('button')).flatMap((button) => {
+        const bounds = button.getBoundingClientRect();
+        const visible = bounds.width > 0 && bounds.height > 0
+          && bounds.left >= toolbarBounds.left && bounds.right <= toolbarBounds.right
+          && bounds.top >= toolbarBounds.top && bounds.bottom <= toolbarBounds.bottom;
+        return visible ? [] : [button.getAttribute('aria-label')];
+      });
+    });
+    await page.screenshot({
+      path: testInfo.outputPath(`real-toolbar-320-${forcedColors}.png`),
+      fullPage: true,
+    });
+    expect(clippedControls).toEqual([]);
+  });
+}
