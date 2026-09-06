@@ -128,6 +128,7 @@ describe('revision-evidence runtime measurement contract', () => {
         unit: 'ms',
         sourceCommitSha: SOURCE_COMMIT_SHA,
         artifactSha256: fileSha256(modulePath),
+        inputSha256: fileSha256(input),
         documentProfile: 'large',
         runtimeId: RUNTIME_ID,
         referenceHardwareId: HARDWARE_ID,
@@ -153,6 +154,7 @@ describe('revision-evidence runtime measurement contract', () => {
         sampleCount: 3,
         benchmarkId: 'revision-evidence-large',
         unit: 'ms',
+        inputSha256: fileSha256(input),
       });
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -183,6 +185,7 @@ export async function createDocumentEnvelopeTransitionEvidenceBytes() { if (++me
       expect(JSON.parse(readFileSync(samplesPath, 'utf8'))).toMatchObject({
         benchmarkId: 'transition-evidence-large',
         artifactSha256: fileSha256(modulePath),
+        inputSha256: fileSha256(input),
         samples: expect.any(Array),
       });
     } finally {
@@ -230,6 +233,8 @@ export async function createDocumentEnvelopeTransitionEvidenceBytes(previous, re
         const output = readFileSync(samplesPath, 'utf8');
         expect(JSON.parse(output)).toMatchObject({
           benchmarkId: 'transition-changed-evidence-large',
+          inputSha256: fileSha256(input),
+          resultingInputSha256: fileSha256(resultingInput),
           samples: expect.any(Array),
         });
         expect(JSON.parse(output).samples).toHaveLength(3);
@@ -335,6 +340,7 @@ export async function createDocumentEnvelopeRevisionEvidenceBytes(source, limits
       expect(JSON.parse(readFileSync(samplesPath, 'utf8'))).toMatchObject({
         benchmarkId: 'envelope-canonicalization-large',
         artifactSha256: fileSha256(modulePath),
+        inputSha256: fileSha256(input),
         samples: expect.any(Array),
       });
     } finally {
