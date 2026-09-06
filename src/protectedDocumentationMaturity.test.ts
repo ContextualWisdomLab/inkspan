@@ -79,8 +79,11 @@ describe('protected capability documentation maturity', () => {
     expect(architecture).not.toContain('Until #116 integrates');
   });
 
-  it('does not describe merged DOCX hyperlinks as active-PR technical scope', () => {
-    const trd = repositoryFile('docs/TRD.md');
+  it.each([
+    '',
+    '\n\n## Unrelated future capability\n\nActive PR: implemented_on_active_pr. Until protected integration, this capability remains proposed.',
+  ])('keeps merged DOCX maturity with unrelated proposed text %j', (unrelatedProposal) => {
+    const trd = repositoryFile('docs/TRD.md') + unrelatedProposal;
     const adr = repositoryFile(
       'docs/adr/0026-bounded-docx-external-hyperlinks.md',
     );
