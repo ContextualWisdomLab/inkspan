@@ -341,8 +341,8 @@
   }
 
   .collaboration-cursor__label {
-    background: Highlight;
-    color: HighlightText;
+    background: Highlight !important;
+    color: HighlightText !important;
     forced-color-adjust: none;
   }
 }

@@ -32,9 +32,54 @@ needed. CONTRACTS and ADR ownership remain unchanged.
 
 Keeping disabled-text colors on readable content was rejected because it gave
 the wrong semantic cue and produced faint guidance in the inspected rendering.
-Hard-coded black/white colors or opting out of forced colors were rejected
+Hard-coded black/white colors or globally opting out of forced colors were rejected
 because they can conflict with the user's selected palette. Text identity and
 structural cues distinguish placeholders/quotes without borrowing disabled state.
+
+## Follow-up finding: selected labels disappear
+
+The nine-case prebuilt source-browser run at
+`83783803d76c47694f4022ac7cb760f5e83815bf` passed its semantic and geometry
+assertions, but direct screenshot inspection found Chromium's real pressed
+Bold button blank. The smaller fixture also showed blank active/remote labels.
+This visual failure prevents UI acceptance despite the passing test count.
+
+At diagnostic head `a9f2775669a5346132ed5f4994dbb6e13e898271`, the real
+button's initial foreground and background both computed to white during its
+120 ms color transition. After animation completion, the background used the
+system highlight color but a white text backplate still obscured the label.
+The strengthened contract at `f6dbf5257a47b7ee05747306e924914292616348`
+failed four stylesheet checks and all three selected real-engine cases.
+
+Disabling only toolbar transitions at
+`7f6edc7770104cdbd9d7e09aface53f9bbb26b92` removed the interpolated white
+background but retained the blank Chromium label. Its screenshot, paint values
+and failed check are preserved as an incomplete alternative, not a fix.
+
+The repair retains that forced-mode-only transition removal and sets
+`forced-color-adjust: none` only on the three existing system-highlight pairs:
+hovered buttons, active buttons and collaboration cursor labels. Each still uses
+the user's `Highlight` and `HighlightText`; none uses a hard-coded palette.
+The editor, document text and generic controls retain automatic adjustment.
+This narrow override corrects the observed backplate conflict under the CSS
+Color Adjustment guidance; a whole-editor opt-out would be unnecessarily broad.
+
+The actual collaboration renderer also supplies inline foreground/background
+colors. At `0c29f3fed7c12a18ad032eb73273af99d7e5788a`, using that renderer
+instead of hand-written cursor markup exposed another three-engine failure:
+the narrow adjustment exception retained the author's colors. The two system
+color declarations therefore use `!important` inside the forced-colors layer
+to override those normal inline values. The browser fixture imports the selected
+source or packaged collaboration entrypoint lazily, verifies its normal colors,
+then requires the forced label to match the active system-highlight pair.
+This does not change the renderer, its sanitization, or normal-mode colors.
+
+Regression evidence must include immediate and settled selected-label screenshots,
+hovered labels, keyboard focus and disabled-state cues. CSS/computed-style checks
+alone cannot prove painted text is readable. The diagnostic prebuilt configuration
+keeps normal test/assertion/startup deadlines, retries and browser projects but
+runs the build separately after the standard command exceeded its startup limit.
+It is not a passing standard startup run, packed-release proof or a latency claim.
 
 ## Runnable verification and limits
 
@@ -64,3 +109,7 @@ https://www.w3.org/TR/css-color-4/#css-system-colors
 World Wide Web Consortium. (n.d.). *Understanding Success Criterion 1.4.3:
 Contrast (Minimum)*. Web Accessibility Initiative. Retrieved September 6, 2026,
 from https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html
+
+World Wide Web Consortium. (2025, December 16). *CSS Color Adjustment Module
+Level 1* (Candidate Recommendation Snapshot, Section 3.2).
+https://www.w3.org/TR/2025/CR-css-color-adjust-1-20251216/#forced-color-adjust-prop

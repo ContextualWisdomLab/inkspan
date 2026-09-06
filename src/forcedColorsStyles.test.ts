@@ -86,8 +86,9 @@ describe('forced-colors stylesheet contract', () => {
     expect(blockStart).toBeGreaterThan(-1);
     const block = forcedColorsStyles.slice(blockStart, findCssBlockEnd(forcedColorsStyles, blockStart));
     expect(block).toMatch(/forced-color-adjust:\s*none\s*;/u);
-    expect(block).toMatch(/[;{]\s*background:\s*Highlight\s*;/u);
-    expect(block).toMatch(/[;{]\s*color:\s*HighlightText\s*;/u);
+    const priority = selector === '.collaboration-cursor__label' ? ' !important' : '';
+    expect(block).toContain(`background: Highlight${priority};`);
+    expect(block).toContain(`color: HighlightText${priority};`);
   });
 
   it('does not use opacity as the only disabled-state cue', () => {
@@ -121,7 +122,7 @@ describe('forced-colors stylesheet contract', () => {
       /\.collaboration-cursor__caret\s*\{[^}]*border-left-color:\s*Highlight\s*;/u,
     );
     expect(forcedColorsStyles).toMatch(
-      /\.collaboration-cursor__label\s*\{[^}]*background:\s*Highlight\s*;[^}]*color:\s*HighlightText\s*;/u,
+      /\.collaboration-cursor__label\s*\{[^}]*background:\s*Highlight\s*!important\s*;[^}]*color:\s*HighlightText\s*!important\s*;/u,
     );
   });
 
