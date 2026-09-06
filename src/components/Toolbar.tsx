@@ -255,6 +255,7 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
         'Image alternative text. Leave empty only if this image is decorative.',
         '',
       );
+      if (editor.isDestroyed || !editor.isEditable) return;
       if (alternativeText === null) return;
 
       editor.chain().focus().setImage({ src, alt: alternativeText }).run();
