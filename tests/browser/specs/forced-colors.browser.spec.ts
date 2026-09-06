@@ -57,7 +57,7 @@ test.beforeEach(async ({ page }) => {
 test('preserves state and structural cues in forced colors', async ({
   browserName,
   page,
-}) => {
+}, testInfo) => {
   const tabKey =
     browserName === 'webkit' && process.platform === 'darwin'
       ? 'Alt+Tab'
@@ -167,10 +167,15 @@ test('preserves state and structural cues in forced colors', async ({
     outlineStyle: 'solid',
     outlineWidth: '2px',
   });
+  await page.screenshot({
+    path: testInfo.outputPath('forced-colors-editor-focus.png'),
+    fullPage: true,
+  });
 });
 
 for (const forcedColors of ['none', 'active'] as const) {
   test(`keeps every real toolbar control visible at 320px with forced colors ${forcedColors}`, async ({
+    browserName,
     page,
   }, testInfo) => {
     await page.setViewportSize({ width: 320, height: 900 });
@@ -194,5 +199,13 @@ for (const forcedColors of ['none', 'active'] as const) {
       fullPage: true,
     });
     expect(clippedControls).toEqual([]);
+    await page.keyboard.press(
+      browserName === 'webkit' && process.platform === 'darwin' ? 'Alt+Tab' : 'Tab',
+    );
+    await expect(toolbar.getByRole('button', { name: 'Bold', exact: true })).toBeFocused();
+    await page.screenshot({
+      path: testInfo.outputPath(`real-toolbar-320-${forcedColors}-focus.png`),
+      fullPage: true,
+    });
   });
 }
