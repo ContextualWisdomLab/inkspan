@@ -57,6 +57,26 @@ afterEach(() => {
 });
 
 describe('Toolbar asynchronous image-upload lifecycle boundary', () => {
+  it.each(['read-only', 'destroyed'] as const)(
+    'does not insert when the editor becomes %s during alternative-text prompting',
+    async (nextState) => {
+      const editor = makeEditor();
+      const before = editor.getHTML();
+      const prompt = vi.spyOn(window, 'prompt').mockImplementation(() => {
+        if (nextState === 'destroyed') editor.destroy();
+        else editor.setEditable(false);
+        return 'stale image';
+      });
+      render(<Toolbar editor={editor} image={{ maxDimension: 0 }} />);
+
+      fireEvent.change(fileInput(), { target: { files: [delayedPngFile()] } });
+      await settleConversion();
+
+      expect(prompt).toHaveBeenCalledOnce();
+      expect(editor.getHTML()).toBe(before);
+    },
+  );
+
   it('does not prompt or mutate after the editor becomes read-only', async () => {
     const editor = makeEditor();
     const before = editor.getHTML();
