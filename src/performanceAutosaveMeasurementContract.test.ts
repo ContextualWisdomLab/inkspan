@@ -173,12 +173,15 @@ describe('autosave enqueue performance measurement', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inkspan-autosave-coalescing-'));
     const modulePath = join(directory, 'autosave.mjs');
     const outputPath = join(directory, 'samples.json');
-    const moduleSource = `let queueCount = 0;
+    const capturedInput = join(directory, 'captured-input.json');
+    const moduleSource = `import { writeFileSync } from 'node:fs';
+let queueCount = 0;
 export function createDocumentAutosaveQueue(options) {
   if (++queueCount > 2) throw new Error('Unmeasured invocation');
   let active;
   return {
     enqueue(evidence) {
+      writeFileSync(${JSON.stringify(capturedInput)}, JSON.stringify(evidence));
       if (active) return active;
       active = Promise.resolve(options.save(evidence)).then(() => ({ status: 'saved' }));
       return active;
@@ -209,6 +212,7 @@ export function createDocumentAutosaveQueue(options) {
       expect(result.status).toBe(0);
       expect(JSON.parse(readFileSync(outputPath, 'utf8'))).toMatchObject({
         benchmarkId: 'autosave-coalescing-small',
+        inputSha256: sha256(readFileSync(capturedInput, 'utf8')),
         samples: [expect.any(Number), expect.any(Number)],
       });
     } finally {

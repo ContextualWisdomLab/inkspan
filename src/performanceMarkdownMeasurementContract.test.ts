@@ -80,14 +80,14 @@ function measurementArguments(
 }
 
 describe('Markdown runtime measurement contract', () => {
-  it('writes bounded privacy-safe samples consumable by the canonical summarizer', () => {
+  it.each(['', '\uFEFF'])('writes bounded privacy-safe samples with UTF-8 prefix %j', (prefix) => {
     const root = mkdtempSync(join(tmpdir(), 'inkspan-markdown-measurement-'));
     const input = join(root, 'large.md');
     const modulePath = join(root, 'packed-markdown.mjs');
     const samplesPath = join(root, 'samples.json');
     const summaryDirectory = join(root, 'summary');
     try {
-      writeFileSync(input, '# Buyer benchmark fixture\n\nSynthetic content only.\n', 'utf8');
+      writeFileSync(input, `${prefix}# Buyer benchmark fixture\n\nSynthetic content only.\n`, 'utf8');
       writeFileSync(
         modulePath,
         "let measuredCalls = 0;\nexport function markdownToHtml(source) { if (++measuredCalls > 3) throw new Error('Unmeasured invocation'); return `<p>${source.length}</p>`; }\n",
@@ -139,6 +139,28 @@ describe('Markdown runtime measurement contract', () => {
         unit: 'ms',
         inputSha256: fileSha256(input),
       });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('identifies captured bytes even if the file changes after reading', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-markdown-captured-input-'));
+    const input = join(root, 'input.md');
+    const modulePath = join(root, 'serializer.mjs');
+    const output = join(root, 'samples.json');
+    try {
+      writeFileSync(input, '\uFEFF# Captured input\n', 'utf8');
+      const inputSha256 = fileSha256(input);
+      writeFileSync(modulePath, `import { writeFileSync } from 'node:fs';
+writeFileSync(${JSON.stringify(input)}, '# Later replacement\\n');
+export function markdownToHtml(source) {
+  if (source !== '# Captured input\\n') throw new Error('wrong captured input');
+  return '<h1>Captured input</h1>';
+}\n`);
+      execFileSync(process.execPath, measurementArguments(input, modulePath, output), { cwd: repositoryRoot, stdio: ['ignore', 'pipe', 'pipe'] });
+      expect(fileSha256(input)).not.toBe(inputSha256);
+      expect(JSON.parse(readFileSync(output, 'utf8'))).toMatchObject({ inputSha256, samples: [expect.any(Number), expect.any(Number), expect.any(Number)] });
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
