@@ -15,7 +15,7 @@ test('loads the selected stylesheet in the actual input editor', async ({ page }
   await expect(page.getByRole('textbox')).toBeVisible();
   await expect.poll(() => page.locator('style[data-vite-dev-id]').evaluateAll(
     (elements) => elements.map((element) => element.getAttribute('data-vite-dev-id')),
-  )).toContain(stylesheetPath);
+  )).toEqual([stylesheetPath]);
 });
 
 test('serves the selected stylesheet at the shared focus and print URL', async ({ request }) => {

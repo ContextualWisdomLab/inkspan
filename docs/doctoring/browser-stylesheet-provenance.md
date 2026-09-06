@@ -37,7 +37,8 @@ actual input editor's loaded CSS identity, shared-route resolution, and served
 CSS bytes. Source-mode success alone does not prove package-mode behavior.
 
 The first fixed focused run passed five cases; Firefox's editor case exceeded
-its unchanged 20-second deadline during evaluation on a heavily swapping host.
+its unchanged 20-second deadline during evaluation on a host reporting about
+47 GB of swap in use.
 Its snapshot and failure remain retained. The unchanged case then passed alone
 with trace. This does not prove the timeout's cause or erase that failed run;
 final acceptance still requires fresh complete source and package runs.
