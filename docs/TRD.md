@@ -115,6 +115,8 @@ Identity inspection returns no partial routing object on malformed input. An unk
 
 ## Accessibility and interaction semantics
 
+Active PR / Proposed toolbar reflow lets controls within an oversized group wrap using native CSS while preserving command availability, DOM/keyboard order, theme tokens and print behavior. Real-editor browser checks compare every button's complete bounds with the toolbar at 320 CSS pixels in normal and forced colors; page scroll width or a simplified chrome fixture alone cannot prove that controls are visible. The [toolbar reflow record](doctoring/toolbar-reflow.md) records the causal failure and alternatives. No package/API, document, persistence or host-authority contract changes.
+
 Toolbar shortcut metadata is implemented on protected `main`. Shipped keyboard behavior, focus behavior, native controls, `aria-pressed`, `aria-keyshortcuts`, programmatic save/conflict state, and visible shortcut documentation must agree. Repository-level keyboard behavior outranks extension-local defaults when determining metadata. Status must not depend on color alone. Inkspan exposes machine state sufficient for host WCAG-oriented messaging while leaving localization and application-specific live-region policy to the host.
 
 Accessible editor placeholder semantics are implemented on protected `main`. Standalone and collaborative textbox surfaces expose the same normalized non-blank host-supplied visual placeholder through `aria-placeholder`; whitespace-only guidance is omitted, and placeholder updates do not replace the current TipTap editor or host-owned Yjs binding. `aria-labelledby`/`aria-label` remain the accessible-name authority and placeholder guidance never grants editability.

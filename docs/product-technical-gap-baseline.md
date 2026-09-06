@@ -152,6 +152,10 @@ runtime boundary:
 - package provenance, license/SBOM completeness, and reproducible artifacts;
 - accessibility evidence across keyboard, forced-colors, print, narrow viewport,
   and real browser engines;
+- complete visibility of every actual toolbar control at narrow widths, checked
+  against its containing toolbar rather than inferred from page scroll width;
+  [toolbar reflow](doctoring/toolbar-reflow.md) records the reproducible clipping
+  failure and the Active PR / Proposed repair;
 - clear rollback and incident paths for ambiguous publication or persistence
   outcomes.
 
