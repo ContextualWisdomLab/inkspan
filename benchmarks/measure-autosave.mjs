@@ -396,7 +396,7 @@ async function createSyntheticRevisionEvidence(args) {
   });
   return {
     evidence,
-    inputSha256: createHash('sha256').update(JSON.stringify(evidence.envelope)).digest('hex'),
+    inputSha256: createHash('sha256').update(JSON.stringify(evidence)).digest('hex'),
   };
 }
 

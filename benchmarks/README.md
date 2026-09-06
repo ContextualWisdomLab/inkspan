@@ -28,7 +28,8 @@ use `contractVersion: 3` and additionally identify the captured input bytes with
 read used by the operation, not a caller-supplied claim or a later file read.
 Changed transitions also record `resultingInputSha256` in its distinct resulting
 role. Autosave with no input file hashes the UTF-8 JSON representation of its
-fixed synthetic envelope; that input remains synthetic regardless of profile.
+fixed prepared revision-evidence payload (envelope and revision), not a file-mode
+envelope; that input remains synthetic regardless of profile.
 Input digests are workload identifiers, not anonymization or authenticity proofs.
 
 The summarizer preserves these identities in JSON and text. The comparator
