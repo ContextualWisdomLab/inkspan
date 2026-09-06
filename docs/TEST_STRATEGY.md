@@ -30,6 +30,8 @@ Differences are not normalized away merely to produce parity. The default gate h
 
 Active PR browser assurance binds the actual editor and shared focus/print stylesheet route to the selected source build or extracted package. Archive-digest metadata alone cannot prove which CSS the browser loaded. The [stylesheet provenance regression](doctoring/browser-stylesheet-provenance.md) checks the loaded stylesheet identity and shared-route bytes in each engine; it does not establish physical-device or protected-release acceptance.
 
+Active PR browser evidence also rejects a missing archive when an expected package digest is supplied. Ordinary source-only checks without an expected digest may retain a null package identity. This distinction is exercised against the shared evidence helper by `src/releaseBrowserEvidence.test.ts`; it does not change editor runtime or public document contracts.
+
 ### Office artifact tests
 
 Exercise realistic DOCX, XLSX, and PPTX fixtures and inspect the generated package structure. Cover XML 1.0 validity, formula-injection neutralization, worksheet naming and freeze panes, bounds/depth/cycles, deterministic metadata, publication races, overwrite semantics, and wheel/package contents. No macro, network, model, or Desktop Office execution is required by the deterministic renderer.
