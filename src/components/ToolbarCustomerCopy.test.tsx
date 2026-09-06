@@ -28,6 +28,9 @@ describe('Toolbar customer-facing image action copy', () => {
       screen.getByRole('button', { name: 'Insert inline image' }),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole('button', { name: 'Insert inline image' }),
+    ).toHaveTextContent(/^Image$/);
+    expect(
       screen.queryByRole('button', { name: /base64/i }),
     ).not.toBeInTheDocument();
   });
