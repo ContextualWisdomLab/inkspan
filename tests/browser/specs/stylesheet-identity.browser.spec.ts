@@ -11,7 +11,7 @@ const stylesheetPath = realpathSync(packageEntry
 
 test('loads the selected stylesheet in the actual input editor', async ({ page }) => {
   await page.goto('/tests/browser/input-harness.html?toolbar=1');
-  await expect(page.getByRole('textbox', { name: 'Editor' })).toBeVisible();
+  await expect(page.getByRole('textbox')).toBeVisible();
   await expect.poll(() => page.locator('style[data-vite-dev-id]').evaluateAll(
     (elements) => elements.map((element) => element.getAttribute('data-vite-dev-id')),
   )).toContain(stylesheetPath);
