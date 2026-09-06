@@ -15,6 +15,8 @@ type SummaryOverrides = Partial<{
   unit: string;
   sourceCommitSha: string;
   artifactSha256: string;
+  inputSha256: string;
+  resultingInputSha256: string;
   documentProfile: string;
   runtimeId: string;
   referenceHardwareId: string;
@@ -44,6 +46,11 @@ function summary(overrides: SummaryOverrides = {}) {
     p75: 90,
     p95: 100,
     maximum: 110,
+    ...(overrides.contractVersion === 3 ? {
+      inputSha256: 'd'.repeat(64),
+      ...(overrides.benchmarkId?.startsWith('transition-changed-evidence-')
+        ? { resultingInputSha256: 'e'.repeat(64) } : {}),
+    } : {}),
     ...overrides,
   };
 }
@@ -79,6 +86,7 @@ describe('benchmark regression comparator contract', () => {
   it.each([
     ['editor-input-large', 1], ['editor-input-large', 2],
     ['transition-changed-evidence-large', 1], ['transition-changed-evidence-large', 2],
+    ['editor-input-large', 3], ['transition-changed-evidence-large', 3],
   ] as const)(
     'compares exact-context %s generation %i evidence with an explicit tolerance', (benchmarkId, contractVersion) => {
     const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-compare-pass-'));
@@ -96,6 +104,11 @@ describe('benchmark regression comparator contract', () => {
         contractVersion,
         benchmarkId,
         unit: 'ms',
+        ...(contractVersion === 3 ? {
+          inputSha256: 'd'.repeat(64),
+          ...(benchmarkId.startsWith('transition-changed-evidence-')
+            ? { resultingInputSha256: 'e'.repeat(64) } : {}),
+        } : {}),
         documentProfile: 'large',
         runtimeId: 'chromium-1.62.0',
         referenceHardwareId: 'github-actions-ubuntu-24.04-x64',
@@ -117,7 +130,7 @@ describe('benchmark regression comparator contract', () => {
     }
   });
 
-  it.each([[1, 2], [2, 1]])('rejects generation %i versus %i even with a generous tolerance', (baselineVersion, currentVersion) => {
+  it.each([[1, 2], [2, 1], [2, 3], [3, 2], [1, 3], [3, 1]])('rejects generation %i versus %i even with a generous tolerance', (baselineVersion, currentVersion) => {
     const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-compare-generation-'));
     try {
       const result = runComparison(root,
@@ -126,6 +139,40 @@ describe('benchmark regression comparator contract', () => {
       expect(result.status).toBe(1);
       expect(result.stdout).toBe('');
       expect(result.stderr.trim()).toBe('Benchmark summaries are not comparable: contractVersion differs.');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it.each(['inputSha256', 'resultingInputSha256'] as const)('rejects a changed %s before reporting a speedup', (field) => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-compare-input-'));
+    try {
+      const baseline = summary({ contractVersion: 3, benchmarkId: 'transition-changed-evidence-large' });
+      const current = { ...baseline, artifactSha256: CURRENT_ARTIFACT_SHA256, [field]: 'f'.repeat(64), p95: 90 };
+      const result = runComparison(root, baseline, current, '100');
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(`Benchmark summaries are not comparable: ${field} differs.`);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    { contractVersion: 3, inputSha256: undefined },
+    { contractVersion: 3, inputSha256: 'private-path' },
+    { contractVersion: 3, inputSha256: 'A'.repeat(64) },
+    { contractVersion: 3, resultingInputSha256: 'e'.repeat(64) },
+    { contractVersion: 2, inputSha256: 'd'.repeat(64) },
+    { contractVersion: 3, benchmarkId: 'transition-changed-evidence-large', resultingInputSha256: undefined },
+    { contractVersion: 3, benchmarkId: 'transition-changed-evidence-large', resultingInputSha256: 'd'.repeat(64) },
+  ])('rejects invalid input identity metadata %j', (overrides) => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-compare-input-invalid-'));
+    try {
+      const result = runComparison(root, summary(overrides), summary({ ...overrides, artifactSha256: CURRENT_ARTIFACT_SHA256 }), '100');
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr).not.toContain('private-path');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

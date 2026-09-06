@@ -16,7 +16,7 @@ import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 interface BenchmarkSummary {
-  readonly contractVersion: 1 | 2;
+  readonly contractVersion: 1 | 2 | 3;
   readonly benchmarkId: string;
   readonly unit: string;
   readonly sourceCommitSha: string;
@@ -47,6 +47,7 @@ function writeInput(path: string, samples: readonly number[], contractVersion: u
         unit: 'ms',
         sourceCommitSha: SOURCE_COMMIT_SHA,
         artifactSha256: ARTIFACT_SHA256,
+        ...(contractVersion === 3 ? { inputSha256: 'd'.repeat(64) } : {}),
         documentProfile: 'large',
         runtimeId: 'node-22.18.0',
         referenceHardwareId: 'github-actions-ubuntu-24.04-x64',
@@ -74,7 +75,7 @@ function runSummary(inputPath: string, outputDirectory: string): BenchmarkSummar
 }
 
 describe('deterministic benchmark sample statistics', () => {
-  it.each([1, 2] as const)('preserves generation %i in reproducible JSON and human-readable summaries', (contractVersion) => {
+  it.each([1, 2, 3] as const)('preserves generation %i in reproducible JSON and human-readable summaries', (contractVersion) => {
     const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-summary-'));
     const input = join(root, 'samples.json');
     const first = join(root, 'first');
@@ -91,6 +92,7 @@ describe('deterministic benchmark sample statistics', () => {
         unit: 'ms',
         sourceCommitSha: SOURCE_COMMIT_SHA,
         artifactSha256: ARTIFACT_SHA256,
+        ...(contractVersion === 3 ? { inputSha256: 'd'.repeat(64) } : {}),
         documentProfile: 'large',
         runtimeId: 'node-22.18.0',
         referenceHardwareId: 'github-actions-ubuntu-24.04-x64',
@@ -109,6 +111,7 @@ describe('deterministic benchmark sample statistics', () => {
         'unit=ms',
         `source_commit_sha=${SOURCE_COMMIT_SHA}`,
         `artifact_sha256=${ARTIFACT_SHA256}`,
+        ...(contractVersion === 3 ? [`input_sha256=${'d'.repeat(64)}`] : []),
         'document_profile=large',
         'runtime_id=node-22.18.0',
         'reference_hardware_id=github-actions-ubuntu-24.04-x64',
@@ -128,7 +131,7 @@ describe('deterministic benchmark sample statistics', () => {
     }
   });
 
-  it.each([0, 3, '2', null])('rejects unsupported measurement generation %s', (contractVersion) => {
+  it.each([0, 4, '2', null])('rejects unsupported measurement generation %s', (contractVersion) => {
     const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-summary-generation-'));
     const input = join(root, 'samples.json');
     const output = join(root, 'output');
@@ -138,8 +141,47 @@ describe('deterministic benchmark sample statistics', () => {
         [script, '--input', input, '--output', output], { encoding: 'utf8' });
       expect(result.status).toBe(1);
       expect(result.stdout).toBe('');
-      expect(result.stderr.trim()).toBe('Benchmark sample contractVersion must be 1 or 2.');
+      expect(result.stderr.trim()).toBe('Benchmark sample contractVersion must be 1, 2 or 3.');
       expect(existsSync(join(output, 'summary.json'))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('preserves ordered changed-transition input identities in both receipts', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-summary-inputs-'));
+    const input = join(root, 'samples.json');
+    const output = join(root, 'output');
+    try {
+      writeInput(input, [1, 2, 3], 3);
+      const samples = JSON.parse(readFileSync(input, 'utf8'));
+      samples.benchmarkId = 'transition-changed-evidence-large';
+      samples.resultingInputSha256 = 'e'.repeat(64);
+      writeFileSync(input, JSON.stringify(samples));
+      expect(runSummary(input, output)).toMatchObject({ inputSha256: 'd'.repeat(64), resultingInputSha256: 'e'.repeat(64) });
+      expect(readFileSync(join(output, 'summary.txt'), 'utf8')).toContain(`input_sha256=${'d'.repeat(64)}\nresulting_input_sha256=${'e'.repeat(64)}\n`);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    { inputSha256: undefined }, { inputSha256: 'private-path' }, { inputSha256: 'A'.repeat(64) },
+    { resultingInputSha256: 'e'.repeat(64) }, { contractVersion: 2 },
+    { benchmarkId: 'transition-changed-evidence-large' },
+    { benchmarkId: 'transition-changed-evidence-large', resultingInputSha256: 'd'.repeat(64) },
+  ])('rejects invalid input identity metadata %j without writing evidence', (overrides) => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-summary-input-invalid-'));
+    const input = join(root, 'samples.json');
+    const output = join(root, 'output');
+    try {
+      writeInput(input, [1, 2, 3], 3);
+      writeFileSync(input, JSON.stringify({ ...JSON.parse(readFileSync(input, 'utf8')), ...overrides }));
+      const result = spawnSync(process.execPath, [script, '--input', input, '--output', output], { encoding: 'utf8' });
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr).not.toContain('private-path');
+      expect(existsSync(output)).toBe(false);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
