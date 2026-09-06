@@ -31,12 +31,16 @@ for (const modifier of ['Control', 'Meta'] as const) {
     await page.evaluate(() => window.inkspanInputHarness.setEditable(false));
     await expect(editor).toHaveAttribute('contenteditable', 'false');
     await expect(editor).toHaveAttribute('aria-readonly', 'true');
-    await editor.focus();
-    await page.keyboard.press(`${modifier}+k`);
+    // Read-only content is not focusable; explicitly exercise its bubbling handler.
+    const allowedDefault = await editor.evaluate((element, keyModifier) =>
+      element.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'k', bubbles: true, cancelable: true,
+        ctrlKey: keyModifier === 'Control', metaKey: keyModifier === 'Meta',
+      })), modifier);
+    expect(allowedDefault).toBe(true);
     expect(prompts).toEqual(['Link URL']);
     await expect(editor).toHaveText('Retained decision — 한글 日本語 Tiếng Việt');
     await expect(page.getByRole('button', { name: 'Bold (Ctrl/Cmd+B)', exact: true })).toHaveCount(0);
-    await expect(editor).toBeFocused();
     await page.screenshot({ path: testInfo.outputPath(`${modifier}-readonly.png`), fullPage: true });
 
     await page.evaluate(() => window.inkspanInputHarness.setEditable(true));
