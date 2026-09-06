@@ -295,6 +295,7 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
               'Image alternative text. Leave empty only if this image is decorative.',
               '',
             );
+            if (editor.isDestroyed || !editor.isEditable) return;
             if (alternativeText === null) continue;
             const node = editor.schema.nodes.image.create({
               src,
