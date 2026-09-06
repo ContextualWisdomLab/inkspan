@@ -16,7 +16,7 @@ import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 interface BenchmarkSummary {
-  readonly contractVersion: 1;
+  readonly contractVersion: 1 | 2;
   readonly benchmarkId: string;
   readonly unit: string;
   readonly sourceCommitSha: string;
@@ -37,12 +37,12 @@ const script = resolve(process.cwd(), 'benchmarks/summarize-samples.mjs');
 const SOURCE_COMMIT_SHA = 'a'.repeat(40);
 const ARTIFACT_SHA256 = 'b'.repeat(64);
 
-function writeInput(path: string, samples: readonly number[]): void {
+function writeInput(path: string, samples: readonly number[], contractVersion: unknown = 1): void {
   writeFileSync(
     path,
     `${JSON.stringify(
       {
-        contractVersion: 1,
+        contractVersion,
         benchmarkId: 'markdown-serialization-large',
         unit: 'ms',
         sourceCommitSha: SOURCE_COMMIT_SHA,
@@ -74,19 +74,19 @@ function runSummary(inputPath: string, outputDirectory: string): BenchmarkSummar
 }
 
 describe('deterministic benchmark sample statistics', () => {
-  it('writes reproducible nearest-rank JSON and human-readable summaries with provenance metadata', () => {
+  it.each([1, 2] as const)('preserves generation %i in reproducible JSON and human-readable summaries', (contractVersion) => {
     const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-summary-'));
     const input = join(root, 'samples.json');
     const first = join(root, 'first');
     const second = join(root, 'second');
     try {
-      writeInput(input, [20, 10, 40, 30, 50]);
+      writeInput(input, [20, 10, 40, 30, 50], contractVersion);
 
       const firstSummary = runSummary(input, first);
       const secondSummary = runSummary(input, second);
       expect(firstSummary).toEqual(secondSummary);
       expect(firstSummary).toEqual({
-        contractVersion: 1,
+        contractVersion,
         benchmarkId: 'markdown-serialization-large',
         unit: 'ms',
         sourceCommitSha: SOURCE_COMMIT_SHA,
@@ -104,6 +104,7 @@ describe('deterministic benchmark sample statistics', () => {
       });
 
       const expectedText = [
+        `contract_version=${contractVersion}`,
         'benchmark=markdown-serialization-large',
         'unit=ms',
         `source_commit_sha=${SOURCE_COMMIT_SHA}`,
@@ -122,6 +123,23 @@ describe('deterministic benchmark sample statistics', () => {
       ].join('\n');
       expect(readFileSync(join(first, 'summary.txt'), 'utf8')).toBe(expectedText);
       expect(readFileSync(join(second, 'summary.txt'), 'utf8')).toBe(expectedText);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it.each([0, 3, '2', null])('rejects unsupported measurement generation %s', (contractVersion) => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-summary-generation-'));
+    const input = join(root, 'samples.json');
+    const output = join(root, 'output');
+    try {
+      writeInput(input, [1, 2, 3], contractVersion);
+      const result = spawnSync(process.execPath,
+        [script, '--input', input, '--output', output], { encoding: 'utf8' });
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe('Benchmark sample contractVersion must be 1 or 2.');
+      expect(existsSync(join(output, 'summary.json'))).toBe(false);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

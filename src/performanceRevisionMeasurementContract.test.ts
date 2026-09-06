@@ -14,7 +14,7 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 interface BenchmarkSamples {
-  readonly contractVersion: 1;
+  readonly contractVersion: 2;
   readonly benchmarkId: string;
   readonly unit: 'ms';
   readonly sourceCommitSha: string;
@@ -123,7 +123,7 @@ describe('revision-evidence runtime measurement contract', () => {
         readFileSync(samplesPath, 'utf8'),
       ) as BenchmarkSamples;
       expect(samples).toMatchObject({
-        contractVersion: 1,
+        contractVersion: 2,
         benchmarkId: 'revision-evidence-large',
         unit: 'ms',
         sourceCommitSha: SOURCE_COMMIT_SHA,

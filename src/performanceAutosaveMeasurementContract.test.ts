@@ -131,7 +131,7 @@ describe('autosave enqueue performance measurement', () => {
         samples?: unknown[];
       };
       expect(evidence).toMatchObject({
-        contractVersion: 1,
+        contractVersion: 2,
         benchmarkId: 'autosave-enqueue-small',
         unit: 'ms',
         sourceCommitSha,

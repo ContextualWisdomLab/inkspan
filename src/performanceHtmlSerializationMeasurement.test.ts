@@ -82,11 +82,13 @@ describe('HTML serialization performance measurement', () => {
       expect(result.stderr).toBe('');
 
       const evidence = JSON.parse(readFileSync(output, 'utf8')) as {
+        contractVersion: number;
         benchmarkId: string;
         unit: string;
         documentProfile: string;
         samples: unknown[];
       };
+      expect(evidence.contractVersion).toBe(2);
       expect(evidence.benchmarkId).toBe('html-serialization-small');
       expect(evidence.unit).toBe('ms');
       expect(evidence.documentProfile).toBe('small');

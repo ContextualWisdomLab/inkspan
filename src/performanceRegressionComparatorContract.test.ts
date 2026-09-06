@@ -10,6 +10,7 @@ const ARTIFACT_SHA256 = 'b'.repeat(64);
 const CURRENT_ARTIFACT_SHA256 = 'c'.repeat(64);
 
 type SummaryOverrides = Partial<{
+  contractVersion: number;
   benchmarkId: string;
   unit: string;
   sourceCommitSha: string;
@@ -75,21 +76,24 @@ function runComparison(
 }
 
 describe('benchmark regression comparator contract', () => {
-  it.each(['editor-input-large', 'transition-changed-evidence-large'])(
-    'compares only exact-context %s evidence with an explicit tolerance', (benchmarkId) => {
+  it.each([
+    ['editor-input-large', 1], ['editor-input-large', 2],
+    ['transition-changed-evidence-large', 1], ['transition-changed-evidence-large', 2],
+  ] as const)(
+    'compares exact-context %s generation %i evidence with an explicit tolerance', (benchmarkId, contractVersion) => {
     const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-compare-pass-'));
     try {
       const result = runComparison(
         root,
-        summary({ benchmarkId }),
-        summary({ benchmarkId, artifactSha256: CURRENT_ARTIFACT_SHA256, p95: 104 }),
+        summary({ benchmarkId, contractVersion }),
+        summary({ benchmarkId, contractVersion, artifactSha256: CURRENT_ARTIFACT_SHA256, p95: 104 }),
         '5',
       );
 
       expect(result.status).toBe(0);
       expect(result.stderr).toBe('');
       expect(JSON.parse(result.stdout)).toEqual({
-        contractVersion: 1,
+        contractVersion,
         benchmarkId,
         unit: 'ms',
         documentProfile: 'large',
@@ -108,6 +112,20 @@ describe('benchmark regression comparator contract', () => {
         regressionPercent: 4,
         passed: true,
       });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it.each([[1, 2], [2, 1]])('rejects generation %i versus %i even with a generous tolerance', (baselineVersion, currentVersion) => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-benchmark-compare-generation-'));
+    try {
+      const result = runComparison(root,
+        summary({ contractVersion: baselineVersion }),
+        summary({ contractVersion: currentVersion, artifactSha256: CURRENT_ARTIFACT_SHA256 }), '100');
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe('Benchmark summaries are not comparable: contractVersion differs.');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
