@@ -196,6 +196,32 @@ export function markdownToHtml(source) {
     }
   });
 
+  it.each([
+    ['markdown-to-html', 'markdownToHtml', 2],
+    ['markdown-to-html', 'markdownToHtml', 3],
+    ['html-to-markdown', 'htmlToMarkdown', 2],
+    ['html-to-markdown', 'htmlToMarkdown', 3],
+  ] as const)('rejects changing %s output on invocation %i', (operation, exportName, changedCall) => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-serialization-changing-result-'));
+    const input = join(root, 'input.md');
+    const modulePath = join(root, 'serializer.mjs');
+    const output = join(root, 'samples.json');
+    try {
+      writeFileSync(input, '# Synthetic\n');
+      writeFileSync(modulePath, `let calls = 0;
+export function ${exportName}() { return ++calls === ${changedCall} ? 'private changed output' : ''; }\n`);
+      const args = measurementArguments(input, modulePath, output);
+      args.splice(5, 0, '--operation', operation);
+      const result = spawnSync(process.execPath, args, { cwd: repositoryRoot, encoding: 'utf8' });
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe('Measured serialization output changed for identical input.');
+      expect(existsSync(output)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('fails closed before output when the measured module lacks the public serializer', () => {
     const root = mkdtempSync(join(tmpdir(), 'inkspan-markdown-measurement-export-'));
     const input = join(root, 'small.md');
