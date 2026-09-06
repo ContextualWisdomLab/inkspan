@@ -7,6 +7,21 @@ buyer-workload performance, real-device input behavior, or the 20 ms target.
 Envelope fixtures contain plain paragraphs; Markdown list, table, and image
 syntax inside those paragraphs is not a rich editor document tree.
 
+## First-invocation accounting
+
+The revision, Markdown/HTML, and autosave latency producers record the first
+operation invocation and every subsequent requested sample, without an
+unrecorded warmup invocation. Each result must pass its scenario checks before
+samples can be published. Module loading and input preparation remain outside
+the timer; autosave queue setup and coalescing-scenario preparation retain
+their existing timer boundaries. This is not process-startup latency.
+
+Samples recorded before this change retain their original meaning. Start a
+new baseline for the new measurement method; a difference between those
+generations is not evidence of a product speedup. Keep each generation's raw
+samples and exact source revision. Office rendering and the separate memory
+settling analysis are unchanged.
+
 ## Transition scenarios
 
 | Operation | Inputs | Required result | Metric prefix |

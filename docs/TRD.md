@@ -133,6 +133,8 @@ Release publication verifies one exact integrated protected source head, expecte
 
 Queued, cancelled, skipped-required, absent, stale-head, predecessor-head, status-only, author-only, or synthetic-merge evidence is not success. A commit status, automated model verdict, comment, formal review, merge authority, and external registry publication are distinct evidence classes.
 
+Active PR performance research records the first operation invocation without an unrecorded latency warmup, with timing boundaries and generation-comparison limits documented in [`benchmarks/README.md`](../benchmarks/README.md). This harness does not establish buyer-workload latency or a supported document-size guarantee; a measurement-method change starts a new baseline rather than proving a product speedup.
+
 ## Security, privacy, and operability dependencies
 
 `SECURITY.md`, `docs/THREAT_MODEL.md`, `docs/TEST_STRATEGY.md`, `docs/OPERABILITY.md`, `docs/TRACEABILITY.md`, and the detailed ADR corpus are part of this technical contract. Root `SECURITY.md` is `implemented_on_protected_main` and is the normative private vulnerability-reporting/coordinated-disclosure policy. ADR 0017 records the durable decision, ownership boundary, claim limits, and recovery/supersession semantics without duplicating the policy text.

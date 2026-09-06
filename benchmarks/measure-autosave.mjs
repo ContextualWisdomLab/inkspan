@@ -548,7 +548,6 @@ async function main() {
     coalescing: measureOneCoalescing,
     commit: measureOneCommit,
   }[args.operation];
-  await measure(measuredModule.createDocumentAutosaveQueue, evidence);
   const samples = [];
   for (let index = 0; index < args.sampleCount; index += 1) {
     samples.push(

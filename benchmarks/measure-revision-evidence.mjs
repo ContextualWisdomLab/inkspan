@@ -461,8 +461,6 @@ async function main() {
     );
   }
 
-  await runMeasuredEvidence(createEvidence, source, resultingSource, args.operation);
-
   const samples = [];
   for (let index = 0; index < args.sampleCount; index += 1) {
     const start = performance.now();

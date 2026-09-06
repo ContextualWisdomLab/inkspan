@@ -425,15 +425,6 @@ async function main() {
     );
   }
 
-  const warmup = runMeasuredSerialization(
-    serializer,
-    source,
-    contract.executionFailure,
-  );
-  if (typeof warmup !== 'string') {
-    throw new Error(contract.returnFailure);
-  }
-
   const samples = [];
   for (let index = 0; index < args.sampleCount; index += 1) {
     const start = performance.now();
@@ -443,11 +434,10 @@ async function main() {
       contract.executionFailure,
     );
     const elapsed = performance.now() - start;
-    if (
-      typeof output !== 'string' ||
-      !Number.isFinite(elapsed) ||
-      elapsed < 0
-    ) {
+    if (typeof output !== 'string') {
+      throw new Error(contract.returnFailure);
+    }
+    if (!Number.isFinite(elapsed) || elapsed < 0) {
       throw new Error('Markdown measurement produced invalid runtime evidence.');
     }
     samples.push(elapsed);

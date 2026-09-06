@@ -141,6 +141,36 @@ describe('Markdown runtime measurement contract', () => {
     }
   });
 
+  it.each([
+    ['markdown-to-html', 'markdownToHtml', 1],
+    ['markdown-to-html', 'markdownToHtml', 3],
+    ['html-to-markdown', 'htmlToMarkdown', 1],
+    ['html-to-markdown', 'htmlToMarkdown', 3],
+  ] as const)('rejects %s non-string result from %s on invocation %i', (operation, exportName, invalidCall) => {
+    const root = mkdtempSync(join(tmpdir(), 'inkspan-serialization-invalid-result-'));
+    const input = join(root, 'input.md');
+    const modulePath = join(root, 'packed-markdown.mjs');
+    const samplesPath = join(root, 'samples.json');
+    try {
+      writeFileSync(input, '# Synthetic\n', 'utf8');
+      writeFileSync(modulePath,
+        `let calls = 0;\nexport function ${exportName}() { return ++calls === ${invalidCall} ? { privateContent: 'never publish this' } : ''; }\n`,
+        'utf8');
+      const args = measurementArguments(input, modulePath, samplesPath);
+      args.splice(5, 0, '--operation', operation);
+      const result = spawnSync(process.execPath, args, {
+        cwd: repositoryRoot,
+        encoding: 'utf8',
+      });
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toBe(`Measured ${exportName}() must return a string.`);
+      expect(existsSync(samplesPath)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('fails closed before output when the measured module lacks the public serializer', () => {
     const root = mkdtempSync(join(tmpdir(), 'inkspan-markdown-measurement-export-'));
     const input = join(root, 'small.md');
