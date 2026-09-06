@@ -87,7 +87,7 @@ describe('forced-colors stylesheet contract', () => {
     const blockStart = forcedColorsStyles.indexOf(`${selector} {`);
     expect(blockStart).toBeGreaterThan(-1);
     const block = forcedColorsStyles.slice(blockStart, findCssBlockEnd(forcedColorsStyles, blockStart));
-    expect(block).toMatch(/color:\s*CanvasText\s*;/u);
+    expect(block).toMatch(/[;{]\s*color:\s*CanvasText\s*;/u);
     expect(block).not.toContain('GrayText');
   });
 

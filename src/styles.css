@@ -312,11 +312,11 @@
 
   .cwl-editor__content blockquote {
     border-left-color: CanvasText;
-    color: GrayText;
+    color: CanvasText;
   }
 
   .cwl-editor__content .is-editor-empty:first-child::before {
-    color: GrayText;
+    color: CanvasText;
   }
 
   .cwl-editor__content code,

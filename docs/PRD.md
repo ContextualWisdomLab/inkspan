@@ -93,6 +93,7 @@ The product promise is: **author, convert, collaborate, and prove document chang
 - Native controls, focus behavior, keyboard parity, truthful `aria-keyshortcuts` metadata, non-color status semantics, and host-facing lifecycle state support WCAG-oriented embedding.
 - Toolbar shortcut metadata must reflect repository-level shipped behavior, including host/editor bindings such as link editing, rather than only extension-local defaults.
 - Active PR / Proposed: at a 320 CSS-pixel viewport, every toolbar control must remain fully visible in normal and forced colors. A page without horizontal scrolling is insufficient evidence if controls are clipped inside the editor; see the [toolbar reflow record](doctoring/toolbar-reflow.md).
+- Active PR / Proposed: empty-editor guidance and quoted content use readable document text colors in forced-colors mode, while disabled controls retain a distinct inactive appearance; see the [visual inspection record](doctoring/forced-colors-readable-content.md).
 - Application-visible saving/conflict/recovery messages must be derivable from programmatic state without Inkspan prescribing untranslated user-facing copy.
 - Export/print surfaces must not rely on color alone or inaccessible interaction-only state where the corresponding product surface exists.
 

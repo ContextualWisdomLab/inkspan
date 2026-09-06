@@ -156,6 +156,10 @@ runtime boundary:
   against its containing toolbar rather than inferred from page scroll width;
   [toolbar reflow](doctoring/toolbar-reflow.md) records the reproducible clipping
   failure and the Active PR / Proposed repair;
+- direct visual inspection of readable guidance and document content in forced
+  colors, alongside disabled-state and keyboard-focus cues; the
+  [readable-content record](doctoring/forced-colors-readable-content.md) records
+  the Active PR / Proposed correction without claiming whole-product conformance;
 - clear rollback and incident paths for ambiguous publication or persistence
   outcomes.
 
