@@ -83,7 +83,11 @@ describe('protected capability documentation maturity', () => {
     '',
     '\n\n## Unrelated future capability\n\nActive PR: implemented_on_active_pr. Until protected integration, this capability remains proposed.',
   ])('keeps merged DOCX maturity with unrelated proposed text %j', (unrelatedProposal) => {
-    const trd = repositoryFile('docs/TRD.md') + unrelatedProposal;
+    const docxParagraphs = (repositoryFile('docs/TRD.md') + unrelatedProposal)
+      .split(/\n\s*\n/u)
+      .filter((paragraph) => paragraph.includes('ADR 0026') || paragraph.includes('#137'));
+    expect(docxParagraphs).toHaveLength(2);
+    const trd = docxParagraphs.join('\n\n');
     const adr = repositoryFile(
       'docs/adr/0026-bounded-docx-external-hyperlinks.md',
     );
