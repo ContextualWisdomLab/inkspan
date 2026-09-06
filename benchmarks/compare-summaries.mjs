@@ -52,6 +52,8 @@ const COMPARABLE_FIELDS = [
   'referenceHardwareId',
   'sampleCount',
   'percentileMethod',
+  'inputSha256',
+  'resultingInputSha256',
 ];
 const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
 
@@ -159,21 +161,34 @@ function validateSummary(value) {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('Benchmark summary input must be an object.');
   }
-  const keys = Object.keys(value);
-  if (
-    keys.length !== SUMMARY_KEYS.size ||
-    keys.some((key) => !SUMMARY_KEYS.has(key))
-  ) {
-    throw new Error('Benchmark summary input has an unsupported shape.');
-  }
-  if (value.contractVersion !== 1 && value.contractVersion !== 2) {
-    throw new Error('Benchmark summary contractVersion must be 1 or 2.');
+  if (![1, 2, 3].includes(value.contractVersion)) {
+    throw new Error('Benchmark summary contractVersion must be 1, 2 or 3.');
   }
   if (
     typeof value.benchmarkId !== 'string' ||
     !BENCHMARK_ID_PATTERN.test(value.benchmarkId)
   ) {
     throw new Error('Benchmark summary benchmarkId is invalid.');
+  }
+  const inputIdentity = {};
+  if (value.contractVersion === 3) {
+    inputIdentity.inputSha256 = value.inputSha256;
+    if (value.benchmarkId.startsWith('transition-changed-evidence-')) {
+      inputIdentity.resultingInputSha256 = value.resultingInputSha256;
+      if (value.inputSha256 === value.resultingInputSha256) {
+        throw new Error('Benchmark summary changed-transition inputs must differ.');
+      }
+    }
+    for (const digest of Object.values(inputIdentity)) {
+      if (typeof digest !== 'string' || !SHA256_PATTERN.test(digest)) {
+        throw new Error('Benchmark summary input identities must be lowercase SHA-256 digests.');
+      }
+    }
+  }
+  const keys = Object.keys(value);
+  const allowedKeys = new Set([...SUMMARY_KEYS, ...Object.keys(inputIdentity)]);
+  if (keys.length !== allowedKeys.size || keys.some((key) => !allowedKeys.has(key))) {
+    throw new Error('Benchmark summary input has an unsupported shape.');
   }
   if (typeof value.unit !== 'string' || !UNITS.has(value.unit)) {
     throw new Error('Benchmark summary unit is invalid.');
@@ -253,6 +268,7 @@ function validateSummary(value) {
     unit: value.unit,
     sourceCommitSha: value.sourceCommitSha,
     artifactSha256: value.artifactSha256,
+    ...inputIdentity,
     documentProfile: value.documentProfile,
     runtimeId: value.runtimeId,
     referenceHardwareId: value.referenceHardwareId,
@@ -306,6 +322,8 @@ function compare(baseline, current, metric, maxRegressionPercent) {
     contractVersion: baseline.contractVersion,
     benchmarkId: baseline.benchmarkId,
     unit: baseline.unit,
+    ...(baseline.contractVersion === 3 ? { inputSha256: baseline.inputSha256 } : {}),
+    ...(baseline.resultingInputSha256 === undefined ? {} : { resultingInputSha256: baseline.resultingInputSha256 }),
     documentProfile: baseline.documentProfile,
     runtimeId: baseline.runtimeId,
     referenceHardwareId: baseline.referenceHardwareId,

@@ -134,17 +134,33 @@ function validateInput(value) {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('Benchmark sample input must be an object.');
   }
-  if (Object.keys(value).some((key) => !BENCHMARK_INPUT_KEYS.has(key))) {
-    throw new Error('Benchmark sample input contains unsupported fields.');
-  }
-  if (value.contractVersion !== 1 && value.contractVersion !== 2) {
-    throw new Error('Benchmark sample contractVersion must be 1 or 2.');
+  if (![1, 2, 3].includes(value.contractVersion)) {
+    throw new Error('Benchmark sample contractVersion must be 1, 2 or 3.');
   }
   if (
     typeof value.benchmarkId !== 'string' ||
     !BENCHMARK_ID_PATTERN.test(value.benchmarkId)
   ) {
     throw new Error('Benchmark benchmarkId is invalid.');
+  }
+  const inputIdentity = {};
+  if (value.contractVersion === 3) {
+    inputIdentity.inputSha256 = value.inputSha256;
+    if (value.benchmarkId.startsWith('transition-changed-evidence-')) {
+      inputIdentity.resultingInputSha256 = value.resultingInputSha256;
+      if (value.inputSha256 === value.resultingInputSha256) {
+        throw new Error('Benchmark changed-transition inputs must differ.');
+      }
+    }
+    for (const digest of Object.values(inputIdentity)) {
+      if (typeof digest !== 'string' || !SHA256_PATTERN.test(digest)) {
+        throw new Error('Benchmark input identities must be lowercase SHA-256 digests.');
+      }
+    }
+  }
+  const allowedKeys = new Set([...BENCHMARK_INPUT_KEYS, ...Object.keys(inputIdentity)]);
+  if (Object.keys(value).some((key) => !allowedKeys.has(key))) {
+    throw new Error('Benchmark sample input contains unsupported fields.');
   }
   if (typeof value.unit !== 'string' || !UNITS.has(value.unit)) {
     throw new Error('Benchmark unit is invalid.');
@@ -207,6 +223,7 @@ function validateInput(value) {
     unit: value.unit,
     sourceCommitSha: value.sourceCommitSha,
     artifactSha256: value.artifactSha256,
+    ...inputIdentity,
     documentProfile: value.documentProfile,
     runtimeId: value.runtimeId,
     referenceHardwareId: value.referenceHardwareId,
@@ -227,6 +244,8 @@ function summarize(input) {
     unit: input.unit,
     sourceCommitSha: input.sourceCommitSha,
     artifactSha256: input.artifactSha256,
+    ...(input.contractVersion === 3 ? { inputSha256: input.inputSha256 } : {}),
+    ...(input.resultingInputSha256 === undefined ? {} : { resultingInputSha256: input.resultingInputSha256 }),
     documentProfile: input.documentProfile,
     runtimeId: input.runtimeId,
     referenceHardwareId: input.referenceHardwareId,
@@ -247,6 +266,8 @@ function formatSummary(summary) {
     `unit=${summary.unit}`,
     `source_commit_sha=${summary.sourceCommitSha}`,
     `artifact_sha256=${summary.artifactSha256}`,
+    ...(summary.contractVersion === 3 ? [`input_sha256=${summary.inputSha256}`] : []),
+    ...(summary.resultingInputSha256 === undefined ? [] : [`resulting_input_sha256=${summary.resultingInputSha256}`]),
     `document_profile=${summary.documentProfile}`,
     `runtime_id=${summary.runtimeId}`,
     `reference_hardware_id=${summary.referenceHardwareId}`,

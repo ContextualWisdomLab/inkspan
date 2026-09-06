@@ -420,6 +420,10 @@ async function main() {
   const source = readBoundedEnvelopeBytes(args.inputPath);
   const resultingSource = args.resultingInputPath === undefined
     ? source : readBoundedEnvelopeBytes(args.resultingInputPath);
+  const inputSha256 = createHash('sha256').update(source).digest('hex');
+  const resultingInput = args.operation === 'transition-changed'
+    ? { resultingInputSha256: createHash('sha256').update(resultingSource).digest('hex') }
+    : {};
   if (
     args.inputPath === args.outputPath ||
     refersToSameFile(args.inputPath, args.outputPath) ||
@@ -489,7 +493,7 @@ async function main() {
     args.outputPath,
     `${JSON.stringify(
       {
-        contractVersion: 2,
+        contractVersion: 3,
         benchmarkId:
           args.operation === 'canonicalization'
             ? `envelope-canonicalization-${args.profile}`
@@ -497,6 +501,8 @@ async function main() {
         unit: 'ms',
         sourceCommitSha: args.sourceCommitSha,
         artifactSha256: args.artifactSha256,
+        inputSha256,
+        ...resultingInput,
         documentProfile: args.profile,
         runtimeId: args.runtimeId,
         referenceHardwareId: args.referenceHardwareId,

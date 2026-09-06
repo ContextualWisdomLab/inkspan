@@ -85,10 +85,12 @@ describe('HTML serialization performance measurement', () => {
         contractVersion: number;
         benchmarkId: string;
         unit: string;
+        inputSha256: string;
         documentProfile: string;
         samples: unknown[];
       };
-      expect(evidence.contractVersion).toBe(2);
+      expect(evidence.contractVersion).toBe(3);
+      expect(evidence.inputSha256).toBe(sha256(input));
       expect(evidence.benchmarkId).toBe('html-serialization-small');
       expect(evidence.unit).toBe('ms');
       expect(evidence.documentProfile).toBe('small');

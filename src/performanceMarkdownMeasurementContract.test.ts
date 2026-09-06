@@ -14,7 +14,7 @@ import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 interface BenchmarkSamples {
-  readonly contractVersion: 2;
+  readonly contractVersion: 3;
   readonly benchmarkId: string;
   readonly unit: 'ms';
   readonly sourceCommitSha: string;
@@ -105,7 +105,7 @@ describe('Markdown runtime measurement contract', () => {
         readFileSync(samplesPath, 'utf8'),
       ) as BenchmarkSamples;
       expect(samples).toMatchObject({
-        contractVersion: 2,
+        contractVersion: 3,
         benchmarkId: 'markdown-serialization-large',
         unit: 'ms',
         sourceCommitSha: SOURCE_COMMIT_SHA,
@@ -133,7 +133,7 @@ describe('Markdown runtime measurement contract', () => {
         readFileSync(join(summaryDirectory, 'summary.json'), 'utf8'),
       ) as { sampleCount: number; benchmarkId: string; unit: string };
       expect(summary).toMatchObject({
-        contractVersion: 2,
+        contractVersion: 3,
         sampleCount: 3,
         benchmarkId: 'markdown-serialization-large',
         unit: 'ms',

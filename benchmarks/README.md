@@ -22,16 +22,23 @@ generations is not evidence of a product speedup. Keep each generation's raw
 samples and exact source revision. Office rendering and the separate memory
 settling analysis are unchanged.
 
-New JavaScript latency samples use `contractVersion: 2` to identify this
-first-invocation method. The summarizer preserves that version in JSON and
-prints `contract_version` in its text receipt. Version 1 inputs remain readable
-as legacy evidence, including Office output, but the comparator rejects a
-version 1 / version 2 pair before calculating any improvement or regression.
-Older version-1-only consumers reject new samples; update the evidence tools
-together. Do not relabel historical samples or assume their invocation
-accounting. The suite inventory and corpus locks retain their independent
-version 1 contracts; this version change does not alter their shapes or the
-published editor API.
+Version 2 introduced this first-invocation method. New JavaScript latency samples
+use `contractVersion: 3` and additionally identify the captured input bytes with
+`inputSha256`. The digest is derived before measurement from the same bounded
+read used by the operation, not a caller-supplied claim or a later file read.
+Changed transitions also record `resultingInputSha256` in its distinct resulting
+role. Autosave with no input file hashes the UTF-8 JSON representation of its
+fixed synthetic envelope; that input remains synthetic regardless of profile.
+Input digests are workload identifiers, not anonymization or authenticity proofs.
+
+The summarizer preserves these identities in JSON and text. The comparator
+rejects different versions or input identities before calculating a verdict,
+even when document profiles match. Versions 1 and 2 remain readable with their
+original meanings; Office output remains version 1. Do not backfill identities,
+relabel historical samples, or present a cross-generation difference as a
+speedup. Update producers and evidence readers together. The suite inventory and
+corpus locks retain their independent version 1 contracts; published editor APIs
+and timer boundaries are unchanged. This does not establish a real-world corpus.
 
 ## Transition scenarios
 

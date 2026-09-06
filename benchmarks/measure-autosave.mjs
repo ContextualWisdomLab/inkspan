@@ -347,6 +347,7 @@ async function createSyntheticRevisionEvidence(args) {
       'Autosave benchmark input exceeds the supported size.',
     );
     const revisionModulePath = resolveLocalModule(args.revisionModulePath);
+    const inputSha256 = createHash('sha256').update(source).digest('hex');
     verifyMeasuredModuleDigest(
       revisionModulePath,
       args.revisionArtifactSha256,
@@ -361,9 +362,10 @@ async function createSyntheticRevisionEvidence(args) {
       );
     }
     try {
-      return await revisionModule.createDocumentEnvelopeRevisionEvidenceBytes(
+      const evidence = await revisionModule.createDocumentEnvelopeRevisionEvidenceBytes(
         source,
       );
+      return { evidence, inputSha256 };
     } catch {
       throw new Error('Autosave benchmark input must be a valid document envelope.');
     }
@@ -380,7 +382,7 @@ async function createSyntheticRevisionEvidence(args) {
   const digestHex = createHash('sha256')
     .update(JSON.stringify(documentJson))
     .digest('hex');
-  return Object.freeze({
+  const evidence = Object.freeze({
     envelope: Object.freeze({
       schemaId: 'https://inkspan.io/schemas/document-envelope/v1',
       schemaVersion: 1,
@@ -392,6 +394,10 @@ async function createSyntheticRevisionEvidence(args) {
       strongEntityTag: `"sha256-${digestHex}"`,
     }),
   });
+  return {
+    evidence,
+    inputSha256: createHash('sha256').update(JSON.stringify(evidence.envelope)).digest('hex'),
+  };
 }
 
 async function measureOneEnqueue(createDocumentAutosaveQueue, evidence) {
@@ -541,7 +547,7 @@ async function main() {
       'Measured autosave module must export createDocumentAutosaveQueue().',
     );
   }
-  const evidence = await createSyntheticRevisionEvidence(args);
+  const { evidence, inputSha256 } = await createSyntheticRevisionEvidence(args);
 
   const measure = {
     enqueue: measureOneEnqueue,
@@ -571,11 +577,12 @@ async function main() {
     args.outputPath,
     `${JSON.stringify(
       {
-        contractVersion: 2,
+        contractVersion: 3,
         benchmarkId: `autosave-${args.operation}-${args.profile}`,
         unit: 'ms',
         sourceCommitSha: args.sourceCommitSha,
         artifactSha256: args.artifactSha256,
+        inputSha256,
         documentProfile: args.profile,
         runtimeId: args.runtimeId,
         referenceHardwareId: args.referenceHardwareId,

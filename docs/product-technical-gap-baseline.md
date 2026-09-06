@@ -130,7 +130,7 @@ After P0 blockers and independent non-conflicting lanes permit, prioritize:
    proposal acceptance without moving identity or persistence into Inkspan;
 2. measured large-document latency/memory support envelopes with realistic
    fixtures and deterministic failure behavior; the active research harness's
-   [first-invocation accounting and claim limits](../benchmarks/README.md)
+   [first-invocation accounting, exact input identity and claim limits](../benchmarks/README.md)
    do not close this buyer-workload gap;
 3. CJK IME, touch, and mobile editing assurance with truthful real-device versus
    emulated support claims;

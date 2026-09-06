@@ -236,7 +236,10 @@ function readBoundedMarkdown(path) {
     'Markdown benchmark input exceeds the supported size.',
   );
   try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    return {
+      source: new TextDecoder('utf-8', { fatal: true }).decode(bytes),
+      inputSha256: createHash('sha256').update(bytes).digest('hex'),
+    };
   } catch {
     throw new Error('Markdown benchmark input must be valid UTF-8.');
   }
@@ -397,7 +400,7 @@ function writeMeasurementOutput(path, content) {
 async function main() {
   const args = resolveArguments(process.argv.slice(2));
   assertNoSymlinkOutputAncestors(args.outputPath);
-  const source = readBoundedMarkdown(args.inputPath);
+  const { source, inputSha256 } = readBoundedMarkdown(args.inputPath);
   if (
     args.inputPath === args.outputPath ||
     refersToSameFile(args.inputPath, args.outputPath)
@@ -460,11 +463,12 @@ async function main() {
     args.outputPath,
     `${JSON.stringify(
       {
-        contractVersion: 2,
+        contractVersion: 3,
         benchmarkId: `${contract.benchmarkPrefix}-${args.profile}`,
         unit: 'ms',
         sourceCommitSha: args.sourceCommitSha,
         artifactSha256: args.artifactSha256,
+        inputSha256,
         documentProfile: args.profile,
         runtimeId: args.runtimeId,
         referenceHardwareId: args.referenceHardwareId,

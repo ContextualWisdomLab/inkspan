@@ -135,7 +135,7 @@ Queued, cancelled, skipped-required, absent, stale-head, predecessor-head, statu
 
 Active PR performance research records the first operation invocation without an unrecorded latency warmup, with timing boundaries and generation-comparison limits documented in [`benchmarks/README.md`](../benchmarks/README.md). This harness does not establish buyer-workload latency or a supported document-size guarantee; a measurement-method change starts a new baseline rather than proving a product speedup.
 
-The active research sample/summary contract marks first-invocation JavaScript latency evidence as version 2. Legacy version 1 remains readable, but cross-version comparisons fail closed. Corpus and suite-inventory versions are independent; no editor API or supported-performance promise changes.
+The active research sample/summary contract marks input-bound first-invocation JavaScript latency evidence as version 3. It derives SHA-256 identities from the captured bounded input bytes before timing; changed transitions preserve ordered previous/resulting identities. The summarizer preserves those identities and the comparator rejects mismatched inputs even when profile labels match. Legacy versions 1 and 2 remain readable without backfilled identities; cross-version comparisons fail closed. Corpus and suite-inventory versions are independent; no editor API or supported-performance promise changes. See the research harness for the explicit synthetic autosave input representation and claim limits.
 
 ## Security, privacy, and operability dependencies
 

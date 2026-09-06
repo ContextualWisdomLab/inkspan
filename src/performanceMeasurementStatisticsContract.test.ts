@@ -181,7 +181,8 @@ describe('deterministic benchmark sample statistics', () => {
       expect(result.status).toBe(1);
       expect(result.stdout).toBe('');
       expect(result.stderr).not.toContain('private-path');
-      expect(existsSync(output)).toBe(false);
+      expect(existsSync(join(output, 'summary.json'))).toBe(false);
+      expect(existsSync(join(output, 'summary.txt'))).toBe(false);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
