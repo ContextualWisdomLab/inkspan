@@ -55,14 +55,20 @@ afterEach(() => {
 });
 
 describe('Base64Image read-only file ingress', () => {
-  it.each(['paste', 'drop'] as const)(
-    'does not insert after %s alternative-text prompting makes the editor read-only',
-    async (ingress) => {
+  it.each([
+    ['paste', 'read-only'],
+    ['drop', 'read-only'],
+    ['paste', 'destroyed'],
+    ['drop', 'destroyed'],
+  ] as const)(
+    'does not insert after %s alternative-text prompting leaves the editor %s',
+    async (ingress, state) => {
       const editor = makeReadOnlyEditor();
       editor.setEditable(true);
       const before = editor.getHTML();
       const prompt = vi.spyOn(window, 'prompt').mockImplementation(() => {
-        editor.setEditable(false);
+        if (state === 'destroyed') editor.destroy();
+        else editor.setEditable(false);
         return 'Image description';
       });
       const event = {
@@ -76,7 +82,8 @@ describe('Base64Image read-only file ingress', () => {
 
       expect((ingress === 'paste' ? paste : drop)(editor, event)).toBe(true);
       await waitFor(() => expect(prompt).toHaveBeenCalledOnce());
-      expect(editor.isEditable).toBe(false);
+      if (state === 'destroyed') expect(editor.isDestroyed).toBe(true);
+      else expect(editor.isEditable).toBe(false);
       expect(editor.getHTML()).toBe(before);
     },
   );
