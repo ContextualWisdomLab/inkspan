@@ -7,6 +7,9 @@ buyer-workload performance, real-device input behavior, or the 20 ms target.
 Envelope fixtures contain plain paragraphs; Markdown list, table, and image
 syntax inside those paragraphs is not a rich editor document tree.
 
+The [captured-input identity research record](../docs/doctoring/performance-input-identity.md)
+documents the failure, rejected alternatives and exact-source regression evidence.
+
 ## First-invocation accounting
 
 The revision, Markdown/HTML, and autosave latency producers record the first

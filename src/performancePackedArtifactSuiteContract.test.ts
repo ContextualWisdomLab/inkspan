@@ -207,6 +207,7 @@ describe('packed artifact benchmark suite contract', () => {
       },
     );
 
+    expect(result.error).toBeUndefined();
     expect(result.status).toBe(0);
     expect(result.stderr).toBe('');
     expect(JSON.parse(result.stdout.trim())).toMatchObject({
@@ -250,6 +251,10 @@ describe('packed artifact benchmark suite contract', () => {
       ),
     ) as { benchmarkId?: unknown; samples?: unknown[] };
     expect(autosaveSamples.benchmarkId).toBe('autosave-enqueue-small');
+    expect(autosaveSamples).toMatchObject({
+      contractVersion: 3,
+      inputSha256: sha256(readFileSync(join(directory, 'corpus', 'small.envelope.json'))),
+    });
     expect(autosaveSamples.samples).toHaveLength(2);
 
     const coalescingSamples = JSON.parse(
@@ -291,6 +296,11 @@ describe('packed artifact benchmark suite contract', () => {
         join(directory, 'evidence', 'transition-changed', 'samples.json'), 'utf8',
       ));
       expect(changedSamples.benchmarkId).toBe('transition-changed-evidence-small');
+      expect(changedSamples).toMatchObject({
+        contractVersion: 3,
+        inputSha256: sha256(readFileSync(join(directory, 'corpus', 'small.envelope.json'))),
+        resultingInputSha256: sha256(readFileSync(join(directory, 'corpus', 'small.changed.envelope.json'))),
+      });
       expect(changedSamples.samples).toHaveLength(2);
     } else {
       expect(JSON.parse(result.stdout)).not.toHaveProperty('changedTransitionSamples');
