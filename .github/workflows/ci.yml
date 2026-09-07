@@ -4,19 +4,21 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, closed]
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build-and-test:
+    if: ${{ github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.action != 'closed') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -51,6 +53,7 @@ jobs:
         run: pnpm build:demo
 
   browser-release-evidence:
+    if: ${{ github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.action != 'closed') }}
     name: Cross-engine Clipboard / Playwright 1.62.0
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -84,6 +87,7 @@ jobs:
         run: pnpm --dir tests/browser exec playwright test --config playwright.config.ts
 
   office:
+    if: ${{ github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.action != 'closed') }}
     name: Office / Python ${{ matrix.python-version }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
