@@ -6,6 +6,10 @@ import {
 } from './evidenceValidation.js';
 
 describe('autosave detached evidence array resource preflight', () => {
+  it('still rejects a bounded unfrozen array', () => {
+    expect(isDeeplyFrozenDocumentJson([null])).toBe(false);
+  });
+
   it('rejects an impossible array length before frozen-state key enumeration', () => {
     let ownKeysCalls = 0;
     const oversizedArray = new Proxy(Object.freeze(new Array(1_000_001)), {
