@@ -122,8 +122,7 @@ export function isDeeplyFrozenDocumentJson(rootValue: unknown): boolean {
       }
       if (
         typeof currentValue !== 'object' ||
-        visitedContainers.has(currentValue) ||
-        !Object.isFrozen(currentValue)
+        visitedContainers.has(currentValue)
       ) {
         return false;
       }
@@ -138,6 +137,7 @@ export function isDeeplyFrozenDocumentJson(rootValue: unknown): boolean {
         )!.value as number;
         children = { kind: 'array', length };
       } else {
+        if (!Object.isFrozen(currentValue)) return false;
         const prototype = Object.getPrototypeOf(currentValue);
         if (prototype !== Object.prototype && prototype !== null) return false;
         children = { kind: 'object', keys: Reflect.ownKeys(currentValue) };
@@ -158,6 +158,8 @@ export function isDeeplyFrozenDocumentJson(rootValue: unknown): boolean {
       }
 
       if (children.kind === 'array') {
+        // Frozen-state inspection also enumerates Proxy keys; preflight first.
+        if (!Object.isFrozen(currentValue)) return false;
         const ownKeys = Reflect.ownKeys(currentValue);
         if (ownKeys.length !== children.length + 1) return false;
         for (let index = 0; index < children.length; index += 1) {
