@@ -1,5 +1,6 @@
 """Cross-file contract for the Python versions advertised by Inkspan Office."""
 
+import json
 from pathlib import Path
 import re
 import tomllib
@@ -58,7 +59,7 @@ def test_python_support_range_matches_classifiers_and_ci_matrix() -> None:
     )
     assert matrix_match is not None
     pull_request_versions, push_versions = (
-        tuple(re.findall(r'"(3\.\d+)"', versions))
+        tuple(json.loads(versions))
         for versions in matrix_match.groups()
     )
     assert pull_request_versions == (SUPPORTED_PYTHON_VERSIONS[-1],)
