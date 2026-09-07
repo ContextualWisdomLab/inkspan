@@ -214,7 +214,9 @@ for (const forcedColors of ['none', 'active'] as const) {
     await page.goto('/tests/browser/input-harness.html?toolbar=1');
     await expect(page.locator('.ProseMirror')).toHaveAttribute('contenteditable', 'true');
     const toolbar = page.getByRole('toolbar', { name: 'Formatting' });
-    await expect(toolbar.getByRole('button', { name: 'Insert inline (base64) image' })).toBeVisible();
+    const imageButton = toolbar.getByRole('button', { name: 'Insert inline image', exact: true });
+    await expect(imageButton).toBeVisible();
+    await expect(imageButton).toHaveText('Image');
     const clippedControls = await toolbar.evaluate((element) => {
       const toolbarBounds = element.getBoundingClientRect();
       return Array.from(element.querySelectorAll('button')).flatMap((button) => {
@@ -294,5 +296,15 @@ for (const forcedColors of ['none', 'active'] as const) {
       expect(hoverPaint.forcedColorAdjust).toBe(hoverPaint.supportsColorAdjustment ? 'none' : '');
       expect(hoverPaint.color).not.toBe(hoverPaint.background);
     }
+    const chooserPromise = page.waitForEvent('filechooser');
+    await imageButton.click();
+    const chooser = await chooserPromise;
+    await chooser.setFiles([]);
+    await imageButton.focus();
+    await expect(imageButton).toBeFocused();
+    await page.screenshot({
+      path: testInfo.outputPath(`real-toolbar-image-320-${forcedColors}-focus.png`),
+      fullPage: true,
+    });
   });
 }
