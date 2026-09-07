@@ -12,11 +12,11 @@ describe('rich clipboard traversal budget', () => {
     let fragmentListReads = 0;
     const childListSpy = vi.spyOn(Node.prototype, 'childNodes', 'get')
       .mockImplementation(function (this: Node) {
-        const children = originalGetter.call(this);
-        if (this.nodeType === Node.DOCUMENT_FRAGMENT_NODE && children.length === 3) {
+        const sourceChildren = originalGetter.call(this);
+        if (this.nodeType === Node.DOCUMENT_FRAGMENT_NODE && sourceChildren.length === 3) {
           fragmentListReads += 1;
         }
-        return children;
+        return sourceChildren;
       });
 
     try {
