@@ -75,6 +75,29 @@ The cited Working Draft is work in progress and is not a conformance claim.
 Predecessor Draft #164 remains historical. It is not current-main
 implementation authority.
 
+## Accepted-child list reuse finding — 2026-09-07
+
+Status remains Active PR / Proposed (#359), not protected-main behavior.
+The shared child-enqueue loop read `sourceNode.childNodes` once to count the
+children and again for every accepted child. RED `9061addb` records four getter
+reads for a three-child source fragment while preserving its exact output.
+Candidate `ea65e3b` retains one local reference and uses it for both the existing
+capacity check and reverse-order item reads. The DOM Standard marks this
+attribute `[SameObject]`; the reference remains a live `NodeList`, not a copied
+snapshot or a cache (Web Hypertext Application Technology Working Group, 2026).
+
+The original over-budget rejection still happens before child item reads.
+Source order, hidden-subtree handling, error containment, limits, and public
+contracts are unchanged. No new traversal implementation or dependency is added.
+Expanded clipboard coverage retained 50 passing tests and one existing Word
+capacity timeout; it is not full acceptance. Independent TypeScript and the
+four-test getter/preflight/full-3,000-paragraph capacity diagnostic passed.
+This establishes fewer property reads, not a measured buyer speedup or the
+cause of the earlier capacity timeout. Whole-suite, packed-consumer, browser,
+and protected-integration proof remain separate requirements. Reverting only
+the local-reference change restores the prior lookup pattern without removing
+the resource guards.
+
 ## Residual risk
 
 The UTF-16 lower bound does not replace the exact UTF-8 check. Queue preflight
@@ -106,7 +129,7 @@ Unicode Consortium. (2024). *The Unicode Standard, Version 16.0.0*.
 https://www.unicode.org/versions/Unicode16.0.0/
 
 Web Hypertext Application Technology Working Group. (2026). *DOM Standard*.
-Retrieved August 16, 2026, from https://dom.spec.whatwg.org/
+Retrieved September 7, 2026, from https://dom.spec.whatwg.org/#dom-node-childnodes
 
 World Wide Web Consortium. (2026, June 24). *Clipboard API and events* (W3C
 Working Draft). https://www.w3.org/TR/2026/WD-clipboard-apis-20260624/
