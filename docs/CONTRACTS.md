@@ -87,6 +87,8 @@ Inkspan collaboration is **provider-neutral**. A host may supply Yjs-compatible 
 
 Collaboration document content and awareness state are untrusted tenant data. Awareness presence is not authorization. Provider outage is a host-owned degraded mode; Inkspan must not synthesize remote durability or identity from local Yjs state.
 
+Host awareness capability reads and listener operations are failure-contained: incompatible access reports a stable Inkspan error, collaborator counting falls back to zero, and teardown continues across failing removals without exposing host-thrown values. This containment does not make Inkspan the provider lifecycle owner.
+
 No secret is required by the framework-independent collaboration contract itself. Provider credentials remain host-owned and must not be embedded in editor configuration or document content.
 
 ## Naruon modular composition contract
