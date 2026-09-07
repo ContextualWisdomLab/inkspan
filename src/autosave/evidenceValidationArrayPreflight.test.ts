@@ -6,6 +6,33 @@ import {
 } from './evidenceValidation.js';
 
 describe('autosave detached evidence array resource preflight', () => {
+  it('rejects an impossible array length before frozen-state key enumeration', () => {
+    let ownKeysCalls = 0;
+    const oversizedArray = new Proxy(Object.freeze(new Array(1_000_001)), {
+      ownKeys(target) {
+        ownKeysCalls += 1;
+        return Reflect.ownKeys(target);
+      },
+    });
+
+    expect(isDeeplyFrozenDocumentJson(oversizedArray)).toBe(false);
+    expect(ownKeysCalls).toBe(0);
+  });
+
+  it('rejects over-depth array children before frozen-state key enumeration', () => {
+    let ownKeysCalls = 0;
+    let root: readonly unknown[] = new Proxy(Object.freeze([null]), {
+      ownKeys(target) {
+        ownKeysCalls += 1;
+        return Reflect.ownKeys(target);
+      },
+    });
+    for (let depth = 0; depth < 128; depth += 1) root = Object.freeze([root]);
+
+    expect(isDeeplyFrozenDocumentJson(root)).toBe(false);
+    expect(ownKeysCalls).toBe(0);
+  });
+
   it('rejects an impossible array length before explicit own-key enumeration', () => {
     const oversizedArray = new Array<unknown>(1_000_001);
     Object.freeze(oversizedArray);
