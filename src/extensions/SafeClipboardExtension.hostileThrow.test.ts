@@ -53,7 +53,8 @@ describe('SafeClipboard hostile thrown-value containment', () => {
     expect(onError).toHaveBeenCalledWith(
       expect.objectContaining({
         code: 'invalid_html',
-        message: 'Rich clipboard HTML could not be sanitized.',
+        message:
+          "This content can't be inserted here. Try pasting as plain text instead.",
       }),
     );
   });
@@ -90,7 +91,8 @@ describe('SafeClipboard hostile thrown-value containment', () => {
     expect(onError).toHaveBeenCalledWith(
       expect.objectContaining({
         code: 'invalid_html',
-        message: 'Rich clipboard HTML could not be sanitized.',
+        message:
+          "This content can't be inserted here. Try pasting as plain text instead.",
       }),
     );
   });
