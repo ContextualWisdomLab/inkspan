@@ -3,6 +3,31 @@ import { describe, expect, it, vi } from 'vitest';
 import { sanitizeRichClipboardHtml } from './SafeClipboard.js';
 
 describe('rich clipboard traversal budget', () => {
+  it('reads the accepted source child list once while preserving order', () => {
+    const originalGetter = Object.getOwnPropertyDescriptor(
+      Node.prototype,
+      'childNodes',
+    )?.get;
+    if (!originalGetter) throw new Error('The test DOM has no childNodes getter.');
+    let fragmentListReads = 0;
+    const childListSpy = vi.spyOn(Node.prototype, 'childNodes', 'get')
+      .mockImplementation(function (this: Node) {
+        const children = originalGetter.call(this);
+        if (this.nodeType === Node.DOCUMENT_FRAGMENT_NODE && children.length === 3) {
+          fragmentListReads += 1;
+        }
+        return children;
+      });
+
+    try {
+      const sourceHtml = '<p>A</p><p>B</p><p>C</p>';
+      expect(sanitizeRichClipboardHtml(sourceHtml, {}, document)).toBe(sourceHtml);
+      expect(fragmentListReads).toBe(1);
+    } finally {
+      childListSpy.mockRestore();
+    }
+  });
+
   it('rejects a broad source before materializing children beyond maxNodes', () => {
     const originalItem = NodeList.prototype.item;
     let broadChildReads = 0;
