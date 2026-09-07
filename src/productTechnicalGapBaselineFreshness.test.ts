@@ -48,6 +48,33 @@ describe('product-technical gap baseline freshness contract', () => {
     expect(document).toContain('Pending, queued, skipped, cancelled, absent, neutral, failed');
   });
 
+  it('classifies repository-owned false-red contract drift as an owner defect', () => {
+    const document = baseline();
+
+    expect(document).toContain('False-red states are equally defects');
+    expect(document).toContain(
+      'assert the\nresolved obligation and fail with the observed value',
+    );
+    expect(document).toMatch(
+      /repository-owned contract drift as the first\s+hypothesis/u,
+    );
+  });
+
+  it('restricts pull-request closure to the four non-discarding outcomes', () => {
+    const document = baseline();
+
+    expect(document).toMatch(
+      /Pull requests close only when the user directs it, when the head carries no\s+delta against its live base, when the change is unsafe to keep, or when a named\s+successor has fully inherited the delta/u,
+    );
+    expect(document).toMatch(
+      /they suspend the merge, not the\s+change/u,
+    );
+    expect(document).toContain('Such a closure is a repair finding.');
+    expect(document).toMatch(
+      /reopening the original writer\s+at its exact head, or by opening a successor that carries the complete delta/u,
+    );
+  });
+
   it('keeps the canonical index aligned with static-baseline and live-refetch semantics', () => {
     const index = canonicalIndex();
 

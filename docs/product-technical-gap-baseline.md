@@ -182,6 +182,22 @@ paths, malformed dispatch, predecessor-run selection, synthetic source findings
 caused by infrastructure/model failure, and contradictory scanner
 classifications.
 
+False-red states are equally defects, and a repository-owned false red is more
+expensive than a foreign one because it fails every candidate head at once. A
+cross-file contract test that pins the *surface syntax* of a configuration
+artifact, rather than the value that artifact resolves to, becomes a repository-
+wide merge blocker the moment the owner legitimately rewrites that surface. A
+matrix declared as a conditional expression still resolves to the supported set;
+a test that only recognizes a literal inline list reports the contract as absent
+rather than as changed, and the resulting failure names neither the real
+contract nor the real drift.
+
+Contract tests over workflows, manifests, and lockfiles therefore assert the
+resolved obligation and fail with the observed value, not the absence of a
+pattern. When a required job turns red across unrelated pull requests at the
+same head-independent step, treat repository-owned contract drift as the first
+hypothesis before attributing the failure to the change under review.
+
 ## Release and closure rule
 
 Only then-live protected source and governance define release acceptance. Before
@@ -195,3 +211,18 @@ Issues close only when their acceptance criteria are proven against the relevant
 protected source and public artifacts. Pull-request body text, local-only tests,
 queued jobs, predecessor evidence, model verdicts, or synthetic merge results do
 not satisfy that rule.
+
+Pull requests close only when the user directs it, when the head carries no
+delta against its live base, when the change is unsafe to keep, or when a named
+successor has fully inherited the delta and continues the predecessor's intent.
+A blocked required check, an unavailable review verdict, reviewer latency, and a
+stalled foreign control plane are none of those; they suspend the merge, not the
+change. Closing a pull request whose delta is still absent from protected `main`
+discards reviewed, tested work while leaving the underlying product gap open,
+and the loss is silent because the queue then reports one fewer open item rather
+than one more unshipped capability.
+
+Such a closure is a repair finding. Recover it by reopening the original writer
+at its exact head, or by opening a successor that carries the complete delta and
+names the predecessor. Reducing a premature writer to draft or proposed status
+preserves both the delta and the review trail; closing it preserves neither.
