@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 const HARNESS_ORIGIN = 'http://127.0.0.1:4173';
 const HARNESS_URL = `${HARNESS_ORIGIN}/tests/browser/harness.html`;
-const ENGINE_BROWSER_SPECS = /(?:clipboard|print)\.browser\.spec\.ts/u;
+const ENGINE_BROWSER_SPECS = /(?:clipboard|focus|print)\.browser\.spec\.ts/u;
 
 export default defineConfig({
   testDir: './specs',

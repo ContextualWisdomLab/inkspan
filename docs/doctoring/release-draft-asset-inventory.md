@@ -1,21 +1,24 @@
 # Doctoring record: exact draft release asset inventory
 
-**Decision date:** 2026-08-07
+**Decision date:** 2026-08-07  
+**Current contract correction:** 2026-08-18  
 **Scope:** GitHub Release publication only; no Inkspan runtime, editor, persistence, collaboration, provider, tenant, credential, or database behavior changes.
 
 ## Problem
 
 Inkspan's release workflow intentionally supports retrying an unpublished GitHub Release draft. The upload command uses `--clobber`, which replaces same-name release assets. A prior failed attempt or operator action can nevertheless leave a differently named asset in the draft. Publishing that draft while immutable releases are enabled would freeze the extra asset into the official release identity.
 
-This is a provenance-completeness problem rather than a checksum-collision problem. The expected npm tarball, Office wheel, and checksum file can each be correctly hashed and attested while an unrelated fourth asset remains attached to the draft. Verifying only the expected local artifacts therefore does not prove that the complete release asset set is the reviewed set.
+This is a provenance-completeness problem rather than a checksum-collision problem. The current protected release workflow produces four reviewed top-level assets: one npm tarball, one Inkspan Office wheel, `inkspan.spdx.json`, and `SHA256SUMS`. All four can be correctly generated while an unrelated fifth asset remains attached to the draft. Verifying only the expected local artifacts therefore does not prove that the complete release asset set is the reviewed set.
 
-A second local-boundary failure mode exists before upload. Counting only top-level regular files does not prove that the transfer directory has exactly three entries: an unexpected directory, symlink, socket, or other non-regular top-level entry could coexist with the three expected files. The shell upload glob can expand such an entry even though a `find ... -type f` count ignores it. The local release boundary therefore has to bind both the complete top-level entry set and the regular-file subset before attestation or upload.
+A second local-boundary failure mode exists before upload. Counting only top-level regular files does not prove that the transfer directory has exactly four entries: an unexpected directory, symlink, socket, or other non-regular top-level entry could coexist with the four expected files. The shell upload glob can expand such an entry even though a `find ... -type f` count ignores it. The local release boundary therefore has to bind both the complete top-level entry set and the regular-file subset before attestation or upload.
+
+The original 2026-08-07 record described a three-file inventory because the release workflow at that stage did not yet publish the SPDX SBOM as a top-level release asset. Protected release source and executable contract tests now require `inkspan.spdx.json` as the fourth asset. This record supersedes that stale cardinality while retaining the original threat model and provenance rationale.
 
 ## Primary evidence
 
 GitHub documents that immutable-release protection begins after publication and that draft releases remain mutable beforehand. GitHub also recommends attaching all intended assets to the draft before publishing it. The GitHub CLI documents `gh release upload --clobber` as deleting and re-uploading an existing asset of the same name; it does not define `--clobber` as pruning differently named assets. The current Releases REST representation exposes each asset's `name`, `state`, and content `digest`, including SHA-256 digests.
 
-Draft retrieval has an important API distinction. GitHub documents **List releases** as returning draft releases to authenticated callers with repository push access, while **Get a release by tag name** is explicitly documented as retrieving a published release. A pre-publication control must therefore not rely on the by-tag endpoint for draft evidence. Inkspan uses the paginated authenticated release listing, selects the exact tag, requires exactly one match, and then validates that match as a draft.
+Draft retrieval has an important API distinction. GitHub documents **List releases** as returning draft releases to authenticated callers with repository push access, while **Get a release by tag name** is documented for a published release. A pre-publication control must therefore not rely on the by-tag endpoint for draft evidence. Inkspan uses the paginated authenticated release listing, selects the exact tag, requires exactly one match, and then validates that match as a draft.
 
 These properties make the pre-publication draft the last safe point at which Inkspan can verify both set completeness and byte identity without trying to repair an already immutable release.
 
@@ -23,7 +26,7 @@ These properties make the pre-publication draft the last safe point at which Ink
 
 After the expected files cross the workflow-artifact privilege boundary and before attestation or upload, and again after upload before `gh release edit ... --draft=false`, the release workflow must:
 
-1. Require the local transfer directory to contain exactly three top-level entries and require all three to be regular files: one `*.tgz`, one `*.whl`, and `SHA256SUMS`. Any extra directory, symlink, socket, device, or other non-regular top-level entry fails closed.
+1. Require the local transfer directory to contain exactly four top-level entries and require all four to be regular files: one `*.tgz`, one `*.whl`, `inkspan.spdx.json`, and `SHA256SUMS`. Any extra directory, symlink, socket, device, regular file, or other top-level entry fails closed.
 2. Paginate the authenticated GitHub **List releases** REST endpoint and select the exact release tag; require exactly one matching release object.
 3. Require the selected remote object to remain a draft.
 4. Compare the sorted local and remote asset-name sets for exact equality.
@@ -37,14 +40,14 @@ The workflow does not automatically delete an unexpected stale asset. Automatic 
 
 ### Covered
 
-- A failed prior attempt leaves an obsolete wheel, tarball, checksum file, or other differently named asset in the draft.
+- A failed prior attempt leaves an obsolete wheel, tarball, SBOM, checksum file, or other differently named asset in the draft.
 - A same-name remote asset contains bytes different from the transferred local file.
 - An upload is incomplete or an asset does not report the `uploaded` state.
-- The local artifact directory unexpectedly contains multiple npm tarballs, multiple wheels, missing checksums, another regular file, or any additional non-regular top-level entry.
+- The local artifact directory unexpectedly contains multiple npm tarballs, multiple wheels, a missing or duplicate `inkspan.spdx.json`, missing checksums, another regular file, or any additional non-regular top-level entry.
 - A symlink or directory replaces one of the expected regular files.
 - The release stops being a draft before the inventory check.
 - The draft cannot be uniquely identified in the complete authenticated release listing.
-- A future refactor accidentally replaces draft-aware list evidence with the published-only by-tag endpoint.
+- A future refactor accidentally replaces draft-aware list evidence with the published-only by-tag route.
 
 ### Deliberately outside this gate
 
@@ -58,15 +61,17 @@ The comparison uses only public release filenames, asset states, tag identity, f
 
 ## Rollback
 
-This change is workflow-only and can be reverted without changing package APIs or stored data. If GitHub changes draft visibility, release asset representation, pagination, or the digest contract, publication must remain fail-closed until the workflow and deterministic repository contract are updated against the new official API. Operators must not bypass the gate by weakening the expected artifact count or entry-type boundary, accepting ambiguous release matches, or accepting missing digest evidence.
+This change is release-contract documentation and workflow assurance; it does not change package APIs or stored data. If GitHub changes draft visibility, release asset representation, pagination, or the digest contract, publication must remain fail-closed until the workflow and deterministic repository contract are updated against the new official API. Operators must not bypass the gate by weakening the expected artifact count or entry-type boundary, accepting ambiguous release matches, or accepting missing digest evidence.
 
 ## Verification
 
-`src/releaseDraftAssetInventory.test.ts` fixes the security ordering and semantic markers in the permanent release workflow. It requires the exact-inventory check to occur after upload and before publication, requires the bounded three-file artifact set, requires paginated draft-aware list evidence rather than the published-only by-tag route, and requires state and digest validation plus explicit fail-closed diagnostics. On Linux, which is the release-runner class, the same test extracts and executes the exact reviewed shell body with a local fake `gh api` response and the runner's real Bash, `jq`, `find`, `diff`, and `sha256sum`. Deterministic fixtures prove the accepted exact-inventory path and fail-closed behavior for an unexpected remote asset, a digest mismatch, an incomplete upload state, and a release that is no longer a draft without network access or publication authority.
+`src/releaseDraftAssetInventory.test.ts` is the executable protected release authority for the inventory. It requires the exact-inventory check to occur after upload and before publication, requires `expected_asset_count=4`, requires one npm tarball, one Office wheel, `inkspan.spdx.json`, and `SHA256SUMS`, uses paginated draft-aware list evidence rather than a published-only by-tag route, and requires state and digest validation plus explicit fail-closed diagnostics. On Linux, which is the release-runner class, the same test extracts and executes the reviewed shell body with a local fake `gh api` response and the runner's real Bash, `jq`, `find`, `diff`, and `sha256sum`.
 
-`src/releaseDraftAssetEntryType.test.ts` separately extracts and executes the exact pre-attestation local validation shell. Its RED test commit `0d905d9b244d36d55317de2237e3e3480c7ece5f` proved that the earlier regular-file-only count admitted a fourth top-level directory. The production repair counts the complete top-level entry set as well as the regular-file subset, so the same deterministic fixture now fails closed before attestation or upload while the exact three-file fixture remains accepted.
+`src/releaseDraftAssetEntryType.test.ts` separately exercises the pre-attestation local entry-type boundary. Historical RED `0d905d9b244d36d55317de2237e3e3480c7ece5f` proved that a regular-file-only count could admit an unexpected top-level directory under the then-current inventory. The current contract generalizes that invariant to the exact four-file set: complete top-level cardinality and regular-file cardinality must both match before attestation or upload.
 
-The feature branch was created from protected `main` commit `ca49a3249403be88ba3cb7c9589b3652f820e17c`. Test-only commits preceded the corresponding workflow implementations. Exact-current-head CI, security, automated review, independent review, and branch protection remain authoritative; predecessor-head or synthetic-merge evidence is not accepted as completion evidence.
+`src/releaseContractCanonicalConsistency.test.ts` rejects stale three-file wording across `docs/CONTRACTS.md`, `docs/TEST_STRATEGY.md`, `docs/OPERABILITY.md`, and this doctoring record while requiring all canonical documents to name the protected four-file SBOM-inclusive inventory. This prevents documentation from drifting behind executable release behavior again.
+
+Exact-current-head CI, security, automated review, independent review, and branch protection remain authoritative. Predecessor-head, queued, cancelled, skipped, status-only, or synthetic-merge evidence is not completion evidence.
 
 ## References
 
