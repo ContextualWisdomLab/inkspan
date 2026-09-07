@@ -12,7 +12,7 @@ describe('deterministic email document metadata documentation', () => {
   it('documents full-document language and direction without moving host authority', () => {
     const guide = repositoryFile('docs/email-output.md');
 
-    expect(guide).toContain('Status: Implemented on active PR');
+    expect(guide).toContain('Status: Implemented on protected main');
     expect(guide).toContain('languageTag');
     expect(guide).toContain('textDirection');
     expect(guide).toContain('Intl.getCanonicalLocales()');
