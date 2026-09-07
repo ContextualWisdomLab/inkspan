@@ -15,6 +15,7 @@ describe('protected email documentation maturity', () => {
       const document = repositoryFile(path);
       expect(document).toContain('Status: Implemented on protected main');
       expect(document).not.toContain('Status: Implemented on active PR');
+      expect(document).not.toContain('## Decision under review');
     }
   });
 });
