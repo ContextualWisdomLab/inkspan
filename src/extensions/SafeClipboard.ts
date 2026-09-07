@@ -478,10 +478,11 @@ function pushChildren(
   visitedNodes: number,
   maxNodes: number,
 ): void {
-  const childCount = sourceNode.childNodes.length;
+  const sourceChildren = sourceNode.childNodes;
+  const childCount = sourceChildren.length;
   assertTraversalCapacity(stack, visitedNodes, childCount, maxNodes);
   for (let index = childCount - 1; index >= 0; index -= 1) {
-    const child = sourceNode.childNodes.item(index);
+    const child = sourceChildren.item(index);
     if (child) stack.push({ sourceNode: child, outputParent, depth });
   }
 }
