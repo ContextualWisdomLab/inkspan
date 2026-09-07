@@ -133,6 +133,32 @@ hashing boundary. Deep immutability proves that the submitted graph cannot be
 mutated after validation; it does not prove that a caller-supplied digest was
 honestly derived from that graph.
 
+## Array preflight finding — 2026-09-07
+
+Status: Active PR / Proposed (#184), not protected-main implementation.
+
+The earlier array preflight avoided explicit key enumeration but first checked
+whether each container was frozen. Frozen-state inspection also enumerates a
+Proxy's keys. A packed public queue probe with a frozen, oversized sparse array
+was correctly rejected without calling the host save function, yet its key trap
+ran once before rejection. A costly trap could therefore run even when the
+array's length already made acceptance impossible.
+
+The candidate keeps early frozen-state validation for objects and checks array
+length, remaining value capacity, and child depth before array frozen-state
+inspection. It still rejects bounded mutable arrays and preserves dense-array,
+descriptor, prototype, cycle, schema, digest, and detached-snapshot checks.
+No API, limit, durable-save authority, or error category changes. This avoids
+unnecessary enumeration; it does not place a time limit on arbitrary Proxy code
+that runs during otherwise necessary reflection.
+
+The two regressions in `evidenceValidationArrayPreflight.test.ts` first failed
+with one key-trap invocation instead of zero for oversized and over-depth
+arrays. A separate bounded-unfrozen-array case preserves the immutability gate.
+Both public queue and durable session reuse this validation boundary. New-head
+packed consumer verification remains required; predecessor archive verification
+does not prove the candidate implementation.
+
 ## Security and privacy considerations
 
 Revision tags are equality validators, not authorization tokens, signatures,
