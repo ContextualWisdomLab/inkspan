@@ -117,6 +117,8 @@ Identity inspection returns no partial routing object on malformed input. An unk
 
 Toolbar shortcut metadata is implemented on protected `main`. Shipped keyboard behavior, focus behavior, native controls, `aria-pressed`, `aria-keyshortcuts`, programmatic save/conflict state, and visible shortcut documentation must agree. Repository-level keyboard behavior outranks extension-local defaults when determining metadata. Status must not depend on color alone. Inkspan exposes machine state sufficient for host WCAG-oriented messaging while leaving localization and application-specific live-region policy to the host.
 
+Active PR #152 repairs the shared link-editing shortcut so read-only editors do not open an editing prompt or issue a link command. Both Ctrl+K and Meta+K follow live editability changes without replacing the editor or discarding its document. Editable shortcut behavior remains unchanged. This proposal is not protected-main implementation or a new host authorization boundary.
+
 Accessible editor placeholder semantics are implemented on protected `main`. Standalone and collaborative textbox surfaces expose the same normalized non-blank host-supplied visual placeholder through `aria-placeholder`; whitespace-only guidance is omitted, and placeholder updates do not replace the current TipTap editor or host-owned Yjs binding. `aria-labelledby`/`aria-label` remain the accessible-name authority and placeholder guidance never grants editability.
 
 Protected paged-media behavior extends the same principle to print output: Inkspan-owned interactive UI does not become document content, placeholder instruction is suppressed rather than printed as authored text, and link semantics remain visually distinguishable without relying on color alone.
