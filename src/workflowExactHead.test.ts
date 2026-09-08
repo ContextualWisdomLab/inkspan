@@ -55,6 +55,9 @@ const SUPPORTED_PYTHON_VERSIONS = ['3.11', '3.12', '3.13', '3.14'] as const;
  * this contract asserts the supported minors rather than the syntax that
  * happens to express them, and so a legitimate reformatting of the workflow
  * cannot turn the suite red on every candidate head at once.
+ * Conditional declarations must use the supported PR-versus-other-event
+ * partition; unknown predicates fail closed rather than assigning event meaning
+ * to arbitrary payload order.
  */
 function officeMatrixPythonVersions(job: string): string[][] {
   const declaration = /^\s*python-version:[ \t]*(?<value>\S.*?)\s*$/m.exec(job);
@@ -63,6 +66,16 @@ function officeMatrixPythonVersions(job: string): string[][] {
     `the office job declares no python-version matrix entry:\n${job}`,
   ).not.toBeNull();
   const value = declaration!.groups!.value;
+
+  if (value.startsWith('${{')) {
+    // Only this event partition establishes the positional PR/push obligations.
+    expect(
+      value,
+      'the office matrix must select its first list only for pull_request events',
+    ).toMatch(
+      /^\$\{\{\s*github\.event_name\s*==\s*'pull_request'\s*&&\s*fromJSON\(\s*'\[.*?\]'\s*\)\s*\|\|\s*fromJSON\(\s*'\[.*?\]'\s*\)\s*\}\}$/u,
+    );
+  }
 
   const payloads = [...value.matchAll(/fromJSON\(\s*'(?<json>\[.*?\])'\s*\)/g)].map(
     (match) => match.groups!.json,
@@ -168,7 +181,10 @@ describe('exact-head CI workflow contract', () => {
     ).toThrow(/declares no python-version matrix entry/);
     expect(() =>
       officeMatrixPythonVersions(asJob('${{ steps.resolve.outputs.versions }}')),
-    ).toThrow(/not resolvable to a version list/);
+    ).toThrow(/first list only for pull_request/);
+    expect(() =>
+      officeMatrixPythonVersions(asJob(conditional.replace("'pull_request'", "'push'"))),
+    ).toThrow(/first list only for pull_request/);
   });
 
   it('cancels stale PR work and skips inactive pull requests', () => {
