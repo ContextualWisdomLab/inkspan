@@ -30,7 +30,7 @@ function transformFromExtension(
   return transform.call(plugin, html, {} as never);
 }
 
-describe('SafeClipboard TipTap v2 adapter', () => {
+describe('SafeClipboard TipTap v3 adapter', () => {
   it('runs last in the real ProseMirror transform chain', () => {
     const competingTransform = Extension.create({
       name: 'competingPasteTransform',
