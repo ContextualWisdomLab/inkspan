@@ -19,6 +19,7 @@
 - Scope external agent scratch-registry ignores to the checkout root; verify both root exclusion and nested source/fixture visibility with `git check-ignore --no-index` before claiming the ignore boundary is correct.
 - For intermittent browser teardown failures, capture request-start/finish/failure counts and outstanding requests before closing the page. Zero outstanding public requests does not prove internal network-idle state; do not blame open HMR sockets or remove the external-request guard without causal evidence.
 - Before attributing browser failures to a modified installation, compare the pinned installed module with the exact registry artifact and upstream tag. Keep private state probes diagnostic-only; a reproduced state transition does not prove the original failing event sequence.
+- A generic browser harness that only exposes a sanitizer probe does not mount the editor UI; visual acceptance must use a mounted product entry and retain a failed no-mount probe as diagnostic evidence.
 - Follow [release acceptance](https://github.com/ContextualWisdomLab/inkspan/issues/118) and the exact protected release workflow before automatic publication. Registered keys do not satisfy release gates. Inspect secret names and access metadata only; a denied organization-secret listing is not proof of absence. Preserve existing trusted-publishing/provenance policy rather than adding a token fallback, new registry or package solely because a key exists. Verify public artifact digests after publication.
 
 ## Canonical product and architecture authority
