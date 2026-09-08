@@ -1,7 +1,10 @@
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { packedPackageSha256 } from '../tests/browser/evidenceContract';
 
 /** Read one authoritative repository file as UTF-8 text. */
 function repositoryFile(path: string): string {
@@ -25,6 +28,30 @@ const browserSpec = repositoryFile('tests/browser/specs/clipboard.browser.spec.t
 const consensusSpec = repositoryFile('tests/browser/specs/clipboard.consensus.spec.ts');
 
 describe('release cross-engine browser evidence contract', () => {
+  it('requires the actual archive when an expected package digest is supplied', async () => {
+    const temporaryRoot = mkdtempSync(resolve(tmpdir(), 'inkspan-browser-digest-'));
+    const packageBytes = 'local package fixture';
+    const expectedDigest = createHash('sha256').update(packageBytes).digest('hex');
+    try {
+      vi.stubEnv('INKSPAN_EXPECTED_PACKAGE_SHA256', '');
+      await expect(packedPackageSha256(temporaryRoot)).resolves.toBeNull();
+      vi.stubEnv('INKSPAN_EXPECTED_PACKAGE_SHA256', expectedDigest);
+      await expect(packedPackageSha256(temporaryRoot)).rejects.toThrow(
+        'Expected packed npm artifact is missing.',
+      );
+      mkdirSync(resolve(temporaryRoot, 'release'));
+      writeFileSync(resolve(temporaryRoot, 'release/editor.tgz'), packageBytes);
+      await expect(packedPackageSha256(temporaryRoot)).resolves.toBe(expectedDigest);
+      vi.stubEnv('INKSPAN_EXPECTED_PACKAGE_SHA256', '0'.repeat(64));
+      await expect(packedPackageSha256(temporaryRoot)).rejects.toThrow(
+        'Packed npm artifact digest does not match propagated release evidence.',
+      );
+    } finally {
+      vi.unstubAllEnvs();
+      rmSync(temporaryRoot, { recursive: true, force: true });
+    }
+  });
+
   it('requires the release tag commit to equal the current protected main tip', () => {
     const buildJob = workflowJob(
       workflow,

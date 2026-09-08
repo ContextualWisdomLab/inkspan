@@ -28,6 +28,10 @@ The protected gate pins **Playwright 1.62.0** in an isolated immutable browser-t
 
 Differences are not normalized away merely to produce parity. The default gate has no generic normalization or broad engine allowlist; a permitted difference requires a focused regression fixture, authoritative standards basis, threat analysis, exact affected engine/version evidence, canonical interpretation, compatibility impact, and rollback. Missing, skipped, cancelled, incomplete, stale-run, stale-lock, package-mismatched, or divergent required browser evidence must fail closed rather than becoming successful release evidence. A source movement after evidence generation requires the new exact release candidate to re-prove the gate.
 
+Active PR browser assurance binds the actual editor and shared focus/print stylesheet route to the selected source build or extracted package. Archive-digest metadata alone cannot prove which CSS the browser loaded. The [stylesheet provenance regression](doctoring/browser-stylesheet-provenance.md) checks the loaded stylesheet identity and shared-route bytes in each engine; it does not establish physical-device or protected-release acceptance.
+
+Active PR browser evidence also rejects a missing archive when an expected package digest is supplied. Ordinary source-only checks without an expected digest may retain a null package identity. This distinction is exercised against the shared evidence helper by `src/releaseBrowserEvidence.test.ts`; it does not change editor runtime or public document contracts.
+
 ### Office artifact tests
 
 Exercise realistic DOCX, XLSX, and PPTX fixtures and inspect the generated package structure. Cover XML 1.0 validity, formula-injection neutralization, worksheet naming and freeze panes, bounds/depth/cycles, deterministic metadata, publication races, overwrite semantics, and wheel/package contents. No macro, network, model, or Desktop Office execution is required by the deterministic renderer.
