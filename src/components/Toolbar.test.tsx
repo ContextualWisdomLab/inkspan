@@ -70,8 +70,8 @@ describe('Toolbar', () => {
 
     const buttons = screen.getAllByRole('button');
     // Marks(4) + headings(3) + lists/quote/code/hr(5) +
-    // link/table/col/row/delCol/delRow/delTable/image/imageAlt(9) + history(2) = 23.
-    expect(buttons.length).toBe(23);
+    // link/table/col/row/delCol/delRow/delTable/image/spreadsheet/imageAlt(10) + history(2) = 24.
+    expect(buttons.length).toBe(24);
     // Cover onMouseDown preventDefault + every onClick handler.
     for (const button of buttons) {
       fireEvent.mouseDown(button);

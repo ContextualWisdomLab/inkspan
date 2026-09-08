@@ -299,6 +299,12 @@ export interface CwlEditorProps {
    */
   onImageError?: (error: unknown) => void;
   /**
+   * Fired when a local XLS/XLSX toolbar import cannot be parsed or inserted.
+   * The toolbar renders only stable redacted status text; this callback carries
+   * the underlying error so the host can log or present its own bounded UX.
+   */
+  onSpreadsheetError?: (error: unknown) => void;
+  /**
    * Bounded rich-HTML paste policy. Word, Google Docs, email, and web markup is
    * rebuilt through Inkspan's strict semantic allowlist before insertion. The
    * object is captured when `buildExtensions()` creates the editor; replacing it

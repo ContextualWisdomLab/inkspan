@@ -103,6 +103,12 @@ Model-assisted authoring is separate from deterministic conversion and validatio
 
 The host owns model/provider selection, credentials, external-data-use approval, redaction, prompt retention, model logging, tenancy, authorization, human approval, and audit. No model may authorize a save, bypass deterministic validation, or redefine a revision/durable-validator contract.
 
+## Local spreadsheet body-import contract
+
+Active PR / Proposed under ADR 0032. The public `@contextualwisdomlab/cwl-editor/spreadsheet` subpath and the editor toolbar accept local `.xls`/`.xlsx` bytes, project visible displayed cell text into one TipTap insertion batch, and reject hidden sheets, formulas, macros, and hyperlinks as executable authority. Source size is bounded before the file body is read. Genuine `File` values are read through `arrayBuffer()` when present, otherwise `FileReader` or `Response`. Failures are payload-redacted. This contract is not protected-main authority.
+
+Hosts retain transport, authorization, persistence, retention, and any later sharing of the inserted document. Worksheet names remain authoring labels and are not PII-masked in this lane.
+
 ## Deterministic Office conversion contract
 
 Office rendering accepts versioned bounded JSON and produces supported DOCX/XLSX/PPTX artifacts without model, network, macro, or Desktop Office dependency. Inputs must satisfy XML 1.0, size/depth/container/cycle, spreadsheet, worksheet-name, freeze-pane, supported-structure, and formula-injection rules before publication.

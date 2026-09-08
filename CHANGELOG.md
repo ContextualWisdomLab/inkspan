@@ -7,6 +7,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 ## [Unreleased]
 
 ### Added
+- Active PR / Proposed: local XLS/XLSX worksheet insertion into the current document. A toolbar control reads a user-selected `.xls` or `.xlsx` file in memory, projects only visible displayed cell text into a heading and table, and announces the imported worksheet/row/cell counts. Formulas, macros, hyperlinks, and hidden sheets receive no editor authority. This is not protected-main behavior until the branch merges.
 - Named the repeating editor chrome as a host-facing theme-token catalog and Storybook inventory so hosts can override `--cwl-*` custom properties on `.cwl-editor` after checking WCAG 2.2 contrast, without editing Inkspan internals. Color catalog values now distinguish light, dark, and `@media print` remaps; forced-colors mode is not treated as a token assignment. Hosts can call `getEditorThemeTokenContrast()` to compare inventoried pairs, including `--cwl-accent` on `--cwl-accent-soft`, against the 4.5:1 text threshold via `meetsTextContrast`.
 
 ### Accessibility

@@ -18,6 +18,7 @@ integrations.
 | `@contextualwisdomlab/cwl-editor/revision-evidence` | Framework-independent revision evidence and document-transition evidence for local content equality/lineage claims |
 | `@contextualwisdomlab/cwl-editor/text-position-selector` | `implemented_on_protected_main` — React-free text-position projection core implementing W3C `TextPositionSelector`; interactive capture, revision binding, authorization, persistence, and re-anchoring remain outside this subpath |
 | `@contextualwisdomlab/cwl-editor/markdown` | `implemented_on_active_pr` — headless deterministic Markdown/HTML/email/plain-text conversion with the same safe-link and strict inline-raster policies as the editor, without importing the React/TipTap editor graph |
+| `@contextualwisdomlab/cwl-editor/spreadsheet` | `implemented_on_active_pr` — framework-neutral bounded XLS/XLSX envelope preflight, lazy official SheetJS parse, and parser-neutral worksheet-to-editor JSON conversion used by the toolbar to insert visible worksheet tables; not protected-main authority |
 | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
 | `@contextualwisdomlab/cwl-editor/fonts.css` | Full offline KR/EN/JP/SC/TC/VI font bundle |
 | `@contextualwisdomlab/cwl-editor/fonts-latin.css` | Smaller Latin/Vietnamese font bundle |
@@ -58,7 +59,7 @@ embedded in the npm tarball.
   dependencies so the consumer's package manager installs and resolves it; it
   is not merely a type-only dependency.
 - The framework-independent autosave, converter, envelope-identity,
-  revision-evidence, text-position-selector, and Markdown entrypoints do not
+  revision-evidence, text-position-selector, Markdown, and spreadsheet entrypoints do not
   require React UI, a mounted editor, naruon, contextual-orchestrator, a
   database, provider credentials, or host transport. Their individual
   package-consumer gates additionally prevent framework dependencies from
@@ -109,7 +110,7 @@ production library build. The verification chain:
 4. rejects internal source, tests, demos, Office files, coverage output, and
    workflow files from the npm tarball;
 5. imports the root, collaboration, converter, autosave, envelope-identity,
-   revision-evidence, text-position-selector, and Markdown surfaces through their
+   revision-evidence, text-position-selector, Markdown, and spreadsheet surfaces through their
    dedicated packed-consumer checks, including framework-free isolation where
    that is part of the public contract;
 6. exercises supported ESM/CommonJS entrypoints and compiles strict TypeScript
