@@ -1,5 +1,30 @@
 # AGENTS.md
 
+## Package manager
+
+- Use the checked-in pnpm version and lock: `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm coverage`, `pnpm build`, `pnpm verify:package`.
+- Keep browser dependencies under their separate `tests/browser` lock; do not substitute another Playwright version during evidence collection.
+
+## Commit attribution
+
+- Preserve normal signed-off history and include accurate `Co-Authored-By` attribution for the assisting agent. Never invent a human reviewer or another agent's contribution.
+
+## Maintainer field notes
+
+- Update this file when completed work establishes a reusable repository-specific lesson. Keep rules concise; link detailed experiments from the existing owner PR and canonical documentation graph. Do not accumulate transient SHAs, run IDs, test counts, credentials, or scheduler snapshots here.
+- Freeze source, dependency locks and commit identity during each acceptance acquisition. Record the exact head, packed artifact digest, command, configuration and terminal result; a new head needs new applicable evidence even when archive bytes match.
+- Creating a worktree does not change the command's working directory. Set `workdir` to the target checkout for every install/test/build, verify HEAD there, and wait for its terminal exit code before publishing a pass; retain wrong-directory runs only as diagnostics.
+- Preserve failed attempts and distinguish focused diagnostics from full acceptance. A command after a failed `&&` stage did not run. Recover an expired process handle from logs without inventing an exit code. Under host contention, serialize this maintainer's heavy builds/tests; do not stop other owners' jobs or relax fixtures, deadlines or thresholds.
+- Inspect the actual packed editor in its host composition, not only isolated controls. Open screenshots directly across the affected widths, browser engines and editable/read-only/forced-color states; check clipping, focus and document preservation. Geometry assertions alone do not establish visual, touch, IME, translation or full accessibility acceptance.
+- Route a shared defect to its existing source owner before changing callers. Keep inherited stack repairs and previous evidence; do not duplicate a toolbar, clipboard, autosave or browser-teardown fix in another lane.
+- Scope external agent scratch-registry ignores to the checkout root; verify both root exclusion and nested source/fixture visibility with `git check-ignore --no-index` before claiming the ignore boundary is correct.
+- For intermittent browser teardown failures, capture request-start/finish/failure counts and outstanding requests before closing the page. Zero outstanding public requests does not prove internal network-idle state; do not blame open HMR sockets or remove the external-request guard without causal evidence.
+- Before attributing browser failures to a modified installation, compare the pinned installed module with the exact registry artifact and upstream tag. Keep private state probes diagnostic-only; a reproduced state transition does not prove the original failing event sequence.
+- A generic browser harness that only exposes a sanitizer probe does not mount the editor UI; visual acceptance must use a mounted product entry and retain a failed no-mount probe as diagnostic evidence.
+- Browser startup includes package builds. A watchdog expiry provides only a lower bound on startup time; trace build and readiness separately, and retain a timeout change only after the complete browser acquisition verifies its effect.
+- If browser tests time out before navigation completes, measure blank-page acquisition without Inkspan before changing editor logic. Separate fixture, navigation, assertion and teardown timing; post-timeout snapshots are not passing evidence. Compare trace modes without relaxing network isolation, and account for shared-host load and cache differences.
+- Follow [release acceptance](https://github.com/ContextualWisdomLab/inkspan/issues/118) and the exact protected release workflow before automatic publication. Registered keys do not satisfy release gates. Inspect secret names and access metadata only; a denied organization-secret listing is not proof of absence. Preserve existing trusted-publishing/provenance policy rather than adding a token fallback, new registry or package solely because a key exists. Verify public artifact digests after publication.
+
 ## Canonical product and architecture authority
 
 Protected `main` is Inkspan's implementation authority. Before changing product behavior, public contracts, architecture, security boundaries, tests, release behavior, or integration guidance, start from `docs/README.md` and keep `docs/PRD.md`, `docs/TRD.md`, and `docs/CONTRACTS.md` aligned with the current implementation and accepted ADRs.
