@@ -49,6 +49,13 @@ def _office_matrix_python_versions(office_job: str) -> tuple[tuple[str, ...], ..
         "the office job declares no python-version matrix entry"
     )
     matrix_value = value_match.group("value")
+    if matrix_value.startswith("${{"):
+        assert re.fullmatch(
+            r"\$\{\{\s*github\.event_name\s*==\s*'pull_request'\s*&&\s*"
+            r"fromJSON\(\s*'\[.*?\]'\s*\)\s*\|\|\s*"
+            r"fromJSON\(\s*'\[.*?\]'\s*\)\s*\}\}",
+            matrix_value,
+        ), "the office matrix must select its first list only for pull_request events"
 
     payloads = re.findall(r"fromJSON\(\s*'(\[.*?\])'\s*\)", matrix_value) or [
         matrix_value
@@ -69,6 +76,25 @@ def _office_matrix_python_versions(office_job: str) -> tuple[tuple[str, ...], ..
         declared.append(tuple(str(version) for version in versions))
 
     return tuple(declared)
+
+
+def test_office_matrix_rejects_changed_event_predicates() -> None:
+    """Identical version payloads cannot conceal a changed event partition."""
+    expression = (
+        "${{ github.event_name == 'pull_request' && fromJSON('[\"3.14\"]') "
+        "|| fromJSON('[\"3.11\",\"3.12\",\"3.13\",\"3.14\"]') }}"
+    )
+    assert _office_matrix_python_versions(f"python-version: {expression}") == (
+        ("3.14",), SUPPORTED_PYTHON_VERSIONS
+    )
+    for predicate in ("push", "workflow_dispatch"):
+        changed = expression.replace("'pull_request'", repr(predicate))
+        try:
+            _office_matrix_python_versions(f"python-version: {changed}")
+        except AssertionError as error:
+            assert "first list only for pull_request" in str(error)
+        else:
+            raise AssertionError(f"accepted an unsupported event predicate: {predicate}")
 
 
 def test_python_support_range_matches_classifiers_and_ci_matrix() -> None:
