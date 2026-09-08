@@ -20,10 +20,7 @@ export default defineConfig({
       'pnpm --dir ../.. build && pnpm --dir ../.. exec vite --config tests/browser/vite.config.ts --host 127.0.0.1 --port 4173 --strictPort',
     url: HARNESS_URL,
     reuseExistingServer: false,
-    // The browser harness builds every published subpath before serving the page.
-    // Keep this above the measured local build envelope so slow CI does not
-    // report a browser failure before the editor is reachable.
-    timeout: 300_000,
+    timeout: 120_000,
   },
   projects: [
     {
