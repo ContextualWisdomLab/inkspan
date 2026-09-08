@@ -224,5 +224,5 @@ than one more unshipped capability.
 
 Such a closure is a repair finding. Recover it by reopening the original writer
 at its exact head, or by opening a successor that carries the complete delta and
-names the predecessor. Reducing a premature writer to draft or proposed status
+names the predecessor and continues the predecessor's intent. Reducing a premature writer to draft or proposed status
 preserves both the delta and the review trail; closing it preserves neither.

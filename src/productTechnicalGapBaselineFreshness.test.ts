@@ -52,8 +52,8 @@ describe('product-technical gap baseline freshness contract', () => {
     const document = baseline();
 
     expect(document).toContain('False-red states are equally defects');
-    expect(document).toContain(
-      'assert the\nresolved obligation and fail with the observed value',
+    expect(document).toMatch(
+      /assert the\s+resolved obligation and fail with the observed value/u,
     );
     expect(document).toMatch(
       /repository-owned contract drift as the first\s+hypothesis/u,
@@ -71,7 +71,7 @@ describe('product-technical gap baseline freshness contract', () => {
     );
     expect(document).toContain('Such a closure is a repair finding.');
     expect(document).toMatch(
-      /reopening the original writer\s+at its exact head, or by opening a successor that carries the complete delta/u,
+      /reopening the original writer\s+at its exact head, or by opening a successor that carries the complete delta(?:,?\s+and)?\s+names the predecessor,?\s+and continues the predecessor's intent/u,
     );
   });
 
