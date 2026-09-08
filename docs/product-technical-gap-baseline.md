@@ -218,11 +218,12 @@ successor has fully inherited the delta and continues the predecessor's intent.
 A blocked required check, an unavailable review verdict, reviewer latency, and a
 stalled foreign control plane are none of those; they suspend the merge, not the
 change. Closing a pull request whose delta is still absent from protected `main`
-discards reviewed, tested work while leaving the underlying product gap open,
-and the loss is silent because the queue then reports one fewer open item rather
-than one more unshipped capability.
+removes that work from the open queue while leaving the underlying product gap
+open. Its commits, diff, discussion, and review history remain available unless
+separately deleted; closure can hide an unshipped capability without erasing its
+record.
 
 Such a closure is a repair finding. Recover it by reopening the original writer
 at its exact head, or by opening a successor that carries the complete delta and
 names the predecessor and continues the predecessor's intent. Reducing a premature writer to draft or proposed status
-preserves both the delta and the review trail; closing it preserves neither.
+keeps the unfinished work visible in the open queue alongside its review trail.

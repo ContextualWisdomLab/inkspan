@@ -70,6 +70,8 @@ describe('product-technical gap baseline freshness contract', () => {
       /they suspend the merge, not the\s+change/u,
     );
     expect(document).toContain('Such a closure is a repair finding.');
+    expect(document).toMatch(/commits, diff, discussion, and review history remain available/u);
+    expect(document).not.toContain('closing it preserves neither');
     expect(document).toMatch(
       /reopening the original writer\s+at its exact head, or by opening a successor that carries the complete delta(?:,?\s+and)?\s+names the predecessor,?\s+and continues the predecessor's intent/u,
     );
