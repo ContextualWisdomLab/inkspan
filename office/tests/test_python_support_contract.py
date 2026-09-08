@@ -1,5 +1,6 @@
 """Cross-file contract for the Python versions advertised by Inkspan Office."""
 
+import json
 from pathlib import Path
 import re
 import tomllib
@@ -32,6 +33,70 @@ def _workflow_job_block(workflow: str, job_name: str) -> str:
     return f"  {job_name}:\n{match.group('body')}"
 
 
+def _office_matrix_python_versions(office_job: str) -> tuple[tuple[str, ...], ...]:
+    """Resolve every Python minor set the Office job can select, in declared order.
+
+    The workflow may declare the matrix as a literal YAML/JSON sequence or as an
+    expression that selects between ``fromJSON`` payloads per event. Both forms
+    are resolved to their values so this contract asserts the supported minors
+    rather than the syntax that happens to express them.
+    """
+
+    value_match = re.search(
+        r"(?m)^\s*python-version:[ \t]*(?P<value>\S.*?)\s*$", office_job
+    )
+    assert value_match is not None, (
+        "the office job declares no python-version matrix entry"
+    )
+    matrix_value = value_match.group("value")
+    if matrix_value.startswith("${{"):
+        assert re.fullmatch(
+            r"\$\{\{\s*github\.event_name\s*==\s*'pull_request'\s*&&\s*"
+            r"fromJSON\(\s*'\[.*?\]'\s*\)\s*\|\|\s*"
+            r"fromJSON\(\s*'\[.*?\]'\s*\)\s*\}\}",
+            matrix_value,
+        ), "the office matrix must select its first list only for pull_request events"
+
+    payloads = re.findall(r"fromJSON\(\s*'(\[.*?\])'\s*\)", matrix_value) or [
+        matrix_value
+    ]
+    declared: list[tuple[str, ...]] = []
+    for payload in payloads:
+        try:
+            versions = json.loads(payload)
+        except json.JSONDecodeError as error:
+            raise AssertionError(
+                f"the office python-version matrix is not resolvable to a "
+                f"version list; observed {matrix_value!r}"
+            ) from error
+        assert isinstance(versions, list) and versions, (
+            f"the office python-version matrix must resolve to a non-empty "
+            f"list; observed {payload!r}"
+        )
+        declared.append(tuple(str(version) for version in versions))
+
+    return tuple(declared)
+
+
+def test_office_matrix_rejects_changed_event_predicates() -> None:
+    """Identical version payloads cannot conceal a changed event partition."""
+    expression = (
+        "${{ github.event_name == 'pull_request' && fromJSON('[\"3.14\"]') "
+        "|| fromJSON('[\"3.11\",\"3.12\",\"3.13\",\"3.14\"]') }}"
+    )
+    assert _office_matrix_python_versions(f"python-version: {expression}") == (
+        ("3.14",), SUPPORTED_PYTHON_VERSIONS
+    )
+    for predicate in ("push", "workflow_dispatch"):
+        changed = expression.replace("'pull_request'", repr(predicate))
+        try:
+            _office_matrix_python_versions(f"python-version: {changed}")
+        except AssertionError as error:
+            assert "first list only for pull_request" in str(error)
+        else:
+            raise AssertionError(f"accepted an unsupported event predicate: {predicate}")
+
+
 def test_python_support_range_matches_classifiers_and_ci_matrix() -> None:
     """Require package metadata and the Office CI job to cover the same minors."""
 
@@ -50,10 +115,26 @@ def test_python_support_range_matches_classifiers_and_ci_matrix() -> None:
     office_job = _workflow_job_block(workflow, "office")
     assert "runs-on: ubuntu-24.04" in office_job
     assert "runs-on: ubuntu-latest" not in office_job
-    matrix_match = re.search(r'python-version:\s*\[([^\]]+)\]', office_job)
-    assert matrix_match is not None
-    matrix_versions = tuple(re.findall(r'"(3\.\d+)"', matrix_match.group(1)))
-    assert matrix_versions == SUPPORTED_PYTHON_VERSIONS
+    declared_matrices = _office_matrix_python_versions(office_job)
+    for declared in declared_matrices:
+        unsupported = tuple(
+            version
+            for version in declared
+            if version not in SUPPORTED_PYTHON_VERSIONS
+        )
+        assert not unsupported, (
+            f"the office python-version matrix declares unsupported entries "
+            f"{unsupported!r} in {declared!r}"
+        )
+
+    assert declared_matrices[-1] == SUPPORTED_PYTHON_VERSIONS, (
+        f"the exhaustive office python-version matrix must cover every "
+        f"supported minor in order; observed {declared_matrices[-1]!r}"
+    )
+    assert SUPPORTED_PYTHON_VERSIONS[-1] in declared_matrices[0], (
+        f"the office python-version matrix used for pull requests must include "
+        f"the newest supported minor; observed {declared_matrices[0]!r}"
+    )
 
 
 def test_python_support_documentation_matches_the_fixed_ci_environment() -> None:

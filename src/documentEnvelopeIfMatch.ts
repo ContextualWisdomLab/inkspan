@@ -1,5 +1,5 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
-import type { Editor } from '@tiptap/react';
+import type { Editor } from '@tiptap/core';
 import {
   createDocumentEnvelope,
   type CwlEditorDocumentEnvelope,
