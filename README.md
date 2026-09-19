@@ -75,7 +75,7 @@ runtime.
 | Styles | `@contextualwisdomlab/cwl-editor/styles.css` | Editor layout and theming |
 | Full fonts | `@contextualwisdomlab/cwl-editor/fonts.css` | KR/EN/JP/SC/TC/VI offline font bundle |
 | Latin fonts | `@contextualwisdomlab/cwl-editor/fonts-latin.css` | Smaller Latin/Vietnamese-only bundle |
-| Office renderer | [`office/`](office/) | Strict JSON → DOCX/XLSX/PPTX Python package and CLI |
+| Office renderer | [`office/`](https://github.com/ContextualWisdomLab/inkspan/tree/0b88c16f14f51b54a87eb7164f0edfb06dd60902/office) | Strict JSON → DOCX/XLSX/PPTX Python package and CLI |
 
 ---
 
@@ -127,8 +127,8 @@ WCAG 2.2 contrast for body text and active toolbar text. Use
 Inkspan's catalog baseline. After overriding CSS, pass the actual resolved
 foreground/background hex values to `contrastRatioFromHex()` before shipping the
 host theme. Do not edit Inkspan internals. See
-[`docs/design-tokens.md`](docs/design-tokens.md) for the token catalog and
-[`docs/storybook-inventory.md`](docs/storybook-inventory.md) for the Storybook
+[`docs/design-tokens.md`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/docs/design-tokens.md) for the token catalog and
+[`docs/storybook-inventory.md`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/docs/storybook-inventory.md) for the Storybook
 preview of toolbar and editor chrome.
 
 ```css
@@ -145,7 +145,7 @@ React trees. Inkspan emits a deterministic shell on the server and initializes
 TipTap after client hydration. Next.js App Router hosts should expose Inkspan
 through a small `'use client'` boundary and create browser providers and Yjs
 state inside that boundary. See
-[`docs/server-rendering.md`](docs/server-rendering.md) for the full hydration,
+[`docs/server-rendering.md`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/docs/server-rendering.md) for the full hydration,
 provider-lifecycle, and CWL/naruon integration contract.
 
 ### Imperative host API
@@ -202,7 +202,7 @@ frozen envelope without a second editor read. It is local equality evidence, not
 a signature, authorization decision, tenant identifier, or durable commit.
 Hosts retain authenticated atomic RFC 9110 `If-Match`, persistence, encryption,
 retention, redaction, and audit policy. See
-[`docs/imperative-envelope-persistence.md`](docs/imperative-envelope-persistence.md).
+[`docs/imperative-envelope-persistence.md`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/docs/imperative-envelope-persistence.md).
 
 ### Revision-scoped selection evidence
 
@@ -229,8 +229,7 @@ that revision; they are not DOM offsets, Markdown offsets, Unicode text offsets,
 or durable cross-revision anchors. Hosts must verify the revision before reuse
 and own authorization, durable annotation identifiers and comments, persistence,
 audit storage, collaborative anchoring, and any cross-revision re-anchoring
-policy. See [`docs/selection-lifecycle.md`](docs/selection-lifecycle.md) and
-[`docs/doctoring/selection-revision-evidence.md`](docs/doctoring/selection-revision-evidence.md).
+policy. See [`docs/selection-lifecycle.md`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/docs/selection-lifecycle.md).
 
 ### Revision-guarded restore
 
@@ -265,7 +264,7 @@ returning evidence adds no second document clone, canonicalization, or digest.
 A conflict envelope contains the full document body and must not be copied into
 ordinary telemetry or logs. Durable services must still enforce authenticated,
 atomic RFC 9110 `If-Match` within the write transaction. See
-[`docs/revision-guarded-restore.md`](docs/revision-guarded-restore.md).
+[`docs/revision-guarded-restore.md`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/docs/revision-guarded-restore.md).
 
 ### Main props
 
@@ -307,7 +306,7 @@ network-capable `<img>`.
 The formatting toolbar is one tab stop. Use Left/Right Arrow to move between
 enabled controls, Home/End to move to the first or last enabled control, and
 Enter/Space to invoke the focused button. See
-[`docs/accessibility.md`](docs/accessibility.md) for the complete integration
+[`docs/accessibility.md`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/docs/accessibility.md) for the complete integration
 contract and host responsibilities.
 
 ### Safe hyperlink boundary
@@ -336,7 +335,7 @@ if (isSafeLinkHref(candidate)) {
 const href = validateSafeLinkHref('/documents/current');
 ```
 
-See [`docs/link-security.md`](docs/link-security.md) for enforcement points,
+See [`docs/link-security.md`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/docs/link-security.md) for enforcement points,
 CWL/naruon host responsibilities, standards references, and verification.
 
 ## Framework-independent document transition evidence
@@ -375,8 +374,7 @@ prove that a durable write occurred, or replace a server-selected strong `ETag`.
 Standalone hosts and CWL/naruon services retain occurrence provenance,
 signatures, tenant isolation, persistence, audit storage, retention, and durable
 result claims. See
-[`docs/revision-evidence-subpath.md`](docs/revision-evidence-subpath.md) and
-[`docs/doctoring/document-transition-evidence.md`](docs/doctoring/document-transition-evidence.md).
+[`docs/revision-evidence-subpath.md`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/docs/revision-evidence-subpath.md).
 
 ## Framework-independent envelope identity routing
 
@@ -401,8 +399,7 @@ Use `inspectDocumentEnvelopeIdentityBytes()` when the source is strict UTF-8
 bytes. Migration selection and execution remain a host-owned migration
 responsibility, and migrated output must pass Inkspan's strict current-schema
 parser before it can become canonical editor state. See
-[`docs/document-envelope.md`](docs/document-envelope.md) and
-[`docs/doctoring/envelope-identity-routing.md`](docs/doctoring/envelope-identity-routing.md).
+[`docs/document-envelope.md`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/docs/document-envelope.md).
 
 ## Provider-neutral autosave
 
@@ -472,7 +469,7 @@ accessible conflict handling, and atomic RFC 9110 `If-Match` enforcement inside
 the durable write transaction. A durable HTTP entity tag is a server-selected
 opaque validator: after a successful write, adopt the host response's strong
 `ETag` rather than substituting Inkspan's local revision evidence. See
-[`docs/document-autosave.md`](docs/document-autosave.md) for recovery, shutdown,
+[`docs/document-autosave.md`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/docs/document-autosave.md) for recovery, shutdown,
 privacy, SSR/worker, and CWL/naruon integration guidance.
 
 ## Real-time collaboration
@@ -483,7 +480,7 @@ credentials, persist updates, enforce document authorization, or destroy the
 host provider. Collaborative mode uses Yjs as the sole source of truth and
 disables local StarterKit history.
 
-See [`docs/collaboration.md`](docs/collaboration.md) for the provider contract,
+See [`docs/collaboration.md`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/docs/collaboration.md) for the provider contract,
 presence/privacy rules, lifecycle ownership, accessibility behavior, persistence
 model, and CWL/naruon service boundary.
 
@@ -591,14 +588,14 @@ families currently ship weight 400; browsers synthesize bold unless the font
 bundle is regenerated with weight 700.
 
 Font license and attribution:
-[`src/fonts/OFL.txt`](src/fonts/OFL.txt) and
-[`src/fonts/NOTICE`](src/fonts/NOTICE).
+[`src/fonts/OFL.txt`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/src/fonts/OFL.txt) and
+[`src/fonts/NOTICE`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/src/fonts/NOTICE).
 
 ---
 
 ## Inkspan Office
 
-Inkspan Office is a separate Python distribution under [`office/`](office/).
+Inkspan Office is a separate Python distribution under [`office/`](https://github.com/ContextualWisdomLab/inkspan/tree/0b88c16f14f51b54a87eb7164f0edfb06dd60902/office).
 It accepts an allowlisted JSON contract and generates Office Open XML without
 calling an LLM, fetching remote content, executing macros, or driving desktop
 Office software.
@@ -652,7 +649,7 @@ The renderer rejects unknown fields, XML-incompatible controls, cyclic Python
 containers, non-finite numbers, formula-like strings as executable formulas,
 invalid worksheet names and freeze panes, non-rectangular Word tables, and Excel
 content that would be truncated or lose integer precision. Non-overwrite file
-publication is atomic and race-safe. See [`office/README.md`](office/README.md)
+publication is atomic and race-safe. See [`office/README.md`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/office/README.md)
 for the complete contract and security limits.
 
 ---
@@ -668,9 +665,8 @@ pnpm install
 pnpm build
 ```
 
-Consumers can import the built `dist/` artifacts or point a source build at
-`src/index.ts`. The converter remains independently importable from
-`src/converter/index.ts`.
+Consumers can import the built package artifacts or use the published converter
+subpath independently.
 
 ## Demo and container
 
@@ -745,5 +741,5 @@ capabilities they require.
 - **Office dependencies:** python-docx, openpyxl, and python-pptx are MIT.
 - **Fonts:** Noto Sans families are SIL Open Font License 1.1.
 
-See [`LICENSE`](LICENSE), [`src/fonts/OFL.txt`](src/fonts/OFL.txt), and
-[`src/fonts/NOTICE`](src/fonts/NOTICE).
+See [`LICENSE`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/LICENSE), [`src/fonts/OFL.txt`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/src/fonts/OFL.txt), and
+[`src/fonts/NOTICE`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/src/fonts/NOTICE).

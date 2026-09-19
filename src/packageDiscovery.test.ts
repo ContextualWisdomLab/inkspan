@@ -65,7 +65,9 @@ describe('buyer-visible package discovery', () => {
       /authorization,\s+tenant isolation,\s+persistence/,
     );
     expect(readme).toContain('RFC 9110 `If-Match`');
-    expect(readme).toContain('[`docs/document-autosave.md`](docs/document-autosave.md)');
+    expect(readme).toContain(
+      '[`docs/document-autosave.md`](https://github.com/ContextualWisdomLab/inkspan/blob/0b88c16f14f51b54a87eb7164f0edfb06dd60902/docs/document-autosave.md)',
+    );
   });
 
   it('makes persistence capabilities discoverable in npm metadata', () => {
