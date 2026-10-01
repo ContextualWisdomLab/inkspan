@@ -61,48 +61,54 @@ describe('software and bundled-font license evidence', () => {
     );
   });
 
-  it('retains both license families in the actual npm tarball', () => {
-    const packRoot = mkdtempSync(join(tmpdir(), 'inkspan-license-pack-'));
+  it(
+    'retains both license families in the actual npm tarball',
+    () => {
+      const packRoot = mkdtempSync(join(tmpdir(), 'inkspan-license-pack-'));
 
-    try {
-      const packMetadata = JSON.parse(
-        execFileSync(
-          'npm',
-          [
-            'pack',
-            '--json',
-            '--ignore-scripts',
-            '--pack-destination',
-            packRoot,
-          ],
+      try {
+        const packMetadata = JSON.parse(
+          execFileSync(
+            'npm',
+            [
+              'pack',
+              '--json',
+              '--ignore-scripts',
+              '--pack-destination',
+              packRoot,
+            ],
+            { encoding: 'utf8' },
+          ),
+        ) as readonly NpmPackEntry[];
+
+        expect(packMetadata).toHaveLength(1);
+        const filename = packMetadata[0]?.filename;
+        expect(filename).toEqual(expect.any(String));
+        if (filename === undefined) {
+          throw new Error(
+            'npm pack did not report the generated tarball filename.',
+          );
+        }
+
+        const archivePaths = execFileSync(
+          'tar',
+          ['-tzf', join(packRoot, filename)],
           { encoding: 'utf8' },
-        ),
-      ) as readonly NpmPackEntry[];
+        )
+          .split('\n')
+          .filter((path) => path.length > 0);
 
-      expect(packMetadata).toHaveLength(1);
-      const filename = packMetadata[0]?.filename;
-      expect(filename).toEqual(expect.any(String));
-      if (filename === undefined) {
-        throw new Error('npm pack did not report the generated tarball filename.');
+        expect(archivePaths).toEqual(
+          expect.arrayContaining([
+            'package/LICENSE',
+            'package/src/fonts/NOTICE',
+            'package/src/fonts/OFL.txt',
+          ]),
+        );
+      } finally {
+        rmSync(packRoot, { recursive: true, force: true });
       }
-
-      const archivePaths = execFileSync(
-        'tar',
-        ['-tzf', join(packRoot, filename)],
-        { encoding: 'utf8' },
-      )
-        .split('\n')
-        .filter((path) => path.length > 0);
-
-      expect(archivePaths).toEqual(
-        expect.arrayContaining([
-          'package/LICENSE',
-          'package/src/fonts/NOTICE',
-          'package/src/fonts/OFL.txt',
-        ]),
-      );
-    } finally {
-      rmSync(packRoot, { recursive: true, force: true });
-    }
-  });
+    },
+    30_000,
+  );
 });

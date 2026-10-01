@@ -1,5 +1,5 @@
 /**
- * TipTap v2 adapter that installs Inkspan's SafeClipboard policy in the actual
+ * TipTap v3 adapter that installs Inkspan's SafeClipboard policy in the actual
  * ProseMirror HTML-paste transform chain used before clipboard parsing.
  */
 import { Extension } from '@tiptap/core';
@@ -18,7 +18,7 @@ const SAFE_CLIPBOARD_PRIORITY = -1_000_000;
 /** ProseMirror plugin key for the rich-clipboard pre-parse safety boundary. */
 export const safeClipboardPluginKey = new PluginKey('cwlSafeClipboard');
 
-/** Options held by the TipTap v2 SafeClipboard extension adapter. */
+/** Options held by the TipTap v3 SafeClipboard extension adapter. */
 export interface SafeClipboardOptions {
   /** Maximum UTF-8 bytes accepted when no nested config object is supplied. */
   maxHtmlBytes: number;
@@ -69,11 +69,11 @@ function transformPastedClipboardHtml(
 }
 
 /**
- * Shared TipTap v2 extension that sanitizes rich HTML in ProseMirror's real
+ * Shared TipTap v3 extension that sanitizes rich HTML in ProseMirror's real
  * `transformPastedHTML` pipeline before the browser fragment is parsed.
  *
  * The deliberately low priority places this plugin after ordinary host
- * transforms in TipTap v2's plugin order, making sanitization the final
+ * transforms in TipTap v3's plugin order, making sanitization the final
  * supported HTML transform before ProseMirror parsing.
  */
 export const SafeClipboard = Extension.create<SafeClipboardOptions>({

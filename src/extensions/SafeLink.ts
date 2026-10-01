@@ -49,7 +49,7 @@ function documentHasOnlySafeLinks(documentNode: ProseMirrorNode): boolean {
  */
 export const SafeLink = Link.extend({
   addProseMirrorPlugins() {
-    /* v8 ignore next -- SafeLink always extends TipTap's Link extension. */
+    /* v8 ignore next -- @preserve SafeLink always extends TipTap's Link extension. */
     const parentPlugins = this.parent?.() ?? [];
     return [
       ...parentPlugins,

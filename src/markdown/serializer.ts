@@ -187,7 +187,7 @@ function sanitizeInertHtmlFragment(fragment: DocumentFragment): DocumentFragment
 
 /** Parse browser HTML into an inert, detached template document fragment. */
 function createInertBrowserFragment(html: string): DocumentFragment | null {
-  /* v8 ignore next -- browserless runtimes must not touch ambient document. */
+  /* v8 ignore next -- @preserve browserless runtimes must not touch ambient document. */
   if (typeof window === 'undefined') return null;
   const template = window.document.createElement('template');
   template.innerHTML = html;
@@ -265,7 +265,7 @@ export function htmlToMarkdown(
   const turndown = options.includeImageAlt === false
     ? turndownWithoutImageAlt
     : turndownWithImageAlt;
-  /* v8 ignore next 3 -- packed Node consumer verification exercises this DOM-free fallback. */
+  /* v8 ignore next 3 -- @preserve packed Node consumer verification exercises this DOM-free fallback. */
   if (!fragment) {
     return turndown.turndown(html);
   }

@@ -1,6 +1,7 @@
 import Collaboration from '@tiptap/extension-collaboration';
-import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
-import { type Editor, useEditor } from '@tiptap/react';
+import CollaborationCaret from '@tiptap/extension-collaboration-caret';
+import type { Editor } from '@tiptap/core';
+import { useEditor } from '@tiptap/react';
 import {
   forwardRef,
   useCallback,
@@ -198,7 +199,7 @@ export const CollaborativeCwlEditor = forwardRef<
           }),
           ...(scopedProvider && cursorUser
             ? [
-                CollaborationCursor.configure({
+                CollaborationCaret.configure({
                   provider: scopedProvider,
                   user: cursorUser,
                   render: renderCollaborationCursor,
@@ -267,7 +268,7 @@ export const CollaborativeCwlEditor = forwardRef<
   }, [editor, editable]);
 
   useEffect(() => {
-    /* v8 ignore next -- the editor is created after client hydration. */
+    /* v8 ignore next -- @preserve the editor is created after client hydration. */
     if (!editor) return;
     editor.setOptions({
       editorProps: {
@@ -322,7 +323,7 @@ export const CollaborativeCwlEditor = forwardRef<
   const handleFormReset = useCallback(
     (event: Event) => {
       applyEditorFormReset({
-        /* v8 ignore next -- the handler is passed only while editor exists. */
+        /* v8 ignore next -- @preserve the handler is passed only while editor exists. */
         editor: editor!,
         mode: modeRef.current,
         event,

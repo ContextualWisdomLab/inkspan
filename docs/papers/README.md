@@ -35,4 +35,4 @@ GFM table and strikethrough extensions.
   as base64, which this module relies on so figures travel with the document and
   remain readable by a downstream LLM. <https://datatracker.ietf.org/doc/html/rfc2397>
 - **ProseMirror** (Marijn Haverbeke) — the MIT-licensed document model and
-  editing toolkit that TipTap v2 is built on. <https://prosemirror.net/>
+  editing toolkit that TipTap is built on. <https://prosemirror.net/>

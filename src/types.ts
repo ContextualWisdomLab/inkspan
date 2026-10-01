@@ -1,5 +1,4 @@
-import type { JSONContent } from '@tiptap/core';
-import type { Editor } from '@tiptap/react';
+import type { Editor, JSONContent } from '@tiptap/core';
 import type {
   CwlEditorDocumentEnvelope,
   DocumentEnvelopeLimits,
