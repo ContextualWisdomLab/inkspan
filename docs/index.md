@@ -40,7 +40,7 @@ Useful references include:
 
 ## Releases and verification
 
-Use the [release evidence authority](adr/0010-release-evidence-authority.md) and [release security contract](release-security.md) to determine what is shipped. Release only the exact integrated protected-main head after its version identity, artifact inventory and digests, package-consumer evidence, required test, security and accessibility gates, SBOM and provenance, formal review, and repository-protection evidence all pass. Missing, conflicting, stale, or unverified evidence fails closed; a package release or green checks alone are insufficient. This source page is only a publication prerequisite; GitHub Pages should be treated as live only after repository settings and the published HTTPS endpoint are verified.
+Use the [release security contract](release-security.md) for current release requirements. The [release evidence authority ADR](adr/0010-release-evidence-authority.md) is Proposed reference material until approved, not current release authority. Release only the exact integrated protected-main head after its version identity, artifact inventory and digests, package-consumer evidence, required test, security and accessibility gates, SBOM and provenance, formal review, and repository-protection evidence all pass. Missing, conflicting, stale, or unverified evidence fails closed; a package release or green checks alone are insufficient. This source page is only a publication prerequisite; GitHub Pages should be treated as live only after repository settings and the published HTTPS endpoint are verified.
 
 - [Repository](https://github.com/ContextualWisdomLab/inkspan)
 - [Ask DeepWiki](https://deepwiki.com/ContextualWisdomLab/inkspan)
