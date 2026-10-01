@@ -81,11 +81,11 @@ def _office_matrix_python_versions(office_job: str) -> tuple[tuple[str, ...], ..
 def test_office_matrix_rejects_changed_event_predicates() -> None:
     """Identical version payloads cannot conceal a changed event partition."""
     expression = (
-        "${{ github.event_name == 'pull_request' && fromJSON('[\"3.14\"]') "
+        "${{ github.event_name == 'pull_request' && fromJSON('[\"3.11\",\"3.12\",\"3.13\",\"3.14\"]') "
         "|| fromJSON('[\"3.11\",\"3.12\",\"3.13\",\"3.14\"]') }}"
     )
     assert _office_matrix_python_versions(f"python-version: {expression}") == (
-        ("3.14",), SUPPORTED_PYTHON_VERSIONS
+        SUPPORTED_PYTHON_VERSIONS, SUPPORTED_PYTHON_VERSIONS
     )
     for predicate in ("push", "workflow_dispatch"):
         changed = expression.replace("'pull_request'", repr(predicate))
@@ -131,9 +131,9 @@ def test_python_support_range_matches_classifiers_and_ci_matrix() -> None:
         f"the exhaustive office python-version matrix must cover every "
         f"supported minor in order; observed {declared_matrices[-1]!r}"
     )
-    assert SUPPORTED_PYTHON_VERSIONS[-1] in declared_matrices[0], (
-        f"the office python-version matrix used for pull requests must include "
-        f"the newest supported minor; observed {declared_matrices[0]!r}"
+    assert declared_matrices[0] == SUPPORTED_PYTHON_VERSIONS, (
+        f"the office python-version matrix used for pull requests must cover every "
+        f"supported minor in order; observed {declared_matrices[0]!r}"
     )
 
 

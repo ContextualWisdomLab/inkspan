@@ -145,8 +145,8 @@ describe('exact-head CI workflow contract', () => {
     ).toEqual([...SUPPORTED_PYTHON_VERSIONS]);
     expect(
       declaredMatrices[0],
-      'the office python-version matrix used for pull requests must include the newest supported minor',
-    ).toContain(SUPPORTED_PYTHON_VERSIONS.at(-1));
+      'the office python-version matrix used for pull requests must cover every supported minor in order',
+    ).toEqual([...SUPPORTED_PYTHON_VERSIONS]);
 
     expect(releaseWorkflow).toContain(
       'group: ${{ github.workflow }}-${{ github.repository }}-${{ github.ref_name }}',
@@ -159,16 +159,16 @@ describe('exact-head CI workflow contract', () => {
       `  office:\n    strategy:\n      matrix:\n        python-version: ${declaration}\n`;
 
     const conditional =
-      '${{ github.event_name == \'pull_request\' && fromJSON(\'["3.14"]\') || fromJSON(\'["3.11", "3.12", "3.13", "3.14"]\') }}';
+      '${{ github.event_name == \'pull_request\' && fromJSON(\'["3.11", "3.12", "3.13", "3.14"]\') || fromJSON(\'["3.11", "3.12", "3.13", "3.14"]\') }}';
     expect(officeMatrixPythonVersions(asJob(conditional))).toEqual([
-      ['3.14'],
+      ['3.11', '3.12', '3.13', '3.14'],
       ['3.11', '3.12', '3.13', '3.14'],
     ]);
 
     const reformatted =
-      '${{ github.event_name==\'pull_request\' && fromJSON( \'["3.13","3.14"]\' )  ||  fromJSON( \'["3.11","3.12","3.13","3.14"]\' ) }}';
+      '${{ github.event_name==\'pull_request\' && fromJSON( \'["3.11","3.12","3.13","3.14"]\' )  ||  fromJSON( \'["3.11","3.12","3.13","3.14"]\' ) }}';
     expect(officeMatrixPythonVersions(asJob(reformatted))).toEqual([
-      ['3.13', '3.14'],
+      ['3.11', '3.12', '3.13', '3.14'],
       ['3.11', '3.12', '3.13', '3.14'],
     ]);
 

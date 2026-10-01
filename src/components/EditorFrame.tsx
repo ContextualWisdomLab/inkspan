@@ -44,7 +44,7 @@ export function EditorFrame({
 }: EditorFrameProps) {
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      /* v8 ignore next -- keyboard events cannot reach an unmounted editor. */
+      /* v8 ignore next -- @preserve keyboard events cannot reach an unmounted editor. */
       if (!editor) return;
       const modifier = event.metaKey || event.ctrlKey;
       if (modifier && event.key.toLowerCase() === 'k') {

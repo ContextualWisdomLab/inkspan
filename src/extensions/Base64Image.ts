@@ -117,7 +117,7 @@ export async function imageFileToInlineDataUri(
 
 /** Normalize a caught value to the Error contract exposed to hosts. */
 function normalizeImageError(error: unknown): Error {
-  /* v8 ignore next -- all shipped validation and conversion paths throw Error. */
+  /* v8 ignore next -- @preserve all shipped validation and conversion paths throw Error. */
   return error instanceof Error ? error : new Error('Image processing failed.');
 }
 
@@ -142,7 +142,7 @@ export const Base64Image = Image.extend<Base64ImageOptions>({
       {
         tag: 'img[src]',
         getAttrs: (element) => {
-          /* v8 ignore next -- a tag parse rule receives an HTMLElement. */
+          /* v8 ignore next -- @preserve a tag parse rule receives an HTMLElement. */
           if (!(element instanceof HTMLElement)) return false;
           try {
             const src = validateInlineImageSource(

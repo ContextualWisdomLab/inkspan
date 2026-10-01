@@ -28,9 +28,9 @@ plugins. It does not collect an arbitrary direct extension
 `transformPastedHTML` field into editor props. The locked source is authoritative
 for the installed runtime, while current mutable documentation is useful design
 context but not evidence that an API existed in this historical dependency
-version. Inkspan now locks the coherent TipTap 3.30.4 package family; the same
+version. Inkspan now locks the coherent TipTap 3.30.5 package family; the same
 real-pipeline tests prove that the adapter remains registered after migration.
-The published `@tiptap/react` 3.30.4 ESM and CommonJS declarations qualify four
+The published `@tiptap/react` 3.30.5 ESM and CommonJS declarations qualify four
 `Editor` references through an internal namespace that does not export that
 type. The lockfile applies one bounded patch to those declarations, and the
 packed strict-TypeScript consumer check prevents the broken public types from
@@ -63,7 +63,7 @@ result is not completion evidence for a later exact head.
 
 ## Ordering and residual host boundary
 
-TipTap v3.30.4 sorts extension priorities from higher to lower when resolving
+TipTap v3.30.5 sorts extension priorities from higher to lower when resolving
 extensions and again when assembling ProseMirror plugins. ProseMirror checks
 plugin-provided editor properties in plugin order. SafeClipboard therefore uses
 a deliberately low priority so ordinary host transforms run first and the
@@ -113,6 +113,6 @@ TipTap GmbH. (n.d.). *Extension API*. TipTap Editor Docs. Retrieved August 7,
 2026, from
 https://tiptap.dev/docs/editor/extensions/custom-extensions/create-new/extension
 
-TipTap GmbH. (2026). *ExtensionManager.ts (Version 3.30.4)* [Source code].
+TipTap GmbH. (2026). *ExtensionManager.ts (Version 3.30.5)* [Source code].
 GitHub. Retrieved September 4, 2026, from
-https://github.com/ueberdosis/tiptap/blob/v3.30.4/packages/core/src/ExtensionManager.ts
+https://github.com/ueberdosis/tiptap/blob/v3.30.5/packages/core/src/ExtensionManager.ts

@@ -6,8 +6,8 @@ const adapterPath = 'src/extensions/SafeClipboardExtension.ts';
 const kitPath = 'src/extensions/kit.ts';
 const lockPath = 'pnpm-lock.yaml';
 const workspacePath = 'pnpm-workspace.yaml';
-    const packagePath = 'package.json';
-const reactPatchPath = 'patches/@tiptap__react@3.30.4.patch';
+const packagePath = 'package.json';
+const reactPatchPath = 'patches/@tiptap__react@3.30.5.patch';
 const changelogPath = 'CHANGELOG.md';
 const readmePath = 'README.md';
 
@@ -31,11 +31,20 @@ describe('TipTap SafeClipboard adapter doctoring', () => {
     const readme = readRepositoryText(readmePath);
 
     expect(lock).toMatch(
-      /^\s+'@tiptap\/core':\n\s+specifier: 3\.30\.4$/mu,
+      /^\s+'@tiptap\/core':\n\s+specifier: 3\.30\.5$/mu,
     );
-    expect(doctoring).toContain('TipTap 3.30.4 package family');
+    expect(lock).not.toContain('@tiptap/core@3.30.4');
+    expect(doctoring).toContain('TipTap 3.30.5 package family');
     expect(doctoring).toContain('packed strict-TypeScript consumer check');
-    expect(workspace).toContain("'@tiptap/react@3.30.4':");
+    expect(workspace).toContain("'@tiptap/react@3.30.5':");
+    expect(
+      Object.entries(manifest.dependencies ?? {})
+        .filter(
+          ([name]) =>
+            name.startsWith('@tiptap/') && name !== '@tiptap/y-tiptap',
+        )
+        .every(([, version]) => version === '3.30.5'),
+    ).toBe(true);
     expect(manifest.dependencies?.['@floating-ui/dom']).toBe('^1.0.0');
     expect(manifest.dependencies?.['@tiptap/y-tiptap']).toBe('3.0.9');
     expect(manifest.dependencies?.['prosemirror-model']).toBe('^1.7.1');
