@@ -1,5 +1,7 @@
 # Inkspan
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ContextualWisdomLab/inkspan)
+
 > **Inkspan** ([inkspan.io](https://inkspan.io)) is the product. Repository:
 > `ContextualWisdomLab/inkspan`. npm package:
 > `@contextualwisdomlab/cwl-editor`.
