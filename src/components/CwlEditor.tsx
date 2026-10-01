@@ -198,7 +198,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     }, [editor, editable]);
 
     useEffect(() => {
-      /* v8 ignore next -- the editor is created after client hydration. */
+      /* v8 ignore next -- @preserve the editor is created after client hydration. */
       if (!editor) return;
       editor.setOptions({
         editorProps: {
@@ -212,7 +212,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
       if (!editor || !isControlled || emittingRef.current) return;
       const current = editorHtmlToValue(editor.getHTML(), mode);
       if (current !== value) {
-        /* v8 ignore next -- isControlled guarantees value is defined. */
+        /* v8 ignore next -- @preserve isControlled guarantees value is defined. */
         const next = editorValueToHtml(value ?? '', mode);
         editor.commands.setContent(next, { emitUpdate: false });
       }
@@ -221,7 +221,7 @@ export const CwlEditor = forwardRef<CwlEditorHandle, CwlEditorProps>(
     const handleFormReset = useCallback(
       (event: Event) => {
         applyEditorFormReset({
-          /* v8 ignore next -- the handler is passed only while editor exists. */
+          /* v8 ignore next -- @preserve the handler is passed only while editor exists. */
           editor: editor!,
           mode: modeRef.current,
           resetValue: formResetValueRef.current,

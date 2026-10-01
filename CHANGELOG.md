@@ -29,6 +29,9 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Normalized isolated package-verifier temporary roots before containment checks on macOS.
 - Upgraded the TipTap family to 3.30.5 to remediate GHSA-j95f-988m-3j2f while preserving formatting, collaboration presence, safe-link enforcement, and exact document restore behavior within the new v3 ABI.
 
+### Tests
+- Preserved every justified V8 coverage exclusion through the TypeScript/esbuild transform and added a source-hygiene regression contract, restoring the exact 100% statement, branch, function, and line gate under Vitest 4.1.11 without excluding testable product behavior.
+
 ## [0.6.0] — 2026-08-10
 
 ### Release

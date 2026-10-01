@@ -53,7 +53,7 @@ export function EditorFormField({
 
   useEffect(() => {
     const field = fieldRef.current;
-    /* v8 ignore next -- the effect runs only after the rendered field mounts. */
+    /* v8 ignore next -- @preserve the effect runs only after the rendered field mounts. */
     if (!field) return;
     if (name === undefined) {
       serializedValueRef.current = '';
@@ -95,7 +95,7 @@ export function EditorFormField({
   useEffect(() => {
     if (name === undefined && !onFormReset) return;
     const field = fieldRef.current;
-    /* v8 ignore next -- the effect runs only after the rendered field mounts. */
+    /* v8 ignore next -- @preserve the effect runs only after the rendered field mounts. */
     if (!field) return;
     const eventRoot = field.getRootNode();
     const pendingResetTasks = new Set<ReturnType<typeof setTimeout>>();

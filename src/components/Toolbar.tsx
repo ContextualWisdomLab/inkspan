@@ -105,7 +105,7 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
 
   useEffect(() => {
     const toolbar = toolbarRef.current;
-    /* v8 ignore next -- the effect only runs after the toolbar div mounts. */
+    /* v8 ignore next -- @preserve the effect only runs after the toolbar div mounts. */
     if (!toolbar) return;
     const buttons = getToolbarButtons(toolbar);
     const remembered = lastFocusedButtonRef.current;
@@ -132,7 +132,7 @@ export function Toolbar({ editor, image, onImageError }: ToolbarProps) {
         (button) => !button.disabled,
       );
       const currentIndex = buttons.indexOf(target);
-      /* v8 ignore next -- native disabled buttons cannot receive keyboard focus. */
+      /* v8 ignore next -- @preserve native disabled buttons cannot receive keyboard focus. */
       if (currentIndex < 0) return;
 
       let nextIndex: number;

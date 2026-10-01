@@ -268,7 +268,7 @@ export const CollaborativeCwlEditor = forwardRef<
   }, [editor, editable]);
 
   useEffect(() => {
-    /* v8 ignore next -- the editor is created after client hydration. */
+    /* v8 ignore next -- @preserve the editor is created after client hydration. */
     if (!editor) return;
     editor.setOptions({
       editorProps: {
@@ -323,7 +323,7 @@ export const CollaborativeCwlEditor = forwardRef<
   const handleFormReset = useCallback(
     (event: Event) => {
       applyEditorFormReset({
-        /* v8 ignore next -- the handler is passed only while editor exists. */
+        /* v8 ignore next -- @preserve the handler is passed only while editor exists. */
         editor: editor!,
         mode: modeRef.current,
         event,
