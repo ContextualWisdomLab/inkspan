@@ -19,12 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-Bundled fonts (src/fonts/): the Noto Sans font families bundled with this
-package are NOT covered by the MIT license above. They are licensed under the
-SIL Open Font License, Version 1.1 (OFL-1.1) — a permissive, non-copyleft
-license compatible with MIT. See src/fonts/OFL.txt for the full license text
-and src/fonts/NOTICE for attribution. Fonts are content/assets, not linked
-code; bundling and redistribution under OFL-1.1 is expressly permitted.
