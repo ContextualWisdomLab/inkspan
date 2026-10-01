@@ -90,7 +90,7 @@ pnpm add @contextualwisdomlab/cwl-editor react react-dom
 ### Migrate to 0.7.0
 
 Inkspan 0.7.0 upgrades its public editor boundary from TipTap 2 to TipTap
-3.30.4. Hosts that call `getEditor()` or pass `additionalExtensions` to
+3.30.5. Hosts that call `getEditor()` or pass `additionalExtensions` to
 `buildExtensions()` must upgrade their TipTap extensions and imports to the
 same v3 package family; do not mix v2 and v3 extensions or ProseMirror graphs.
 Hosts that use only `CwlEditor` props still need to test their editor workflows

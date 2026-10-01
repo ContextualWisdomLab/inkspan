@@ -9,6 +9,9 @@ const workspacePolicy = readFileSync(
   'utf8',
 );
 const workspacePolicyLines = workspacePolicy.split(/\r?\n/u);
+const manifest = JSON.parse(
+  readFileSync(join(repositoryRoot, 'package.json'), 'utf8'),
+) as { devDependencies?: Record<string, string> };
 
 function readScalar(
   name: string,
@@ -35,5 +38,12 @@ describe('pnpm supply-chain policy', () => {
         'trustPolicy: always',
       ]),
     ).toBeUndefined();
+  });
+
+  it('pins the patched development dependency floors', () => {
+    expect(workspacePolicy).toContain('fast-uri: ^3.1.8');
+    expect(workspacePolicy).toContain('brace-expansion: ^5.0.12');
+    expect(manifest.devDependencies?.vitest).toBe('^4.1.11');
+    expect(manifest.devDependencies?.['@vitest/coverage-v8']).toBe('^4.1.11');
   });
 });

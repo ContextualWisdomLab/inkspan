@@ -159,14 +159,14 @@ describe('exact-head CI workflow contract', () => {
       `  office:\n    strategy:\n      matrix:\n        python-version: ${declaration}\n`;
 
     const conditional =
-      '${{ github.event_name == \'pull_request\' && fromJSON(\'["3.14"]\') || fromJSON(\'["3.11", "3.12", "3.13", "3.14"]\') }}';
+      '${{ github.event_name == \'pull_request\' && fromJSON(\'["3.11", "3.12", "3.13", "3.14"]\') || fromJSON(\'["3.11", "3.12", "3.13", "3.14"]\') }}';
     expect(officeMatrixPythonVersions(asJob(conditional))).toEqual([
       ['3.11', '3.12', '3.13', '3.14'],
       ['3.11', '3.12', '3.13', '3.14'],
     ]);
 
     const reformatted =
-      '${{ github.event_name==\'pull_request\' && fromJSON( \'["3.13","3.14"]\' )  ||  fromJSON( \'["3.11","3.12","3.13","3.14"]\' ) }}';
+      '${{ github.event_name==\'pull_request\' && fromJSON( \'["3.11","3.12","3.13","3.14"]\' )  ||  fromJSON( \'["3.11","3.12","3.13","3.14"]\' ) }}';
     expect(officeMatrixPythonVersions(asJob(reformatted))).toEqual([
       ['3.11', '3.12', '3.13', '3.14'],
       ['3.11', '3.12', '3.13', '3.14'],

@@ -12,7 +12,7 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Unified the npm editor and `inkspan-office` package manifests at **0.7.0** for the TipTap v3 migration release candidate; protected integration and registry publication remain separate acceptance gates.
 
 ### Breaking
-- Upgraded the public TipTap editor ABI from v2 to the coherent TipTap 3.30.4 package family. Hosts that consume `CwlEditorHandle.getEditor()` or pass TipTap extensions to `buildExtensions()` must upgrade those host imports and extensions to v3; v2 and v3 editor graphs must not be mixed.
+- Upgraded the public TipTap editor ABI from v2 to the coherent TipTap 3.30.5 package family. Hosts that consume `CwlEditorHandle.getEditor()` or pass TipTap extensions to `buildExtensions()` must upgrade those host imports and extensions to v3; v2 and v3 editor graphs must not be mixed.
 
 ### Added
 - Named the repeating editor chrome as a host-facing theme-token catalog and Storybook inventory so hosts can override `--cwl-*` custom properties on `.cwl-editor` after checking WCAG 2.2 contrast, without editing Inkspan internals. Color catalog values now distinguish light, dark, and `@media print` remaps; forced-colors mode is not treated as a token assignment. Hosts can call `getEditorThemeTokenContrast()` to compare inventoried pairs, including `--cwl-accent` on `--cwl-accent-soft`, against the 4.5:1 text threshold via `meetsTextContrast`.
@@ -25,9 +25,9 @@ Historical release entries from **0.1.0 through 0.5.27** are preserved verbatim 
 - Upgrade Inkspan and every host-owned TipTap extension as one dependency-lock change, then re-run the host's editor, collaboration, and packed-consumer checks. Before adoption, rollback restores the latest verified released Inkspan 0.5.x editor and the host TipTap 2 dependency graph together; an unpublished 0.6.x source candidate is not a rollback artifact. The document-envelope schema is unchanged and needs no stored-document migration.
 
 ### Security
-- Raised workspace-wide transitive development-tool overrides for `fast-uri`, `nanoid`, and `postcss` to patched minimums, keeping the lockfile audit clean without changing runtime package authority.
+- Raised workspace-wide transitive development-tool overrides for `fast-uri`, `brace-expansion`, `nanoid`, and `postcss`, and upgraded Vitest to 4.1.11, keeping the lockfile audit clean without changing runtime package authority.
 - Normalized isolated package-verifier temporary roots before containment checks on macOS.
-- Patched the TipTap runtime advisory while preserving formatting, collaboration presence, safe-link enforcement, and exact document restore behavior within the new v3 ABI.
+- Upgraded the TipTap family to 3.30.5 to remediate GHSA-j95f-988m-3j2f while preserving formatting, collaboration presence, safe-link enforcement, and exact document restore behavior within the new v3 ABI.
 
 ## [0.6.0] — 2026-08-10
 
