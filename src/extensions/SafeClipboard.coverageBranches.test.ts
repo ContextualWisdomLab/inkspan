@@ -5,10 +5,10 @@ import { safeClipboardPluginKey } from './SafeClipboardExtension.js';
 import { buildExtensions } from './kit.js';
 
 /**
- * Build the smallest DOM-capable test double whose source text node reports a
- * null node value. Real browser text nodes normally report strings, but the
- * sanitizer intentionally retains a fail-safe empty-string fallback for hostile
- * or non-conforming host DOM implementations.
+ * Build the smallest DOM-capable test double whose source collection returns a
+ * null child and whose text node reports a null value. Real browser DOMs honor
+ * those contracts, but the sanitizer retains deterministic fail-closed handling
+ * for hostile or non-conforming host implementations.
  */
 function documentWithNullableSourceText(): Document {
   const sourceTextNode = {
@@ -23,7 +23,7 @@ function documentWithNullableSourceText(): Document {
   } as unknown as Node;
   const sourceFragment = {
     childNodes: {
-      length: 1,
+      length: 2,
       item(index: number) {
         return index === 0 ? sourceTextNode : null;
       },
@@ -65,7 +65,7 @@ describe('SafeClipboard residual fail-closed branches', () => {
     ).toBe('<p>visible malformed declaration</p>');
   });
 
-  it('converts a hostile null text-node value to bounded empty text', () => {
+  it('fails closed for hostile null child and text-node values', () => {
     expect(
       sanitizeRichClipboardHtml(
         'ignored by the fixed test DOM',

@@ -453,7 +453,6 @@ function pushChildren(
 ): void {
   for (let index = sourceNode.childNodes.length - 1; index >= 0; index -= 1) {
     const child = sourceNode.childNodes.item(index);
-    /* v8 ignore else -- @preserve index is bounded by childNodes.length. */
     if (child) stack.push({ sourceNode: child, outputParent, depth });
   }
 }
