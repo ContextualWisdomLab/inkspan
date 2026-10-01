@@ -21,8 +21,8 @@ trustPolicyIgnoreAfter: 43200
 # `overrides` from pnpm-workspace.yaml, NOT the deprecated package.json `pnpm`
 # field, so every security override must live here to actually take effect.
 #   - vite<6.4.3:   GHSA-fx2h-pf6j-xcff / GHSA-4w7w-66w2-5vf9 / GHSA-v6wh-96g9-6wx3
-#     (vitest's @vitest/mocker still resolves a transitive vite@5)
-#   - esbuild<0.25: GHSA-67mh-4wv8-2f99 (dragged in by the transitive vite@5)
+#     (direct development/runtime build-tool floor)
+#   - esbuild<0.25: GHSA-67mh-4wv8-2f99 (transitive build-tool floor)
 #   - fast-uri<3.1.8: GHSA-v2hh-gcrm-f6hx / GHSA-7p8r-x3mc-p8w7 /
 #     GHSA-5jgf-p345-68v8 / GHSA-f65p-4m7j-42xc / GHSA-fph4-wmhf-6fwf /
 #     GHSA-jqff-g426-hqxp / GHSA-qw65-cvwx-89v3 / GHSA-58mr-gqgx-xq4g /
