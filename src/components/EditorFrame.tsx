@@ -1,4 +1,5 @@
-import { EditorContent, type Editor } from '@tiptap/react';
+import type { Editor } from '@tiptap/core';
+import { EditorContent } from '@tiptap/react';
 import { useCallback, type KeyboardEvent, type ReactNode } from 'react';
 import type { EditorMode, ImageConfig } from '../types.js';
 import { EditorFormField } from './EditorFormField.js';
@@ -43,7 +44,7 @@ export function EditorFrame({
 }: EditorFrameProps) {
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      /* v8 ignore next -- keyboard events cannot reach an unmounted editor. */
+      /* v8 ignore next -- @preserve keyboard events cannot reach an unmounted editor. */
       if (!editor) return;
       const modifier = event.metaKey || event.ctrlKey;
       if (modifier && event.key.toLowerCase() === 'k') {

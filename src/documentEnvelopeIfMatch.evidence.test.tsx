@@ -228,7 +228,7 @@ describe('atomic revision-envelope conflict evidence', () => {
           sourceTrapInvoked = true;
           editor.commands.setContent(
             '<p>Newer document from source preparation</p>',
-            false,
+            { emitUpdate: false },
           );
         }
         return Reflect.ownKeys(target);
@@ -301,7 +301,9 @@ describe('atomic revision-envelope conflict evidence', () => {
     );
     await nextDigestStarted;
     act(() => {
-      editor.commands.setContent('<p>Newer local document</p>', false);
+      editor.commands.setContent('<p>Newer local document</p>', {
+        emitUpdate: false,
+      });
     });
     releaseNextDigest();
 

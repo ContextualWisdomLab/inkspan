@@ -1,4 +1,4 @@
-import type { Editor } from '@tiptap/react';
+import type { Editor } from '@tiptap/core';
 import { useEffect, useRef } from 'react';
 import type { EditorMode } from '../types.js';
 import { editorHtmlToValue } from './editorSerialization.js';
@@ -23,7 +23,7 @@ export interface EditorFormFieldProps {
  *
  * Named fields subscribe only to document-changing transactions, avoiding a
  * full Markdown/HTML serialization on cursor movement while still observing
- * programmatic `setContent(..., false)` calls that intentionally suppress the
+ * programmatic `setContent(..., { emitUpdate: false })` calls that suppress the
  * higher-level TipTap update event. The field's native value is written
  * synchronously before returning from each document transaction, so immediate
  * `FormData` construction or browser submission cannot observe a React-batched
@@ -53,7 +53,7 @@ export function EditorFormField({
 
   useEffect(() => {
     const field = fieldRef.current;
-    /* v8 ignore next -- the effect runs only after the rendered field mounts. */
+    /* v8 ignore next -- @preserve the effect runs only after the rendered field mounts. */
     if (!field) return;
     if (name === undefined) {
       serializedValueRef.current = '';
@@ -95,7 +95,7 @@ export function EditorFormField({
   useEffect(() => {
     if (name === undefined && !onFormReset) return;
     const field = fieldRef.current;
-    /* v8 ignore next -- the effect runs only after the rendered field mounts. */
+    /* v8 ignore next -- @preserve the effect runs only after the rendered field mounts. */
     if (!field) return;
     const eventRoot = field.getRootNode();
     const pendingResetTasks = new Set<ReturnType<typeof setTimeout>>();

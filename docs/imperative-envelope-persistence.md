@@ -94,7 +94,7 @@ Object and JSON-text inputs use `validateDocumentEnvelope()` and
 `...Bytes` methods. Validation is non-mutating. Restore completes duplicate
 object-name detection, resource checks, schema/version routing, hostile-value
 detachment, and full active ProseMirror schema reconstruction before one
-`setContent(..., false)` mutation. A failure leaves the current document
+`setContent(..., { emitUpdate: false })` mutation. A failure leaves the current document
 unchanged.
 
 Successful restore suppresses normal change callbacks because loading an
@@ -216,5 +216,5 @@ metadata rather than extending the strict envelope with ad hoc fields.
 - [W3C Web Cryptography API Recommendation](https://www.w3.org/TR/2017/REC-WebCryptoAPI-20170126/)
 - [WHATWG Encoding Standard: UTF-8](https://encoding.spec.whatwg.org/#utf-8)
 - [TipTap persistence guidance](https://tiptap.dev/docs/editor/core-concepts/persistence)
-- [TipTap v2 `setContent`](https://v2.tiptap.dev/docs/editor/api/commands/content/set-content)
+- [TipTap `setContent`](https://tiptap.dev/docs/editor/api/commands/content/set-content)
 - [ProseMirror `Node.fromJSON`](https://prosemirror.net/docs/ref/#model.Node^fromJSON)

@@ -410,6 +410,7 @@ function copyAllowedAttributes(
 ): void {
   const tagName = output.localName;
   if (tagName === 'a') {
+    /* v8 ignore else -- @preserve unsafe links are unwrapped before this helper. */
     if (safeLinkHref !== null) {
       output.setAttribute('href', safeLinkHref);
       output.setAttribute('rel', SAFE_LINK_REL);
@@ -509,7 +510,7 @@ export function sanitizeRichClipboardHtml(
 
     while (stack.length > 0) {
       const frame = stack.pop();
-      /* v8 ignore next -- stack length guarantees a frame. */
+      /* v8 ignore next -- @preserve stack length guarantees a frame. */
       if (!frame) continue;
       visitedNodes += 1;
       if (visitedNodes > resolvedConfig.maxNodes) {
